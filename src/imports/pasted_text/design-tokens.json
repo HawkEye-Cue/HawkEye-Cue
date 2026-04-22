@@ -1,0 +1,1012 @@
+​
+Brianna Frashier​
+{
+  "app": {
+    "name": "HawkEye-Cue MVP",
+    "tagline": "Your daily Cue to grow",
+    "version": "1.0.0",
+    "platform": "mobile",
+    "frameSize": {
+      "width": 390,
+      "height": 844
+    },
+    "theme": {
+      "fontFamily": "Inter",
+      "colors": {
+        "primaryBlue": "#1D4ED8",
+        "accentGreen": "#22C55E",
+        "backgroundLight": "#F8FAFC",
+        "white": "#FFFFFF",
+        "textPrimary": "#0F172A",
+        "textSecondary": "#64748B",
+        "statusSuccess": "#22C55E",
+        "statusScheduled": "#3B82F6",
+        "statusFailed": "#F97316",
+        "statusDenied": "#EF4444",
+        "borderLight": "#E2E8F0",
+        "surfaceMuted": "#F1F5F9"
+      },
+      "textStyles": {
+        "H1": {
+          "fontSize": 24,
+          "fontWeight": 700,
+          "lineHeight": 32
+        },
+        "H2": {
+          "fontSize": 18,
+          "fontWeight": 600,
+          "lineHeight": 26
+        },
+        "Body": {
+          "fontSize": 16,
+          "fontWeight": 400,
+          "lineHeight": 24
+        },
+        "Caption": {
+          "fontSize": 12,
+          "fontWeight": 400,
+          "lineHeight": 18
+        },
+        "Button": {
+          "fontSize": 16,
+          "fontWeight": 500,
+          "lineHeight": 24
+        }
+      },
+      "spacing": {
+        "xs": 4,
+        "sm": 8,
+        "md": 16,
+        "lg": 24,
+        "xl": 32
+      },
+      "radius": {
+        "sm": 10,
+        "md": 12,
+        "lg": 16,
+        "pill": 999
+      },
+      "shadow": {
+        "card": {
+          "x": 0,
+          "y": 2,
+          "blur": 8,
+          "spread": 0,
+          "color": "rgba(15, 23, 42, 0.08)"
+        }
+      }
+    }
+  },
+  "pages": [
+    {
+      "name": "01 Foundations",
+      "sections": [
+        {
+          "name": "Colors",
+          "type": "styles",
+          "items": [
+            { "name": "Primary / Blue", "value": "#1D4ED8" },
+            { "name": "Accent / Green", "value": "#22C55E" },
+            { "name": "Background / Light", "value": "#F8FAFC" },
+            { "name": "White", "value": "#FFFFFF" },
+            { "name": "Text / Primary", "value": "#0F172A" },
+            { "name": "Text / Secondary", "value": "#64748B" },
+            { "name": "Status / Success", "value": "#22C55E" },
+            { "name": "Status / Scheduled", "value": "#3B82F6" },
+            { "name": "Status / Failed", "value": "#F97316" },
+            { "name": "Status / Denied", "value": "#EF4444" },
+            { "name": "Border / Light", "value": "#E2E8F0" },
+            { "name": "Surface / Muted", "value": "#F1F5F9" }
+          ]
+        },
+        {
+          "name": "Typography",
+          "type": "styles",
+          "items": [
+            { "name": "H1 / 24 / Bold", "fontFamily": "Inter", "fontSize": 24, "fontWeight": 700, "lineHeight": 32 },
+            { "name": "H2 / 18 / SemiBold", "fontFamily": "Inter", "fontSize": 18, "fontWeight": 600, "lineHeight": 26 },
+            { "name": "Body / 16 / Regular", "fontFamily": "Inter", "fontSize": 16, "fontWeight": 400, "lineHeight": 24 },
+            { "name": "Caption / 12 / Regular", "fontFamily": "Inter", "fontSize": 12, "fontWeight": 400, "lineHeight": 18 },
+            { "name": "Button / 16 / Medium", "fontFamily": "Inter", "fontSize": 16, "fontWeight": 500, "lineHeight": 24 }
+          ]
+        },
+        {
+          "name": "Spacing",
+          "type": "tokens",
+          "items": [
+            { "name": "4px", "value": 4 },
+            { "name": "8px", "value": 8 },
+            { "name": "16px", "value": 16 },
+            { "name": "24px", "value": 24 },
+            { "name": "32px", "value": 32 }
+          ]
+        },
+        {
+          "name": "Shadows",
+          "type": "styles",
+          "items": [
+            {
+              "name": "Card Shadow",
+              "x": 0,
+              "y": 2,
+              "blur": 8,
+              "spread": 0,
+              "color": "rgba(15, 23, 42, 0.08)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Components",
+      "sections": [
+        {
+          "name": "Buttons",
+          "type": "components",
+          "items": [
+            {
+              "name": "Button / Primary",
+              "componentType": "button",
+              "variants": ["Default", "Hover", "Pressed", "Disabled"],
+              "style": {
+                "fill": "#1D4ED8",
+                "textColor": "#FFFFFF",
+                "radius": 12,
+                "paddingHorizontal": 20,
+                "paddingVertical": 14,
+                "fontStyle": "Button"
+              },
+              "text": "Primary Button"
+            },
+            {
+              "name": "Button / Secondary",
+              "componentType": "button",
+              "variants": ["Default", "Hover", "Pressed", "Disabled"],
+              "style": {
+                "fill": "#FFFFFF",
+                "stroke": "#1D4ED8",
+                "textColor": "#1D4ED8",
+                "radius": 12,
+                "paddingHorizontal": 20,
+                "paddingVertical": 14,
+                "fontStyle": "Button"
+              },
+              "text": "Secondary Button"
+            }
+          ]
+        },
+        {
+          "name": "Cards",
+          "type": "components",
+          "items": [
+            {
+              "name": "Card / Default",
+              "componentType": "card",
+              "style": {
+                "fill": "#FFFFFF",
+                "radius": 16,
+                "padding": 16,
+                "shadow": "card"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Card Title",
+                  "textStyle": "H2",
+                  "color": "#0F172A"
+                },
+                {
+                  "type": "text",
+                  "text": "Card content goes here.",
+                  "textStyle": "Body",
+                  "color": "#64748B"
+                }
+              ]
+            },
+            {
+              "name": "Card / Stat",
+              "componentType": "card",
+              "style": {
+                "fill": "#FFFFFF",
+                "radius": 16,
+                "padding": 16,
+                "shadow": "card",
+                "width": 110
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "text": "6",
+                  "textStyle": "H1",
+                  "color": "#0F172A",
+                  "align": "center"
+                },
+                {
+                  "type": "text",
+                  "text": "Opportunities",
+                  "textStyle": "Caption",
+                  "color": "#64748B",
+                  "align": "center"
+                }
+              ]
+            },
+            {
+              "name": "Card / Platform",
+              "componentType": "card",
+              "style": {
+                "fill": "#FFFFFF",
+                "radius": 16,
+                "padding": 16,
+                "shadow": "card"
+              },
+              "children": [
+                {
+                  "type": "row",
+                  "children": [
+                    { "type": "text", "text": "📘", "textStyle": "H2" },
+                    { "type": "text", "text": "Facebook", "textStyle": "H2", "color": "#0F172A" }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "If your rates went up this year, you are not alone...",
+                  "textStyle": "Body",
+                  "color": "#64748B"
+                },
+                {
+                  "type": "row",
+                  "children": [
+                    {
+                      "type": "buttonRef",
+                      "ref": "Button / Secondary",
+                      "text": "Edit"
+                    },
+                    {
+                      "type": "buttonRef",
+                      "ref": "Button / Secondary",
+                      "text": "Copy"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Card / Territory",
+              "componentType": "card",
+              "style": {
+                "fill": "#FFFFFF",
+                "radius": 16,
+                "padding": 16,
+                "shadow": "card"
+              },
+              "children": [
+                { "type": "text", "text": "Brighton Moms Group", "textStyle": "H2", "color": "#0F172A" },
+                { "type": "text", "text": "Allowed: Wednesday", "textStyle": "Body", "color": "#64748B" },
+                { "type": "text", "text": "Rules: No links, value only", "textStyle": "Body", "color": "#64748B" },
+                { "type": "text", "text": "Next Post: Tomorrow", "textStyle": "Caption", "color": "#1D4ED8" }
+              ]
+            },
+            {
+              "name": "Card / Daily Cue",
+              "componentType": "card",
+              "style": {
+                "fill": "#FFFFFF",
+                "radius": 16,
+                "padding": 16,
+                "shadow": "card"
+              },
+              "children": [
+                { "type": "text", "text": "🦅 Your Daily Cue", "textStyle": "H2", "color": "#0F172A" },
+                { "type": "text", "text": "📢 Post Idea: If your insurance went up this year, you are not alone.", "textStyle": "Body", "color": "#0F172A" },
+                { "type": "text", "text": "👥 Territory: Brighton Moms Group (Allowed Today)", "textStyle": "Body", "color": "#0F172A" },
+                { "type": "text", "text": "💬 Action: Reply to 3 comments from yesterday", "textStyle": "Body", "color": "#0F172A" },
+                {
+                  "type": "row",
+                  "children": [
+                    {
+                      "type": "buttonRef",
+                      "ref": "Button / Primary",
+                      "text": "Use This Post"
+                    },
+                    {
+                      "type": "buttonRef",
+                      "ref": "Button / Secondary",
+                      "text": "Skip"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Inputs",
+          "type": "components",
+          "items": [
+            {
+              "name": "Input / Text",
+              "componentType": "input",
+              "style": {
+                "fill": "#FFFFFF",
+                "stroke": "#E2E8F0",
+                "radius": 10,
+                "paddingHorizontal": 12,
+                "paddingVertical": 12
+              },
+              "placeholder": "Type here..."
+            },
+            {
+              "name": "Input / Text Area",
+              "componentType": "textarea",
+              "style": {
+                "fill": "#FFFFFF",
+                "stroke": "#E2E8F0",
+                "radius": 10,
+                "paddingHorizontal": 12,
+                "paddingVertical": 12,
+                "minHeight": 120
+              },
+              "placeholder": "Write your post here..."
+            }
+          ]
+        },
+        {
+          "name": "Tags",
+          "type": "components",
+          "items": [
+            {
+              "name": "Tag / Pill",
+              "componentType": "tag",
+              "variants": ["Default", "Active"],
+              "style": {
+                "radius": 999,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+                "defaultFill": "#F1F5F9",
+                "defaultTextColor": "#0F172A",
+                "activeFill": "#1D4ED8",
+                "activeTextColor": "#FFFFFF"
+              },
+              "text": "Family"
+            }
+          ]
+        },
+        {
+          "name": "Status",
+          "type": "components",
+          "items": [
+            {
+              "name": "Status Badge",
+              "componentType": "badge",
+              "variants": [
+                { "name": "Posted", "fill": "#22C55E", "textColor": "#FFFFFF" },
+                { "name": "Scheduled", "fill": "#3B82F6", "textColor": "#FFFFFF" },
+                { "name": "Failed", "fill": "#F97316", "textColor": "#FFFFFF" },
+                { "name": "Denied", "fill": "#EF4444", "textColor": "#FFFFFF" }
+              ],
+              "style": {
+                "radius": 999,
+                "paddingHorizontal": 10,
+                "paddingVertical": 6
+              },
+              "text": "Posted"
+            }
+          ]
+        },
+        {
+          "name": "Checklist",
+          "type": "components",
+          "items": [
+            {
+              "name": "Checklist Item",
+              "componentType": "checklist",
+              "variants": ["Default", "Completed", "Cue"],
+              "children": [
+                { "type": "icon", "name": "checkbox" },
+                { "type": "text", "text": "Post to Facebook Feed", "textStyle": "Body", "color": "#0F172A" },
+                { "type": "text", "text": "9:00 AM", "textStyle": "Caption", "color": "#64748B" }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Navigation",
+          "type": "components",
+          "items": [
+            {
+              "name": "Navigation / Bottom",
+              "componentType": "nav",
+              "style": {
+                "fill": "#FFFFFF",
+                "stroke": "#E2E8F0",
+                "paddingHorizontal": 16,
+                "paddingVertical": 12
+              },
+              "items": [
+                { "label": "Home", "active": true },
+                { "label": "Calendar", "active": false },
+                { "label": "Create", "active": false, "highlighted": true },
+                { "label": "Opportunities", "active": false },
+                { "label": "More", "active": false }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Overlays",
+          "type": "components",
+          "items": [
+            {
+              "name": "Drawer / Notes",
+              "componentType": "drawer",
+              "style": {
+                "fill": "#FFFFFF",
+                "width": 320,
+                "radius": 16,
+                "padding": 16,
+                "shadow": "card"
+              },
+              "children": [
+                { "type": "text", "text": "📝 Notes", "textStyle": "H2", "color": "#0F172A" },
+                { "type": "text", "text": "• Try more video content", "textStyle": "Body", "color": "#0F172A" },
+                { "type": "text", "text": "• Follow up with Sarah", "textStyle": "Body", "color": "#0F172A" },
+                {
+                  "type": "buttonRef",
+                  "ref": "Button / Primary",
+                  "text": "Add Note"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Screens",
+      "sections": [
+        {
+          "name": "Screen / Home",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "🦅 HawkEye-Cue", "textStyle": "H1", "color": "#0F172A" },
+            { "type": "text", "text": "Good morning, Brianna", "textStyle": "Body", "color": "#64748B" },
+            { "type": "componentRef", "ref": "Card / Daily Cue" },
+            {
+              "type": "row",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "componentRef",
+                  "ref": "Card / Stat",
+                  "overrides": {
+                    "children[0].text": "4",
+                    "children[1].text": "Opportunities"
+                  }
+                },
+                {
+                  "type": "componentRef",
+                  "ref": "Card / Stat",
+                  "overrides": {
+                    "children[0].text": "6",
+                    "children[1].text": "Posts"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "🔥 Today’s Cues", "textStyle": "H2", "color": "#0F172A" },
+                  { "type": "componentRef", "ref": "Checklist Item", "overrides": { "children[1].text": "Post to Facebook Feed", "children[2].text": "9:00 AM" } },
+                  { "type": "componentRef", "ref": "Checklist Item", "overrides": { "children[1].text": "Post to LinkedIn", "children[2].text": "12:00 PM" } },
+                  { "type": "componentRef", "ref": "Checklist Item", "overrides": { "children[1].text": "Post in Brighton Moms Group", "children[2].text": "Today" } },
+                  { "type": "componentRef", "ref": "Checklist Item", "overrides": { "children[1].text": "Reply to 3 comments", "children[2].text": "Today" } }
+                ]
+              }
+            },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Primary",
+              "text": "+ Create Post"
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "📌 Notes", "textStyle": "H2", "color": "#0F172A" },
+                  { "type": "text", "text": "• Brighton Moms = Wednesdays only", "textStyle": "Body", "color": "#64748B" },
+                  { "type": "text", "text": "• Try more life insurance posts", "textStyle": "Body", "color": "#64748B" }
+                ]
+              }
+            },
+            { "type": "componentRef", "ref": "Navigation / Bottom" }
+          ]
+        },
+        {
+          "name": "Screen / Create / New Post",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "Create Post", "textStyle": "H1", "color": "#0F172A" },
+            {
+              "type": "componentRef",
+              "ref": "Input / Text Area",
+              "overrides": {
+                "placeholder": "Write your post here..."
+              }
+            },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Secondary",
+              "text": "+ Add Photo / Video"
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Tone", "textStyle": "H2", "color": "#0F172A" },
+                  {
+                    "type": "row",
+                    "gap": 8,
+                    "children": [
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Family", "variant": "Active" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Professional", "variant": "Default" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Urgent", "variant": "Default" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Casual", "variant": "Default" } }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Type", "textStyle": "H2", "color": "#0F172A" },
+                  {
+                    "type": "row",
+                    "gap": 8,
+                    "children": [
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Auto", "variant": "Default" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Home", "variant": "Default" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Life", "variant": "Active" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Giveaway", "variant": "Default" } }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Platforms", "textStyle": "H2", "color": "#0F172A" },
+                  { "type": "text", "text": "Facebook  •  Instagram  •  LinkedIn  •  X  •  TikTok", "textStyle": "Body", "color": "#64748B" }
+                ]
+              }
+            },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Primary",
+              "text": "🤖 Adapt for Platforms"
+            },
+            { "type": "componentRef", "ref": "Navigation / Bottom" }
+          ]
+        },
+        {
+          "name": "Screen / Create / Adapt",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "Review Platform Versions", "textStyle": "H1", "color": "#0F172A" },
+            {
+              "type": "componentRef",
+              "ref": "Card / Platform",
+              "overrides": {
+                "children[0].children[0].text": "📘",
+                "children[0].children[1].text": "Facebook",
+                "children[1].text": "If your rates went up this year, you are not alone..."
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Platform",
+              "overrides": {
+                "children[0].children[0].text": "💼",
+                "children[0].children[1].text": "LinkedIn",
+                "children[1].text": "Many homeowners are seeing rate increases and need a policy review..."
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Platform",
+              "overrides": {
+                "children[0].children[0].text": "🐦",
+                "children[0].children[1].text": "X",
+                "children[1].text": "Rates are up. You might be overpaying. Let me check for you."
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Platform",
+              "overrides": {
+                "children[0].children[0].text": "📸",
+                "children[0].children[1].text": "Instagram",
+                "children[1].text": "If your insurance went up... you are not alone 👀 #insurance #savingmoney"
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Platform",
+              "overrides": {
+                "children[0].children[0].text": "🎥",
+                "children[0].children[1].text": "TikTok",
+                "children[1].text": "STOP scrolling if your insurance went up this year..."
+              }
+            },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Primary",
+              "text": "Continue → Schedule"
+            }
+          ]
+        },
+        {
+          "name": "Screen / Calendar / Weekly",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "Calendar", "textStyle": "H1", "color": "#0F172A" },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Week of April 20", "textStyle": "H2", "color": "#0F172A" },
+                  { "type": "text", "text": "Mon   Tue   Wed   Thu   Fri", "textStyle": "Body", "color": "#64748B" },
+                  { "type": "text", "text": "[FB]  [IG]  [LI]  [FB]  [TT]", "textStyle": "Body", "color": "#0F172A" },
+                  { "type": "text", "text": "9am   12pm  10am  9am   6pm", "textStyle": "Caption", "color": "#64748B" }
+                ]
+              }
+            },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Primary",
+              "text": "+ Schedule Post"
+            },
+            { "type": "componentRef", "ref": "Navigation / Bottom" }
+          ]
+        },
+        {
+          "name": "Screen / Cues",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "🦅 Cues", "textStyle": "H1", "color": "#0F172A" },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Today", "textStyle": "H2", "color": "#0F172A" },
+                  { "type": "componentRef", "ref": "Checklist Item", "overrides": { "children[1].text": "Post in Brighton Moms Group", "children[2].text": "Today" } },
+                  { "type": "componentRef", "ref": "Checklist Item", "overrides": { "children[1].text": "Reply to 3 comments", "children[2].text": "Today" } },
+                  { "type": "componentRef", "ref": "Checklist Item", "overrides": { "children[1].text": "Post LinkedIn update", "children[2].text": "12:00 PM" } }
+                ]
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Tomorrow", "textStyle": "H2", "color": "#0F172A" },
+                  { "type": "componentRef", "ref": "Checklist Item", "overrides": { "children[1].text": "Post giveaway reminder", "children[2].text": "Tomorrow" } },
+                  { "type": "componentRef", "ref": "Checklist Item", "overrides": { "children[1].text": "Follow up with opportunities", "children[2].text": "Tomorrow" } }
+                ]
+              }
+            },
+            { "type": "componentRef", "ref": "Navigation / Bottom" }
+          ]
+        },
+        {
+          "name": "Screen / Territories",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "Territories", "textStyle": "H1", "color": "#0F172A" },
+            { "type": "componentRef", "ref": "Card / Territory" },
+            {
+              "type": "componentRef",
+              "ref": "Card / Territory",
+              "overrides": {
+                "children[0].text": "Denver Homeowners",
+                "children[1].text": "Allowed: Mon, Fri",
+                "children[2].text": "Rules: Promo allowed",
+                "children[3].text": "Next Post: Friday"
+              }
+            },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Primary",
+              "text": "+ Add Territory"
+            },
+            { "type": "componentRef", "ref": "Navigation / Bottom" }
+          ]
+        },
+        {
+          "name": "Screen / Territories / Add",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "Add Territory", "textStyle": "H1", "color": "#0F172A" },
+            { "type": "componentRef", "ref": "Input / Text", "overrides": { "placeholder": "Group Name" } },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Allowed Days", "textStyle": "H2", "color": "#0F172A" },
+                  {
+                    "type": "row",
+                    "gap": 8,
+                    "children": [
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Mon", "variant": "Default" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Tue", "variant": "Default" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Wed", "variant": "Active" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Thu", "variant": "Default" } },
+                      { "type": "componentRef", "ref": "Tag / Pill", "overrides": { "text": "Fri", "variant": "Default" } }
+                    ]
+                  }
+                ]
+              }
+            },
+            { "type": "componentRef", "ref": "Input / Text Area", "overrides": { "placeholder": "Rules" } },
+            { "type": "componentRef", "ref": "Input / Text Area", "overrides": { "placeholder": "Notes" } },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Primary",
+              "text": "Save"
+            }
+          ]
+        },
+        {
+          "name": "Screen / Post / Status",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "Rate Increase Alert", "textStyle": "H1", "color": "#0F172A" },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Facebook     ✅ Posted", "textStyle": "Body", "color": "#0F172A" },
+                  { "type": "text", "text": "Instagram    ❌ Failed", "textStyle": "Body", "color": "#0F172A" },
+                  { "type": "text", "text": "LinkedIn     ⏳ Scheduled", "textStyle": "Body", "color": "#0F172A" },
+                  { "type": "text", "text": "TikTok       🚫 Denied", "textStyle": "Body", "color": "#0F172A" }
+                ]
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "TikTok Issue", "textStyle": "H2", "color": "#0F172A" },
+                  { "type": "text", "text": "Caption violates guidelines", "textStyle": "Body", "color": "#64748B" }
+                ]
+              }
+            },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Primary",
+              "text": "Fix & Reschedule"
+            }
+          ]
+        },
+        {
+          "name": "Screen / Opportunities",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "Opportunities", "textStyle": "H1", "color": "#0F172A" },
+            {
+              "type": "componentRef",
+              "ref": "Card / Stat",
+              "overrides": {
+                "children[0].text": "6",
+                "children[1].text": "This Week"
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Top Post", "textStyle": "H2", "color": "#0F172A" },
+                  { "type": "text", "text": "Life Insurance Reminder → 3 opportunities", "textStyle": "Body", "color": "#64748B" }
+                ]
+              }
+            },
+            {
+              "type": "componentRef",
+              "ref": "Card / Default",
+              "overrides": {
+                "children": [
+                  { "type": "text", "text": "Recent", "textStyle": "H2", "color": "#0F172A" },
+                  { "type": "text", "text": "Auto Post → 2 opportunities", "textStyle": "Body", "color": "#64748B" },
+                  { "type": "text", "text": "Notes: From FB group", "textStyle": "Caption", "color": "#64748B" }
+                ]
+              }
+            },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Primary",
+              "text": "+ Add Opportunity"
+            },
+            { "type": "componentRef", "ref": "Navigation / Bottom" }
+          ]
+        },
+        {
+          "name": "Screen / Opportunities / Add",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "text", "text": "Add Opportunity", "textStyle": "H1", "color": "#0F172A" },
+            { "type": "componentRef", "ref": "Input / Text", "overrides": { "placeholder": "Select post" } },
+            { "type": "componentRef", "ref": "Input / Text", "overrides": { "placeholder": "Type (DM / Comment / Form)" } },
+            { "type": "componentRef", "ref": "Input / Text Area", "overrides": { "placeholder": "Notes" } },
+            {
+              "type": "buttonRef",
+              "ref": "Button / Primary",
+              "text": "Save"
+            }
+          ]
+        },
+        {
+          "name": "Screen / Notes Drawer",
+          "type": "frame",
+          "layout": {
+            "width": 390,
+            "height": 844,
+            "direction": "vertical",
+            "gap": 16,
+            "padding": 16,
+            "fill": "#F8FAFC"
+          },
+          "children": [
+            { "type": "componentRef", "ref": "Drawer / Notes" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Flows",
+      "sections": [
+        {
+          "name": "Prototype Flows",
+          "type": "flows",
+          "items": [
+            {
+              "name": "Flow 1 / Create Post",
+              "steps": [
+                "Screen / Home",
+                "Screen / Create / New Post",
+                "Screen / Create / Adapt",
+                "Screen / Calendar / Weekly"
+              ]
+            },
+            {
+              "name": "Flow 2 / Daily Use",
+              "steps": [
+                "Screen / Home",
+                "Screen / Cues",
+                "Screen / Territories"
+              ]
+            },
+            {
+              "name": "Flow 3 / Opportunities",
+              "steps": [
+                "Screen / Home",
+                "Screen / Opportunities",
+                "Screen / Opportunities / Add"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Playground",
+      "sections": [
+        {
+          "name": "Experiments",
+          "type": "notes",
+          "items": [
+            { "text": "Alternate home layout" },
+            { "text": "Condensed Daily Cue card" },
+            { "text": "Dark mode concept" }
+          ]
+        }
+      ]
+    }
+  ]
+}

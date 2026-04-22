@@ -1,0 +1,17 @@
+.hawkeye-highlighted {
+  animation: hawkeyePulse 2s ease-in-out infinite;
+}
+
+@keyframes hawkeyePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(29, 78, 216, 0.2);
+  }
+}
+
+.hawkeye-badge {
+  position: relative;
+  z-index: 1000;
+}

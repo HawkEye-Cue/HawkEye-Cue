@@ -1,204 +1,150 @@
-// HawkEye-Cue Facebook Monitor
-// Monitors Facebook group posts for keywords
-
+// Social Lead Gen - Content Script for Keyword Detection
 let keywords = [];
-let monitoringActive = false;
-let tradeId = '';
-let processedPosts = new Set();
+let highlightedElements = [];
 
-// Load keywords from Chrome storage
-async function loadKeywords() {
-  try {
-    const result = await chrome.storage.sync.get(['keywords', 'monitoringActive', 'tradeId']);
-    keywords = result.keywords || [];
-    monitoringActive = result.monitoringActive !== false;
-    tradeId = result.tradeId || 'default';
-
-    if (monitoringActive && keywords.length > 0) {
-      console.log(`🦅 HawkEye-Cue monitoring active for trade: ${tradeId}`, keywords);
-      startMonitoring();
+// Get keywords from background
+function loadKeywords() {
+  chrome.runtime.sendMessage({ type: 'GET_KEYWORDS' }, (response) => {
+    if (response && response.keywords) {
+      keywords = response.keywords;
+      if (keywords.length > 0) scanPage();
     }
-  } catch (error) {
-    console.error('Error loading keywords:', error);
-  }
+  });
 }
 
-// Check if text contains any keywords
-function containsKeywords(text) {
-  if (!text) return { found: false, matches: [] };
+// Scan page for keyword matches
+function scanPage() {
+  clearHighlights();
 
-  const lowerText = text.toLowerCase();
-  const matches = keywords.filter(keyword =>
-    lowerText.includes(keyword.toLowerCase())
+  if (keywords.length === 0) return;
+
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    null,
   );
 
-  return {
-    found: matches.length > 0,
-    matches: matches
-  };
-}
+  const matches = [];
+  let node;
 
-// Extract post information
-function extractPostInfo(postElement) {
-  try {
-    const textElements = postElement.querySelectorAll('[dir="auto"]');
-    let postText = '';
-    textElements.forEach(el => {
-      postText += ' ' + el.innerText;
-    });
-
-    let authorName = 'Unknown';
-    const authorLinks = postElement.querySelectorAll('a[role="link"]');
-    if (authorLinks.length > 0) {
-      authorName = authorLinks[0].innerText || 'Unknown';
+  while ((node = walker.nextNode())) {
+    const text = node.textContent.toLowerCase();
+    for (const keyword of keywords) {
+      if (text.includes(keyword)) {
+        matches.push({ node, keyword });
+        break;
+      }
     }
-
-    let timestamp = 'Recently';
-    const timeElements = postElement.querySelectorAll('abbr, span[class*="timestamp"]');
-    if (timeElements.length > 0) {
-      timestamp = timeElements[0].getAttribute('title') || timeElements[0].innerText || 'Recently';
-    }
-
-    let postUrl = window.location.href;
-    const permalinkElements = postElement.querySelectorAll('a[href*="/posts/"], a[href*="/permalink/"]');
-    if (permalinkElements.length > 0) {
-      postUrl = permalinkElements[0].href;
-    }
-
-    return {
-      text: postText.trim(),
-      author: authorName.trim(),
-      timestamp: timestamp,
-      url: postUrl,
-      element: postElement
-    };
-  } catch (error) {
-    console.error('Error extracting post info:', error);
-    return null;
   }
-}
 
-// Highlight a post
-function highlightPost(postElement, matches) {
-  if (postElement.classList.contains('hawkeye-highlighted')) return;
+  // Highlight matches
+  for (const match of matches) {
+    const parent = match.node.parentElement;
+    if (!parent || parent.classList.contains('slg-highlight')) continue;
 
-  postElement.classList.add('hawkeye-highlighted');
-  postElement.style.border = '3px solid #1D4ED8';
-  postElement.style.borderRadius = '8px';
+    const wrapper = document.createElement('span');
+    wrapper.className = 'slg-highlight';
+    wrapper.style.cssText = 'background: rgba(37, 99, 235, 0.15); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 4px; padding: 1px 3px; cursor: pointer;';
+    wrapper.title = `Keyword match: "${match.keyword}" — Click to save as lead`;
+    wrapper.dataset.keyword = match.keyword;
 
-  const badge = document.createElement('div');
-  badge.className = 'hawkeye-badge';
-  badge.innerHTML = `
-    <div style="background: linear-gradient(135deg, #1D4ED8 0%, #22C55E 100%); color: white; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-      🦅 HawkEye-Cue Lead Found!
-      <div style="font-size: 10px; font-weight: normal; margin-top: 2px;">
-        Keywords: ${matches.join(', ')}
-      </div>
-    </div>
-  `;
+    // Wrap the text node
+    try {
+      parent.insertBefore(wrapper, match.node);
+      wrapper.appendChild(match.node);
+      highlightedElements.push(wrapper);
+    } catch (e) {
+      // Skip if DOM manipulation fails
+    }
+  }
 
-  postElement.insertBefore(badge, postElement.firstChild);
-}
+  // Add click handlers
+  for (const el of highlightedElements) {
+    el.addEventListener('click', handleHighlightClick);
+  }
 
-// Save opportunity (per trade)
-async function saveOpportunity(postInfo, matches) {
-  try {
-    const opportunity = {
-      id: Date.now().toString(),
-      author: postInfo.author,
-      content: postInfo.text.substring(0, 200),
-      url: postInfo.url,
-      timestamp: postInfo.timestamp,
-      keywords: matches,
-      source: 'Facebook',
-      date: new Date().toISOString(),
-      read: false,
-      tradeId: tradeId
-    };
-
-    // Save opportunities per trade
-    const storageKey = `opportunities_${tradeId}`;
-    const result = await chrome.storage.local.get([storageKey]);
-    const opportunities = result[storageKey] || [];
-    opportunities.unshift(opportunity);
-    const trimmed = opportunities.slice(0, 100);
-
-    await chrome.storage.local.set({ [storageKey]: trimmed });
-
+  // Show notification if matches found
+  if (matches.length > 0) {
     chrome.runtime.sendMessage({
-      type: 'NEW_OPPORTUNITY',
-      opportunity: opportunity,
-      tradeId: tradeId
+      type: 'MATCHES_FOUND',
+      count: matches.length,
     });
-
-    console.log(`✅ Opportunity saved for ${tradeId}:`, opportunity);
-  } catch (error) {
-    console.error('Error saving opportunity:', error);
   }
 }
 
-// Scan posts
-async function scanPosts() {
-  if (!monitoringActive || keywords.length === 0) return;
+function handleHighlightClick(event) {
+  const element = event.currentTarget;
+  const keyword = element.dataset.keyword;
+  const sourceContent = getPostContent(element);
+  const sourceUrl = window.location.href;
+  const sourcePlatform = detectPlatform();
+  const sourceAuthor = getPostAuthor(element);
 
-  const postSelectors = ['[role="article"]', '[data-pagelet^="FeedUnit"]'];
-  let allPosts = [];
-
-  postSelectors.forEach(selector => {
-    document.querySelectorAll(selector).forEach(post => {
-      if (!allPosts.includes(post)) allPosts.push(post);
-    });
-  });
-
-  allPosts.forEach((post, index) => {
-    if (!post.getAttribute('data-hawkeye-id')) {
-      post.setAttribute('data-hawkeye-id', `post-${Date.now()}-${index}`);
+  chrome.runtime.sendMessage({
+    type: 'SUBMIT_OPPORTUNITY',
+    data: {
+      keywordId: keyword, // Backend will resolve to actual keyword ID
+      sourceContent: sourceContent.substring(0, 5000),
+      sourcePlatform,
+      sourceUrl,
+      sourceAuthor: sourceAuthor || 'Unknown',
+    },
+  }, (response) => {
+    if (response && response.success) {
+      element.style.background = 'rgba(16, 185, 129, 0.2)';
+      element.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+      element.title = '✓ Saved as lead!';
+    } else {
+      element.title = '⏳ Queued — will sync when online';
+      element.style.background = 'rgba(245, 158, 11, 0.2)';
     }
   });
+}
 
-  for (const post of allPosts) {
-    const postId = post.getAttribute('data-hawkeye-id');
-    if (processedPosts.has(postId)) continue;
+function getPostContent(element) {
+  // Walk up to find the post container
+  let container = element.closest('[data-testid="post"], article, [role="article"], .feed-shared-update-v2');
+  if (!container) container = element.parentElement?.parentElement?.parentElement;
+  return container ? container.textContent.substring(0, 2000) : element.textContent;
+}
 
-    const postInfo = extractPostInfo(post);
-    if (!postInfo || !postInfo.text) continue;
+function getPostAuthor(element) {
+  const container = element.closest('[data-testid="post"], article, [role="article"]');
+  if (!container) return '';
+  const authorEl = container.querySelector('a[role="link"] span, h3 a, .update-components-actor__name');
+  return authorEl ? authorEl.textContent.trim() : '';
+}
 
-    const { found, matches } = containsKeywords(postInfo.text);
+function detectPlatform() {
+  const host = window.location.hostname;
+  if (host.includes('facebook.com')) return 'facebook';
+  if (host.includes('instagram.com')) return 'instagram';
+  if (host.includes('linkedin.com')) return 'linkedin';
+  if (host.includes('tiktok.com')) return 'tiktok';
+  return 'facebook';
+}
 
-    if (found) {
-      console.log('🎯 Keyword match found!', matches);
-      highlightPost(post, matches);
-      await saveOpportunity(postInfo, matches);
-      processedPosts.add(postId);
+function clearHighlights() {
+  for (const el of highlightedElements) {
+    el.removeEventListener('click', handleHighlightClick);
+    if (el.parentNode) {
+      const text = el.textContent;
+      const textNode = document.createTextNode(text);
+      el.parentNode.replaceChild(textNode, el);
     }
   }
+  highlightedElements = [];
 }
 
-// Start monitoring
-function startMonitoring() {
-  console.log(`🦅 Starting HawkEye-Cue monitoring for ${tradeId}...`);
-  scanPosts();
+// --- Init ---
+loadKeywords();
 
-  const observer = new MutationObserver(() => scanPosts());
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  setInterval(scanPosts, 5000);
-}
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'UPDATE_KEYWORDS') {
-    keywords = message.keywords;
-    monitoringActive = message.active;
-    tradeId = message.tradeId || tradeId;
-    processedPosts.clear();
-    console.log(`🔄 Keywords updated for ${tradeId}:`, keywords);
-    if (monitoringActive) scanPosts();
-    sendResponse({ success: true });
-  } else if (message.type === 'SCAN_NOW') {
-    scanPosts();
-    sendResponse({ success: true });
+// Re-scan on DOM changes (infinite scroll, new posts loading)
+const observer = new MutationObserver(() => {
+  if (keywords.length > 0) {
+    clearHighlights();
+    scanPage();
   }
-  return true;
 });
 
-loadKeywords();
+observer.observe(document.body, { childList: true, subtree: true });

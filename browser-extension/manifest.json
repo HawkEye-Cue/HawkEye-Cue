@@ -1,25 +1,33 @@
 {
   "manifest_version": 3,
-  "name": "HawkEye-Cue Lead Tracker",
+  "name": "Social Lead Gen",
   "version": "1.0.0",
-  "description": "Monitor Facebook groups for keywords related to your trade and capture leads automatically",
+  "description": "Detect keywords on social media and capture leads automatically",
   "permissions": [
     "storage",
+    "alarms",
     "notifications",
     "activeTab"
   ],
   "host_permissions": [
-    "https://*.facebook.com/*"
+    "https://*.facebook.com/*",
+    "https://*.instagram.com/*",
+    "https://*.linkedin.com/*",
+    "https://*.tiktok.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://*.facebook.com/*"],
+      "matches": [
+        "https://*.facebook.com/*",
+        "https://*.instagram.com/*",
+        "https://*.linkedin.com/*",
+        "https://*.tiktok.com/*"
+      ],
       "js": ["content.js"],
-      "css": ["content.css"],
-      "run_at": "document_idle"
+      "css": ["content.css"]
     }
   ],
   "action": {
@@ -34,11 +42,5 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["icons/*"],
-      "matches": ["https://*.facebook.com/*"]
-    }
-  ]
+  }
 }

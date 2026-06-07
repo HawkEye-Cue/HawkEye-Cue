@@ -1,1 +1,61 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+*.js.map
+*.d.ts
+*.tsbuildinfo
+
+# CDK outputs
+packages/cdk/cdk.out/
+cdk-outputs.json
+cf-config.json
+cf-update.json
+
+# Lambda dist placeholders
+lambdas/
+
+# Environment files
 .env
+.env.local
+.env.production
+.env.*.local
+
+# AWS credentials (NEVER commit these)
+*.csv
+*accessKeys*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Expo / React Native
+apps/mobile/.expo/
+apps/mobile/ios/
+apps/mobile/android/
+
+# Old project folder
+Old/
+
+# Temporary files
+*.tmp
+*.temp

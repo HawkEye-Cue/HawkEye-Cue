@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Write(browser-extension/**/*.js)",
-      "Edit(browser-extension/**/*.js)"
-    ]
-  }
-}

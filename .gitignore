@@ -5,7 +5,7 @@ node_modules/
 
 .kiro/
 .claude/
-
+cdk.out
 # Build outputs
 dist/
 build/
@@ -19,8 +19,10 @@ cdk-outputs.json
 cf-config.json
 cf-update.json
 
-# Lambda dist placeholders
-lambdas/
+# Lambda dist placeholders (tracked — these ARE the deployment artifacts)
+# Only ignore the node_modules inside them (installed at deploy time)
+lambdas/dist/*/node_modules/
+lambdas/dist/*/package-lock.json
 
 # Environment files
 .env

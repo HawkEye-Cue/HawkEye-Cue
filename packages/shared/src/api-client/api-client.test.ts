@@ -479,13 +479,13 @@ describe('ApiClient', () => {
       const response = { checkoutUrl: 'https://stripe.com/checkout/123' };
       mockFetch.mockResolvedValue(mockResponse(200, response));
 
-      const result = await client.createCheckout('pro');
+      const result = await client.createCheckout('growth');
       expect(result).toEqual(response);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/subscription/checkout',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ tier: 'pro' }),
+          body: JSON.stringify({ tier: 'growth' }),
         }),
       );
     });

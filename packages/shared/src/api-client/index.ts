@@ -257,7 +257,7 @@ export class ApiClient {
   }
 
   async createCheckout(
-    tier: 'growth' | 'pro',
+    tier: 'base' | 'growth' | 'team',
   ): Promise<{ checkoutUrl: string }> {
     return this.request<{ checkoutUrl: string }>(
       'POST',

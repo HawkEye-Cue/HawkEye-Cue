@@ -16,7 +16,7 @@ export interface User {
   id: string; // Cognito sub
   email: string;
   tradeId: string | null;
-  subscriptionTier: 'free' | 'growth' | 'pro';
+  subscriptionTier: 'free' | 'base' | 'growth' | 'team';
   createdAt: string;
 }
 
@@ -93,7 +93,7 @@ export interface DailyCue {
 }
 
 export interface Subscription {
-  tier: 'free' | 'growth' | 'pro';
+  tier: 'free' | 'base' | 'growth' | 'team';
   aiGenerationsUsed: number;
   aiGenerationsLimit: number;
   currentPeriodEnd: string;

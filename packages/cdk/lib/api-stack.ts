@@ -41,6 +41,9 @@ export class ApiStack extends cdk.Stack {
     });
 
     // ─── Cognito JWT Authorizer ───────────────────────────────────────────
+    // Note: We do NOT restrict userPoolClients here — the API Gateway authorizer
+    // audience is managed manually (via aws apigatewayv2 update-authorizer) to accept
+    // tokens from the Web, Mobile, and Extension clients.
     const authorizer = new apigatewayv2Authorizers.HttpUserPoolAuthorizer(
       'CognitoAuthorizer',
       userPool,
@@ -160,6 +163,22 @@ export class ApiStack extends cdk.Stack {
 
     table.grantReadWriteData(subscriptionHandlerFn);
 
+    // Grant Secrets Manager read access for Stripe keys
+    subscriptionHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Stripe*`,
+        ],
+      })
+    );
+
+    // Stripe Price IDs — these match the products created in Stripe Dashboard (live mode)
+    subscriptionHandlerFn.addEnvironment('STRIPE_PRICE_BASE', 'price_1Tg5C7D0B5PTsk5eqGCIt3hh');
+    subscriptionHandlerFn.addEnvironment('STRIPE_PRICE_GROWTH', 'price_1Tg5DnD0B5PTsk5ePqsicJF6');
+    subscriptionHandlerFn.addEnvironment('STRIPE_PRICE_TEAM', 'price_1Tg5FFD0B5PTsk5eMbU5zIzc');
+
     // ─── Stripe Webhook Handler (NO auth) ─────────────────────────────────
     const stripeWebhookFn = new lambda.Function(this, 'StripeWebhookFn', {
       ...lambdaDefaults,
@@ -170,6 +189,17 @@ export class ApiStack extends cdk.Stack {
     } as lambda.FunctionProps);
 
     table.grantReadWriteData(stripeWebhookFn);
+
+    // Grant Secrets Manager read access for Stripe keys
+    stripeWebhookFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Stripe*`,
+        ],
+      })
+    );
 
     // ─── Daily Cues Handler ───────────────────────────────────────────────
     const dailyCuesHandlerFn = new lambda.Function(this, 'DailyCuesHandlerFn', {

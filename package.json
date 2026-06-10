@@ -1,22 +1,27 @@
 {
-  "name": "social-media-lead-gen",
+  "name": "hawkeye-cue",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@9.0.0",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "setup": "bash scripts/setup.sh",
+    "dev": "pnpm --filter @social-lead-gen/web run dev",
+    "build": "pnpm -r run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
-    "deploy": "bash scripts/deploy.sh",
+    "deploy": "bash scripts/deploy.sh dev",
     "deploy:dev": "bash scripts/deploy.sh dev",
     "deploy:staging": "bash scripts/deploy.sh staging",
-    "deploy:prod": "bash scripts/deploy.sh prod"
+    "deploy:prod": "bash scripts/deploy.sh prod",
+    "cdk": "pnpm --filter @social-lead-gen/cdk run cdk",
+    "cdk:synth": "pnpm --filter @social-lead-gen/cdk run synth"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

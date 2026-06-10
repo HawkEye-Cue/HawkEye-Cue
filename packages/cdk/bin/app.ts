@@ -25,6 +25,7 @@ const apiStack = new ApiStack(app, 'SocialLeadGen-Api', {
   mediaBucket: storageStack.mediaBucket,
 });
 
+// FrontendStack includes the WAF Web ACL (us-east-1 only, which matches env)
 const frontendStack = new FrontendStack(app, 'SocialLeadGen-Frontend', { env });
 
 new MainStack(app, 'SocialLeadGen-Main', {

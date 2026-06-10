@@ -1,15 +1,30 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
+import {
+  signIn,
+  signUp,
+  confirmSignUp,
+  signOut,
+  fetchAuthSession,
+  getCurrentUser,
+  resendSignUpCode,
+} from 'aws-amplify/auth';
+
+interface AuthUser {
+  email: string;
+  sub: string;
+}
 
 interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: { email: string; sub: string } | null;
+  user: AuthUser | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   confirmSignUp: (email: string, code: string) => Promise<void>;
-  logout: () => void;
+  resendCode: (email: string) => Promise<void>;
+  logout: () => Promise<void>;
   getToken: () => Promise<string | null>;
 }
 
@@ -18,57 +33,106 @@ const AuthContext = createContext<AuthState | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<{ email: string; sub: string } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
+  // Restore session on mount
   useEffect(() => {
-    // Check for existing session
-    const savedToken = localStorage.getItem('auth_token');
-    const savedUser = localStorage.getItem('auth_user');
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
+    async function restoreSession() {
+      try {
+        const cognitoUser = await getCurrentUser();
+        const session = await fetchAuthSession();
+        const idToken = session.tokens?.idToken?.toString() ?? null;
+        const email = cognitoUser.signInDetails?.loginId ?? '';
+        const sub = cognitoUser.userId;
+
+        setUser({ email, sub });
+        setToken(idToken);
+        setIsAuthenticated(true);
+      } catch {
+        // No active session — user is not logged in
+        setIsAuthenticated(false);
+        setUser(null);
+        setToken(null);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(false);
+
+    restoreSession();
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    // In production, this calls Cognito via Amplify
-    // For now, simulate auth flow
-    const mockToken = btoa(JSON.stringify({ email, sub: 'user-' + Date.now() }));
-    const mockUser = { email, sub: 'user-' + Date.now() };
-    setToken(mockToken);
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    localStorage.setItem('auth_token', mockToken);
-    localStorage.setItem('auth_user', JSON.stringify(mockUser));
+    const result = await signIn({ username: email, password });
+
+    if (result.isSignedIn) {
+      const cognitoUser = await getCurrentUser();
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString() ?? null;
+      const sub = cognitoUser.userId;
+
+      setUser({ email, sub });
+      setToken(idToken);
+      setIsAuthenticated(true);
+    } else {
+      // Handle intermediate steps (MFA, new password required, etc.)
+      throw new Error(result.nextStep.signInStep);
+    }
   }, []);
 
-  const register = useCallback(async (email: string, _password: string) => {
-    // In production, calls Cognito signUp
-    // Stores email for confirmation step
-    localStorage.setItem('pending_email', email);
+  const register = useCallback(async (email: string, password: string) => {
+    await signUp({
+      username: email,
+      password,
+      options: {
+        userAttributes: { email },
+        autoSignIn: false,
+      },
+    });
+    // After signUp, user must confirm via email code before they can sign in
   }, []);
 
-  const confirmSignUp = useCallback(async (email: string, _code: string) => {
-    // In production, calls Cognito confirmSignUp
-    console.log(`Confirmed signup for ${email}`);
+  const handleConfirmSignUp = useCallback(async (email: string, code: string) => {
+    await confirmSignUp({ username: email, confirmationCode: code });
   }, []);
 
-  const logout = useCallback(() => {
+  const resendCode = useCallback(async (email: string) => {
+    await resendSignUpCode({ username: email });
+  }, []);
+
+  const logout = useCallback(async () => {
+    await signOut();
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
   }, []);
 
-  const getToken = useCallback(async () => token, [token]);
+  // Always fetches a fresh / auto-refreshed token from Cognito
+  const getToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString() ?? null;
+      setToken(idToken);
+      return idToken;
+    } catch {
+      return null;
+    }
+  }, []);
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, isLoading, user, token, login, register, confirmSignUp, logout, getToken }}
+      value={{
+        isAuthenticated,
+        isLoading,
+        user,
+        token,
+        login,
+        register,
+        confirmSignUp: handleConfirmSignUp,
+        resendCode,
+        logout,
+        getToken,
+      }}
     >
       {children}
     </AuthContext.Provider>

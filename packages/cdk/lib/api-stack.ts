@@ -29,7 +29,11 @@ export class ApiStack extends cdk.Stack {
     this.httpApi = new apigatewayv2.HttpApi(this, 'HttpApi', {
       apiName: 'SocialLeadGen-API',
       corsPreflight: {
-        allowOrigins: ['*'],
+        allowOrigins: [
+          'https://hawkeyecue.com',
+          'https://www.hawkeyecue.com',
+          'http://localhost:5173',
+        ],
         allowHeaders: ['Authorization', 'Content-Type'],
         allowMethods: [
           apigatewayv2.CorsHttpMethod.GET,

@@ -63,20 +63,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const result = await signIn({ username: email, password });
+    // Clear any stale/partial Amplify session before attempting sign-in.
+    // Amplify v6 throws if signIn is called while a session already exists.
+    try {
+      await signOut();
+      console.log('[Auth] Cleared previous session');
+    } catch (e) {
+      console.log('[Auth] No previous session to clear', e);
+    }
 
-    if (result.isSignedIn) {
-      const cognitoUser = await getCurrentUser();
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString() ?? null;
-      const sub = cognitoUser.userId;
+    try {
+      console.log('[Auth] Calling signIn for:', email);
+      const result = await signIn({ username: email, password });
+      console.log('[Auth] signIn result:', JSON.stringify(result, null, 2));
 
-      setUser({ email, sub });
-      setToken(idToken);
-      setIsAuthenticated(true);
-    } else {
-      // Handle intermediate steps (MFA, new password required, etc.)
-      throw new Error(result.nextStep.signInStep);
+      if (result.isSignedIn) {
+        const cognitoUser = await getCurrentUser();
+        const session = await fetchAuthSession();
+        const idToken = session.tokens?.idToken?.toString() ?? null;
+        const sub = cognitoUser.userId;
+
+        console.log('[Auth] Login successful, sub:', sub);
+        setUser({ email, sub });
+        setToken(idToken);
+        setIsAuthenticated(true);
+      } else {
+        console.log('[Auth] signIn not complete, nextStep:', result.nextStep);
+        // Handle intermediate steps (MFA, new password required, etc.)
+        throw new Error(result.nextStep.signInStep);
+      }
+    } catch (err: unknown) {
+      console.error('[Auth] signIn error:', err);
+      if (err instanceof Error) {
+        console.error('[Auth] Error name:', err.name, '| message:', err.message);
+      }
+      throw err;
     }
   }, []);
 

@@ -182,6 +182,32 @@ export class FrontendStack extends cdk.Stack {
       }),
     );
 
+    // ─── CloudFront Response Headers Policy (Security) ──────────────────
+    const responseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'SecurityHeaders', {
+      responseHeadersPolicyName: 'SocialLeadGen-SecurityHeaders',
+      securityHeadersBehavior: {
+        contentSecurityPolicy: {
+          contentSecurityPolicy: [
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: https:",
+            "font-src 'self'",
+            "connect-src 'self' https://cognito-idp.us-east-1.amazonaws.com https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com https://checkout.stripe.com",
+            "frame-src https://checkout.stripe.com https://js.stripe.com",
+            "object-src 'none'",
+            "base-uri 'self'",
+          ].join('; '),
+          override: true,
+        },
+        contentTypeOptions: { override: true },
+        frameOptions: { frameOption: cloudfront.HeadersFrameOption.DENY, override: true },
+        referrerPolicy: { referrerPolicy: cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN, override: true },
+        strictTransportSecurity: { accessControlMaxAge: cdk.Duration.days(365), includeSubdomains: true, override: true },
+        xssProtection: { protection: true, modeBlock: true, override: true },
+      },
+    });
+
     // ─── CloudFront Distribution ──────────────────────────────────────────
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       webAclId: this.webAcl.attrArn,
@@ -190,6 +216,7 @@ export class FrontendStack extends cdk.Stack {
       defaultBehavior: {
         origin: new origins.S3Origin(this.siteBucket, { originAccessIdentity }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        responseHeadersPolicy,
         cachePolicy: new cloudfront.CachePolicy(this, 'DefaultCachePolicy', {
           defaultTtl: cdk.Duration.days(1),
           maxTtl: cdk.Duration.days(365),

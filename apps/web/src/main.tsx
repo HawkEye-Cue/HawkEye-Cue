@@ -1,3 +1,4 @@
+import './lib/amplify'; // must be imported before any auth calls
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -6,7 +7,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import { TradeProvider } from './contexts/TradeContext';
 import { CalendarProvider } from './contexts/CalendarContext';
 import App from './App';
-import './lib/amplify'; // must be imported before any auth calls
 import './index.css';
 
 const queryClient = new QueryClient({

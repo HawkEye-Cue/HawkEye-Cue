@@ -47,9 +47,12 @@ export default function SettingsPage() {
     setCheckoutError(null);
     try {
       const client = await buildClient();
+      console.log('[Checkout] Calling createCheckout for tier:', tier);
       const { checkoutUrl } = await client.createCheckout(tier);
+      console.log('[Checkout] Got URL, redirecting:', checkoutUrl);
       window.location.href = checkoutUrl;
     } catch (e: unknown) {
+      console.error('[Checkout] Error:', e);
       const message = e instanceof Error ? e.message : 'Something went wrong. Please try again.';
       setCheckoutError(message);
       setLoadingTier(null);

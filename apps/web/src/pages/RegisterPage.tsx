@@ -80,6 +80,9 @@ export default function RegisterPage() {
                 <li className={/\d/.test(password) ? 'text-green-600' : 'text-red-500'}>
                   {/\d/.test(password) ? '✓' : '✗'} One number
                 </li>
+                <li className={/[^A-Za-z0-9]/.test(password) ? 'text-green-600' : 'text-red-500'}>
+                  {/[^A-Za-z0-9]/.test(password) ? '✓' : '✗'} One symbol
+                </li>
               </ul>
             )}
           </div>

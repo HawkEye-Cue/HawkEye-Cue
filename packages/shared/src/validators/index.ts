@@ -38,7 +38,8 @@ export const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-  .regex(/\d/, 'Password must contain at least one digit');
+  .regex(/\d/, 'Password must contain at least one digit')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one symbol');
 
 /**
  * Validates a password string and returns detailed error information.
@@ -58,6 +59,9 @@ export function validatePassword(password: string): {
   }
   if (!/\d/.test(password)) {
     errors.push('Password must contain at least one digit');
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    errors.push('Password must contain at least one symbol');
   }
 
   return { valid: errors.length === 0, errors };

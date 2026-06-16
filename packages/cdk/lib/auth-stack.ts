@@ -20,7 +20,7 @@ export class AuthStack extends cdk.Stack {
         minLength: 8,
         requireUppercase: true,
         requireDigits: true,
-        requireSymbols: false,
+        requireSymbols: true,
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       userVerification: {
@@ -61,11 +61,13 @@ export class AuthStack extends cdk.Stack {
     });
 
     // Browser extension app client
+    // Uses USER_PASSWORD_AUTH since browser extensions cannot easily implement SRP
     this.extensionClient = this.userPool.addClient('ExtensionClient', {
       userPoolClientName: 'SocialLeadGen-Extension',
       generateSecret: false,
       authFlows: {
         userSrp: true,
+        userPassword: true,
       },
       preventUserExistenceErrors: true,
     });

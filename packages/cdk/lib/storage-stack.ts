@@ -20,7 +20,11 @@ export class StorageStack extends cdk.Stack {
             s3.HttpMethods.PUT,
             s3.HttpMethods.POST,
           ],
-          allowedOrigins: ['*'],
+          allowedOrigins: [
+            'https://hawkeyecue.com',
+            'https://www.hawkeyecue.com',
+            'http://localhost:5173',
+          ],
           allowedHeaders: ['*'],
           maxAge: 3600,
         },

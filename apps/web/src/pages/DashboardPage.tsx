@@ -34,18 +34,18 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-white">Dashboard</h2>
-        <span className="text-sm bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full">
+        <span className="text-sm bg-blue-500/15 text-blue-300 px-3 py-1 rounded-full border border-blue-500/20">
           {selectedTrade.name}
         </span>
       </div>
 
       {/* Daily Cues */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Today's Action Items</h3>
         {todayEvents.length > 0 ? (
           <div className="space-y-2">
             {todayEvents.map((event) => (
-              <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700 cursor-pointer">
+              <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
                 <input
                   type="checkbox"
                   checked={event.completed}
@@ -62,15 +62,15 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700 cursor-pointer">
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
               <input type="checkbox" className="w-4 h-4 rounded" />
               <span className="text-sm text-slate-300">Post a {selectedTrade.postTypes[0]} on social media</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700 cursor-pointer">
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
               <input type="checkbox" className="w-4 h-4 rounded" />
               <span className="text-sm text-slate-300">Check for new keyword matches</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700 cursor-pointer">
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
               <input type="checkbox" className="w-4 h-4 rounded" />
               <span className="text-sm text-slate-300">Follow up on recent leads</span>
             </label>
@@ -80,18 +80,18 @@ export default function DashboardPage() {
       </div>
 
       {/* Lead Summary */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Lead Summary</h3>
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="text-center">
+          <div className="text-center p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
             <div className="text-xl sm:text-2xl font-bold text-blue-400">0</div>
             <div className="text-xs text-slate-400">New Leads</div>
           </div>
-          <div className="text-center">
+          <div className="text-center p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/10">
             <div className="text-xl sm:text-2xl font-bold text-yellow-400">0</div>
             <div className="text-xs text-slate-400">Followed Up</div>
           </div>
-          <div className="text-center">
+          <div className="text-center p-3 rounded-lg bg-green-500/5 border border-green-500/10">
             <div className="text-xl sm:text-2xl font-bold text-green-400">0</div>
             <div className="text-xs text-slate-400">Converted</div>
           </div>
@@ -99,18 +99,20 @@ export default function DashboardPage() {
       </div>
 
       {/* AI Post Suggestion */}
-      <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 rounded-xl border border-slate-700 p-4">
-        <h3 className="font-semibold mb-2 text-white">✨ AI Post Suggestion</h3>
-        <p className="text-sm text-slate-300 mb-3">
+      <div className="glass-card-strong gradient-border relative overflow-hidden">
+        {/* Subtle animated glow */}
+        <div className="absolute -top-12 -right-12 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl animate-pulse-glow pointer-events-none"></div>
+        <h3 className="font-semibold mb-2 text-white relative z-10">✨ AI Post Suggestion</h3>
+        <p className="text-sm text-slate-300 mb-3 relative z-10">
           Generate a {selectedTrade.postTypes[0]} post tailored for {selectedTrade.name} professionals.
         </p>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+        <button className="btn-primary px-4 py-2 text-sm relative z-10 btn-shimmer">
           Generate Post
         </button>
       </div>
 
       {/* Upcoming Posts */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Today's Scheduled Posts</h3>
         <p className="text-sm text-slate-400">No posts scheduled for today</p>
       </div>

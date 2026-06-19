@@ -69,7 +69,7 @@ export default function NetworkPage() {
       </div>
 
       {/* Post a Message */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <div className="flex gap-2">
           <textarea
             value={newMessage}
@@ -91,7 +91,7 @@ export default function NetworkPage() {
       {/* Message Feed */}
       <div className="space-y-3">
         {filteredMessages.map((msg) => (
-          <div key={msg.id} className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+          <div key={msg.id} className="glass-card hover:-translate-y-0.5 transition-transform duration-200">
             <div className="flex items-start justify-between mb-2 gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-8 h-8 shrink-0 bg-slate-600 rounded-full flex items-center justify-center text-sm font-bold text-white">

@@ -77,13 +77,13 @@ export default function CalendarPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-bold text-white shrink-0">Calendar</h2>
-        <div className="flex gap-1 bg-slate-800 rounded-lg p-1">
+        <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
           {(['month', 'week', 'day'] as ViewMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`px-2 sm:px-3 py-1.5 min-h-[36px] rounded text-xs sm:text-sm capitalize ${
-                viewMode === mode ? 'bg-slate-700 text-white font-medium' : 'text-slate-400'
+              className={`px-2 sm:px-3 py-1.5 min-h-[36px] rounded text-xs sm:text-sm capitalize transition-all duration-200 ${
+                viewMode === mode ? 'bg-blue-600 text-white font-medium shadow-sm shadow-blue-600/20' : 'text-slate-400 hover:text-white'
               }`}
             >
               {mode}
@@ -92,12 +92,12 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         {/* Month navigation */}
         <div className="flex items-center justify-between mb-4">
-          <button onClick={prevMonth} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-700">←</button>
+          <button onClick={prevMonth} className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors">←</button>
           <h3 className="font-semibold text-white">{monthName}</h3>
-          <button onClick={nextMonth} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-700">→</button>
+          <button onClick={nextMonth} className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors">→</button>
         </div>
 
         {/* Day headers */}
@@ -159,7 +159,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Today's scheduled items */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Today's Items</h3>
         {todayEvents.length === 0 ? (
           <p className="text-sm text-slate-400">Nothing scheduled for today. Click a future date to add something!</p>
@@ -178,7 +178,7 @@ export default function CalendarPage() {
 
       {/* All upcoming events */}
       {events.length > 0 && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <div className="glass-card">
           <h3 className="font-semibold mb-3 text-white">Upcoming</h3>
           <div className="space-y-2">
             {events
@@ -199,8 +199,8 @@ export default function CalendarPage() {
 
       {/* Add Event Modal */}
       {showModal && selectedDay !== null && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 w-full max-w-sm">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in">
             <h3 className="font-bold text-white mb-1">Add to Calendar</h3>
             <p className="text-sm text-slate-400 mb-4">
               {new Date(currentYear, currentMonth, selectedDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}

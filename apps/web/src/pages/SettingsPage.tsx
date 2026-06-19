@@ -99,7 +99,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Account</h3>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between gap-2">
@@ -131,7 +131,7 @@ export default function SettingsPage() {
 
       {/* Active subscription management */}
       {currentTier !== 'free' && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <div className="glass-card">
           <h3 className="font-semibold mb-3 text-white">Manage Subscription</h3>
           <div className="flex items-center justify-between">
             <div>
@@ -154,7 +154,7 @@ export default function SettingsPage() {
       )}
 
       {/* Subscription Plans */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <h3 className="font-semibold mb-4 text-white">
           {currentTier === 'free' ? 'Choose a Plan' : 'Upgrade Plan'}
         </h3>
@@ -280,7 +280,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <h3 className="font-semibold mb-2 text-white">Quick Links</h3>
         <div className="space-y-2">
           <a href="/profile" className="block text-sm text-blue-400 hover:underline">Profile & Password →</a>

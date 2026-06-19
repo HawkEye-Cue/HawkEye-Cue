@@ -21,7 +21,7 @@ export default function KeywordsPage() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-white">Keywords</h2>
 
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <label className="block text-sm font-medium text-slate-300 mb-2">Add Keyword</label>
         <div className="flex gap-2">
           <input
@@ -42,7 +42,7 @@ export default function KeywordsPage() {
         </div>
       </div>
 
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Tracked Keywords ({keywords.length})</h3>
         {keywords.length === 0 ? (
           <p className="text-sm text-slate-400">No keywords configured yet.</p>
@@ -62,7 +62,7 @@ export default function KeywordsPage() {
       </div>
 
       {selectedTrade && (
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <div className="glass-card">
           <h3 className="font-semibold mb-3 text-white">Suggested for {selectedTrade.name}</h3>
           <div className="flex flex-wrap gap-2">
             {selectedTrade.defaultKeywords.map((kw) => (

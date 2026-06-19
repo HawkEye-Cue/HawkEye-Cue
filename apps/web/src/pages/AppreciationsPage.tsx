@@ -72,7 +72,7 @@ export default function AppreciationsPage() {
       <p className="text-sm text-slate-400">People who tagged you in posts — thank them and build lasting partnerships</p>
 
       {/* Auto-Reply Section */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="glass-card">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="font-semibold text-white">Auto-Reply Comment</h3>
@@ -126,15 +126,15 @@ export default function AppreciationsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 text-center">
+        <div className="glass-card text-center">
           <div className="text-lg font-bold text-white">{mentions.length}</div>
           <div className="text-xs text-slate-400">Total Tags</div>
         </div>
-        <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 text-center">
+        <div className="glass-card text-center">
           <div className="text-lg font-bold text-amber-400">{unthanked.length}</div>
           <div className="text-xs text-slate-400">Pending Thanks</div>
         </div>
-        <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 text-center">
+        <div className="glass-card text-center">
           <div className="text-lg font-bold text-green-400">{thanked.length}</div>
           <div className="text-xs text-slate-400">Thanked</div>
         </div>
@@ -145,7 +145,7 @@ export default function AppreciationsPage() {
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wide">Pending Thanks</h3>
           {unthanked.map((mention) => (
-            <div key={mention.id} className="bg-slate-800 rounded-xl border border-amber-700/30 p-4">
+            <div key={mention.id} className="glass-card border-amber-500/20">
               <div className="flex items-start justify-between mb-2 gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-9 h-9 shrink-0 bg-amber-900/40 rounded-full flex items-center justify-center text-sm font-bold text-amber-300">
@@ -186,7 +186,7 @@ export default function AppreciationsPage() {
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-green-400 uppercase tracking-wide">Thanked</h3>
           {thanked.map((mention) => (
-            <div key={mention.id} className="bg-slate-800 rounded-xl border border-slate-700 p-4 opacity-75">
+            <div key={mention.id} className="glass-card opacity-75">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-9 h-9 bg-green-900/40 rounded-full flex items-center justify-center text-sm font-bold text-green-300">

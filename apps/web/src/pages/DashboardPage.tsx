@@ -82,17 +82,17 @@ export default function DashboardPage() {
       {/* Lead Summary */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
         <h3 className="font-semibold mb-3 text-white">Lead Summary</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-400">0</div>
+            <div className="text-xl sm:text-2xl font-bold text-blue-400">0</div>
             <div className="text-xs text-slate-400">New Leads</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-400">0</div>
+            <div className="text-xl sm:text-2xl font-bold text-yellow-400">0</div>
             <div className="text-xs text-slate-400">Followed Up</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-400">0</div>
+            <div className="text-xl sm:text-2xl font-bold text-green-400">0</div>
             <div className="text-xs text-slate-400">Converted</div>
           </div>
         </div>

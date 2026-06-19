@@ -343,6 +343,20 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
 
+    // Profile routes (handled by trade-handler)
+    this.httpApi.addRoutes({
+      path: '/profile',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: tradeIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/profile/mfa',
+      methods: [apigatewayv2.HttpMethod.PUT],
+      integration: tradeIntegration,
+      authorizer,
+    });
+
     // Content routes
     const contentIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
       'ContentIntegration',

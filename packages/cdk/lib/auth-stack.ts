@@ -1,6 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
+
+export interface AuthStackProps extends cdk.StackProps {
+  readonly tableName?: string;
+}
 
 export class AuthStack extends cdk.Stack {
   public readonly userPool: cognito.UserPool;
@@ -8,10 +14,74 @@ export class AuthStack extends cdk.Stack {
   public readonly mobileClient: cognito.UserPoolClient;
   public readonly extensionClient: cognito.UserPoolClient;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: AuthStackProps) {
     super(scope, id, props);
 
-    // Cognito User Pool with email sign-in and password policy
+    const tableName = props?.tableName ?? 'SocialLeadGen';
+
+    // ─── Custom Auth Challenge Lambdas (MFA via email/SMS) ────────────────
+    // NOTE: These are defined but NOT attached as triggers yet.
+    // MFA will be enabled once SES is configured for noreply@hawkeyecue.com.
+    const lambdaDefaults: Partial<lambda.FunctionProps> = {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      memorySize: 128,
+      timeout: cdk.Duration.seconds(10),
+    };
+
+    new lambda.Function(this, 'DefineAuthChallengeFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-DefineAuthChallenge',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/auth-define-challenge'),
+      description: 'Cognito Define Auth Challenge — controls MFA flow (not yet active)',
+    } as lambda.FunctionProps);
+
+    const createChallengeFn = new lambda.Function(this, 'CreateAuthChallengeFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-CreateAuthChallenge',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/auth-create-challenge'),
+      description: 'Cognito Create Auth Challenge — generates and sends MFA code (not yet active)',
+      environment: {
+        TABLE_NAME: tableName,
+        FROM_EMAIL: 'noreply@hawkeyecue.com',
+      },
+    } as lambda.FunctionProps);
+
+    // Grant SES, SNS, and DynamoDB permissions to createChallenge
+    createChallengeFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+        resources: ['*'],
+      })
+    );
+    createChallengeFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['sns:Publish'],
+        resources: ['*'],
+      })
+    );
+    createChallengeFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['dynamodb:GetItem'],
+        resources: [`arn:aws:dynamodb:${this.region}:${this.account}:table/${tableName}`],
+      })
+    );
+
+    new lambda.Function(this, 'VerifyAuthChallengeFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-VerifyAuthChallenge',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/auth-verify-challenge'),
+      description: 'Cognito Verify Auth Challenge — checks MFA code (not yet active)',
+    } as lambda.FunctionProps);
+
+    // ─── Cognito User Pool ────────────────────────────────────────────────
+    // NOTE: lambdaTriggers for custom auth are intentionally NOT attached.
+    // Login uses standard SRP auth until SES is verified and MFA is ready.
     this.userPool = new cognito.UserPool(this, 'SocialLeadGenUserPool', {
       userPoolName: 'SocialLeadGen-UserPool',
       selfSignUpEnabled: true,

@@ -4,8 +4,8 @@ export default function HawkAnimations() {
 
   return (
     <>
-      {/* Left Hawk - full height, fierce, fading into dark */}
-      <div className="fixed left-0 top-0 bottom-0 pointer-events-none z-0 flex items-center">
+      {/* Left Hawk - hidden on mobile/tablet, only shows on wide screens */}
+      <div className="fixed left-0 top-0 bottom-0 pointer-events-none z-0 items-center hidden lg:flex">
         <div className="relative w-72 h-full overflow-hidden">
           <img
             src={hawkImage}
@@ -21,8 +21,8 @@ export default function HawkAnimations() {
         </div>
       </div>
 
-      {/* Right Hawk - mirrored, full height */}
-      <div className="fixed right-0 top-0 bottom-0 pointer-events-none z-0 flex items-center">
+      {/* Right Hawk - hidden on mobile/tablet, only shows on wide screens */}
+      <div className="fixed right-0 top-0 bottom-0 pointer-events-none z-0 items-center hidden lg:flex">
         <div className="relative w-72 h-full overflow-hidden">
           <img
             src={hawkImage}
@@ -39,9 +39,9 @@ export default function HawkAnimations() {
         </div>
       </div>
 
-      {/* Ambient glow */}
-      <div className="fixed left-0 top-1/2 -translate-y-1/2 w-48 h-96 pointer-events-none z-0 bg-amber-700/5 blur-3xl rounded-full"></div>
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 w-48 h-96 pointer-events-none z-0 bg-amber-700/5 blur-3xl rounded-full"></div>
+      {/* Ambient glow - hidden on mobile */}
+      <div className="fixed left-0 top-1/2 -translate-y-1/2 w-48 h-96 pointer-events-none z-0 bg-amber-700/5 blur-3xl rounded-full hidden lg:block"></div>
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 w-48 h-96 pointer-events-none z-0 bg-amber-700/5 blur-3xl rounded-full hidden lg:block"></div>
     </>
   );
 }

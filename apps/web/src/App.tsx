@@ -5,6 +5,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ConfirmPage from './pages/ConfirmPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import ContentCreatorPage from './pages/ContentCreatorPage';
 import CalendarPage from './pages/CalendarPage';
@@ -13,6 +14,7 @@ import NetworkPage from './pages/NetworkPage';
 import AppreciationsPage from './pages/AppreciationsPage';
 import KeywordsPage from './pages/KeywordsPage';
 import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/ProfilePage';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -34,6 +36,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/confirm" element={<ConfirmPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/landing" element={<LandingPage />} />
       <Route
         path="/*"
@@ -49,6 +52,7 @@ export default function App() {
                 <Route path="/appreciations" element={<AppreciationsPage />} />
                 <Route path="/keywords" element={<KeywordsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
               </Routes>
             </AppShell>
           </AuthGuard>

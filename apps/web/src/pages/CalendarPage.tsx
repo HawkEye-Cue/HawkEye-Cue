@@ -75,22 +75,20 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Calendar</h2>
-        <div className="flex gap-2 items-center">
-          <div className="flex gap-1 bg-slate-800 rounded-lg p-1">
-            {(['month', 'week', 'day'] as ViewMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-3 py-1 rounded text-sm capitalize ${
-                  viewMode === mode ? 'bg-slate-700 text-white font-medium' : 'text-slate-400'
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-xl font-bold text-white shrink-0">Calendar</h2>
+        <div className="flex gap-1 bg-slate-800 rounded-lg p-1">
+          {(['month', 'week', 'day'] as ViewMode[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={`px-2 sm:px-3 py-1.5 min-h-[36px] rounded text-xs sm:text-sm capitalize ${
+                viewMode === mode ? 'bg-slate-700 text-white font-medium' : 'text-slate-400'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -103,14 +101,17 @@ export default function CalendarPage() {
         </div>
 
         {/* Day headers */}
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 mb-2">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center text-xs text-slate-400 mb-2">
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+            <div key={i} className="py-1 font-medium sm:hidden">{d}</div>
+          ))}
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-            <div key={d} className="py-1 font-medium">{d}</div>
+            <div key={d} className="py-1 font-medium hidden sm:block">{d}</div>
           ))}
         </div>
 
         {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
           {Array.from({ length: firstDayOfMonth }, (_, i) => (
             <div key={`empty-${i}`} />
           ))}

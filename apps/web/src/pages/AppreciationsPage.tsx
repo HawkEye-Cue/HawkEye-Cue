@@ -146,33 +146,33 @@ export default function AppreciationsPage() {
           <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wide">Pending Thanks</h3>
           {unthanked.map((mention) => (
             <div key={mention.id} className="bg-slate-800 rounded-xl border border-amber-700/30 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 bg-amber-900/40 rounded-full flex items-center justify-center text-sm font-bold text-amber-300">
+              <div className="flex items-start justify-between mb-2 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-9 h-9 shrink-0 bg-amber-900/40 rounded-full flex items-center justify-center text-sm font-bold text-amber-300">
                     {mention.taggerName[0]}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-sm font-semibold text-white">{mention.taggerName}</span>
-                    <span className="text-xs text-slate-400 ml-2">{mention.taggerTrade}</span>
+                    <span className="text-xs text-slate-400 ml-2 block sm:inline">{mention.taggerTrade}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   <span className="text-sm">{platformIcons[mention.platform]}</span>
                   <span className="text-xs text-slate-500">{mention.detectedAt}</span>
                 </div>
               </div>
               <p className="text-sm text-slate-300 mb-3 italic">"{mention.postContent}"</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => handleThank(mention.id)}
-                  className="bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-amber-700"
+                  className="bg-amber-600 text-white px-4 py-2 min-h-[44px] rounded-lg text-sm font-medium hover:bg-amber-700"
                 >
                   🙏 Thank Them
                 </button>
-                <button className="bg-slate-700 text-slate-300 px-4 py-1.5 rounded-lg text-sm hover:bg-slate-600">
+                <button className="bg-slate-700 text-slate-300 px-4 py-2 min-h-[44px] rounded-lg text-sm hover:bg-slate-600">
                   🤝 Collaborate
                 </button>
-                <button className="bg-slate-700 text-slate-300 px-4 py-1.5 rounded-lg text-sm hover:bg-slate-600">
+                <button className="bg-slate-700 text-slate-300 px-4 py-2 min-h-[44px] rounded-lg text-sm hover:bg-slate-600">
                   ↗ View Post
                 </button>
               </div>
@@ -200,11 +200,11 @@ export default function AppreciationsPage() {
                 <span className="text-xs text-green-400">✓ Thanked</span>
               </div>
               <p className="text-sm text-slate-400 italic">"{mention.postContent}"</p>
-              <div className="flex gap-2 mt-3">
-                <button className="bg-slate-700 text-slate-300 px-4 py-1.5 rounded-lg text-sm hover:bg-slate-600">
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button className="bg-slate-700 text-slate-300 px-4 py-2 min-h-[44px] rounded-lg text-sm hover:bg-slate-600">
                   🤝 Collaborate
                 </button>
-                <button className="bg-slate-700 text-slate-300 px-4 py-1.5 rounded-lg text-sm hover:bg-slate-600">
+                <button className="bg-slate-700 text-slate-300 px-4 py-2 min-h-[44px] rounded-lg text-sm hover:bg-slate-600">
                   ↗ View Post
                 </button>
               </div>

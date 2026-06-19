@@ -102,9 +102,9 @@ export default function SettingsPage() {
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
         <h3 className="font-semibold mb-3 text-white">Account</h3>
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-slate-400">Email</span>
-            <span className="text-white">{user?.email}</span>
+          <div className="flex justify-between gap-2">
+            <span className="text-slate-400 shrink-0">Email</span>
+            <span className="text-white truncate">{user?.email}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-400">Trade</span>
@@ -283,6 +283,7 @@ export default function SettingsPage() {
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
         <h3 className="font-semibold mb-2 text-white">Quick Links</h3>
         <div className="space-y-2">
+          <a href="/profile" className="block text-sm text-blue-400 hover:underline">Profile & Password →</a>
           <a href="/keywords" className="block text-sm text-blue-400 hover:underline">Manage Keywords →</a>
           <a href="/calendar" className="block text-sm text-blue-400 hover:underline">View Calendar →</a>
         </div>

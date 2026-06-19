@@ -46,10 +46,10 @@ export default function NetworkPage() {
       <p className="text-sm text-slate-400">Connect with other trades for referrals and partnerships</p>
 
       {/* Trade Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-3 px-3 scrollbar-hide">
         <button
           onClick={() => setFilter('all')}
-          className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${
+          className={`px-3 py-2 min-h-[44px] rounded-full text-sm whitespace-nowrap ${
             filter === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
           }`}
         >
@@ -59,7 +59,7 @@ export default function NetworkPage() {
           <button
             key={t.id}
             onClick={() => setFilter(t.name)}
-            className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${
+            className={`px-3 py-2 min-h-[44px] rounded-full text-sm whitespace-nowrap ${
               filter === t.name ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
             }`}
           >
@@ -92,23 +92,23 @@ export default function NetworkPage() {
       <div className="space-y-3">
         {filteredMessages.map((msg) => (
           <div key={msg.id} className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
+            <div className="flex items-start justify-between mb-2 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 shrink-0 bg-slate-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
                   {msg.author[0]}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <span className="text-sm font-semibold text-white">{msg.author}</span>
-                  <span className="text-xs text-blue-400 ml-2">{msg.trade}</span>
+                  <span className="text-xs text-blue-400 ml-2 block sm:inline">{msg.trade}</span>
                 </div>
               </div>
-              <span className="text-xs text-slate-500">{msg.timestamp}</span>
+              <span className="text-xs text-slate-500 whitespace-nowrap shrink-0">{msg.timestamp}</span>
             </div>
             <p className="text-sm text-slate-300">{msg.content}</p>
             <div className="flex gap-3 mt-3">
-              <button className="text-xs text-slate-400 hover:text-blue-400">💬 Reply</button>
-              <button className="text-xs text-slate-400 hover:text-blue-400">🤝 Connect</button>
-              <button className="text-xs text-slate-400 hover:text-blue-400">📌 Save</button>
+              <button className="text-xs text-slate-400 hover:text-blue-400 min-h-[44px] flex items-center">💬 Reply</button>
+              <button className="text-xs text-slate-400 hover:text-blue-400 min-h-[44px] flex items-center">🤝 Connect</button>
+              <button className="text-xs text-slate-400 hover:text-blue-400 min-h-[44px] flex items-center">📌 Save</button>
             </div>
           </div>
         ))}

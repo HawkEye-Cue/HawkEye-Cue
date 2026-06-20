@@ -18,7 +18,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950">
+    <div className="min-h-screen bg-slate-950">
       <HawkAnimations />
 
       {/* Top Bar — glassmorphism */}
@@ -38,7 +38,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       {/* Main Content — page transition */}
-      <main key={location.pathname} className="flex-1 p-3 sm:p-4 max-w-4xl mx-auto w-full pb-24 page-enter">
+      <main key={location.pathname} className="p-3 sm:p-4 max-w-4xl mx-auto w-full page-enter" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
         {children}
       </main>
 

@@ -181,71 +181,42 @@ export default function SettingsPage() {
           <p className="text-sm text-slate-500">Loading accounts…</p>
         ) : (
           <>
-            {socialAccounts.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {socialAccounts.map((account) => (
-                  <div
-                    key={account.id}
-                    className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700"
-                  >
-                    <div className="flex items-center gap-3">
-                      {account.imageUrl ? (
-                        <img src={account.imageUrl} alt="" className="w-8 h-8 rounded-full" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs">
-                          {account.type === 'FACEBOOK' && '📘'}
-                          {account.type === 'INSTAGRAM' && '📷'}
-                          {account.type === 'LINKEDIN' && '💼'}
-                          {account.type === 'TIKTOK' && '🎵'}
-                          {account.type === 'YOUTUBE' && '▶️'}
-                          {account.type === 'X' && '𝕏'}
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-sm text-white font-medium">{account.name}</p>
-                        <p className="text-xs text-slate-400">{account.type.charAt(0) + account.type.slice(1).toLowerCase()}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleDisconnect(account.id)}
-                      className="text-xs text-red-400 hover:text-red-300"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => handleConnectSocial(['FACEBOOK'])}
-                disabled={connectingPlatform !== null}
-                className="px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-lg text-sm text-blue-300 hover:bg-blue-600/30 disabled:opacity-50"
-              >
-                {connectingPlatform === 'FACEBOOK' ? 'Connecting…' : '+ Facebook'}
-              </button>
-              <button
-                onClick={() => handleConnectSocial(['INSTAGRAM'])}
-                disabled={connectingPlatform !== null}
-                className="px-4 py-2 bg-pink-600/20 border border-pink-500/30 rounded-lg text-sm text-pink-300 hover:bg-pink-600/30 disabled:opacity-50"
-              >
-                {connectingPlatform === 'INSTAGRAM' ? 'Connecting…' : '+ Instagram'}
-              </button>
-              <button
-                onClick={() => handleConnectSocial(['LINKEDIN'])}
-                disabled={connectingPlatform !== null}
-                className="px-4 py-2 bg-sky-600/20 border border-sky-500/30 rounded-lg text-sm text-sky-300 hover:bg-sky-600/30 disabled:opacity-50"
-              >
-                {connectingPlatform === 'LINKEDIN' ? 'Connecting…' : '+ LinkedIn'}
-              </button>
-              <button
-                onClick={() => handleConnectSocial(['TIKTOK'])}
-                disabled={connectingPlatform !== null}
-                className="px-4 py-2 bg-slate-600/20 border border-slate-500/30 rounded-lg text-sm text-slate-300 hover:bg-slate-600/30 disabled:opacity-50"
-              >
-                {connectingPlatform === 'TIKTOK' ? 'Connecting…' : '+ TikTok'}
-              </button>
+              {(() => {
+                const connectedTypes = new Set(socialAccounts.map((a) => a.type));
+                const platforms = [
+                  { type: 'FACEBOOK', label: 'Facebook', icon: '📘', color: 'blue' },
+                  { type: 'INSTAGRAM', label: 'Instagram', icon: '📷', color: 'pink' },
+                  { type: 'LINKEDIN', label: 'LinkedIn', icon: '💼', color: 'sky' },
+                  { type: 'TIKTOK', label: 'TikTok', icon: '🎵', color: 'slate' },
+                ];
+
+                return platforms.map((p) => {
+                  const connected = socialAccounts.find((a) => a.type === p.type);
+                  if (connected) {
+                    return (
+                      <div
+                        key={p.type}
+                        className={`px-4 py-2 bg-green-600/20 border border-green-500/30 rounded-lg text-sm text-green-300 flex items-center gap-2`}
+                      >
+                        <span>{p.icon}</span>
+                        <span className="truncate max-w-[120px]">{connected.name || p.label}</span>
+                        <span className="text-green-400 text-xs">✓</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <button
+                      key={p.type}
+                      onClick={() => handleConnectSocial([p.type])}
+                      disabled={connectingPlatform !== null}
+                      className={`px-4 py-2 bg-${p.color}-600/20 border border-${p.color}-500/30 rounded-lg text-sm text-${p.color}-300 hover:bg-${p.color}-600/30 disabled:opacity-50`}
+                    >
+                      {connectingPlatform === p.type ? 'Connecting…' : `+ ${p.label}`}
+                    </button>
+                  );
+                });
+              })()}
             </div>
           </>
         )}

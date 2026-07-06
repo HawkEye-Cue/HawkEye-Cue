@@ -230,6 +230,40 @@ export class ApiStack extends cdk.Stack {
 
     table.grantReadWriteData(dailyCuesHandlerFn);
 
+    // ─── Appreciations Handler ────────────────────────────────────────────
+    const appreciationsHandlerFn = new lambda.Function(this, 'AppreciationsHandlerFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-AppreciationsHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/appreciations-handler'),
+      description: 'Handles appreciations/mentions, auto-reply settings, and AI reply generation',
+      timeout: cdk.Duration.seconds(30),
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(appreciationsHandlerFn);
+
+    // Grant Bedrock for AI reply generation
+    appreciationsHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [
+          `arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0`,
+        ],
+      })
+    );
+
+    // Grant Secrets Manager for Bundle.social API (to post replies)
+    appreciationsHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/BundleSocial*`,
+        ],
+      })
+    );
+
     // ─── Social Accounts Handler ──────────────────────────────────────────
     const socialAccountsHandlerFn = new lambda.Function(this, 'SocialAccountsHandlerFn', {
       ...lambdaDefaults,
@@ -587,6 +621,36 @@ export class ApiStack extends cdk.Stack {
       path: '/devices/{deviceId}/preferences',
       methods: [apigatewayv2.HttpMethod.PUT],
       integration: devicesIntegration,
+      authorizer,
+    });
+
+    // Appreciations routes
+    const appreciationsIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'AppreciationsIntegration',
+      appreciationsHandlerFn
+    );
+    this.httpApi.addRoutes({
+      path: '/appreciations',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: appreciationsIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/appreciations/settings',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
+      integration: appreciationsIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/appreciations/{id}/thank',
+      methods: [apigatewayv2.HttpMethod.PUT],
+      integration: appreciationsIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/appreciations/generate-reply',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: appreciationsIntegration,
       authorizer,
     });
 

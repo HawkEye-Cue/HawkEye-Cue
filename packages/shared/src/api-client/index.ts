@@ -61,7 +61,7 @@ export class ApiClient {
     this.getToken = config.getToken;
   }
 
-  private async request<T>(
+  public async request<T>(
     method: string,
     path: string,
     body?: unknown,

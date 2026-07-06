@@ -23,7 +23,8 @@ export default function DashboardPage() {
           getToken: async () => token,
         });
         const today = new Date().toISOString().split('T')[0];
-        const posts = await client.getPosts({ startDate: today, endDate: today });
+        const result = await client.getPosts({ startDate: today, endDate: today });
+        const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
         setTodayPosts(posts);
       } catch {
         // ignore

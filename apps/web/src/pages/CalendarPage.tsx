@@ -30,7 +30,9 @@ export default function CalendarPage() {
           getToken: async () => token,
         });
         const result = await client.getPosts();
-        setScheduledPosts(Array.isArray(result) ? result : []);
+        // API returns { posts: [...] } or a flat array
+        const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
+        setScheduledPosts(posts);
       } catch {
         // ignore
       }

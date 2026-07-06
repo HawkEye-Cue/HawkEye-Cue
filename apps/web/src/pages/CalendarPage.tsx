@@ -29,8 +29,8 @@ export default function CalendarPage() {
           baseUrl: import.meta.env.VITE_API_URL as string,
           getToken: async () => token,
         });
-        const posts = await client.getPosts();
-        setScheduledPosts(posts || []);
+        const result = await client.getPosts();
+        setScheduledPosts(Array.isArray(result) ? result : []);
       } catch {
         // ignore
       }
@@ -66,11 +66,11 @@ export default function CalendarPage() {
     const localEvents = events.filter((e) => e.date === dateStr);
     // Add scheduled posts for this day
     const postEvents = scheduledPosts
-      .filter((p) => p.scheduledAt?.startsWith(dateStr))
+      .filter((p) => p.scheduledAt && p.scheduledAt.startsWith(dateStr))
       .map((p) => ({
         id: p.id,
         date: dateStr,
-        title: `📤 ${p.content?.slice(0, 40) || 'Scheduled post'}`,
+        title: `📤 ${(p.content || 'Scheduled post').slice(0, 40)}`,
         type: 'post' as const,
         completed: p.status === 'published',
       }));

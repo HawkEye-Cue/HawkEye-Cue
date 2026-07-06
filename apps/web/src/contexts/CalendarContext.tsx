@@ -19,18 +19,26 @@ interface CalendarState {
 const CalendarContext = createContext<CalendarState | undefined>(undefined);
 
 export function CalendarProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>(() => {
+    const saved = localStorage.getItem('calendar_events');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const saveEvents = (newEvents: CalendarEvent[]) => {
+    setEvents(newEvents);
+    localStorage.setItem('calendar_events', JSON.stringify(newEvents));
+  };
 
   const addEvent = (event: Omit<CalendarEvent, 'id' | 'completed'>) => {
-    setEvents((prev) => [...prev, { ...event, id: Date.now().toString(), completed: false }]);
+    saveEvents([...events, { ...event, id: Date.now().toString(), completed: false }]);
   };
 
   const toggleComplete = (id: string) => {
-    setEvents((prev) => prev.map((e) => e.id === id ? { ...e, completed: !e.completed } : e));
+    saveEvents(events.map((e) => e.id === id ? { ...e, completed: !e.completed } : e));
   };
 
   const removeEvent = (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    saveEvents(events.filter((e) => e.id !== id));
   };
 
   return (

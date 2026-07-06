@@ -326,6 +326,40 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // ─── Lead Scanner (EventBridge scheduled, runs every 15 min) ──────────
+    const leadScannerFn = new lambda.Function(this, 'LeadScannerFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-LeadScanner',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/lead-scanner'),
+      description: 'Background scanner — checks social accounts for keyword matches every 15 min',
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 256,
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(leadScannerFn);
+
+    // Grant Secrets Manager for Bundle.social API
+    leadScannerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/BundleSocial*`,
+        ],
+      })
+    );
+
+    // EventBridge rule to trigger every 15 minutes
+    const scannerRule = new cdk.aws_events.Rule(this, 'LeadScannerSchedule', {
+      ruleName: 'SocialLeadGen-LeadScannerSchedule',
+      schedule: cdk.aws_events.Schedule.rate(cdk.Duration.minutes(15)),
+      description: 'Triggers the lead scanner every 15 minutes',
+    });
+    scannerRule.addTarget(
+      new cdk.aws_events_targets.LambdaFunction(leadScannerFn)
+    );
+
     // ─── EventBridge Scheduler IAM Role ───────────────────────────────────
     const schedulerRole = new iam.Role(this, 'EventBridgeSchedulerRole', {
       roleName: 'SocialLeadGen-EventBridgeSchedulerRole',

@@ -66,8 +66,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Daily Cues */}
-      <div className="glass-card">
-        <h3 className="font-semibold mb-3 text-white">Today's Action Items</h3>
+      <details className="glass-card" open>
+        <summary className="font-semibold text-white cursor-pointer">Today's Action Items</summary>
+        <div className="mt-3 max-h-48 overflow-y-auto">
         {todayEvents.length > 0 ? (
           <div className="space-y-2">
             {todayEvents.map((event) => (
@@ -103,7 +104,8 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-500 mt-2">Add items via the Calendar tab to see them here</p>
           </div>
         )}
-      </div>
+        </div>
+      </details>
 
       {/* Lead Summary */}
       <div className="glass-card">
@@ -141,26 +143,44 @@ export default function DashboardPage() {
       </div>
 
       {/* Upcoming Posts */}
-      <div className="glass-card">
-        <h3 className="font-semibold mb-3 text-white">Today's Scheduled Posts</h3>
-        {todayPosts.length > 0 ? (
-          <div className="space-y-2">
-            {todayPosts.map((post) => (
+      <details className="glass-card" open>
+        <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
+          <span>Today's Scheduled Posts</span>
+          <span className="text-xs text-slate-400">{todayPosts.length} items</span>
+        </summary>
+        <div className="mt-3 max-h-48 overflow-y-auto space-y-2">
+          {todayPosts.length > 0 ? (
+            todayPosts.map((post) => (
               <div key={post.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-                <div className="min-w-0">
-                  <p className="text-sm text-white truncate">{post.content?.slice(0, 60) || 'Scheduled post'}</p>
-                  <p className="text-xs text-slate-500">{post.platforms?.join(', ')} • {new Date(post.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-white truncate">{(post.content || 'Scheduled post').slice(0, 50)}</p>
+                  <p className="text-xs text-slate-500">{post.platforms?.join(', ')} • {post.scheduledAt ? new Date(post.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded ${post.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>
-                  {post.status}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs px-2 py-1 rounded ${post.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>
+                    {post.status}
+                  </span>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = await getToken();
+                        const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                        await client.deletePost(post.id);
+                        setTodayPosts((prev) => prev.filter((p) => p.id !== post.id));
+                      } catch { /* ignore */ }
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-slate-400">No posts scheduled for today</p>
-        )}
-      </div>
+            ))
+          ) : (
+            <p className="text-sm text-slate-400">No posts scheduled for today</p>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

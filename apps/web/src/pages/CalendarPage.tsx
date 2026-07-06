@@ -238,26 +238,34 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* All upcoming events */}
-      {events.length > 0 && (
-        <div className="glass-card">
-          <h3 className="font-semibold mb-3 text-white">Upcoming</h3>
-          <div className="space-y-2">
-            {events
-              .filter((e) => e.date >= getDateStr(today.getDate()))
-              .sort((a, b) => a.date.localeCompare(b.date))
-              .map((e) => (
+      {/* This week's upcoming events */}
+      {events.length > 0 && (() => {
+        const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfWeek = new Date(todayDate);
+        endOfWeek.setDate(endOfWeek.getDate() + 7);
+        const endStr = `${endOfWeek.getFullYear()}-${String(endOfWeek.getMonth() + 1).padStart(2, '0')}-${String(endOfWeek.getDate()).padStart(2, '0')}`;
+        const thisWeekEvents = events
+          .filter((e) => e.date >= todayStr && e.date <= endStr)
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (thisWeekEvents.length === 0) return null;
+        return (
+          <details className="glass-card" open>
+            <summary className="font-semibold text-white cursor-pointer">This Week</summary>
+            <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
+              {thisWeekEvents.map((e) => (
                 <div key={e.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${typeColors[e.type]}`}></span>
                     <span className="text-white">{e.title}</span>
                   </div>
-                  <span className="text-slate-400 text-xs">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  <span className="text-slate-400 text-xs">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                 </div>
               ))}
-          </div>
-        </div>
-      )}
+            </div>
+          </details>
+        );
+      })()}
 
       {/* Day Detail Modal */}
       {showModal && selectedDay !== null && (

@@ -98,10 +98,22 @@ export class ApiStack extends cdk.Stack {
       handler: 'index.handler',
       code: lambda.Code.fromAsset('../../lambdas/dist/content-handler'),
       description: 'Handles content generation, history, upload-url, and delete',
+      timeout: cdk.Duration.seconds(30), // AI generation can take longer
     } as lambda.FunctionProps);
 
     table.grantReadWriteData(contentHandlerFn);
     mediaBucket.grantPut(contentHandlerFn);
+
+    // Grant Bedrock InvokeModel permission for AI content generation
+    contentHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [
+          `arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0`,
+        ],
+      })
+    );
 
     // ─── Posts Handler ────────────────────────────────────────────────────
     const postsHandlerFn = new lambda.Function(this, 'PostsHandlerFn', {

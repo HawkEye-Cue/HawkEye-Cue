@@ -76,6 +76,7 @@ export const contentGenerationRequestSchema = z.object({
     .array(socialPlatformSchema)
     .min(1, 'At least one platform must be selected'),
   baseText: z.string().optional(),
+  tradeName: z.string().optional(),
 });
 
 // --- Schedule Date Validation ---

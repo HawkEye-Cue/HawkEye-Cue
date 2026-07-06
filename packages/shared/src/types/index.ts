@@ -32,6 +32,7 @@ export interface GeneratedContent {
   userId: string;
   tradeId: string;
   content: string;
+  platformContent?: Record<string, string>;
   tone: 'professional' | 'casual' | 'educational' | 'urgent';
   postType: string;
   platforms: SocialPlatform[];

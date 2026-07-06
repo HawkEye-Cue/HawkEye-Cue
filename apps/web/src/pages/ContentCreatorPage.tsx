@@ -1,18 +1,28 @@
 import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
-import { SOCIAL_PLATFORMS } from '@social-lead-gen/shared';
+import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
 import type { SocialPlatform } from '@social-lead-gen/shared';
 
 const TONES = ['professional', 'casual', 'educational', 'urgent'] as const;
 
+const PLATFORM_ICONS: Record<string, string> = {
+  facebook: '📘',
+  instagram: '📷',
+  linkedin: '💼',
+  tiktok: '🎵',
+};
+
 export default function ContentCreatorPage() {
+  const { getToken } = useAuth();
   const { selectedTrade } = useTrade();
-  const [tone, setTone] = useState<string>('professional');
+  const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postType, setPostType] = useState('');
   const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
   const [baseText, setBaseText] = useState('');
-  const [generatedContent, setGeneratedContent] = useState('');
+  const [platformContent, setPlatformContent] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const togglePlatform = (p: SocialPlatform) => {
     setPlatforms((prev) =>
@@ -22,12 +32,41 @@ export default function ContentCreatorPage() {
 
   const handleGenerate = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setGeneratedContent(
-        `🏠 Looking for a reliable ${selectedTrade?.name ?? 'professional'}? Our team delivers quality work every time. Contact us today for a free estimate! #${selectedTrade?.id ?? 'trade'} #localservice`,
-      );
+    setError('');
+    setPlatformContent(null);
+
+    try {
+      const token = await getToken();
+      const client = new ApiClient({
+        baseUrl: import.meta.env.VITE_API_URL as string,
+        getToken: async () => token,
+      });
+
+      const result = await client.generateContent({
+        tone,
+        postType,
+        platforms,
+        baseText: baseText || undefined,
+        tradeName: selectedTrade?.name,
+      });
+
+      // The API now returns platformContent with per-platform versions
+      if (result.platformContent) {
+        setPlatformContent(result.platformContent as Record<string, string>);
+      } else if (result.content) {
+        // Fallback for old format
+        const fallback: Record<string, string> = {};
+        for (const p of platforms) {
+          fallback[p] = result.content;
+        }
+        setPlatformContent(fallback);
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to generate content. Please try again.';
+      setError(message);
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   if (!selectedTrade) {
@@ -84,44 +123,75 @@ export default function ContentCreatorPage() {
                   : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
               }`}
             >
-              {p}
+              {PLATFORM_ICONS[p] || ''} {p}
             </button>
           ))}
         </div>
       </div>
 
       <div className="glass-card">
-        <label className="block text-sm font-medium text-slate-300 mb-2">Base Text (optional)</label>
+        <label className="block text-sm font-medium text-slate-300 mb-2">Base Text</label>
         <textarea
           value={baseText}
           onChange={(e) => setBaseText(e.target.value)}
-          placeholder="Enter text to adapt, or leave blank for AI to generate from scratch..."
+          placeholder="Enter your message idea and AI will adapt it for each platform, or leave blank for AI to create from scratch..."
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 resize-none h-24 focus:border-blue-500/50 focus:outline-none transition-colors"
         />
       </div>
+
+      {error && (
+        <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
       <button
         onClick={handleGenerate}
         disabled={loading || !postType || platforms.length === 0}
         className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none btn-shimmer"
       >
-        {loading ? '✨ Generating...' : '✨ Generate Content'}
+        {loading ? '✨ Generating for each platform...' : '✨ Generate Content'}
       </button>
 
-      {generatedContent && (
-        <div className="glass-card-strong gradient-border animate-scale-in">
-          <h3 className="font-semibold mb-2 text-white">Generated Content</h3>
-          <textarea
-            value={generatedContent}
-            onChange={(e) => setGeneratedContent(e.target.value)}
-            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white resize-none h-32 focus:border-blue-500/50 focus:outline-none transition-colors"
-          />
-          <div className="flex gap-2 mt-3">
-            <button className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-600/20 active:scale-95 transition-all duration-200">
-              Schedule Post
+      {platformContent && (
+        <div className="space-y-4 animate-scale-in">
+          <h3 className="font-semibold text-white">Generated Content — Per Platform</h3>
+
+          {Object.entries(platformContent).map(([platform, content]) => (
+            <div key={platform} className="glass-card-strong gradient-border">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">{PLATFORM_ICONS[platform] || '📱'}</span>
+                <h4 className="font-medium text-white capitalize">{platform}</h4>
+              </div>
+              <textarea
+                value={content}
+                onChange={(e) =>
+                  setPlatformContent((prev) =>
+                    prev ? { ...prev, [platform]: e.target.value } : prev
+                  )
+                }
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white resize-none h-32 focus:border-blue-500/50 focus:outline-none transition-colors text-sm"
+              />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-slate-500">
+                  {content.length} characters
+                </span>
+                <button
+                  onClick={() => navigator.clipboard.writeText(content)}
+                  className="text-xs text-blue-400 hover:text-blue-300"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <div className="flex gap-2">
+            <button className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-600/20 active:scale-95 transition-all duration-200">
+              Schedule All Posts
             </button>
-            <button className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200">
-              Save Draft
+            <button className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200">
+              Save Drafts
             </button>
           </div>
         </div>

@@ -1,0 +1,21 @@
+{
+  "name": "HawkEye-Cue",
+  "short_name": "HawkEye",
+  "description": "Social media lead generation for trade professionals",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {
+      "src": "/hawk.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/hawk.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

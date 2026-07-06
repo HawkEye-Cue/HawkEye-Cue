@@ -46,6 +46,10 @@ export default function LoginPage() {
         navigate('/confirm', { state: { email } });
         return;
       }
+      if (err instanceof Error && err.message === 'CONFIRM_SIGN_UP') {
+        navigate('/confirm', { state: { email } });
+        return;
+      }
       setError(cognitoErrorMessage(err));
     } finally {
       setLoading(false);

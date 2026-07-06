@@ -126,6 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mfaMethod: (params.mfaMethod as 'email' | 'sms') || 'email',
         deliveredTo: params.deliveredTo || email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
       });
+    } else if (result.nextStep.signInStep === 'CONFIRM_SIGN_UP') {
+      // User hasn't confirmed their email yet — throw a recognizable error
+      throw new Error('CONFIRM_SIGN_UP');
     } else {
       throw new Error(result.nextStep.signInStep);
     }

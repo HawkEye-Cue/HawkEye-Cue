@@ -29,6 +29,8 @@ export default function ContentCreatorPage() {
   const [success, setSuccess] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoName, setVideoName] = useState<string | null>(null);
 
   const togglePlatform = (p: SocialPlatform) => {
     setPlatforms((prev) =>
@@ -136,12 +138,15 @@ export default function ContentCreatorPage() {
         {platforms.includes('instagram') && (
           <p className="text-xs text-amber-400 mt-2">⚠️ Instagram requires an image. Add one below or it will be skipped.</p>
         )}
+        {platforms.includes('tiktok') && (
+          <p className="text-xs text-amber-400 mt-2">⚠️ TikTok requires a video. Add one below or it will be skipped.</p>
+        )}
       </div>
 
-      {/* Image Upload */}
+      {/* Media Upload */}
       <div className="glass-card">
-        <label className="block text-sm font-medium text-slate-300 mb-2">Image (optional, required for Instagram)</label>
-        <div className="flex items-center gap-3">
+        <label className="block text-sm font-medium text-slate-300 mb-2">Media (required for Instagram & TikTok)</label>
+        <div className="flex items-center gap-3 flex-wrap">
           <label className="cursor-pointer px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors">
             + Add Image
             <input
@@ -157,12 +162,38 @@ export default function ContentCreatorPage() {
               }}
             />
           </label>
+          <label className="cursor-pointer px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors">
+            + Add Video
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setVideoFile(file);
+                  setVideoName(file.name);
+                }
+              }}
+            />
+          </label>
           {imagePreview && (
             <div className="relative">
               <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
               <button
                 onClick={() => { setImageFile(null); setImagePreview(null); }}
                 className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+          )}
+          {videoName && (
+            <div className="relative flex items-center gap-2 px-3 py-2 bg-purple-900/30 border border-purple-500/30 rounded-lg">
+              <span className="text-sm text-purple-300">🎬 {videoName}</span>
+              <button
+                onClick={() => { setVideoFile(null); setVideoName(null); }}
+                className="w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center"
               >
                 ×
               </button>
@@ -247,6 +278,10 @@ export default function ContentCreatorPage() {
                     if (imageFile) {
                       const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
                       await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
+                      mediaUrls = [`https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com/${key}`];
+                    } else if (videoFile) {
+                      const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
+                      await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
                       mediaUrls = [`https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com/${key}`];
                     }
 

@@ -1,9 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { TRADES } from '@social-lead-gen/shared';
 import TradeSelector from '../components/TradeSelector';
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { selectedTrade } = useTrade();
   const { events, toggleComplete } = useCalendar();
 
@@ -106,7 +108,10 @@ export default function DashboardPage() {
         <p className="text-sm text-slate-300 mb-3 relative z-10">
           Generate a {selectedTrade.postTypes[0]} post tailored for {selectedTrade.name} professionals.
         </p>
-        <button className="btn-primary px-4 py-2 text-sm relative z-10 btn-shimmer">
+        <button
+          onClick={() => navigate('/create')}
+          className="btn-primary px-4 py-2 text-sm relative z-10 btn-shimmer"
+        >
           Generate Post
         </button>
       </div>

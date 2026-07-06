@@ -101,8 +101,24 @@ export default function CalendarPage() {
     setShowModal(false);
   };
 
-  const todayEvents = events.filter((e) => e.date === getDateStr(today.getDate()) &&
-    currentMonth === today.getMonth() && currentYear === today.getFullYear());
+  const todayStr = (() => {
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${today.getFullYear()}-${mm}-${dd}`;
+  })();
+
+  const todayEvents = [
+    ...events.filter((e) => e.date === todayStr),
+    ...scheduledPosts
+      .filter((p) => p.scheduledAt && p.scheduledAt.startsWith(todayStr))
+      .map((p) => ({
+        id: p.id,
+        date: todayStr,
+        title: `📤 ${(p.content || 'Scheduled post').slice(0, 50)}`,
+        type: 'post' as const,
+        completed: p.status === 'published',
+      })),
+  ];
 
   const typeColors: Record<string, string> = {
     post: 'bg-blue-500',

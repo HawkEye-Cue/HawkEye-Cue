@@ -68,6 +68,8 @@ export class ApiStack extends cdk.Stack {
     };
 
     // ─── Auth Post-Confirmation Lambda ────────────────────────────────────
+    // NOTE: The PostConfirmation trigger is attached directly on the Cognito User Pool
+    // via AWS CLI to avoid a circular dependency between Auth and Api stacks.
     this.authPostConfirmationFn = new lambda.Function(this, 'AuthPostConfirmationFn', {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-AuthPostConfirmation',

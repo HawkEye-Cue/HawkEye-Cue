@@ -14,6 +14,7 @@
     "constructs": "^10.4.0"
   },
   "devDependencies": {
+    "@types/node": "^26.1.0",
     "aws-cdk": "^2.170.0",
     "ts-node": "^10.9.0",
     "tsx": "^4.22.4"

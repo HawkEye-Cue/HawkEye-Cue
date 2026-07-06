@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
@@ -15,6 +16,7 @@ const PLATFORM_ICONS: Record<string, string> = {
 
 export default function ContentCreatorPage() {
   const { getToken } = useAuth();
+  const navigate = useNavigate();
   const { selectedTrade } = useTrade();
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postType, setPostType] = useState('');
@@ -206,7 +208,7 @@ export default function ContentCreatorPage() {
                     scheduledAt,
                     mediaUrls: [],
                   });
-                  alert('Posts scheduled successfully! Check the Calendar tab.');
+                  navigate('/calendar');
                 } catch (e) {
                   const msg = e instanceof Error ? e.message : 'Failed to schedule posts';
                   setError(msg);

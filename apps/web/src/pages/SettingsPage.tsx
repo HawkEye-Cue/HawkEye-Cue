@@ -410,6 +410,31 @@ export default function SettingsPage() {
           <a href="/calendar" className="block text-sm text-blue-400 hover:underline">View Calendar →</a>
         </div>
       </div>
+
+      {/* Browser Extension */}
+      <div className="glass-card">
+        <h3 className="font-semibold mb-2 text-white">🦅 Browser Extension</h3>
+        <p className="text-sm text-slate-400 mb-3">
+          Install the HawkEye-Cue Chrome extension to detect leads while scrolling Facebook, Instagram, LinkedIn, and TikTok.
+        </p>
+        <a
+          href="/downloads/hawkeye-cue-extension.zip"
+          download
+          className="inline-block bg-gradient-to-r from-amber-500 to-amber-600 text-black px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90"
+        >
+          ⬇ Download Extension
+        </a>
+        <details className="mt-3">
+          <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-300">Installation instructions</summary>
+          <ol className="text-xs text-slate-400 mt-2 space-y-1 list-decimal list-inside">
+            <li>Download and unzip the file</li>
+            <li>Open Chrome → type <code className="text-slate-300">chrome://extensions</code> in the address bar</li>
+            <li>Enable "Developer mode" (top-right toggle)</li>
+            <li>Click "Load unpacked" and select the unzipped folder</li>
+            <li>Click the hawk icon in your toolbar and sign in</li>
+          </ol>
+        </details>
+      </div>
     </div>
   );
 }

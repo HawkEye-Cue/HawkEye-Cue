@@ -1,0 +1,174 @@
+/* HawkEye-Cue Overlay Styles */
+
+.hawkeye-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 99999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.hawkeye-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 2px solid #f59e0b;
+  border-radius: 20px;
+  padding: 4px 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hawkeye-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
+}
+
+.hawkeye-icon {
+  font-size: 16px;
+}
+
+.hawkeye-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.hawkeye-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  width: 280px;
+  background: #1a1a2e;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: hawkeye-slide-in 0.2s ease;
+}
+
+@keyframes hawkeye-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hawkeye-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #16213e;
+  border-bottom: 1px solid #334155;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.hawkeye-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.hawkeye-close:hover {
+  color: #fff;
+}
+
+.hawkeye-panel-body {
+  padding: 12px 14px;
+}
+
+.hawkeye-keywords {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0 0 8px 0;
+}
+
+.hawkeye-keywords strong {
+  color: #f59e0b;
+}
+
+.hawkeye-preview {
+  font-size: 12px;
+  color: #cbd5e1;
+  margin: 0 0 12px 0;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.hawkeye-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hawkeye-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.hawkeye-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.hawkeye-btn:active {
+  transform: scale(0.97);
+}
+
+.hawkeye-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+
+.hawkeye-btn-lead {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: white;
+}
+
+.hawkeye-btn-appreciate {
+  background: linear-gradient(135deg, #d97706, #ea580c);
+  color: white;
+}
+
+/* Toast */
+.hawkeye-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1a1a2e;
+  border: 1px solid #f59e0b;
+  color: #f1f5f9;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 999999;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.hawkeye-toast-show {
+  opacity: 1;
+  transform: translateY(0);
+}

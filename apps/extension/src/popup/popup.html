@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HawkEye-Cue</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Login View -->
+    <div id="login-view" style="display:none;">
+      <div class="header">
+        <span class="logo">🦅</span>
+        <h1>HawkEye-Cue</h1>
+      </div>
+      <p class="subtitle">Sign in to start detecting leads while you scroll.</p>
+      <form id="login-form">
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit" id="login-btn">Sign In</button>
+        <p id="login-error" class="error"></p>
+      </form>
+      <p class="footer-link">
+        <a href="https://hawkeyecue.com/register" target="_blank">Create an account →</a>
+      </p>
+    </div>
+
+    <!-- Dashboard View -->
+    <div id="dashboard-view" style="display:none;">
+      <div class="header">
+        <span class="logo">🦅</span>
+        <h1>HawkEye-Cue</h1>
+        <button id="logout-btn" class="logout-btn" title="Sign out">↪</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="leads-count">0</div>
+          <div class="stat-label">Leads Found</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="appreciations-count">0</div>
+          <div class="stat-label">Appreciations</div>
+        </div>
+      </div>
+
+      <div class="status-section">
+        <div class="status-indicator" id="status-indicator">
+          <span class="status-dot active"></span>
+          <span>Scanning active</span>
+        </div>
+        <p class="keywords-info" id="keywords-info">Loading keywords...</p>
+      </div>
+
+      <div class="actions">
+        <a href="https://hawkeyecue.com/keywords" target="_blank" class="action-btn">Manage Keywords</a>
+        <a href="https://hawkeyecue.com/opportunities" target="_blank" class="action-btn">View Leads</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

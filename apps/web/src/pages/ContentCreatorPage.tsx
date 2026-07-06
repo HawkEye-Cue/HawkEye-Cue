@@ -188,49 +188,98 @@ export default function ContentCreatorPage() {
             </div>
           ))}
 
-          <div className="flex gap-2">
-            <button
-              onClick={async () => {
-                if (!platformContent) return;
-                setError('');
-                const btn = document.activeElement as HTMLButtonElement;
-                if (btn) btn.textContent = 'Scheduling...';
-                try {
-                  const token = await getToken();
-                  const client = new ApiClient({
-                    baseUrl: import.meta.env.VITE_API_URL as string,
-                    getToken: async () => token,
-                  });
-                  // Schedule for 1 hour from now
-                  const scheduledAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-                  const content = Object.values(platformContent)[0] || '';
-                  await client.schedulePosts({
-                    contentId: 'generated-' + Date.now(),
-                    content,
-                    platforms,
-                    scheduledAt,
-                    mediaUrls: [],
-                  });
-                  navigate('/calendar');
-                } catch (e) {
-                  const msg = e instanceof Error ? e.message : 'Failed to schedule posts';
-                  setError(msg);
-                  if (btn) btn.textContent = 'Schedule All Posts';
-                }
-              }}
-              className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-600/20 active:scale-95 transition-all duration-200"
-            >
-              Schedule All Posts
-            </button>
-            <button className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200">
-              Save Drafts
-            </button>
-          </div>
-          {error && (
-            <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300 mt-3">
-              {error}
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  if (!platformContent) return;
+                  setError('');
+                  const btn = document.activeElement as HTMLButtonElement;
+                  if (btn) btn.textContent = 'Posting...';
+                  try {
+                    const token = await getToken();
+                    const client = new ApiClient({
+                      baseUrl: import.meta.env.VITE_API_URL as string,
+                      getToken: async () => token,
+                    });
+                    // Schedule 2 minutes from now (minimum future time)
+                    const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+                    const content = Object.values(platformContent)[0] || '';
+                    await client.schedulePosts({
+                      contentId: 'generated-' + Date.now(),
+                      content,
+                      platforms,
+                      scheduledAt,
+                      mediaUrls: [],
+                    });
+                    navigate('/calendar');
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : 'Failed to post';
+                    setError(msg);
+                    if (btn) btn.textContent = 'Post Now';
+                  }
+                }}
+                className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-600/20 active:scale-95 transition-all duration-200"
+              >
+                Post Now
+              </button>
+              <button className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200">
+                Save Drafts
+              </button>
             </div>
-          )}
+
+            <div className="flex items-center gap-2">
+              <input
+                type="datetime-local"
+                id="schedule-time"
+                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-blue-500/50 focus:outline-none"
+                min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)}
+              />
+              <button
+                onClick={async () => {
+                  if (!platformContent) return;
+                  const input = document.getElementById('schedule-time') as HTMLInputElement;
+                  if (!input?.value) {
+                    setError('Please pick a date and time to schedule');
+                    return;
+                  }
+                  setError('');
+                  const btn = document.activeElement as HTMLButtonElement;
+                  if (btn) btn.textContent = 'Scheduling...';
+                  try {
+                    const token = await getToken();
+                    const client = new ApiClient({
+                      baseUrl: import.meta.env.VITE_API_URL as string,
+                      getToken: async () => token,
+                    });
+                    const scheduledAt = new Date(input.value).toISOString();
+                    const content = Object.values(platformContent)[0] || '';
+                    await client.schedulePosts({
+                      contentId: 'generated-' + Date.now(),
+                      content,
+                      platforms,
+                      scheduledAt,
+                      mediaUrls: [],
+                    });
+                    navigate('/calendar');
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : 'Failed to schedule';
+                    setError(msg);
+                    if (btn) btn.textContent = 'Schedule';
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 active:scale-95 transition-all duration-200"
+              >
+                Schedule
+              </button>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
+                {error}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

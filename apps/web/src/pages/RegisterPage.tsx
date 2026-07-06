@@ -33,7 +33,8 @@ export default function RegisterPage() {
       await register(email, password);
       navigate('/confirm', { state: { email } });
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }

@@ -162,7 +162,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         userAttributes: { email },
-        autoSignIn: false,
       },
     });
     // After signUp, user must confirm via email code before they can sign in

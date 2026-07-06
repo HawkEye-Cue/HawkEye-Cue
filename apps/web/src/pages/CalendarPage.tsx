@@ -86,7 +86,6 @@ export default function CalendarPage() {
   };
 
   const handleDayClick = (day: number) => {
-    if (!isFuture(day)) return;
     setSelectedDay(day);
     setShowModal(true);
   };
@@ -235,56 +234,77 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Add Event Modal */}
+      {/* Day Detail Modal */}
       {showModal && selectedDay !== null && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="glass-card-strong w-full max-w-sm animate-scale-in">
-            <h3 className="font-bold text-white mb-1">Add to Calendar</h3>
-            <p className="text-sm text-slate-400 mb-4">
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in max-h-[80vh] overflow-y-auto">
+            <h3 className="font-bold text-white mb-1">
               {new Date(currentYear, currentMonth, selectedDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
+            </h3>
 
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={newEventTitle}
-                onChange={(e) => setNewEventTitle(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddEvent()}
-                placeholder="What's happening? (e.g. Post about spring deals)"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
-                autoFocus
-              />
+            {/* Existing events for this day */}
+            {(() => {
+              const dayEvents = getEventsForDay(selectedDay);
+              if (dayEvents.length > 0) {
+                return (
+                  <div className="space-y-2 mb-4 mt-3">
+                    {dayEvents.map((evt) => (
+                      <div key={evt.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                        <div className={`w-2 h-2 rounded-full ${typeColors[evt.type] || 'bg-blue-500'}`} />
+                        <span className={`text-sm ${evt.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
+                          {evt.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              return <p className="text-sm text-slate-500 mt-2 mb-4">Nothing scheduled for this day.</p>;
+            })()}
 
-              <div className="flex gap-2">
-                {(['post', 'task', 'reminder'] as const).map((t) => (
+            {/* Add new event form (only for future dates) */}
+            {isFuture(selectedDay) && (
+              <div className="border-t border-white/10 pt-3 mt-3">
+                <p className="text-xs text-slate-400 mb-2">Add to this day:</p>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={newEventTitle}
+                    onChange={(e) => setNewEventTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddEvent()}
+                    placeholder="What's happening?"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                  />
+                  <div className="flex gap-2">
+                    {(['post', 'task', 'reminder'] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setNewEventType(t)}
+                        className={`flex-1 py-1.5 rounded-lg text-sm capitalize ${
+                          newEventType === t ? `${typeColors[t]} text-white font-medium` : 'bg-slate-700 text-slate-300'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
                   <button
-                    key={t}
-                    onClick={() => setNewEventType(t)}
-                    className={`flex-1 py-1.5 rounded-lg text-sm capitalize ${
-                      newEventType === t ? `${typeColors[t]} text-white font-medium` : 'bg-slate-700 text-slate-300'
-                    }`}
+                    onClick={handleAddEvent}
+                    disabled={!newEventTitle.trim()}
+                    className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                   >
-                    {t}
+                    Add
                   </button>
-                ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={handleAddEvent}
-                disabled={!newEventTitle.trim()}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-              >
-                Add
-              </button>
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 bg-slate-700 text-slate-300 py-2 rounded-lg hover:bg-slate-600"
-              >
-                Cancel
-              </button>
-            </div>
+            <button
+              onClick={() => setShowModal(false)}
+              className="w-full mt-3 bg-slate-700 text-slate-300 py-2 rounded-lg hover:bg-slate-600 text-sm"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

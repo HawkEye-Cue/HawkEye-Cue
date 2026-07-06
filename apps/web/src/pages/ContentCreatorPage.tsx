@@ -27,6 +27,8 @@ export default function ContentCreatorPage() {
   const [scheduling, setScheduling] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const togglePlatform = (p: SocialPlatform) => {
     setPlatforms((prev) =>
@@ -131,9 +133,43 @@ export default function ContentCreatorPage() {
             </button>
           ))}
         </div>
+        {platforms.includes('instagram') && (
+          <p className="text-xs text-amber-400 mt-2">⚠️ Instagram requires an image. Add one below or it will be skipped.</p>
+        )}
       </div>
 
+      {/* Image Upload */}
       <div className="glass-card">
+        <label className="block text-sm font-medium text-slate-300 mb-2">Image (optional, required for Instagram)</label>
+        <div className="flex items-center gap-3">
+          <label className="cursor-pointer px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors">
+            + Add Image
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setImageFile(file);
+                  setImagePreview(URL.createObjectURL(file));
+                }
+              }}
+            />
+          </label>
+          {imagePreview && (
+            <div className="relative">
+              <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
+              <button
+                onClick={() => { setImageFile(null); setImagePreview(null); }}
+                className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </div>
+      </div>      <div className="glass-card">
         <label className="block text-sm font-medium text-slate-300 mb-2">Base Text</label>
         <textarea
           value={baseText}
@@ -205,6 +241,15 @@ export default function ContentCreatorPage() {
                       baseUrl: import.meta.env.VITE_API_URL as string,
                       getToken: async () => token,
                     });
+
+                    // Upload image if provided
+                    let mediaUrls: string[] = [];
+                    if (imageFile) {
+                      const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
+                      await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
+                      mediaUrls = [`https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com/${key}`];
+                    }
+
                     const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
                     const content = Object.values(platformContent)[0] || '';
                     await client.schedulePosts({
@@ -212,7 +257,7 @@ export default function ContentCreatorPage() {
                       content,
                       platforms,
                       scheduledAt,
-                      mediaUrls: [],
+                      mediaUrls,
                     });
                     setSuccess('✓ Posted! It will go live in about 2 minutes.');
                     setScheduling(false);

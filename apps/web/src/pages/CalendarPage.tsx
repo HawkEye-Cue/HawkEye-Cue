@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useAuth } from '../contexts/AuthContext';
+import { ApiClient } from '@social-lead-gen/shared';
+import type { ScheduledPost } from '@social-lead-gen/shared';
 import type { CalendarEvent } from '../contexts/CalendarContext';
 
 type ViewMode = 'month' | 'week' | 'day';
@@ -10,10 +13,30 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const { events, addEvent } = useCalendar();
+  const { getToken } = useAuth();
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventType, setNewEventType] = useState<'post' | 'task' | 'reminder'>('task');
+
+  // Fetch real scheduled posts from API
+  useEffect(() => {
+    async function fetchPosts() {
+      try {
+        const token = await getToken();
+        const client = new ApiClient({
+          baseUrl: import.meta.env.VITE_API_URL as string,
+          getToken: async () => token,
+        });
+        const posts = await client.getPosts();
+        setScheduledPosts(posts || []);
+      } catch {
+        // ignore
+      }
+    }
+    fetchPosts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const monthName = new Date(currentYear, currentMonth, 1).toLocaleString('default', {
     month: 'long', year: 'numeric',
@@ -38,8 +61,21 @@ export default function CalendarPage() {
     return `${currentYear}-${mm}-${dd}`;
   };
 
-  const getEventsForDay = (day: number) =>
-    events.filter((e) => e.date === getDateStr(day));
+  const getEventsForDay = (day: number) => {
+    const dateStr = getDateStr(day);
+    const localEvents = events.filter((e) => e.date === dateStr);
+    // Add scheduled posts for this day
+    const postEvents = scheduledPosts
+      .filter((p) => p.scheduledAt?.startsWith(dateStr))
+      .map((p) => ({
+        id: p.id,
+        date: dateStr,
+        title: `📤 ${p.content?.slice(0, 40) || 'Scheduled post'}`,
+        type: 'post' as const,
+        completed: p.status === 'published',
+      }));
+    return [...localEvents, ...postEvents];
+  };
 
   const isFuture = (day: number) => {
     const d = new Date(currentYear, currentMonth, day);

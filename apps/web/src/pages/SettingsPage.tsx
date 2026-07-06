@@ -65,10 +65,19 @@ export default function SettingsPage() {
     setConnectingPlatform(platforms?.[0] || 'all');
     try {
       const client = await buildClient();
-      const { connectUrl } = await client.getConnectLink(platforms);
-      window.location.href = connectUrl;
+      const result = await client.getConnectLink(platforms);
+      const url = result?.connectUrl;
+      if (url) {
+        // Use location.assign for better mobile compatibility
+        window.location.assign(url);
+      } else {
+        setConnectingPlatform(null);
+        alert('Could not get connect link. Please try again.');
+      }
     } catch (e) {
       console.error('Failed to get connect link:', e);
+      const msg = e instanceof Error ? e.message : 'Connection failed';
+      alert(msg);
       setConnectingPlatform(null);
     }
   }

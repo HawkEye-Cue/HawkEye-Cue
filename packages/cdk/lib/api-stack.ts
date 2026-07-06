@@ -125,13 +125,13 @@ export class ApiStack extends cdk.Stack {
 
     table.grantReadWriteData(postPublisherFn);
 
-    // Grant Secrets Manager read access for Ayrshare API key
+    // Grant Secrets Manager read access for Bundle.social API key
     postPublisherFn.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['secretsmanager:GetSecretValue'],
         resources: [
-          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Ayrshare*`,
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/BundleSocial*`,
         ],
       })
     );
@@ -217,6 +217,28 @@ export class ApiStack extends cdk.Stack {
     } as lambda.FunctionProps);
 
     table.grantReadWriteData(dailyCuesHandlerFn);
+
+    // ─── Social Accounts Handler ──────────────────────────────────────────
+    const socialAccountsHandlerFn = new lambda.Function(this, 'SocialAccountsHandlerFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-SocialAccountsHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/social-accounts-handler'),
+      description: 'Manages social account connections via Bundle.social (connect, list, disconnect)',
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(socialAccountsHandlerFn);
+
+    // Grant Secrets Manager read access for Bundle.social API key
+    socialAccountsHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/BundleSocial*`,
+        ],
+      })
+    );
 
     // ─── Devices Handler ──────────────────────────────────────────────────
     const devicesHandlerFn = new lambda.Function(this, 'DevicesHandlerFn', {
@@ -553,6 +575,30 @@ export class ApiStack extends cdk.Stack {
       path: '/devices/{deviceId}/preferences',
       methods: [apigatewayv2.HttpMethod.PUT],
       integration: devicesIntegration,
+      authorizer,
+    });
+
+    // Social Accounts routes
+    const socialAccountsIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'SocialAccountsIntegration',
+      socialAccountsHandlerFn
+    );
+    this.httpApi.addRoutes({
+      path: '/social/accounts',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: socialAccountsIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/social/connect',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: socialAccountsIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/social/accounts/{id}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: socialAccountsIntegration,
       authorizer,
     });
 

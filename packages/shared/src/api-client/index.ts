@@ -11,6 +11,7 @@ import type {
   DailyCue,
   Subscription,
   DeviceRegistration,
+  SocialAccount,
 } from '../types/index.js';
 
 import type {
@@ -305,5 +306,29 @@ export class ApiClient {
       `/devices/${deviceId}/preferences`,
       prefs,
     );
+  }
+
+  // --- Social Accounts ---
+
+  async getSocialAccounts(): Promise<{
+    accounts: SocialAccount[];
+    teamId: string | null;
+  }> {
+    return this.request<{ accounts: SocialAccount[]; teamId: string | null }>(
+      'GET',
+      '/social/accounts',
+    );
+  }
+
+  async getConnectLink(
+    platforms?: string[],
+  ): Promise<{ connectUrl: string }> {
+    return this.request<{ connectUrl: string }>('POST', '/social/connect', {
+      platforms,
+    });
+  }
+
+  async disconnectSocialAccount(accountId: string): Promise<void> {
+    return this.request<void>('DELETE', `/social/accounts/${accountId}`);
   }
 }

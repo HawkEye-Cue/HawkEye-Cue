@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import TradeSelector from '../components/TradeSelector';
 import { ApiClient } from '@social-lead-gen/shared';
-import type { Subscription } from '@social-lead-gen/shared';
+import type { Subscription, SocialAccount } from '@social-lead-gen/shared';
 
 export default function SettingsPage() {
   const { user, getToken } = useAuth();
@@ -13,6 +13,9 @@ export default function SettingsPage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [subLoading, setSubLoading] = useState(true);
+  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
+  const [socialLoading, setSocialLoading] = useState(true);
+  const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
 
   // Check for checkout success/cancelled in URL params
   const params = new URLSearchParams(window.location.search);
@@ -41,6 +44,44 @@ export default function SettingsPage() {
     }
     fetchSubscription();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch connected social accounts
+  useEffect(() => {
+    async function fetchSocialAccounts() {
+      try {
+        const client = await buildClient();
+        const { accounts } = await client.getSocialAccounts();
+        setSocialAccounts(accounts);
+      } catch {
+        // User may not have connected any accounts yet
+      } finally {
+        setSocialLoading(false);
+      }
+    }
+    fetchSocialAccounts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleConnectSocial(platforms?: string[]) {
+    setConnectingPlatform(platforms?.[0] || 'all');
+    try {
+      const client = await buildClient();
+      const { connectUrl } = await client.getConnectLink(platforms);
+      window.location.href = connectUrl;
+    } catch (e) {
+      console.error('Failed to get connect link:', e);
+      setConnectingPlatform(null);
+    }
+  }
+
+  async function handleDisconnect(accountId: string) {
+    try {
+      const client = await buildClient();
+      await client.disconnectSocialAccount(accountId);
+      setSocialAccounts((prev) => prev.filter((a) => a.id !== accountId));
+    } catch (e) {
+      console.error('Failed to disconnect account:', e);
+    }
+  }
 
   async function handleUpgrade(tier: 'base' | 'growth' | 'team') {
     setLoadingTier(tier);
@@ -128,6 +169,87 @@ export default function SettingsPage() {
       </div>
 
       <TradeSelector />
+
+      {/* Connected Social Accounts */}
+      <div className="glass-card">
+        <h3 className="font-semibold mb-3 text-white">Connected Social Accounts</h3>
+        <p className="text-sm text-slate-400 mb-4">
+          Connect your social media accounts to publish posts directly from HawkEye.
+        </p>
+
+        {socialLoading ? (
+          <p className="text-sm text-slate-500">Loading accounts…</p>
+        ) : (
+          <>
+            {socialAccounts.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {socialAccounts.map((account) => (
+                  <div
+                    key={account.id}
+                    className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700"
+                  >
+                    <div className="flex items-center gap-3">
+                      {account.imageUrl ? (
+                        <img src={account.imageUrl} alt="" className="w-8 h-8 rounded-full" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs">
+                          {account.type === 'FACEBOOK' && '📘'}
+                          {account.type === 'INSTAGRAM' && '📷'}
+                          {account.type === 'LINKEDIN' && '💼'}
+                          {account.type === 'TIKTOK' && '🎵'}
+                          {account.type === 'YOUTUBE' && '▶️'}
+                          {account.type === 'X' && '𝕏'}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm text-white font-medium">{account.name}</p>
+                        <p className="text-xs text-slate-400">{account.type.charAt(0) + account.type.slice(1).toLowerCase()}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDisconnect(account.id)}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleConnectSocial(['FACEBOOK'])}
+                disabled={connectingPlatform !== null}
+                className="px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-lg text-sm text-blue-300 hover:bg-blue-600/30 disabled:opacity-50"
+              >
+                {connectingPlatform === 'FACEBOOK' ? 'Connecting…' : '+ Facebook'}
+              </button>
+              <button
+                onClick={() => handleConnectSocial(['INSTAGRAM'])}
+                disabled={connectingPlatform !== null}
+                className="px-4 py-2 bg-pink-600/20 border border-pink-500/30 rounded-lg text-sm text-pink-300 hover:bg-pink-600/30 disabled:opacity-50"
+              >
+                {connectingPlatform === 'INSTAGRAM' ? 'Connecting…' : '+ Instagram'}
+              </button>
+              <button
+                onClick={() => handleConnectSocial(['LINKEDIN'])}
+                disabled={connectingPlatform !== null}
+                className="px-4 py-2 bg-sky-600/20 border border-sky-500/30 rounded-lg text-sm text-sky-300 hover:bg-sky-600/30 disabled:opacity-50"
+              >
+                {connectingPlatform === 'LINKEDIN' ? 'Connecting…' : '+ LinkedIn'}
+              </button>
+              <button
+                onClick={() => handleConnectSocial(['TIKTOK'])}
+                disabled={connectingPlatform !== null}
+                className="px-4 py-2 bg-slate-600/20 border border-slate-500/30 rounded-lg text-sm text-slate-300 hover:bg-slate-600/30 disabled:opacity-50"
+              >
+                {connectingPlatform === 'TIKTOK' ? 'Connecting…' : '+ TikTok'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Active subscription management */}
       {currentTier !== 'free' && (

@@ -127,3 +127,12 @@ export interface PushNotificationPayload {
     entityId: string;
   };
 }
+
+export interface SocialAccount {
+  id: string;
+  type: string; // e.g. FACEBOOK, INSTAGRAM, LINKEDIN
+  name: string;
+  username: string | null;
+  imageUrl: string | null;
+  connected: boolean;
+}

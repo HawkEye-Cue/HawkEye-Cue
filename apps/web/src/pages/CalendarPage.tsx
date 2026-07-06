@@ -19,6 +19,7 @@ export default function CalendarPage() {
   const [showModal, setShowModal] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventType, setNewEventType] = useState<'post' | 'task' | 'reminder'>('task');
+  const [repeatOption, setRepeatOption] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly'>('none');
 
   // Fetch real scheduled posts from API
   useEffect(() => {
@@ -92,12 +93,38 @@ export default function CalendarPage() {
 
   const handleAddEvent = () => {
     if (!newEventTitle.trim() || selectedDay === null) return;
-    addEvent({
-      date: getDateStr(selectedDay),
-      title: newEventTitle.trim(),
-      type: newEventType,
-    });
+
+    const baseDate = new Date(currentYear, currentMonth, selectedDay);
+    const dates: string[] = [];
+
+    // Generate dates based on repeat option
+    if (repeatOption === 'none') {
+      dates.push(getDateStr(selectedDay));
+    } else {
+      const count = repeatOption === 'daily' ? 30 : repeatOption === 'weekly' ? 12 : repeatOption === 'biweekly' ? 12 : repeatOption === 'monthly' ? 12 : 5;
+      const incrementDays = repeatOption === 'daily' ? 1 : repeatOption === 'weekly' ? 7 : repeatOption === 'biweekly' ? 14 : 0;
+
+      for (let i = 0; i < count; i++) {
+        const d = new Date(baseDate);
+        if (incrementDays > 0) {
+          d.setDate(d.getDate() + (i * incrementDays));
+        } else if (repeatOption === 'monthly') {
+          d.setMonth(d.getMonth() + i);
+        } else if (repeatOption === 'yearly') {
+          d.setFullYear(d.getFullYear() + i);
+        }
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        dates.push(`${d.getFullYear()}-${mm}-${dd}`);
+      }
+    }
+
+    for (const date of dates) {
+      addEvent({ date, title: newEventTitle.trim(), type: newEventType });
+    }
+
     setNewEventTitle('');
+    setRepeatOption('none');
     setShowModal(false);
   };
 
@@ -303,6 +330,21 @@ export default function CalendarPage() {
                         {t}
                       </button>
                     ))}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Repeat</label>
+                    <select
+                      value={repeatOption}
+                      onChange={(e) => setRepeatOption(e.target.value as typeof repeatOption)}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                    >
+                      <option value="none">Don't repeat</option>
+                      <option value="daily">Daily (30 days)</option>
+                      <option value="weekly">Weekly (12 weeks)</option>
+                      <option value="biweekly">Bi-weekly (12 times)</option>
+                      <option value="monthly">Monthly (12 months)</option>
+                      <option value="yearly">Yearly (5 years)</option>
+                    </select>
                   </div>
                   <button
                     onClick={handleAddEvent}

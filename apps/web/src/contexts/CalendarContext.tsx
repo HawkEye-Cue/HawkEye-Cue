@@ -24,21 +24,28 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const saveEvents = (newEvents: CalendarEvent[]) => {
-    setEvents(newEvents);
-    localStorage.setItem('calendar_events', JSON.stringify(newEvents));
-  };
-
   const addEvent = (event: Omit<CalendarEvent, 'id' | 'completed'>) => {
-    saveEvents([...events, { ...event, id: Date.now().toString(), completed: false }]);
+    setEvents((prev) => {
+      const updated = [...prev, { ...event, id: (Date.now() + Math.random()).toString(), completed: false }];
+      localStorage.setItem('calendar_events', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const toggleComplete = (id: string) => {
-    saveEvents(events.map((e) => e.id === id ? { ...e, completed: !e.completed } : e));
+    setEvents((prev) => {
+      const updated = prev.map((e) => e.id === id ? { ...e, completed: !e.completed } : e);
+      localStorage.setItem('calendar_events', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const removeEvent = (id: string) => {
-    saveEvents(events.filter((e) => e.id !== id));
+    setEvents((prev) => {
+      const updated = prev.filter((e) => e.id !== id);
+      localStorage.setItem('calendar_events', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   return (

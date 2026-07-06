@@ -200,8 +200,16 @@ export default function SettingsPage() {
                         className={`px-4 py-2 bg-green-600/20 border border-green-500/30 rounded-lg text-sm text-green-300 flex items-center gap-2`}
                       >
                         <span>{p.icon}</span>
-                        <span className="truncate max-w-[120px]">{connected.name || p.label}</span>
+                        <span className="truncate max-w-[100px]">{connected.name || p.label}</span>
                         <span className="text-green-400 text-xs">✓</span>
+                        <button
+                          onClick={() => handleConnectSocial([p.type])}
+                          disabled={connectingPlatform !== null}
+                          className="text-xs text-slate-400 hover:text-white ml-1"
+                          title="Switch account"
+                        >
+                          ↻
+                        </button>
                       </div>
                     );
                   }

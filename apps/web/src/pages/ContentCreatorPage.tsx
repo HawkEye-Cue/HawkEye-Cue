@@ -187,7 +187,33 @@ export default function ContentCreatorPage() {
           ))}
 
           <div className="flex gap-2">
-            <button className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-600/20 active:scale-95 transition-all duration-200">
+            <button
+              onClick={async () => {
+                if (!platformContent) return;
+                try {
+                  const token = await getToken();
+                  const client = new ApiClient({
+                    baseUrl: import.meta.env.VITE_API_URL as string,
+                    getToken: async () => token,
+                  });
+                  // Schedule for 1 hour from now
+                  const scheduledAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+                  const content = Object.values(platformContent)[0] || '';
+                  await client.schedulePosts({
+                    contentId: 'generated-' + Date.now(),
+                    content,
+                    platforms,
+                    scheduledAt,
+                    mediaUrls: [],
+                  });
+                  alert('Posts scheduled successfully! Check the Calendar tab.');
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : 'Failed to schedule posts';
+                  setError(msg);
+                }
+              }}
+              className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-600/20 active:scale-95 transition-all duration-200"
+            >
               Schedule All Posts
             </button>
             <button className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200">

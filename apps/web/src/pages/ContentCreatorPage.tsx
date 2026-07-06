@@ -24,6 +24,7 @@ export default function ContentCreatorPage() {
   const [baseText, setBaseText] = useState('');
   const [platformContent, setPlatformContent] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
   const [error, setError] = useState('');
 
   const togglePlatform = (p: SocialPlatform) => {
@@ -191,18 +192,17 @@ export default function ContentCreatorPage() {
           <div className="space-y-3">
             <div className="flex gap-2">
               <button
+                disabled={scheduling}
                 onClick={async () => {
                   if (!platformContent) return;
                   setError('');
-                  const btn = document.activeElement as HTMLButtonElement;
-                  if (btn) btn.textContent = 'Posting...';
+                  setScheduling(true);
                   try {
                     const token = await getToken();
                     const client = new ApiClient({
                       baseUrl: import.meta.env.VITE_API_URL as string,
                       getToken: async () => token,
                     });
-                    // Schedule 2 minutes from now (minimum future time)
                     const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
                     const content = Object.values(platformContent)[0] || '';
                     await client.schedulePosts({
@@ -216,12 +216,12 @@ export default function ContentCreatorPage() {
                   } catch (e) {
                     const msg = e instanceof Error ? e.message : 'Failed to post';
                     setError(msg);
-                    if (btn) btn.textContent = 'Post Now';
+                    setScheduling(false);
                   }
                 }}
-                className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-600/20 active:scale-95 transition-all duration-200"
+                className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 disabled:opacity-50 active:scale-95 transition-all duration-200"
               >
-                Post Now
+                {scheduling ? 'Posting...' : 'Post Now'}
               </button>
               <button className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200">
                 Save Drafts
@@ -236,6 +236,7 @@ export default function ContentCreatorPage() {
                 min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)}
               />
               <button
+                disabled={scheduling}
                 onClick={async () => {
                   if (!platformContent) return;
                   const input = document.getElementById('schedule-time') as HTMLInputElement;
@@ -244,8 +245,7 @@ export default function ContentCreatorPage() {
                     return;
                   }
                   setError('');
-                  const btn = document.activeElement as HTMLButtonElement;
-                  if (btn) btn.textContent = 'Scheduling...';
+                  setScheduling(true);
                   try {
                     const token = await getToken();
                     const client = new ApiClient({
@@ -265,10 +265,10 @@ export default function ContentCreatorPage() {
                   } catch (e) {
                     const msg = e instanceof Error ? e.message : 'Failed to schedule';
                     setError(msg);
-                    if (btn) btn.textContent = 'Schedule';
+                    setScheduling(false);
                   }
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 active:scale-95 transition-all duration-200"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50 active:scale-95 transition-all duration-200"
               >
                 Schedule
               </button>

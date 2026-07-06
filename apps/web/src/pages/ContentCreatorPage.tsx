@@ -192,6 +192,9 @@ export default function ContentCreatorPage() {
             <button
               onClick={async () => {
                 if (!platformContent) return;
+                setError('');
+                const btn = document.activeElement as HTMLButtonElement;
+                if (btn) btn.textContent = 'Scheduling...';
                 try {
                   const token = await getToken();
                   const client = new ApiClient({
@@ -212,6 +215,7 @@ export default function ContentCreatorPage() {
                 } catch (e) {
                   const msg = e instanceof Error ? e.message : 'Failed to schedule posts';
                   setError(msg);
+                  if (btn) btn.textContent = 'Schedule All Posts';
                 }
               }}
               className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-600/20 active:scale-95 transition-all duration-200"
@@ -222,6 +226,11 @@ export default function ContentCreatorPage() {
               Save Drafts
             </button>
           </div>
+          {error && (
+            <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300 mt-3">
+              {error}
+            </div>
+          )}
         </div>
       )}
     </div>

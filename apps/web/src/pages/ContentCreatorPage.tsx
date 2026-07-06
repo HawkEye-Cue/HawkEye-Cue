@@ -26,6 +26,7 @@ export default function ContentCreatorPage() {
   const [loading, setLoading] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const togglePlatform = (p: SocialPlatform) => {
     setPlatforms((prev) =>
@@ -196,6 +197,7 @@ export default function ContentCreatorPage() {
                 onClick={async () => {
                   if (!platformContent) return;
                   setError('');
+                  setSuccess('');
                   setScheduling(true);
                   try {
                     const token = await getToken();
@@ -212,7 +214,8 @@ export default function ContentCreatorPage() {
                       scheduledAt,
                       mediaUrls: [],
                     });
-                    navigate('/calendar');
+                    setSuccess('✓ Posted! It will go live in about 2 minutes.');
+                    setScheduling(false);
                   } catch (e) {
                     const msg = e instanceof Error ? e.message : 'Failed to post';
                     setError(msg);
@@ -261,7 +264,8 @@ export default function ContentCreatorPage() {
                       scheduledAt,
                       mediaUrls: [],
                     });
-                    navigate('/calendar');
+                    setSuccess('✓ Scheduled! Check the Calendar tab.');
+                    setScheduling(false);
                   } catch (e) {
                     const msg = e instanceof Error ? e.message : 'Failed to schedule';
                     setError(msg);
@@ -277,6 +281,11 @@ export default function ContentCreatorPage() {
             {error && (
               <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
                 {error}
+              </div>
+            )}
+            {success && (
+              <div className="p-3 rounded-lg bg-green-950/40 border border-green-500/40 text-sm text-green-300">
+                {success}
               </div>
             )}
           </div>

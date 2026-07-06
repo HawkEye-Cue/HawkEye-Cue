@@ -238,24 +238,6 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Today's scheduled items */}
-      <div className="glass-card">
-        <h3 className="font-semibold mb-3 text-white">Today's Items</h3>
-        {todayEvents.length === 0 ? (
-          <p className="text-sm text-slate-400">Nothing scheduled for today. Click a future date to add something!</p>
-        ) : (
-          <div className="space-y-2">
-            {todayEvents.map((e) => (
-              <div key={e.id} className="flex items-center gap-2 text-sm">
-                <span className={`w-2 h-2 rounded-full ${typeColors[e.type]}`}></span>
-                <span className="text-white">{e.title}</span>
-                <span className="text-slate-500 capitalize text-xs">({e.type})</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* All upcoming events */}
       {events.length > 0 && (
         <div className="glass-card">

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
+import { useCalendar } from '../contexts/CalendarContext';
 import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
-import type { SocialPlatform } from '@social-lead-gen/shared';
+import type { SocialPlatform, ScheduledPost } from '@social-lead-gen/shared';
 
 const TONES = ['professional', 'casual', 'educational', 'urgent'] as const;
 
@@ -18,6 +19,8 @@ export default function ContentCreatorPage() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const { selectedTrade } = useTrade();
+  const { events, removeEvent } = useCalendar();
+  const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postType, setPostType] = useState('');
   const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
@@ -77,6 +80,24 @@ export default function ContentCreatorPage() {
     }
   };
 
+  // Fetch today's posts from API
+  useEffect(() => {
+    async function fetchTodayPosts() {
+      try {
+        const token = await getToken();
+        const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+        const today = new Date().toISOString().split('T')[0];
+        const result = await client.getPosts({ startDate: today, endDate: today });
+        const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
+        setTodayPosts(posts);
+      } catch { /* ignore */ }
+    }
+    fetchTodayPosts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayCalendarEvents = events.filter((e) => e.date === todayStr);
+
   if (!selectedTrade) {
     return <p className="text-slate-400">Please select a trade first from the Dashboard.</p>;
   }
@@ -84,6 +105,36 @@ export default function ContentCreatorPage() {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-white">Create Content</h2>
+
+      {/* Today's Items - collapsible */}
+      <details className="glass-card">
+        <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
+          <span>Today's Items</span>
+          <span className="text-xs text-slate-400">{todayCalendarEvents.length + todayPosts.length}</span>
+        </summary>
+        <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
+          {todayCalendarEvents.map((e) => (
+            <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
+                <span className="text-sm text-slate-300">{e.title}</span>
+              </div>
+              <button onClick={() => removeEvent(e.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+            </div>
+          ))}
+          {todayPosts.map((p) => (
+            <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
+              <div className="min-w-0">
+                <p className="text-sm text-slate-300 truncate">📤 {(p.content || 'Scheduled post').slice(0, 40)}</p>
+              </div>
+              <span className={`text-xs px-2 py-0.5 rounded ${p.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{p.status}</span>
+            </div>
+          ))}
+          {todayCalendarEvents.length === 0 && todayPosts.length === 0 && (
+            <p className="text-sm text-slate-500">Nothing scheduled for today</p>
+          )}
+        </div>
+      </details>
 
       <div className="glass-card">
         <label className="block text-sm font-medium text-slate-300 mb-2">Tone</label>

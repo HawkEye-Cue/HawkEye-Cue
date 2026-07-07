@@ -101,7 +101,7 @@ export default function CalendarPage() {
     if (repeatOption === 'none') {
       dates.push(getDateStr(selectedDay));
     } else {
-      const count = repeatOption === 'daily' ? 30 : repeatOption === 'weekly' ? 12 : repeatOption === 'biweekly' ? 12 : repeatOption === 'monthly' ? 12 : 5;
+      const count = repeatOption === 'daily' ? 90 : repeatOption === 'weekly' ? 52 : repeatOption === 'biweekly' ? 26 : repeatOption === 'monthly' ? 24 : 10;
       const incrementDays = repeatOption === 'daily' ? 1 : repeatOption === 'weekly' ? 7 : repeatOption === 'biweekly' ? 14 : 0;
 
       for (let i = 0; i < count; i++) {
@@ -350,11 +350,11 @@ export default function CalendarPage() {
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
                     >
                       <option value="none">Don't repeat</option>
-                      <option value="daily">Daily (30 days)</option>
-                      <option value="weekly">Weekly (12 weeks)</option>
-                      <option value="biweekly">Bi-weekly (12 times)</option>
-                      <option value="monthly">Monthly (12 months)</option>
-                      <option value="yearly">Yearly (5 years)</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="biweekly">Bi-weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
                     </select>
                   </div>
                   <button

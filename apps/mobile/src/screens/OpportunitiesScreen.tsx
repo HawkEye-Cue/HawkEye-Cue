@@ -1,42 +1,28 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 
 export default function OpportunitiesScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Opportunities</Text>
-
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>0</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statNumber, { color: '#2563eb' }]}>0</Text>
-          <Text style={styles.statLabel}>New</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statNumber, { color: '#10b981' }]}>0</Text>
-          <Text style={styles.statLabel}>Converted</Text>
-        </View>
-      </View>
-
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>Leads</Text>
       <View style={styles.card}>
-        <Text style={styles.cardText}>
-          No opportunities yet. Configure keywords to start detecting leads!
+        <Text style={styles.emoji}>🦅</Text>
+        <Text style={styles.cardText}>No leads detected yet</Text>
+        <Text style={styles.hint}>
+          The system scans your connected social accounts every 15 minutes for keyword matches.
+          Add keywords in Settings to start detecting leads.
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc', padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, marginTop: 48 },
-  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  statBox: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0' },
-  statNumber: { fontSize: 20, fontWeight: 'bold' },
-  statLabel: { fontSize: 11, color: '#64748b', marginTop: 2 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0' },
-  cardText: { fontSize: 14, color: '#64748b', textAlign: 'center' },
+  container: { flex: 1, backgroundColor: '#0f172a' },
+  content: { padding: 16, paddingTop: 60 },
+  title: { fontSize: 24, fontWeight: '700', color: '#f1f5f9', marginBottom: 16 },
+  card: { backgroundColor: '#1e293b', borderRadius: 16, padding: 24, borderWidth: 1, borderColor: '#334155', alignItems: 'center' },
+  emoji: { fontSize: 40, marginBottom: 12 },
+  cardText: { fontSize: 16, fontWeight: '500', color: '#f1f5f9', textAlign: 'center' },
+  hint: { fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 8, lineHeight: 18 },
 });

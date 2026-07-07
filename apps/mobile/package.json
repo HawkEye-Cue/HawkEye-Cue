@@ -1,25 +1,24 @@
 {
   "name": "@social-lead-gen/mobile",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "test": "jest"
+    "build:ios": "eas build --platform ios --profile production",
+    "build:android": "eas build --platform android --profile production",
+    "submit:ios": "eas submit --platform ios",
+    "submit:android": "eas submit --platform android"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.0.0",
     "@react-navigation/native": "^7.0.0",
     "@react-navigation/native-stack": "^7.0.0",
-    "@react-native-async-storage/async-storage": "^2.0.0",
-    "@react-native-community/netinfo": "^11.0.0",
     "@social-lead-gen/shared": "workspace:*",
-    "@tanstack/react-query": "^5.0.0",
     "expo": "~52.0.0",
     "expo-image-picker": "~16.0.0",
-    "expo-local-authentication": "~14.0.0",
     "expo-notifications": "~0.29.0",
     "expo-secure-store": "~14.0.0",
     "react": "^19.0.0",

@@ -170,7 +170,7 @@ export default function DashboardPage() {
           <span>Your Scheduled Cues</span>
           <span className="text-xs text-slate-400">{todayPosts.length} items</span>
         </summary>
-        <div className="mt-3 max-h-64 overflow-y-auto space-y-2">
+        <div className="mt-3 space-y-2">
           {todayPosts.length > 0 ? (
             todayPosts.map((post) => (
               <details key={post.id} className="rounded-lg bg-white/5 overflow-hidden">
@@ -199,8 +199,8 @@ export default function DashboardPage() {
                         } catch { /* ignore */ }
                       }
                     }}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm resize-y min-h-[120px] max-h-[400px] focus:border-blue-500 focus:outline-none"
-                    style={{ height: `${Math.max(120, (post.content || '').split('\n').length * 24 + 40)}px` }}
+                    rows={Math.max(6, (post.content || '').length / 40)}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm resize-y focus:border-blue-500 focus:outline-none"
                   />
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-slate-500">{post.platforms?.join(', ')} • {post.scheduledAt ? new Date(post.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</p>

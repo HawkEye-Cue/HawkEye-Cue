@@ -12,7 +12,7 @@ export default function CalendarPage() {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const { events, addEvent } = useCalendar();
+  const { events, addEvent, removeEvent } = useCalendar();
   const { getToken } = useAuth();
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -282,11 +282,32 @@ export default function CalendarPage() {
                 return (
                   <div className="space-y-2 mb-4 mt-3">
                     {dayEvents.map((evt) => (
-                      <div key={evt.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
-                        <div className={`w-2 h-2 rounded-full ${typeColors[evt.type] || 'bg-blue-500'}`} />
-                        <span className={`text-sm ${evt.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
-                          {evt.title}
-                        </span>
+                      <div key={evt.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white/5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-2 h-2 shrink-0 rounded-full ${typeColors[evt.type] || 'bg-blue-500'}`} />
+                          <span className={`text-sm truncate ${evt.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
+                            {evt.title}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => removeEvent(evt.id)}
+                            className="text-xs text-red-400 hover:text-red-300 px-1"
+                            title="Delete this one"
+                          >
+                            ✕
+                          </button>
+                          <button
+                            onClick={() => {
+                              const matching = events.filter((e) => e.title === evt.title);
+                              matching.forEach((e) => removeEvent(e.id));
+                            }}
+                            className="text-xs text-red-400 hover:text-red-300 px-1"
+                            title="Delete all with this name"
+                          >
+                            ✕ All
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

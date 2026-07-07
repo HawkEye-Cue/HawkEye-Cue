@@ -101,7 +101,7 @@ export default function CalendarPage() {
     if (repeatOption === 'none') {
       dates.push(getDateStr(selectedDay));
     } else {
-      const count = repeatOption === 'daily' ? 90 : repeatOption === 'weekly' ? 52 : repeatOption === 'biweekly' ? 26 : repeatOption === 'monthly' ? 24 : 10;
+      const count = repeatOption === 'daily' ? 365 : repeatOption === 'weekly' ? 260 : repeatOption === 'biweekly' ? 130 : repeatOption === 'monthly' ? 120 : 50;
       const incrementDays = repeatOption === 'daily' ? 1 : repeatOption === 'weekly' ? 7 : repeatOption === 'biweekly' ? 14 : 0;
 
       for (let i = 0; i < count; i++) {

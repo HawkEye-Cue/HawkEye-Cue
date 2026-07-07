@@ -3,6 +3,7 @@ import { ExpoConfig } from 'expo/config';
 const config: ExpoConfig = {
   name: 'HawkEye-Cue',
   slug: 'hawkeye-cue',
+  owner: 'hawkeye-cue',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
@@ -40,7 +41,7 @@ const config: ExpoConfig = {
   scheme: 'hawkeyecue',
   extra: {
     eas: {
-      projectId: 'hawkeye-cue',
+      projectId: 'c051afee-f56b-4045-806b-aaff5a8203a5',
     },
     apiUrl: 'https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com',
     cognitoUserPoolId: 'us-east-1_33Q0cOjOf',

@@ -199,7 +199,8 @@ export default function DashboardPage() {
                         } catch { /* ignore */ }
                       }
                     }}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm resize-none h-24 focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm resize-y min-h-[120px] max-h-[400px] focus:border-blue-500 focus:outline-none"
+                    style={{ height: `${Math.max(120, (post.content || '').split('\n').length * 24 + 40)}px` }}
                   />
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-slate-500">{post.platforms?.join(', ')} • {post.scheduledAt ? new Date(post.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</p>

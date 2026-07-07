@@ -91,6 +91,15 @@ export class ApiStack extends cdk.Stack {
 
     table.grantReadWriteData(tradeHandlerFn);
 
+    // Grant Cognito admin permission for account deletion
+    tradeHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['cognito-idp:AdminDeleteUser'],
+        resources: [userPool.userPoolArn],
+      })
+    );
+
     // ─── Content Handler ──────────────────────────────────────────────────
     const contentHandlerFn = new lambda.Function(this, 'ContentHandlerFn', {
       ...lambdaDefaults,
@@ -460,6 +469,12 @@ export class ApiStack extends cdk.Stack {
       integration: tradeIntegration,
       authorizer,
     });
+    this.httpApi.addRoutes({
+      path: '/profile/delete',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: tradeIntegration,
+      authorizer,
+    });
 
     // Content routes
     const contentIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
@@ -682,6 +697,12 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
     this.httpApi.addRoutes({
+      path: '/appreciations/{id}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: appreciationsIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
       path: '/appreciations/generate-reply',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: appreciationsIntegration,
@@ -709,6 +730,59 @@ export class ApiStack extends cdk.Stack {
       path: '/social/accounts/{id}',
       methods: [apigatewayv2.HttpMethod.DELETE],
       integration: socialAccountsIntegration,
+      authorizer,
+    });
+
+    // ─── Network Handler ──────────────────────────────────────────────────
+    const networkHandlerFn = new lambda.Function(this, 'NetworkHandlerFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-NetworkHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/network-handler'),
+      description: 'Handles network collaboration board posts, replies, and contacts directory',
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(networkHandlerFn);
+
+    // Network routes
+    const networkIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'NetworkIntegration',
+      networkHandlerFn
+    );
+    this.httpApi.addRoutes({
+      path: '/network/posts',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: networkIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/network/posts/{id}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: networkIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/network/posts/{id}/reply',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: networkIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/network/contacts',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: networkIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/network/contacts/{id}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: networkIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/network/region',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
+      integration: networkIntegration,
       authorizer,
     });
 

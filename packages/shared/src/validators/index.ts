@@ -7,6 +7,7 @@ export const socialPlatformSchema = z.enum([
   'instagram',
   'linkedin',
   'tiktok',
+  'nextdoor',
 ]);
 
 export const toneSchema = z.enum([

@@ -37,10 +37,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      // If no MFA, login resolves and we navigate
-      if (!mfaPending) {
-        navigate('/');
-      }
+      // If login succeeded without MFA, navigate to dashboard
+      // The mfaPending state will cause a re-render showing the MFA screen if needed
+      navigate('/');
     } catch (err) {
       if (err instanceof Error && err.name === 'UserNotConfirmedException') {
         navigate('/confirm', { state: { email } });

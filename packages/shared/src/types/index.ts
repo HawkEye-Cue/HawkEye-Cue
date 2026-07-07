@@ -2,7 +2,7 @@
 
 // --- Type Unions ---
 
-export type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok';
+export type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'nextdoor';
 
 export type PostStatus = 'draft' | 'scheduled' | 'published' | 'failed';
 
@@ -136,4 +136,38 @@ export interface SocialAccount {
   username: string | null;
   imageUrl: string | null;
   connected: boolean;
+}
+
+// --- Network / Collaborate ---
+
+export interface NetworkPost {
+  id: string;
+  userId: string;
+  authorName: string;
+  authorTrade: string;
+  content: string;
+  type: 'referral' | 'opportunity' | 'introduction' | 'question';
+  tradeFilter: string; // which trade this is relevant to, or 'all'
+  replies: NetworkReply[];
+  createdAt: string;
+}
+
+export interface NetworkReply {
+  id: string;
+  userId: string;
+  authorName: string;
+  authorTrade: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface NetworkContact {
+  id: string;
+  userId: string;
+  name: string;
+  trade: string;
+  phone: string;
+  email: string;
+  notes: string;
+  createdAt: string;
 }

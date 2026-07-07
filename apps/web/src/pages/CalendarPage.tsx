@@ -251,7 +251,7 @@ export default function CalendarPage() {
         if (thisWeekEvents.length === 0) return null;
         return (
           <details className="glass-card" open>
-            <summary className="font-semibold text-white cursor-pointer">This Week</summary>
+            <summary className="font-semibold text-white cursor-pointer">This Week's Cues</summary>
             <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
               {thisWeekEvents.map((e) => (
                 <div key={e.id} className="flex items-center justify-between text-sm">

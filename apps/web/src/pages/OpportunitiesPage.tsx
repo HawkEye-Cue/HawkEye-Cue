@@ -13,7 +13,7 @@ export default function OpportunitiesPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-white">Opportunities</h2>
+      <h2 className="text-xl font-bold text-white">Lead Cues</h2>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="glass-card text-center">
@@ -52,7 +52,7 @@ export default function OpportunitiesPage() {
 
       <div className="glass-card">
         <p className="text-sm text-slate-400 text-center py-8">
-          No opportunities yet. Install the browser extension and configure keywords to start detecting leads!
+          No lead cues yet. Install the browser extension and configure keywords to start detecting leads!
         </p>
       </div>
     </div>

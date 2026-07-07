@@ -13,6 +13,7 @@ const PLATFORM_ICONS: Record<string, string> = {
   instagram: '📷',
   linkedin: '💼',
   tiktok: '🎵',
+  nextdoor: '🏡',
 };
 
 export default function ContentCreatorPage() {
@@ -74,7 +75,11 @@ export default function ContentCreatorPage() {
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to generate content. Please try again.';
-      setError(message);
+      if (message.includes('TIER_LIMIT_REACHED') || message.includes('AI generations')) {
+        setError('🔒 ' + message + ' Go to Settings to upgrade your plan.');
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -109,7 +114,7 @@ export default function ContentCreatorPage() {
       {/* Today's Items - collapsible */}
       <details className="glass-card">
         <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
-          <span>Today's Items</span>
+          <span>Today's Cues</span>
           <span className="text-xs text-slate-400">{todayCalendarEvents.length + todayPosts.length}</span>
         </summary>
         <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
@@ -131,7 +136,7 @@ export default function ContentCreatorPage() {
             </div>
           ))}
           {todayCalendarEvents.length === 0 && todayPosts.length === 0 && (
-            <p className="text-sm text-slate-500">Nothing scheduled for today</p>
+            <p className="text-sm text-slate-500">No cues scheduled for today</p>
           )}
         </div>
       </details>
@@ -191,6 +196,9 @@ export default function ContentCreatorPage() {
         )}
         {platforms.includes('tiktok') && (
           <p className="text-xs text-amber-400 mt-2">⚠️ TikTok requires a video. Add one below or it will be skipped.</p>
+        )}
+        {platforms.includes('nextdoor') && (
+          <p className="text-xs text-blue-400 mt-2">ℹ️ Nextdoor content will be generated for you to copy & paste (auto-publish not available).</p>
         )}
       </div>
 
@@ -264,6 +272,14 @@ export default function ContentCreatorPage() {
       {error && (
         <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
           {error}
+          {error.includes('🔒') && (
+            <button
+              onClick={() => navigate('/settings')}
+              className="block mt-2 text-blue-400 hover:text-blue-300 font-medium"
+            >
+              Upgrade Plan →
+            </button>
+          )}
         </div>
       )}
 
@@ -329,11 +345,11 @@ export default function ContentCreatorPage() {
                     if (imageFile) {
                       const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
                       await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
-                      mediaUrls = [`https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com/${key}`];
+                      mediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
                     } else if (videoFile) {
                       const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
                       await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
-                      mediaUrls = [`https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com/${key}`];
+                      mediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
                     }
 
                     const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
@@ -357,8 +373,17 @@ export default function ContentCreatorPage() {
               >
                 {scheduling ? 'Posting...' : 'Post Now'}
               </button>
-              <button className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200">
-                Save Drafts
+              <button
+                onClick={() => {
+                  if (platformContent) {
+                    const allText = Object.entries(platformContent).map(([p, c]) => `--- ${p.toUpperCase()} ---\n${c}`).join('\n\n');
+                    navigator.clipboard.writeText(allText);
+                    setSuccess('✓ All content copied to clipboard');
+                  }
+                }}
+                className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200"
+              >
+                Copy All
               </button>
             </div>
 

@@ -12,6 +12,9 @@ import type {
   Subscription,
   DeviceRegistration,
   SocialAccount,
+  NetworkPost,
+  NetworkReply,
+  NetworkContact,
 } from '../types/index.js';
 
 import type {
@@ -259,16 +262,25 @@ export class ApiClient {
 
   async createCheckout(
     tier: 'base' | 'growth' | 'team',
+    couponCode?: string,
   ): Promise<{ checkoutUrl: string }> {
+    const body: { tier: string; couponCode?: string } = { tier };
+    if (couponCode) body.couponCode = couponCode;
     return this.request<{ checkoutUrl: string }>(
       'POST',
       '/subscription/checkout',
-      { tier },
+      body,
     );
   }
 
   async cancelSubscription(): Promise<void> {
     return this.request<void>('POST', '/subscription/cancel');
+  }
+
+  // --- Account ---
+
+  async deleteAccount(): Promise<void> {
+    return this.request<void>('DELETE', '/profile/delete');
   }
 
   // --- Daily Cues ---
@@ -330,5 +342,47 @@ export class ApiClient {
 
   async disconnectSocialAccount(accountId: string): Promise<void> {
     return this.request<void>('DELETE', `/social/accounts/${accountId}`);
+  }
+
+  // --- Network ---
+
+  async getNetworkPosts(params?: { trade?: string }): Promise<{ posts: NetworkPost[] }> {
+    const searchParams = new URLSearchParams();
+    if (params?.trade && params.trade !== 'all') searchParams.set('trade', params.trade);
+    const query = searchParams.toString();
+    const path = query ? `/network/posts?${query}` : '/network/posts';
+    return this.request<{ posts: NetworkPost[] }>('GET', path);
+  }
+
+  async createNetworkPost(req: { content: string; type: string; tradeFilter: string }): Promise<NetworkPost> {
+    return this.request<NetworkPost>('POST', '/network/posts', req);
+  }
+
+  async replyToNetworkPost(postId: string, content: string): Promise<NetworkReply> {
+    return this.request<NetworkReply>('POST', `/network/posts/${postId}/reply`, { content });
+  }
+
+  async deleteNetworkPost(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/network/posts/${id}`);
+  }
+
+  async getNetworkContacts(): Promise<{ contacts: NetworkContact[] }> {
+    return this.request<{ contacts: NetworkContact[] }>('GET', '/network/contacts');
+  }
+
+  async addNetworkContact(req: { name: string; trade: string; phone?: string; email?: string; notes?: string }): Promise<NetworkContact> {
+    return this.request<NetworkContact>('POST', '/network/contacts', req);
+  }
+
+  async deleteNetworkContact(id: string): Promise<void> {
+    return this.request<void>('DELETE', `/network/contacts/${id}`);
+  }
+
+  async getNetworkRegion(): Promise<{ regions: string[]; region: string | null }> {
+    return this.request<{ regions: string[]; region: string | null }>('GET', '/network/region');
+  }
+
+  async setNetworkRegion(regions: string[]): Promise<{ regions: string[] }> {
+    return this.request<{ regions: string[] }>('PUT', '/network/region', { regions });
   }
 }

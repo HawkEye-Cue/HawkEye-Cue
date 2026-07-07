@@ -6,16 +6,19 @@ import { ApiClient } from '@social-lead-gen/shared';
 import type { Subscription, SocialAccount } from '@social-lead-gen/shared';
 
 export default function SettingsPage() {
-  const { user, getToken } = useAuth();
+  const { user, getToken, logout } = useAuth();
   const { selectedTrade } = useTrade();
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState('');
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [subLoading, setSubLoading] = useState(true);
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
   const [socialLoading, setSocialLoading] = useState(true);
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Check for checkout success/cancelled in URL params
   const params = new URLSearchParams(window.location.search);
@@ -97,8 +100,8 @@ export default function SettingsPage() {
     setCheckoutError(null);
     try {
       const client = await buildClient();
-      console.log('[Checkout] Calling createCheckout for tier:', tier);
-      const { checkoutUrl } = await client.createCheckout(tier);
+      console.log('[Checkout] Calling createCheckout for tier:', tier, 'coupon:', couponCode || 'none');
+      const { checkoutUrl } = await client.createCheckout(tier, couponCode.trim() || undefined);
       console.log('[Checkout] Got URL, redirecting:', checkoutUrl);
       window.location.href = checkoutUrl;
     } catch (e: unknown) {
@@ -206,7 +209,7 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={p.type}
-                        className={`px-4 py-2 bg-green-600/20 border border-green-500/30 rounded-lg text-sm text-green-300 flex items-center gap-2`}
+                        className="px-4 py-2 bg-green-600/20 border border-green-500/30 rounded-lg text-sm text-green-300 flex items-center gap-2"
                       >
                         <span>{p.icon}</span>
                         <span className="truncate max-w-[100px]">{connected.name || p.label}</span>
@@ -227,7 +230,7 @@ export default function SettingsPage() {
                       key={p.type}
                       onClick={() => handleConnectSocial([p.type])}
                       disabled={connectingPlatform !== null}
-                      className={`px-4 py-2 bg-${p.color}-600/20 border border-${p.color}-500/30 rounded-lg text-sm text-${p.color}-300 hover:bg-${p.color}-600/30 disabled:opacity-50`}
+                      className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 disabled:opacity-50"
                     >
                       {connectingPlatform === p.type ? 'Connecting…' : `+ ${p.label}`}
                     </button>
@@ -274,6 +277,21 @@ export default function SettingsPage() {
             {checkoutError}
           </div>
         )}
+
+        {/* Coupon Code Input */}
+        <div className="mb-4">
+          <label className="block text-sm text-slate-400 mb-1">Have a coupon code?</label>
+          <input
+            type="text"
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value)}
+            placeholder="Enter coupon code"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
+          />
+          {couponCode.trim() && (
+            <p className="text-xs text-green-400 mt-1">🎟️ Code "{couponCode.trim()}" will be applied at checkout</p>
+          )}
+        </div>
 
         {/* Beta Tester Banner */}
         <div className="border border-amber-500/50 rounded-xl p-4 mb-3 bg-amber-950/20">
@@ -393,9 +411,9 @@ export default function SettingsPage() {
       <div className="glass-card">
         <h3 className="font-semibold mb-2 text-white">Quick Links</h3>
         <div className="space-y-2">
-          <a href="/profile" className="block text-sm text-blue-400 hover:underline">Profile & Password →</a>
-          <a href="/keywords" className="block text-sm text-blue-400 hover:underline">Manage Keywords →</a>
-          <a href="/calendar" className="block text-sm text-blue-400 hover:underline">View Calendar →</a>
+          <a href="/profile" onClick={(e) => { e.preventDefault(); window.location.href = '/profile'; }} className="block text-sm text-blue-400 hover:underline">Profile & Password →</a>
+          <a href="/keywords" onClick={(e) => { e.preventDefault(); window.location.href = '/keywords'; }} className="block text-sm text-blue-400 hover:underline">Manage Keywords →</a>
+          <a href="/calendar" onClick={(e) => { e.preventDefault(); window.location.href = '/calendar'; }} className="block text-sm text-blue-400 hover:underline">View Calendar →</a>
         </div>
       </div>
 
@@ -406,36 +424,89 @@ export default function SettingsPage() {
           Install the HawkEye-Cue Chrome extension to detect leads while scrolling Facebook, Instagram, LinkedIn, and TikTok.
         </p>
 
-        {/* Desktop: show download */}
+        {/* Desktop: show Chrome Web Store link */}
         <div className="hidden sm:block">
           <a
-            href="/downloads/hawkeye-cue-extension.zip"
-            download
+            href="https://chromewebstore.google.com/detail/oapbnbiijbhieeefdcfnnmkfcnebalkd"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-block bg-gradient-to-r from-amber-500 to-amber-600 text-black px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90"
           >
-            ⬇ Download Extension
+            ⬇ Install from Chrome Web Store
           </a>
-          <details className="mt-3">
-            <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-300">Installation instructions</summary>
-            <ol className="text-xs text-slate-400 mt-2 space-y-1 list-decimal list-inside">
-              <li>Download and unzip the file</li>
-              <li>Open Chrome → type <code className="text-slate-300">chrome://extensions</code> in the address bar</li>
-              <li>Enable "Developer mode" (top-right toggle)</li>
-              <li>Click "Load unpacked" and select the unzipped folder</li>
-              <li>Click the hawk icon in your toolbar and sign in</li>
-            </ol>
-          </details>
         </div>
 
         {/* Mobile: show instructions to install on desktop */}
         <div className="sm:hidden">
+          <a
+            href="https://chromewebstore.google.com/detail/oapbnbiijbhieeefdcfnnmkfcnebalkd"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-gradient-to-r from-amber-500 to-amber-600 text-black px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 mb-3"
+          >
+            View in Chrome Web Store
+          </a>
           <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700">
             <p className="text-sm text-slate-300 mb-2">📱 You're on mobile</p>
             <p className="text-xs text-slate-400">
-              The browser extension works on desktop Chrome. Open <strong className="text-white">hawkeyecue.com</strong> on your computer to download and install it.
+              The browser extension works on desktop Chrome. Open the link above on your computer to install it.
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Delete Account */}
+      <div className="glass-card border-red-500/20">
+        <h3 className="font-semibold mb-2 text-red-400">Delete Account</h3>
+        <p className="text-sm text-slate-400 mb-3">
+          Permanently delete your account and all data. This cannot be undone.
+        </p>
+        {!showDeleteConfirm ? (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-sm text-red-400 hover:text-red-300 border border-red-500/30 px-4 py-2 rounded-lg hover:bg-red-950/30 transition-colors"
+          >
+            Delete My Account
+          </button>
+        ) : (
+          <div className="space-y-3 p-3 rounded-lg bg-red-950/20 border border-red-500/30">
+            <p className="text-sm text-red-300 font-medium">Are you sure? This will:</p>
+            <ul className="text-xs text-slate-400 space-y-1">
+              <li>• Delete all your posts, keywords, and calendar data</li>
+              <li>• Remove your connected social accounts</li>
+              <li>• Cancel any active subscription</li>
+              <li>• Permanently delete your login</li>
+            </ul>
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  setDeletingAccount(true);
+                  try {
+                    const client = await buildClient();
+                    await client.deleteAccount();
+                    // Log out after deletion
+                    logout();
+                  } catch (e) {
+                    console.error('Delete failed:', e);
+                    setCheckoutError('Failed to delete account. Please try again or contact support.');
+                    setDeletingAccount(false);
+                    setShowDeleteConfirm(false);
+                  }
+                }}
+                disabled={deletingAccount}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-500 disabled:opacity-50"
+              >
+                {deletingAccount ? 'Deleting...' : 'Yes, Delete Everything'}
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-slate-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

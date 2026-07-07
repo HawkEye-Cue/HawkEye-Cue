@@ -25,7 +25,6 @@ const config: ExpoConfig = {
     },
     package: 'com.hawkeyecue.app',
     permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE'],
-    googleServicesFile: './google-services.json',
   },
   plugins: [
     [

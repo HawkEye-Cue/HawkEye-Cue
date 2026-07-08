@@ -1,5 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+import { ApiClient } from '@social-lead-gen/shared';
 
 export interface CalendarEvent {
   id: string;
@@ -7,7 +9,7 @@ export interface CalendarEvent {
   title: string;
   type: 'post' | 'task' | 'reminder';
   completed: boolean;
-  link?: string; // optional URL (e.g., Facebook group link)
+  link?: string;
 }
 
 interface CalendarState {
@@ -15,82 +17,101 @@ interface CalendarState {
   addEvent: (event: Omit<CalendarEvent, 'id' | 'completed'>) => void;
   toggleComplete: (id: string) => void;
   removeEvent: (id: string) => void;
+  removeAllByTitle: (title: string) => void;
+  loading: boolean;
 }
 
 const CalendarContext = createContext<CalendarState | undefined>(undefined);
 
-const STORAGE_KEY = 'calendar_events';
-const MAX_EVENTS = 500; // Prevent localStorage overflow
+export function CalendarProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, getToken } = useAuth();
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-function loadEvents(): CalendarEvent[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return [];
-    const events: CalendarEvent[] = JSON.parse(saved);
+  async function buildClient() {
+    const token = await getToken();
+    return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+  }
 
-    // Auto-purge: remove completed events older than 7 days
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 7);
-    const cutoffStr = cutoff.toISOString().split('T')[0];
-
-    const filtered = events.filter((e) => {
-      if (e.completed && e.date < cutoffStr) return false;
-      return true;
-    });
-
-    // If we pruned anything, save back
-    if (filtered.length !== events.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  // Fetch events from server on login
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setEvents([]);
+      setLoading(false);
+      return;
     }
 
-    return filtered;
-  } catch {
-    return [];
-  }
-}
+    async function fetchEvents() {
+      try {
+        const client = await buildClient();
+        const result = await client.request<{ events: CalendarEvent[] }>('GET', '/calendar/events');
+        setEvents(result.events || []);
+      } catch {
+        // Fallback to localStorage if API fails
+        try {
+          const saved = localStorage.getItem('calendar_events');
+          if (saved) setEvents(JSON.parse(saved));
+        } catch { /* ignore */ }
+      } finally {
+        setLoading(false);
+      }
+    }
 
-function saveEvents(events: CalendarEvent[]) {
-  // Cap at MAX_EVENTS to prevent localStorage overflow
-  const toSave = events.length > MAX_EVENTS ? events.slice(-MAX_EVENTS) : events;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  } catch (e) {
-    // localStorage full — prune oldest events
-    console.warn('localStorage full, pruning old events');
-    const pruned = toSave.slice(Math.floor(toSave.length / 2));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
-  }
-}
+    fetchEvents();
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
-export function CalendarProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<CalendarEvent[]>(loadEvents);
+  const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id' | 'completed'>) => {
+    // Optimistic: add locally first
+    const tempId = (Date.now() + Math.random()).toString();
+    const newEvent: CalendarEvent = { ...event, id: tempId, completed: false };
+    setEvents((prev) => [...prev, newEvent]);
 
-  const addEvent = useCallback((event: Omit<CalendarEvent, 'id' | 'completed'>) => {
-    setEvents((prev) => {
-      const updated = [...prev, { ...event, id: (Date.now() + Math.random()).toString(), completed: false }];
-      saveEvents(updated);
-      return updated;
-    });
-  }, []);
+    // Save to server
+    try {
+      const client = await buildClient();
+      const result = await client.request<CalendarEvent>('POST', '/calendar/events', {
+        date: event.date,
+        title: event.title,
+        type: event.type,
+        link: event.link || null,
+      });
+      // Replace temp ID with server ID
+      setEvents((prev) => prev.map((e) => e.id === tempId ? { ...result } : e));
+    } catch {
+      // Keep the local version — it'll sync next time
+    }
+  }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggleComplete = useCallback((id: string) => {
-    setEvents((prev) => {
-      const updated = prev.map((e) => e.id === id ? { ...e, completed: !e.completed } : e);
-      saveEvents(updated);
-      return updated;
-    });
-  }, []);
+  const toggleComplete = useCallback(async (id: string) => {
+    // Optimistic update
+    setEvents((prev) => prev.map((e) => e.id === id ? { ...e, completed: !e.completed } : e));
 
-  const removeEvent = useCallback((id: string) => {
-    setEvents((prev) => {
-      const updated = prev.filter((e) => e.id !== id);
-      saveEvents(updated);
-      return updated;
-    });
-  }, []);
+    try {
+      const client = await buildClient();
+      await client.request('PUT', `/calendar/events/${id}/toggle`);
+    } catch { /* revert silently on failure */ }
+  }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const removeEvent = useCallback(async (id: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+
+    try {
+      const client = await buildClient();
+      await client.request('DELETE', `/calendar/events/${id}`);
+    } catch { /* ignore */ }
+  }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const removeAllByTitle = useCallback(async (title: string) => {
+    setEvents((prev) => prev.filter((e) => e.title !== title));
+
+    try {
+      const client = await buildClient();
+      await client.request('DELETE', `/calendar/events/bulk?title=${encodeURIComponent(title)}`);
+    } catch { /* ignore */ }
+  }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <CalendarContext.Provider value={{ events, addEvent, toggleComplete, removeEvent }}>
+    <CalendarContext.Provider value={{ events, addEvent, toggleComplete, removeEvent, removeAllByTitle, loading }}>
       {children}
     </CalendarContext.Provider>
   );

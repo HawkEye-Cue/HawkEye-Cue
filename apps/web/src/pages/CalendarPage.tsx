@@ -12,7 +12,7 @@ export default function CalendarPage() {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const { events, addEvent, removeEvent } = useCalendar();
+  const { events, addEvent, removeEvent, removeAllByTitle } = useCalendar();
   const { getToken } = useAuth();
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -127,7 +127,6 @@ export default function CalendarPage() {
     setNewEventTitle('');
     setNewEventLink('');
     setRepeatOption('none');
-    setShowModal(false);
   };
 
   const todayStr = (() => {
@@ -311,10 +310,7 @@ export default function CalendarPage() {
                             ✕
                           </button>
                           <button
-                            onClick={() => {
-                              const matching = events.filter((e) => e.title === evt.title);
-                              matching.forEach((e) => removeEvent(e.id));
-                            }}
+                            onClick={() => removeAllByTitle(evt.title)}
                             className="text-xs text-red-400 hover:text-red-300 px-1"
                             title="Delete all with this name"
                           >
@@ -341,6 +337,7 @@ export default function CalendarPage() {
                     onKeyDown={(e) => e.key === 'Enter' && handleAddEvent()}
                     placeholder="What's happening?"
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                    autoFocus
                   />
                   <div className="flex gap-2">
                     {(['post', 'task', 'reminder'] as const).map((t) => (
@@ -380,13 +377,22 @@ export default function CalendarPage() {
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
                     />
                   </div>
-                  <button
-                    onClick={handleAddEvent}
-                    disabled={!newEventTitle.trim()}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    Add
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { handleAddEvent(); }}
+                      disabled={!newEventTitle.trim()}
+                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      + Add Another
+                    </button>
+                    <button
+                      onClick={() => { handleAddEvent(); setShowModal(false); }}
+                      disabled={!newEventTitle.trim()}
+                      className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Add & Done
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

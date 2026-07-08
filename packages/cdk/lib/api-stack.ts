@@ -733,6 +733,47 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
 
+    // ─── Calendar Handler ─────────────────────────────────────────────────
+    const calendarHandlerFn = new lambda.Function(this, 'CalendarHandlerFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-CalendarHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/calendar-handler'),
+      description: 'Handles calendar events CRUD (server-side persistence)',
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(calendarHandlerFn);
+
+    // Calendar routes
+    const calendarIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'CalendarIntegration',
+      calendarHandlerFn
+    );
+    this.httpApi.addRoutes({
+      path: '/calendar/events',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: calendarIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/calendar/events/{id}/toggle',
+      methods: [apigatewayv2.HttpMethod.PUT],
+      integration: calendarIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/calendar/events/{id}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: calendarIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/calendar/events/bulk',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: calendarIntegration,
+      authorizer,
+    });
+
     // ─── Network Handler ──────────────────────────────────────────────────
     const networkHandlerFn = new lambda.Function(this, 'NetworkHandlerFn', {
       ...lambdaDefaults,

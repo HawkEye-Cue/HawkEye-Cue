@@ -25,6 +25,9 @@ const config: ExpoConfig = {
     },
     package: 'com.hawkeyecue.app',
     permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE'],
+    config: {
+      targetSdkVersion: 35,
+    },
   },
   plugins: [
     [

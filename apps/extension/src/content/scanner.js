@@ -88,49 +88,88 @@
     });
 
     // Save as Lead
-    overlay.querySelector('.hawkeye-btn-lead').addEventListener('click', (e) => {
+    overlay.querySelector('.hawkeye-btn-lead').addEventListener('click', async (e) => {
       e.stopPropagation();
       const authorName = extractAuthorName(postElement) || 'Unknown';
+      const { authToken } = await chrome.storage.local.get(['authToken']);
+      if (!authToken) { showToast('Please sign in first'); return; }
+
+      const btn = overlay.querySelector('.hawkeye-btn-lead');
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
+
+      try {
+        // Wake service worker and send save request
+        await chrome.runtime.sendMessage({ type: 'PING' });
+      } catch { /* ignore wake failure */ }
+
       chrome.runtime.sendMessage({
         type: 'SAVE_LEAD',
         data: {
+          authToken,
           platform,
           authorName,
           postContent: postText.slice(0, 500),
-          postUrl: window.location.href,
-          matchedKeywords,
-          source: 'extension',
+          postUrl: window.location.href.startsWith('http') ? window.location.href : 'https://facebook.com',
         },
       }, (response) => {
-        if (response?.success) {
-          showToast('Lead saved! 🦅');
-          overlay.querySelector('.hawkeye-btn-lead').textContent = '✓ Saved';
-          overlay.querySelector('.hawkeye-btn-lead').disabled = true;
-        } else {
+        if (chrome.runtime.lastError) {
+          console.error('[HawkEye] sendMessage error:', chrome.runtime.lastError);
+          btn.textContent = '💼 Save as Lead';
+          btn.disabled = false;
+          showToast('Extension error — try again');
+          return;
+        }
+        if (!response || !response.success) {
+          console.error('[HawkEye] Save failed:', response);
+          btn.textContent = '💼 Save as Lead';
+          btn.disabled = false;
           showToast('Failed to save lead');
+        } else {
+          showToast('Lead saved! 🦅');
+          btn.textContent = '✓ Saved';
         }
       });
     });
 
     // Save Appreciation
-    overlay.querySelector('.hawkeye-btn-appreciate').addEventListener('click', (e) => {
+    overlay.querySelector('.hawkeye-btn-appreciate').addEventListener('click', async (e) => {
       e.stopPropagation();
       const authorName = extractAuthorName(postElement) || 'Unknown';
+      const { authToken } = await chrome.storage.local.get(['authToken']);
+      if (!authToken) { showToast('Please sign in first'); return; }
+
+      const btn = overlay.querySelector('.hawkeye-btn-appreciate');
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
+
+      try {
+        await chrome.runtime.sendMessage({ type: 'PING' });
+      } catch { /* ignore */ }
+
       chrome.runtime.sendMessage({
         type: 'SAVE_APPRECIATION',
         data: {
+          authToken,
           taggerName: authorName,
           platform,
           postContent: postText.slice(0, 500),
           postUrl: window.location.href,
         },
       }, (response) => {
-        if (response?.success) {
-          showToast('Appreciation saved! 🙏');
-          overlay.querySelector('.hawkeye-btn-appreciate').textContent = '✓ Saved';
-          overlay.querySelector('.hawkeye-btn-appreciate').disabled = true;
-        } else {
+        if (chrome.runtime.lastError) {
+          btn.textContent = '🙏 Save Appreciation';
+          btn.disabled = false;
+          showToast('Extension error — try again');
+          return;
+        }
+        if (!response || !response.success) {
+          btn.textContent = '🙏 Save Appreciation';
+          btn.disabled = false;
           showToast('Failed to save');
+        } else {
+          showToast('Appreciation saved! 🙏');
+          btn.textContent = '✓ Saved';
         }
       });
     });
@@ -221,42 +260,58 @@
   // ─── Initialize ───────────────────────────────────────────────────────────
 
   async function init() {
-    // Check if user is authenticated
-    chrome.runtime.sendMessage({ type: 'CHECK_AUTH' }, (response) => {
-      if (!response?.authenticated) {
-        console.log('[HawkEye] Not authenticated — scanner inactive');
-        return;
-      }
+    // Get auth token and keywords directly from storage (no service worker needed)
+    const result = await chrome.storage.local.get(['authToken', 'tokenExpiry', 'keywords']);
 
-      // Fetch keywords
-      chrome.runtime.sendMessage({ type: 'GET_KEYWORDS' }, (response) => {
-        keywords = response?.keywords || [];
-        if (keywords.length === 0) {
-          console.log('[HawkEye] No keywords configured');
-          return;
+    if (!result.authToken || !result.tokenExpiry || Date.now() >= result.tokenExpiry) {
+      console.log('[HawkEye] Not authenticated — scanner inactive');
+      return;
+    }
+
+    // Try to get keywords from storage first
+    let storedKeywords = result.keywords || [];
+
+    // If no keywords in storage, fetch directly from API
+    if (storedKeywords.length === 0) {
+      try {
+        const response = await fetch('https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com/keywords', {
+          headers: { 'Authorization': `Bearer ${result.authToken}`, 'Content-Type': 'application/json' },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          storedKeywords = (Array.isArray(data) ? data : data.keywords || []).map((k) => k.keyword || k);
+          chrome.storage.local.set({ keywords: storedKeywords, keywordsUpdatedAt: Date.now() });
         }
+      } catch (e) {
+        console.log('[HawkEye] Failed to fetch keywords:', e);
+      }
+    }
 
-        console.log(`[HawkEye] Scanning for ${keywords.length} keywords on ${platform}`);
+    keywords = storedKeywords;
 
-        // Initial scan
-        scanFeed();
+    if (keywords.length === 0) {
+      console.log('[HawkEye] No keywords configured');
+      return;
+    }
 
-        // Watch for new content (infinite scroll)
-        const observer = new MutationObserver(() => {
-          // Debounce scans
-          clearTimeout(observer._timeout);
-          observer._timeout = setTimeout(scanFeed, 500);
-        });
+    console.log(`[HawkEye] Scanning for ${keywords.length} keywords on ${platform}`);
 
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true,
-        });
+    // Initial scan
+    scanFeed();
 
-        // Also scan periodically as a fallback
-        setInterval(scanFeed, 5000);
-      });
+    // Watch for new content (infinite scroll)
+    const observer = new MutationObserver(() => {
+      clearTimeout(observer._timeout);
+      observer._timeout = setTimeout(scanFeed, 500);
     });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Also scan periodically as a fallback
+    setInterval(scanFeed, 5000);
   }
 
   // Wait for page to be ready

@@ -45,7 +45,9 @@ export default function OpportunitiesPage() {
         client.getOpportunities({ status: filter !== 'all' ? filter : undefined }),
         client.getOpportunityStats(),
       ]);
-      setLeads(leadsResult.items || []);
+      // Handle both { items: [...] } and { opportunities: [...] } formats
+      const items = leadsResult.items || (leadsResult as any).opportunities || [];
+      setLeads(items);
       setStats(statsResult);
     } catch { /* ignore */ }
     finally { setLoading(false); }
@@ -159,7 +161,7 @@ export default function OpportunitiesPage() {
                   <span className="text-lg">{platformIcons[lead.sourcePlatform] || '📱'}</span>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-white">{lead.sourceAuthor}</p>
-                    <p className="text-xs text-slate-500">{lead.keywordText} • {new Date(lead.detectedAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-slate-500">{lead.keywordText || 'Keyword match'} • {new Date(lead.detectedAt || (lead as any).createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

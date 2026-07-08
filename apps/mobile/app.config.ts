@@ -25,11 +25,17 @@ const config: ExpoConfig = {
     },
     package: 'com.hawkeyecue.app',
     permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE'],
-    config: {
-      targetSdkVersion: 35,
-    },
   },
   plugins: [
+    [
+      'expo-build-properties',
+      {
+        android: {
+          targetSdkVersion: 35,
+          compileSdkVersion: 35,
+        },
+      },
+    ],
     [
       'expo-notifications',
       {

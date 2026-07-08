@@ -19,6 +19,7 @@ export default function CalendarPage() {
   const [showModal, setShowModal] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventType, setNewEventType] = useState<'post' | 'task' | 'reminder'>('task');
+  const [newEventLink, setNewEventLink] = useState('');
   const [repeatOption, setRepeatOption] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly'>('none');
 
   // Fetch real scheduled posts from API
@@ -120,10 +121,11 @@ export default function CalendarPage() {
     }
 
     for (const date of dates) {
-      addEvent({ date, title: newEventTitle.trim(), type: newEventType });
+      addEvent({ date, title: newEventTitle.trim(), type: newEventType, link: newEventLink.trim() || undefined });
     }
 
     setNewEventTitle('');
+    setNewEventLink('');
     setRepeatOption('none');
     setShowModal(false);
   };
@@ -288,6 +290,17 @@ export default function CalendarPage() {
                           <span className={`text-sm truncate ${evt.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
                             {evt.title}
                           </span>
+                          {(evt as any).link && (
+                            <a
+                              href={(evt as any).link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-blue-400 hover:text-blue-300 shrink-0"
+                            >
+                              🔗
+                            </a>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <button
@@ -356,6 +369,16 @@ export default function CalendarPage() {
                       <option value="monthly">Monthly</option>
                       <option value="yearly">Yearly</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Link (optional)</label>
+                    <input
+                      type="url"
+                      value={newEventLink}
+                      onChange={(e) => setNewEventLink(e.target.value)}
+                      placeholder="https://facebook.com/groups/..."
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                    />
                   </div>
                   <button
                     onClick={handleAddEvent}

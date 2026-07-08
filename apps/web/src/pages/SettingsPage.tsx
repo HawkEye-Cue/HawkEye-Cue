@@ -17,6 +17,11 @@ export default function SettingsPage() {
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
   const [socialLoading, setSocialLoading] = useState(true);
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
+  const [keywords, setKeywords] = useState<{ id: string; keyword: string }[]>([]);
+  const [keywordsLoading, setKeywordsLoading] = useState(true);
+  const [newKeyword, setNewKeyword] = useState('');
+  const [addingKeyword, setAddingKeyword] = useState(false);
+  const [keywordError, setKeywordError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
@@ -62,6 +67,20 @@ export default function SettingsPage() {
       }
     }
     fetchSocialAccounts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch keywords
+  useEffect(() => {
+    async function fetchKeywords() {
+      try {
+        const client = await buildClient();
+        const result = await client.getKeywords();
+        const kws = Array.isArray(result) ? result : (result as any)?.keywords || [];
+        setKeywords(kws);
+      } catch { /* ignore */ }
+      finally { setKeywordsLoading(false); }
+    }
+    fetchKeywords();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleConnectSocial(platforms?: string[]) {
@@ -408,13 +427,110 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Keyword Tracking */}
       <div className="glass-card">
-        <h3 className="font-semibold mb-2 text-white">Quick Links</h3>
-        <div className="space-y-2">
-          <a href="/profile" onClick={(e) => { e.preventDefault(); window.location.href = '/profile'; }} className="block text-sm text-blue-400 hover:underline">Profile & Password →</a>
-          <a href="/keywords" onClick={(e) => { e.preventDefault(); window.location.href = '/keywords'; }} className="block text-sm text-blue-400 hover:underline">Manage Keywords →</a>
-          <a href="/calendar" onClick={(e) => { e.preventDefault(); window.location.href = '/calendar'; }} className="block text-sm text-blue-400 hover:underline">View Calendar →</a>
+        <h3 className="font-semibold mb-3 text-white">🔑 Keyword Tracking</h3>
+        <p className="text-sm text-slate-400 mb-3">Keywords the browser extension and lead scanner watch for.</p>
+
+        {/* Add keyword */}
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            value={newKeyword}
+            onChange={(e) => setNewKeyword(e.target.value)}
+            onKeyDown={async (e) => {
+              if (e.key === 'Enter' && newKeyword.trim() && selectedTrade) {
+                setAddingKeyword(true);
+                setKeywordError('');
+                try {
+                  const client = await buildClient();
+                  const result = await client.addKeyword({ keyword: newKeyword.trim(), tradeId: selectedTrade.id });
+                  setKeywords((prev) => [...prev, result]);
+                  setNewKeyword('');
+                } catch (err) {
+                  setKeywordError(err instanceof Error ? err.message : 'Failed to add');
+                } finally { setAddingKeyword(false); }
+              }
+            }}
+            placeholder="Add a keyword to track..."
+            className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
+          />
+          <button
+            onClick={async () => {
+              if (!newKeyword.trim() || !selectedTrade) return;
+              setAddingKeyword(true);
+              setKeywordError('');
+              try {
+                const client = await buildClient();
+                const result = await client.addKeyword({ keyword: newKeyword.trim(), tradeId: selectedTrade.id });
+                setKeywords((prev) => [...prev, result]);
+                setNewKeyword('');
+              } catch (err) {
+                setKeywordError(err instanceof Error ? err.message : 'Failed to add');
+              } finally { setAddingKeyword(false); }
+            }}
+            disabled={addingKeyword || !newKeyword.trim()}
+            className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-500 disabled:opacity-50"
+          >
+            {addingKeyword ? '...' : 'Add'}
+          </button>
         </div>
+
+        {keywordError && (
+          <p className="text-xs text-red-400 mb-2">{keywordError}</p>
+        )}
+
+        {/* Keywords list */}
+        {keywordsLoading ? (
+          <p className="text-sm text-slate-500">Loading...</p>
+        ) : keywords.length === 0 ? (
+          <p className="text-sm text-slate-500">No keywords yet. Add some above to start tracking leads.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {keywords.map((kw) => (
+              <span key={kw.id} className="inline-flex items-center gap-1 bg-blue-900/40 text-blue-300 px-3 py-1.5 rounded-full text-sm">
+                {kw.keyword}
+                <button
+                  onClick={async () => {
+                    try {
+                      const client = await buildClient();
+                      await client.deleteKeyword(kw.id);
+                      setKeywords((prev) => prev.filter((k) => k.id !== kw.id));
+                    } catch { /* ignore */ }
+                  }}
+                  className="text-blue-400 hover:text-red-400 ml-1"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Suggested keywords */}
+        {selectedTrade && keywords.length < 5 && (
+          <div className="mt-3 pt-3 border-t border-white/5">
+            <p className="text-xs text-slate-500 mb-2">Suggested for {selectedTrade.name}:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {selectedTrade.defaultKeywords.filter((kw) => !keywords.some((k) => k.keyword === kw.toLowerCase())).slice(0, 5).map((kw) => (
+                <button
+                  key={kw}
+                  onClick={async () => {
+                    if (!selectedTrade) return;
+                    try {
+                      const client = await buildClient();
+                      const result = await client.addKeyword({ keyword: kw, tradeId: selectedTrade.id });
+                      setKeywords((prev) => [...prev, result]);
+                    } catch { /* ignore */ }
+                  }}
+                  className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-slate-400 hover:bg-blue-900/30 hover:text-blue-300 transition-colors"
+                >
+                  + {kw}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Browser Extension */}
@@ -434,6 +550,7 @@ export default function SettingsPage() {
           >
             ⬇ Install from Chrome Web Store
           </a>
+          <p className="text-xs text-slate-500 mt-2">💡 Chrome may show a safety warning — this is normal for new extensions. Click "Continue to install" to proceed.</p>
         </div>
 
         {/* Mobile: show instructions to install on desktop */}

@@ -7,6 +7,7 @@ export interface CalendarEvent {
   title: string;
   type: 'post' | 'task' | 'reminder';
   completed: boolean;
+  link?: string; // optional URL (e.g., Facebook group link)
 }
 
 interface CalendarState {

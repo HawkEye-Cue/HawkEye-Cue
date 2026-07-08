@@ -46,7 +46,7 @@ async function apiRequest(method, path, body = null) {
 async function refreshKeywords() {
   try {
     const data = await apiRequest('GET', '/keywords');
-    const keywords = (Array.isArray(data) ? data : data.items || []).map((k) => k.keyword || k);
+    const keywords = (Array.isArray(data) ? data : data.keywords || data.items || []).map((k) => k.keyword || k);
     await chrome.storage.local.set({ keywords, keywordsUpdatedAt: Date.now() });
     return keywords;
   } catch (e) {

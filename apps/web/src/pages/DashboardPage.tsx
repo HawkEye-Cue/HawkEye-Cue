@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTrade } from '../contexts/TradeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
@@ -7,10 +8,13 @@ import type { ScheduledPost } from '@social-lead-gen/shared';
 import TradeSelector from '../components/TradeSelector';
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { selectedTrade } = useTrade();
   const { getToken } = useAuth();
   const { events, toggleComplete } = useCalendar();
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
+  const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
+  const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
 
   useEffect(() => {
     async function fetchTodayPosts() {
@@ -20,8 +24,20 @@ export default function DashboardPage() {
           baseUrl: import.meta.env.VITE_API_URL as string,
           getToken: async () => token,
         });
-        const today = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const result = await client.getPosts({ startDate: today, endDate: today });
+
+        // Fetch lead stats
+        try {
+          const stats = await client.getOpportunityStats();
+          setLeadStats({
+            total: stats.total || 0,
+            new: stats.new || 0,
+            followedUp: stats.followedUp || 0,
+            converted: stats.converted || 0,
+          });
+        } catch { /* ignore */ }
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
         // Auto-clean: only show posts from today that haven't been published before today
         const todayStart = new Date(today).getTime();
@@ -38,6 +54,15 @@ export default function DashboardPage() {
         // Auto-delete published posts from previous days in the background (max 10 per load to avoid overload)
         const allResult = await client.getPosts();
         const allPosts = Array.isArray(allResult) ? allResult : (allResult as any)?.posts || [];
+
+        // Separate future scheduled posts
+        const now2 = new Date();
+        const todayLocal = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}-${String(now2.getDate()).padStart(2, '0')}`;
+        const upcoming = allPosts
+          .filter((p: ScheduledPost) => p.status === 'scheduled' && p.scheduledAt && p.scheduledAt.split('T')[0] > todayLocal)
+          .sort((a: ScheduledPost, b: ScheduledPost) => (a.scheduledAt || '').localeCompare(b.scheduledAt || ''));
+        setFuturePosts(upcoming);
+
         let deleteCount = 0;
         for (const post of allPosts) {
           if (deleteCount >= 10) break;
@@ -55,7 +80,12 @@ export default function DashboardPage() {
     fetchTodayPosts();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = (() => {
+    const now = new Date();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${mm}-${dd}`;
+  })();
   const todayEvents = events.filter((e) => e.date === todayStr);
 
   const typeColors: Record<string, string> = {
@@ -90,9 +120,10 @@ export default function DashboardPage() {
       {/* Daily Cues */}
       <details className="glass-card" open>
         <summary className="font-semibold text-white cursor-pointer">Today's Cues</summary>
-        <div className="mt-3 max-h-48 overflow-y-auto">
-        {todayEvents.length > 0 ? (
+        <div className="mt-3 max-h-64 overflow-y-auto">
+        {(todayEvents.length > 0 || todayPosts.length > 0) ? (
           <div className="space-y-2">
+            {/* Calendar events (posts, tasks, reminders) */}
             {todayEvents.map((event) => (
               <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
                 <input
@@ -105,9 +136,22 @@ export default function DashboardPage() {
                 <span className={`text-sm ${event.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
                   {event.title}
                 </span>
+                {(event as any).link && (
+                  <a href={(event as any).link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-blue-400">🔗</a>
+                )}
                 {event.completed && <span className="text-green-400 text-xs font-medium ml-1">✓ Done</span>}
                 <span className={`text-xs capitalize ml-auto ${typeColors[event.type]}`}>{event.type}</span>
               </label>
+            ))}
+            {/* Scheduled posts from API */}
+            {todayPosts.map((post) => (
+              <div key={post.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
+                <span className="text-sm">📤</span>
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm text-slate-300 truncate block">{(post.content || 'Scheduled post').slice(0, 50)}</span>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded ${post.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{post.status}</span>
+              </div>
             ))}
           </div>
         ) : (
@@ -131,38 +175,26 @@ export default function DashboardPage() {
       </details>
 
       {/* Lead Cues */}
-      <details className="glass-card" open>
-        <summary className="font-semibold text-white cursor-pointer">Lead Cues</summary>
-        <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-4">
+      <div className="glass-card cursor-pointer hover:-translate-y-0.5 transition-transform" onClick={() => navigate('/opportunities')}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-white">Lead Cues</h3>
+          <span className="text-xs text-blue-400">View all →</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <div className="text-center p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
-            <input
-              type="number"
-              defaultValue={0}
-              min={0}
-              className="w-full text-xl sm:text-2xl font-bold text-blue-400 bg-transparent text-center focus:outline-none focus:ring-1 focus:ring-blue-500/50 rounded"
-            />
-            <div className="text-xs text-slate-400">New Leads</div>
+            <div className="text-xl sm:text-2xl font-bold text-blue-400">{leadStats.new}</div>
+            <div className="text-xs text-slate-400">New</div>
           </div>
           <div className="text-center p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/10">
-            <input
-              type="number"
-              defaultValue={0}
-              min={0}
-              className="w-full text-xl sm:text-2xl font-bold text-yellow-400 bg-transparent text-center focus:outline-none focus:ring-1 focus:ring-yellow-500/50 rounded"
-            />
+            <div className="text-xl sm:text-2xl font-bold text-yellow-400">{leadStats.followedUp}</div>
             <div className="text-xs text-slate-400">Followed Up</div>
           </div>
           <div className="text-center p-3 rounded-lg bg-green-500/5 border border-green-500/10">
-            <input
-              type="number"
-              defaultValue={0}
-              min={0}
-              className="w-full text-xl sm:text-2xl font-bold text-green-400 bg-transparent text-center focus:outline-none focus:ring-1 focus:ring-green-500/50 rounded"
-            />
+            <div className="text-xl sm:text-2xl font-bold text-green-400">{leadStats.converted}</div>
             <div className="text-xs text-slate-400">Converted</div>
           </div>
         </div>
-      </details>
+      </div>
 
       {/* Your Scheduled Cues */}
       <details className="glass-card" open>
@@ -226,6 +258,41 @@ export default function DashboardPage() {
           )}
         </div>
       </details>
+
+      {/* Future Cues */}
+      {futurePosts.length > 0 && (
+        <details className="glass-card">
+          <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
+            <span>Upcoming Cues</span>
+            <span className="text-xs text-slate-400">{futurePosts.length} scheduled</span>
+          </summary>
+          <div className="mt-3 space-y-2">
+            {futurePosts.map((post) => (
+              <div key={post.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-white truncate">{(post.content || 'Scheduled post').slice(0, 50)}</p>
+                  <p className="text-xs text-slate-500">
+                    {post.platforms?.join(', ')} • {post.scheduledAt ? new Date(post.scheduledAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : ''} at {post.scheduledAt ? new Date(post.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const token = await getToken();
+                      const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                      await client.deletePost(post.id);
+                      setFuturePosts((prev) => prev.filter((p) => p.id !== post.id));
+                    } catch { /* ignore */ }
+                  }}
+                  className="text-xs text-red-400 hover:text-red-300 shrink-0 ml-2"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

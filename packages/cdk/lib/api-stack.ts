@@ -80,6 +80,15 @@ export class ApiStack extends cdk.Stack {
 
     table.grantReadWriteData(this.authPostConfirmationFn);
 
+    // Grant SES permission for new-signup email notifications
+    this.authPostConfirmationFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['ses:SendEmail'],
+        resources: ['*'],
+      })
+    );
+
     // ─── Trade Handler ────────────────────────────────────────────────────
     const tradeHandlerFn = new lambda.Function(this, 'TradeHandlerFn', {
       ...lambdaDefaults,
@@ -730,6 +739,56 @@ export class ApiStack extends cdk.Stack {
       path: '/social/accounts/{id}',
       methods: [apigatewayv2.HttpMethod.DELETE],
       integration: socialAccountsIntegration,
+      authorizer,
+    });
+
+    // ─── Sales Handler ──────────────────────────────────────────────────────
+    const salesHandlerFn = new lambda.Function(this, 'SalesHandlerFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-SalesHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/sales-handler'),
+      description: 'Handles sales pipeline/deal tracking CRUD',
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(salesHandlerFn);
+
+    // Grant SES for Sale-Cue team notifications
+    salesHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['ses:SendEmail'],
+        resources: ['*'],
+      })
+    );
+
+    // Sales routes
+    const salesIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'SalesIntegration',
+      salesHandlerFn
+    );
+    this.httpApi.addRoutes({
+      path: '/sales/deals',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: salesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/sales/deals/{id}',
+      methods: [apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE],
+      integration: salesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/sales/stats',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: salesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/sales/notify',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: salesIntegration,
       authorizer,
     });
 

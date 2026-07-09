@@ -10,6 +10,7 @@ const navItems = [
   { path: '/calendar', label: 'Calendar', icon: '📅', tour: 'calendar' },
   { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
   { path: '/opportunities', label: 'Leads', icon: '🎯', tour: 'leads' },
+  { path: '/sales', label: 'Sales', icon: '💰', tour: 'sales' },
   { path: '/network', label: 'Collaborate', icon: '🤝', tour: 'network' },
   { path: '/appreciations', label: 'Thanks', icon: '🙏', tour: 'thanks' },
   { path: '/settings', label: 'More', icon: '⚙️', tour: 'settings' },

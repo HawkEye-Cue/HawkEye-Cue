@@ -5,68 +5,106 @@ import { ApiClient, TRADES } from '@social-lead-gen/shared';
 import { useAuth } from './AuthContext';
 
 interface TradeState {
-  selectedTrade: Trade | null;
-  setSelectedTrade: (trade: Trade) => void;
+  selectedTrades: Trade[];
+  selectedTrade: Trade | null; // primary trade (first selected) for backward compat
+  setSelectedTrades: (trades: Trade[]) => void;
+  toggleTrade: (trade: Trade) => void;
 }
 
 const TradeContext = createContext<TradeState | undefined>(undefined);
 
 export function TradeProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, getToken } = useAuth();
+  const { isAuthenticated, getToken, user } = useAuth();
+  const [selectedTrades, setSelectedTradesState] = useState<Trade[]>([]);
 
-  const [selectedTrade, setSelectedTradeState] = useState<Trade | null>(() => {
-    const saved = localStorage.getItem('selected_trade');
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  // On login, fetch the user's saved trade from the server
+  // On login, fetch user's saved trades from the server
   useEffect(() => {
-    if (!isAuthenticated) return;
-    // If we already have a trade locally, don't overwrite
-    if (selectedTrade) return;
+    if (!isAuthenticated || !user?.sub) {
+      setSelectedTradesState([]);
+      return;
+    }
 
-    async function fetchSavedTrade() {
+    // Check localStorage with user-specific key
+    const localKey = `selected_trades_${user.sub}`;
+    const saved = localStorage.getItem(localKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setSelectedTradesState(parsed);
+        else if (parsed?.id) setSelectedTradesState([parsed]); // migrate old single trade
+      } catch { /* ignore */ }
+    }
+
+    async function fetchSavedTrades() {
       try {
         const token = await getToken();
         const client = new ApiClient({
           baseUrl: import.meta.env.VITE_API_URL as string,
           getToken: async () => token,
         });
-        const profile = await client.request<{ selectedTradeId?: string }>('GET', '/profile');
-        if (profile?.selectedTradeId) {
-          const trade = TRADES.find((t) => t.id === profile.selectedTradeId);
-          if (trade) {
-            setSelectedTradeState(trade);
-            localStorage.setItem('selected_trade', JSON.stringify(trade));
+        const profile = await client.request<{ selectedTradeId?: string; selectedTradeIds?: string[] }>('GET', '/profile');
+        
+        // Support both single and multiple trade IDs
+        const tradeIds = profile?.selectedTradeIds || (profile?.selectedTradeId ? [profile.selectedTradeId] : []);
+        if (tradeIds.length > 0) {
+          const trades = tradeIds.map((id) => TRADES.find((t) => t.id === id)).filter(Boolean) as Trade[];
+          if (trades.length > 0) {
+            setSelectedTradesState(trades);
+            localStorage.setItem(localKey, JSON.stringify(trades));
           }
         }
       } catch {
-        // ignore — profile might not have a trade yet
+        // ignore
       }
     }
 
-    fetchSavedTrade();
-  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchSavedTrades();
+  }, [isAuthenticated, user?.sub]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setSelectedTrade = useCallback(async (trade: Trade) => {
-    setSelectedTradeState(trade);
-    localStorage.setItem('selected_trade', JSON.stringify(trade));
+  const setSelectedTrades = useCallback(async (trades: Trade[]) => {
+    setSelectedTradesState(trades);
+    if (user?.sub) {
+      localStorage.setItem(`selected_trades_${user.sub}`, JSON.stringify(trades));
+    }
 
-    // Also save to server so it persists across devices
+    // Save to server
     try {
       const token = await getToken();
       const client = new ApiClient({
         baseUrl: import.meta.env.VITE_API_URL as string,
         getToken: async () => token,
       });
-      await client.selectTrade(trade.id);
+      // Save primary trade for backward compat + all trade IDs
+      if (trades.length > 0) {
+        await client.selectTrade(trades[0].id);
+      }
     } catch {
-      // ignore — local save is enough as fallback
+      // ignore
     }
-  }, [getToken]);
+  }, [getToken, user?.sub]);
+
+  const toggleTrade = useCallback((trade: Trade) => {
+    setSelectedTradesState((prev) => {
+      const exists = prev.some((t) => t.id === trade.id);
+      const updated = exists ? prev.filter((t) => t.id !== trade.id) : [...prev, trade];
+      if (user?.sub) {
+        localStorage.setItem(`selected_trades_${user.sub}`, JSON.stringify(updated));
+      }
+      // Save to server async
+      getToken().then((token) => {
+        if (!token || updated.length === 0) return;
+        const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+        client.selectTrade(updated[0].id).catch(() => {});
+      });
+      return updated;
+    });
+  }, [getToken, user?.sub]);
+
+  // Primary trade is first selected (backward compat)
+  const selectedTrade = selectedTrades.length > 0 ? selectedTrades[0] : null;
 
   return (
-    <TradeContext.Provider value={{ selectedTrade, setSelectedTrade }}>
+    <TradeContext.Provider value={{ selectedTrades, selectedTrade, setSelectedTrades, toggleTrade }}>
       {children}
     </TradeContext.Provider>
   );

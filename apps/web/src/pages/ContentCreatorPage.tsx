@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
-import type { SocialPlatform, ScheduledPost } from '@social-lead-gen/shared';
+import type { SocialPlatform, ScheduledPost, Trade } from '@social-lead-gen/shared';
 
 const TONES = ['professional', 'casual', 'educational', 'urgent'] as const;
 
@@ -19,8 +19,9 @@ const PLATFORM_ICONS: Record<string, string> = {
 export default function ContentCreatorPage() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
-  const { selectedTrade } = useTrade();
+  const { selectedTrade, selectedTrades } = useTrade();
   const { events, removeEvent } = useCalendar();
+  const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postType, setPostType] = useState('');
@@ -59,7 +60,7 @@ export default function ContentCreatorPage() {
         postType,
         platforms,
         baseText: baseText || undefined,
-        tradeName: selectedTrade?.name,
+        tradeName: currentTrade?.name,
       });
 
       // The API now returns platformContent with per-platform versions
@@ -103,13 +104,34 @@ export default function ContentCreatorPage() {
   const todayStr = new Date().toISOString().split('T')[0];
   const todayCalendarEvents = events.filter((e) => e.date === todayStr);
 
-  if (!selectedTrade) {
+  // Use activeTrade for content creation, default to first selected
+  const currentTrade = activeTrade || selectedTrade;
+
+  if (!currentTrade) {
     return <p className="text-slate-400">Please select a trade first from the Dashboard.</p>;
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-white">Create Content</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-white">Create Content</h2>
+      </div>
+      {selectedTrades.length > 1 && (
+        <div className="flex justify-center">
+          <select
+            value={currentTrade.id}
+            onChange={(e) => {
+              const t = selectedTrades.find((tr) => tr.id === e.target.value);
+              if (t) setActiveTrade(t);
+            }}
+            className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white font-medium focus:outline-none focus:border-blue-500"
+          >
+            {selectedTrades.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Today's Items - collapsible */}
       <details className="glass-card">
@@ -165,10 +187,10 @@ export default function ContentCreatorPage() {
         <select
           value={postType}
           onChange={(e) => setPostType(e.target.value)}
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-blue-500/50 focus:outline-none transition-colors"
+          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
         >
           <option value="">Select post type...</option>
-          {selectedTrade.postTypes.map((pt) => (
+          {currentTrade.postTypes.map((pt) => (
             <option key={pt} value={pt}>{pt}</option>
           ))}
         </select>

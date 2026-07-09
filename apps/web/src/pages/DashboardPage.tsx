@@ -9,7 +9,7 @@ import TradeSelector from '../components/TradeSelector';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { selectedTrade } = useTrade();
+  const { selectedTrade, selectedTrades } = useTrade();
   const { getToken } = useAuth();
   const { events, toggleComplete } = useCalendar();
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
@@ -30,12 +30,14 @@ export default function DashboardPage() {
 
         // Fetch lead stats
         try {
-          const stats = await client.getOpportunityStats();
+          const statsResult = await client.getOpportunityStats();
+          // Handle both { stats: {...} } wrapper and flat format, and snake_case vs camelCase
+          const s = (statsResult as any)?.stats || statsResult;
           setLeadStats({
-            total: stats.total || 0,
-            new: stats.new || 0,
-            followedUp: stats.followedUp || 0,
-            converted: stats.converted || 0,
+            total: s.total || 0,
+            new: s.new || 0,
+            followedUp: s.followedUp || s.followed_up || 0,
+            converted: s.converted || 0,
           });
         } catch { /* ignore */ }
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
@@ -112,9 +114,13 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col items-center gap-2">
         <h2 className="text-xl font-bold text-white">Dashboard</h2>
-        <span className="text-sm bg-blue-500/15 text-blue-300 px-3 py-1 rounded-full border border-blue-500/20">
-          {selectedTrade.name}
-        </span>
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {selectedTrades.map((trade) => (
+            <span key={trade.id} className="text-xs bg-blue-500/15 text-blue-300 px-2.5 py-1 rounded-full border border-blue-500/20">
+              {trade.name}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Daily Cues */}

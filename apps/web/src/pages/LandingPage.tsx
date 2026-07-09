@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import HawkAnimations from '../components/HawkAnimations';
+import ProductDemo from '../components/ProductDemo';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 
 export default function LandingPage() {
   const containerRef = useScrollReveal();
+  const [showDemo, setShowDemo] = useState(false);
 
   return (
     <div ref={containerRef} className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
@@ -38,9 +41,9 @@ export default function LandingPage() {
             <Link to="/register" className="btn-primary px-8 py-3 text-lg font-bold shadow-lg shadow-blue-600/25 btn-shimmer">
               Get Started Free
             </Link>
-            <a href="#pricing" className="btn-secondary px-8 py-3 text-lg font-medium">
-              View Pricing
-            </a>
+            <button onClick={() => setShowDemo(true)} className="btn-secondary px-8 py-3 text-lg font-medium">
+              ▶ See How It Works
+            </button>
           </div>
           <p className="text-sm text-amber-400 mt-6 animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>🔥 First 5 beta testers get 3 months FREE</p>
         </div>
@@ -302,6 +305,8 @@ export default function LandingPage() {
       <footer className="border-t border-slate-800/50 px-6 py-8 text-center text-sm text-slate-500">
         <p>© 2025 HawkEye-Cue. All rights reserved.</p>
       </footer>
+
+      {showDemo && <ProductDemo onClose={() => setShowDemo(false)} />}
     </div>
   );
 }

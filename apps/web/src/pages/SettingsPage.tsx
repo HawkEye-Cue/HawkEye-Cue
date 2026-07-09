@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import TradeSelector from '../components/TradeSelector';
+import ExtensionTour from '../components/ExtensionTour';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Subscription, SocialAccount } from '@social-lead-gen/shared';
 
@@ -24,6 +25,7 @@ export default function SettingsPage() {
   const [keywordError, setKeywordError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showExtensionTour, setShowExtensionTour] = useState(false);
 
   // Check for checkout success/cancelled in URL params
   const params = new URLSearchParams(window.location.search);
@@ -313,7 +315,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Beta Tester Banner */}
-        <div className="border border-amber-500/50 rounded-xl p-4 mb-3 bg-amber-950/20">
+        <div className="border border-amber-500/50 rounded-xl p-4 mb-4 bg-amber-950/20">
           <div className="flex items-center justify-between mb-2">
             <div>
               <span className="text-lg font-bold text-amber-300">🦅 Beta Tester</span>
@@ -334,100 +336,86 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        {/* Base Tier */}
-        <div className={`border rounded-xl p-4 mb-3 ${currentTier === 'base' ? 'border-green-500/50 bg-green-950/20' : 'border-slate-600'}`}>
-          <div className="flex items-center justify-between mb-2">
-            <div>
+        {/* Pricing Tiers - Side by Side */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Base Tier */}
+          <div className={`border rounded-xl p-4 ${currentTier === 'base' ? 'border-green-500/50 bg-green-950/20' : 'border-slate-600'}`}>
+            <div className="mb-2">
               <span className="text-lg font-bold text-white">Base</span>
-              <span className="text-sm text-slate-400 ml-2">$9.99/mo</span>
+              <p className="text-sm text-slate-400">$9.99/mo</p>
             </div>
-            {currentTier === 'base' && (
-              <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">Active</span>
+            {currentTier === 'base' && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
+            <ul className="text-xs text-slate-300 space-y-1 mb-3">
+              <li>✓ AI post creation</li>
+              <li>✓ Scheduling & calendar</li>
+              <li>✓ Post analytics</li>
+              <li>✓ Trade suggestions</li>
+            </ul>
+            {currentTier !== 'base' && (
+              <button
+                onClick={() => handleUpgrade('base')}
+                disabled={loadingTier !== null || currentTier === 'growth' || currentTier === 'team'}
+                className="w-full bg-slate-600 text-white py-2 rounded-lg text-xs font-medium hover:bg-slate-500 disabled:opacity-50"
+              >
+                {loadingTier === 'base' ? 'Loading…' : 'Subscribe'}
+              </button>
             )}
           </div>
-          <ul className="text-sm text-slate-300 space-y-1.5 mb-3">
-            <li className="flex items-center gap-2">✓ AI-powered post creation</li>
-            <li className="flex items-center gap-2">✓ Post scheduling &amp; calendar</li>
-            <li className="flex items-center gap-2">✓ Track all your posts &amp; analytics</li>
-            <li className="flex items-center gap-2">✓ Trade-specific content suggestions</li>
-          </ul>
-          {currentTier !== 'base' && (
-            <button
-              onClick={() => handleUpgrade('base')}
-              disabled={loadingTier !== null || currentTier === 'growth' || currentTier === 'team'}
-              className="w-full bg-slate-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loadingTier === 'base' ? 'Redirecting to Stripe…' : 'Subscribe to Base'}
-            </button>
-          )}
-        </div>
 
-        {/* Growth Tier */}
-        <div className={`border rounded-xl p-4 mb-3 ${currentTier === 'growth' ? 'border-green-500/50 bg-green-950/20' : 'border-blue-500/50 bg-blue-950/20'}`}>
-          <div className="flex items-center justify-between mb-2">
-            <div>
+          {/* Growth Tier */}
+          <div className={`border rounded-xl p-4 ${currentTier === 'growth' ? 'border-green-500/50 bg-green-950/20' : 'border-blue-500/50 bg-blue-950/20'}`}>
+            <div className="mb-2">
               <span className="text-lg font-bold text-white">Growth</span>
-              <span className="text-sm text-blue-400 ml-2">$19.99/mo</span>
+              <span className="ml-1 bg-blue-600 text-white px-1.5 py-0.5 rounded text-xs">Popular</span>
+              <p className="text-sm text-blue-400">$19.99/mo</p>
             </div>
-            {currentTier === 'growth' ? (
-              <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">Active</span>
-            ) : (
-              <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs">Popular</span>
+            {currentTier === 'growth' && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
+            <ul className="text-xs text-slate-300 space-y-1 mb-3">
+              <li>✓ Everything in Base</li>
+              <li>🦅 Keyword scanning</li>
+              <li>🦅 Hawk icon alerts</li>
+              <li>🦅 Appreciations</li>
+              <li>🦅 Browser extension</li>
+            </ul>
+            {currentTier !== 'growth' && (
+              <button
+                onClick={() => handleUpgrade('growth')}
+                disabled={loadingTier !== null || currentTier === 'team'}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
+              >
+                {loadingTier === 'growth' ? 'Loading…' : 'Upgrade'}
+              </button>
             )}
           </div>
-          <ul className="text-sm text-slate-300 space-y-1.5 mb-3">
-            <li className="flex items-center gap-2">✓ Everything in Base</li>
-            <li className="flex items-center gap-2">🦅 Keyword tracking while scrolling social media</li>
-            <li className="flex items-center gap-2">🦅 Hawk icon alerts on keyword matches</li>
-            <li className="flex items-center gap-2">🦅 Appreciations — track who tags you in posts</li>
-            <li className="flex items-center gap-2">🦅 Connection tracking — see who you've connected with</li>
-            <li className="flex items-center gap-2">🦅 Browser extension for lead detection</li>
-          </ul>
-          {currentTier !== 'growth' && (
-            <button
-              onClick={() => handleUpgrade('growth')}
-              disabled={loadingTier !== null || currentTier === 'team'}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loadingTier === 'growth' ? 'Redirecting to Stripe…' : 'Upgrade to Growth'}
-            </button>
-          )}
-        </div>
 
-        {/* Team Tier */}
-        <div className={`border rounded-xl p-4 ${currentTier === 'team' ? 'border-green-500/50 bg-green-950/20' : 'border-purple-500/50 bg-purple-950/20'}`}>
-          <div className="flex items-center justify-between mb-2">
-            <div>
+          {/* Team Tier */}
+          <div className={`border rounded-xl p-4 ${currentTier === 'team' ? 'border-green-500/50 bg-green-950/20' : 'border-purple-500/50 bg-purple-950/20'}`}>
+            <div className="mb-2">
               <span className="text-lg font-bold text-white">Team</span>
-              <span className="text-sm text-purple-400 ml-2">$79.99/mo</span>
+              <p className="text-sm text-purple-400">$79.99/mo</p>
             </div>
-            {currentTier === 'team' ? (
-              <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">Active</span>
-            ) : (
-              <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs">Team</span>
+            {currentTier === 'team' && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
+            <ul className="text-xs text-slate-300 space-y-1 mb-3">
+              <li>✓ Everything in Growth</li>
+              <li>👥 5 team members</li>
+              <li>👥 Shared leads</li>
+              <li>👥 Team calendar</li>
+              <li>👥 Team analytics</li>
+            </ul>
+            {currentTier !== 'team' && (
+              <button
+                onClick={() => handleUpgrade('team')}
+                disabled={loadingTier !== null}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
+              >
+                {loadingTier === 'team' ? 'Loading…' : 'Upgrade'}
+              </button>
             )}
           </div>
-          <ul className="text-sm text-slate-300 space-y-1.5 mb-3">
-            <li className="flex items-center gap-2">✓ Everything in Growth</li>
-            <li className="flex items-center gap-2">👥 Up to 5 team members on one account</li>
-            <li className="flex items-center gap-2">👥 Shared keyword tracking &amp; leads</li>
-            <li className="flex items-center gap-2">👥 Team collaboration on content</li>
-            <li className="flex items-center gap-2">👥 Shared calendar &amp; scheduling</li>
-            <li className="flex items-center gap-2">👥 Team analytics dashboard</li>
-          </ul>
-          {currentTier !== 'team' && (
-            <button
-              onClick={() => handleUpgrade('team')}
-              disabled={loadingTier !== null}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loadingTier === 'team' ? 'Redirecting to Stripe…' : 'Upgrade to Team'}
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Keyword Tracking */}
+      {/* Keyword Tracking - NOW ABOVE pricing was moved, this stays where subscription was */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">🔑 Keyword Tracking</h3>
         <p className="text-sm text-slate-400 mb-3">Keywords the browser extension and lead scanner watch for.</p>
@@ -540,8 +528,8 @@ export default function SettingsPage() {
           Install the HawkEye-Cue Chrome extension to detect leads while scrolling Facebook, Instagram, LinkedIn, and TikTok.
         </p>
 
-        {/* Desktop: show Chrome Web Store link */}
-        <div className="hidden sm:block">
+        <div className="flex flex-wrap gap-2 mb-3">
+          {/* Desktop: show Chrome Web Store link */}
           <a
             href="https://chromewebstore.google.com/detail/oapbnbiijbhieeefdcfnnmkfcnebalkd"
             target="_blank"
@@ -550,27 +538,26 @@ export default function SettingsPage() {
           >
             ⬇ Install from Chrome Web Store
           </a>
-          <p className="text-xs text-slate-500 mt-2">💡 Chrome may show a safety warning — this is normal for new extensions. Click "Continue to install" to proceed.</p>
+          <button
+            onClick={() => setShowExtensionTour(true)}
+            className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            📖 How to Install
+          </button>
         </div>
 
-        {/* Mobile: show instructions to install on desktop */}
-        <div className="sm:hidden">
-          <a
-            href="https://chromewebstore.google.com/detail/oapbnbiijbhieeefdcfnnmkfcnebalkd"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-gradient-to-r from-amber-500 to-amber-600 text-black px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 mb-3"
-          >
-            View in Chrome Web Store
-          </a>
-          <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700">
-            <p className="text-sm text-slate-300 mb-2">📱 You're on mobile</p>
-            <p className="text-xs text-slate-400">
-              The browser extension works on desktop Chrome. Open the link above on your computer to install it.
-            </p>
-          </div>
+        <p className="text-xs text-slate-500">💡 Chrome may show a safety warning — this is normal for new extensions. Click "Continue to install" to proceed.</p>
+
+        {/* Mobile note */}
+        <div className="sm:hidden mt-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+          <p className="text-sm text-slate-300 mb-1">📱 You're on mobile</p>
+          <p className="text-xs text-slate-400">
+            The browser extension works on desktop Chrome. Open the link above on your computer to install it.
+          </p>
         </div>
       </div>
+
+      {showExtensionTour && <ExtensionTour onClose={() => setShowExtensionTour(false)} />}
 
       {/* Delete Account */}
       <div className="glass-card border-red-500/20">

@@ -1,5 +1,4 @@
 export default function HawkAnimations() {
-  // Local hawk image - save your hawk photo to apps/web/public/hawk.jpg
   const hawkImage = '/hawk.jpg';
 
   return (

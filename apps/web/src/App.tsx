@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ConfirmPage from './pages/ConfirmPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import OnboardingPage from './pages/OnboardingPage';
 import DashboardPage from './pages/DashboardPage';
 import ContentCreatorPage from './pages/ContentCreatorPage';
 import CalendarPage from './pages/CalendarPage';
@@ -30,6 +31,20 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function OnboardingGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/landing" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -38,6 +53,14 @@ export default function App() {
       <Route path="/confirm" element={<ConfirmPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/landing" element={<LandingPage />} />
+      <Route
+        path="/onboarding"
+        element={
+          <OnboardingGuard>
+            <OnboardingPage />
+          </OnboardingGuard>
+        }
+      />
       <Route
         path="/*"
         element={

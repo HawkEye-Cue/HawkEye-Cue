@@ -61,22 +61,47 @@ async function showDashboard() {
   loginView.style.display = 'none';
   dashboardView.style.display = 'block';
 
-  // Load stats
-  chrome.runtime.sendMessage({ type: 'GET_STATS' }, (response) => {
-    if (response) {
-      document.getElementById('leads-count').textContent = response.leadsFound || 0;
-      document.getElementById('appreciations-count').textContent = response.appreciations || 0;
+  const { authToken } = await chrome.storage.local.get(['authToken']);
+  if (!authToken) return;
+
+  // Load stats directly
+  try {
+    const [oppRes, appRes] = await Promise.all([
+      fetch(`${API_BASE}/opportunities/stats`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+      fetch(`${API_BASE}/appreciations`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+    ]);
+    if (oppRes.ok) {
+      const stats = await oppRes.json();
+      document.getElementById('leads-count').textContent = stats.total || 0;
     }
-  });
+    if (appRes.ok) {
+      const appData = await appRes.json();
+      document.getElementById('appreciations-count').textContent = (appData.items || []).length;
+    }
+  } catch { /* ignore */ }
 
   // Load keywords info
-  chrome.runtime.sendMessage({ type: 'GET_KEYWORDS' }, (response) => {
-    const count = response?.keywords?.length || 0;
-    document.getElementById('keywords-info').textContent =
-      count > 0
-        ? `Tracking ${count} keyword${count !== 1 ? 's' : ''}`
-        : 'No keywords set up yet — add them in Settings';
-  });
+  const { authToken: token } = await chrome.storage.local.get(['authToken']);
+  if (token) {
+    try {
+      const response = await fetch(`${API_BASE}/keywords`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const keywords = (Array.isArray(data) ? data : data.keywords || []).map((k) => k.keyword || k);
+        await chrome.storage.local.set({ keywords, keywordsUpdatedAt: Date.now() });
+        document.getElementById('keywords-info').textContent =
+          keywords.length > 0
+            ? `Tracking ${keywords.length} keyword${keywords.length !== 1 ? 's' : ''}`
+            : 'No keywords set up yet — add them in Settings';
+      } else {
+        document.getElementById('keywords-info').textContent = 'Failed to load keywords';
+      }
+    } catch (e) {
+      document.getElementById('keywords-info').textContent = 'Error loading keywords';
+    }
+  }
 }
 
 function showLogin() {

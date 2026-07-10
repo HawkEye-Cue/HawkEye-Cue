@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTrade } from '../contexts/TradeContext';
 import { ApiClient } from '@social-lead-gen/shared';
 
 interface Deal {
@@ -26,15 +27,252 @@ const STAGES = [
   { id: 'lost', label: 'Lost', color: 'bg-red-500/20 border-red-500/30 text-red-300' },
 ];
 
-const POLICY_TYPES = [
-  'Home', 'Auto', 'Life', 'Commercial', 'Motorcycle', 'Trailer',
-  'Boat', 'Umbrella', 'Renters', 'Condo', 'Flood', 'Bundle', 'Other',
-];
+// Trade-specific deal type configurations
+interface TradeConfig {
+  dealTypes: string[];
+  dealTypeLabel: string;  // e.g. "Policy Type", "Property Type", "Service Type"
+  valueLabel: string;     // e.g. "Premium", "Sale Price", "Job Value"
+}
+
+const TRADE_CONFIGS: Record<string, TradeConfig> = {
+  'insurance-agent': {
+    dealTypes: ['Home', 'Auto', 'Life', 'Commercial', 'Motorcycle', 'Trailer', 'Boat', 'Umbrella', 'Renters', 'Condo', 'Flood', 'Bundle', 'Other'],
+    dealTypeLabel: 'Policy Type',
+    valueLabel: 'Premium',
+  },
+  'health-insurance-agent': {
+    dealTypes: ['Individual', 'Family', 'Medicare', 'Medicaid', 'Group/Employer', 'Dental', 'Vision', 'Supplemental', 'Short-Term', 'Other'],
+    dealTypeLabel: 'Plan Type',
+    valueLabel: 'Premium',
+  },
+  'insurance-producer': {
+    dealTypes: ['Commercial General Liability', 'Workers Comp', 'Professional Liability', 'Property', 'Auto Fleet', 'Umbrella', 'Cyber', 'D&O', 'E&O', 'Other'],
+    dealTypeLabel: 'Coverage Type',
+    valueLabel: 'Premium',
+  },
+  'real-estate-agent': {
+    dealTypes: ['Single Family', 'Condo/Townhome', 'Multi-Family', 'Luxury', 'Land/Lot', 'Commercial', 'Investment Property', 'New Construction', 'Foreclosure', 'Other'],
+    dealTypeLabel: 'Property Type',
+    valueLabel: 'Sale Price',
+  },
+  'mortgage-lender': {
+    dealTypes: ['Conventional', 'FHA', 'VA', 'USDA', 'Jumbo', 'Refinance', 'HELOC', 'Reverse Mortgage', 'Construction', 'Other'],
+    dealTypeLabel: 'Loan Type',
+    valueLabel: 'Loan Amount',
+  },
+  'roofing': {
+    dealTypes: ['Shingle Replacement', 'Metal Roof', 'Flat Roof', 'Tile Roof', 'Roof Repair', 'Storm Damage', 'Inspection', 'Gutter Install', 'Skylight', 'Other'],
+    dealTypeLabel: 'Job Type',
+    valueLabel: 'Job Value',
+  },
+  'general-contractor': {
+    dealTypes: ['Kitchen Remodel', 'Bathroom Remodel', 'Addition', 'Full Renovation', 'Basement Finish', 'Deck/Patio', 'Commercial Build-Out', 'New Construction', 'Repair', 'Other'],
+    dealTypeLabel: 'Project Type',
+    valueLabel: 'Project Value',
+  },
+  'hvac-technician': {
+    dealTypes: ['AC Install', 'Furnace Install', 'AC Repair', 'Heating Repair', 'Maintenance Plan', 'Ductwork', 'Mini-Split', 'Thermostat', 'Air Quality', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Job Value',
+  },
+  'electrician': {
+    dealTypes: ['Panel Upgrade', 'Rewiring', 'Outlet/Switch Install', 'Lighting', 'Generator Install', 'EV Charger', 'Inspection', 'Commercial', 'Emergency Repair', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Job Value',
+  },
+  'plumber': {
+    dealTypes: ['Pipe Repair', 'Drain Cleaning', 'Water Heater', 'Sewer Line', 'Bathroom Remodel', 'Fixture Install', 'Gas Line', 'Emergency', 'Inspection', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Job Value',
+  },
+  'landscaper': {
+    dealTypes: ['Design & Install', 'Lawn Maintenance', 'Tree Service', 'Irrigation', 'Hardscape', 'Seasonal Cleanup', 'Sod/Turf', 'Garden Bed', 'Lighting', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Contract Value',
+  },
+  'painter': {
+    dealTypes: ['Interior Full', 'Exterior Full', 'Single Room', 'Cabinet Painting', 'Deck Stain', 'Commercial', 'Touch-Up', 'Wallpaper Removal', 'Pressure Wash & Paint', 'Other'],
+    dealTypeLabel: 'Job Type',
+    valueLabel: 'Job Value',
+  },
+  'auto-repair-shop': {
+    dealTypes: ['Engine Repair', 'Brake Service', 'Transmission', 'AC/Heating', 'Electrical', 'Suspension', 'Oil/Maintenance', 'Diagnostic', 'Tire Service', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Invoice Total',
+  },
+  'auto-broker': {
+    dealTypes: ['New Vehicle', 'Used Vehicle', 'Lease', 'Trade-In', 'Fleet Purchase', 'Luxury/Exotic', 'Commercial Vehicle', 'Financing', 'Other'],
+    dealTypeLabel: 'Deal Type',
+    valueLabel: 'Vehicle Price',
+  },
+  'junk-removal': {
+    dealTypes: ['Residential Cleanout', 'Estate Cleanout', 'Construction Debris', 'Appliance Removal', 'Yard Waste', 'Commercial', 'Hoarding', 'Foreclosure', 'Other'],
+    dealTypeLabel: 'Job Type',
+    valueLabel: 'Job Value',
+  },
+  'pool-service': {
+    dealTypes: ['Weekly Maintenance', 'Green Pool Cleanup', 'Equipment Repair', 'Pump/Filter Replace', 'Tile/Surface', 'Opening/Closing', 'Chemical Balance', 'Leak Repair', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Job Value',
+  },
+  'pool-builder': {
+    dealTypes: ['Inground Pool', 'Above Ground Pool', 'Pool Renovation', 'Spa/Hot Tub', 'Pool Deck', 'Water Feature', 'Pool House', 'Fencing', 'Other'],
+    dealTypeLabel: 'Project Type',
+    valueLabel: 'Project Value',
+  },
+  'cosmetologist': {
+    dealTypes: ['Color', 'Cut & Style', 'Balayage/Highlights', 'Extensions', 'Keratin Treatment', 'Bridal', 'Perm/Relaxer', 'Package Deal', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Service Value',
+  },
+  'esthetician': {
+    dealTypes: ['Facial', 'Chemical Peel', 'Microneedling', 'Laser Treatment', 'Waxing Package', 'Acne Program', 'Anti-Aging Package', 'Body Treatment', 'Other'],
+    dealTypeLabel: 'Treatment Type',
+    valueLabel: 'Package Value',
+  },
+  'yoga-teacher': {
+    dealTypes: ['Private Session', 'Group Class', 'Workshop', 'Retreat', 'Monthly Membership', 'Corporate', 'Teacher Training', 'Online Package', 'Other'],
+    dealTypeLabel: 'Offering Type',
+    valueLabel: 'Value',
+  },
+  'flooring-installer': {
+    dealTypes: ['Hardwood', 'Laminate', 'Vinyl Plank', 'Tile', 'Carpet', 'Epoxy', 'Refinishing', 'Commercial', 'Stairs', 'Other'],
+    dealTypeLabel: 'Flooring Type',
+    valueLabel: 'Job Value',
+  },
+  'fence-company': {
+    dealTypes: ['Wood Privacy', 'Chain Link', 'Vinyl', 'Aluminum', 'Iron', 'Farm/Ranch', 'Gate Install', 'Repair', 'Commercial', 'Other'],
+    dealTypeLabel: 'Fence Type',
+    valueLabel: 'Job Value',
+  },
+  'deck-patio-builder': {
+    dealTypes: ['Composite Deck', 'Wood Deck', 'Paver Patio', 'Concrete Patio', 'Pergola', 'Screened Porch', 'Outdoor Kitchen', 'Repair/Resurface', 'Other'],
+    dealTypeLabel: 'Project Type',
+    valueLabel: 'Project Value',
+  },
+  'window-door-installer': {
+    dealTypes: ['Window Replacement', 'Entry Door', 'Patio/Sliding Door', 'Storm Door', 'French Doors', 'Bay/Bow Window', 'Skylight', 'Commercial', 'Other'],
+    dealTypeLabel: 'Product Type',
+    valueLabel: 'Job Value',
+  },
+  'garage-door-company': {
+    dealTypes: ['New Door Install', 'Opener Install', 'Spring Replacement', 'Panel Replacement', 'Full Replacement', 'Commercial Door', 'Maintenance', 'Emergency Repair', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Job Value',
+  },
+  'restoration': {
+    dealTypes: ['Water Damage', 'Fire Damage', 'Mold Remediation', 'Storm Damage', 'Sewage Cleanup', 'Smoke Damage', 'Reconstruction', 'Contents Cleaning', 'Other'],
+    dealTypeLabel: 'Damage Type',
+    valueLabel: 'Job Value',
+  },
+  'pest-control': {
+    dealTypes: ['General Pest', 'Termite Treatment', 'Rodent Control', 'Bed Bugs', 'Mosquito Service', 'Wildlife Removal', 'Commercial', 'Annual Plan', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Contract Value',
+  },
+  'pressure-washer': {
+    dealTypes: ['House Wash', 'Driveway/Sidewalk', 'Deck/Fence', 'Roof Wash', 'Commercial', 'Fleet Wash', 'Gutter Brightening', 'Package Deal', 'Other'],
+    dealTypeLabel: 'Job Type',
+    valueLabel: 'Job Value',
+  },
+  'home-inspector': {
+    dealTypes: ['Buyer Inspection', 'Pre-Listing', 'New Construction', 'Radon Test', 'Mold Inspection', 'Sewer Scope', 'Commercial', '4-Point', 'Wind Mitigation', 'Other'],
+    dealTypeLabel: 'Inspection Type',
+    valueLabel: 'Fee',
+  },
+  'handyman': {
+    dealTypes: ['Repair', 'Assembly', 'Mounting/Install', 'Painting', 'Drywall', 'Plumbing Fix', 'Electrical Fix', 'Odd Jobs', 'Other'],
+    dealTypeLabel: 'Job Type',
+    valueLabel: 'Job Value',
+  },
+  'collision-center': {
+    dealTypes: ['Collision Repair', 'Dent Repair', 'Paint Job', 'Frame Straightening', 'Bumper Repair', 'Glass Replacement', 'Insurance Claim', 'Custom Paint', 'Other'],
+    dealTypeLabel: 'Repair Type',
+    valueLabel: 'Estimate',
+  },
+  'tint-shop': {
+    dealTypes: ['Automotive Tint', 'Residential Tint', 'Commercial Tint', 'Ceramic Package', 'PPF/Clear Bra', 'Windshield Tint', 'Strip & Re-Tint', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Job Value',
+  },
+  'wrap-shop': {
+    dealTypes: ['Full Wrap', 'Partial Wrap', 'Color Change', 'Commercial Fleet', 'Chrome Delete', 'Accents/Graphics', 'Interior Wrap', 'PPF', 'Other'],
+    dealTypeLabel: 'Wrap Type',
+    valueLabel: 'Job Value',
+  },
+  'mobile-mechanic': {
+    dealTypes: ['Brake Service', 'Battery/Starter', 'Oil Change', 'Diagnostic', 'AC Repair', 'Belt/Hose', 'Electrical', 'Fleet Service', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Invoice Total',
+  },
+  'tire-shop': {
+    dealTypes: ['Full Set (4)', 'Pair (2)', 'Single Tire', 'Flat Repair', 'Alignment', 'Rotation/Balance', 'Custom Wheels', 'Commercial Tires', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Invoice Total',
+  },
+  'towing-company': {
+    dealTypes: ['Local Tow', 'Long Distance', 'Flatbed', 'Motorcycle Tow', 'Jump Start', 'Lockout', 'Tire Change', 'Winch-Out', 'Other'],
+    dealTypeLabel: 'Service Type',
+    valueLabel: 'Fee',
+  },
+};
+
+// Default fallback for any trade not explicitly mapped
+const DEFAULT_TRADE_CONFIG: TradeConfig = {
+  dealTypes: ['Service', 'Project', 'Maintenance', 'Consultation', 'Emergency', 'Contract', 'Custom', 'Other'],
+  dealTypeLabel: 'Service Type',
+  valueLabel: 'Value',
+};
 
 export default function SalesPage() {
   const { getToken } = useAuth();
+  const { selectedTrade } = useTrade();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Get trade-specific config
+  const tradeConfig = useMemo(() => {
+    if (!selectedTrade) return DEFAULT_TRADE_CONFIG;
+    return TRADE_CONFIGS[selectedTrade.id] || DEFAULT_TRADE_CONFIG;
+  }, [selectedTrade]);
+
+  // Custom deal types: persisted per trade, starts with trade defaults
+  const dealTypesKey = `hawkeye_deal_types_${selectedTrade?.id || 'default'}`;
+  const [customDealTypes, setCustomDealTypes] = useState<string[]>(() => {
+    const saved = localStorage.getItem(dealTypesKey);
+    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+    return tradeConfig.dealTypes;
+  });
+  const [editingDealTypes, setEditingDealTypes] = useState(false);
+  const [newDealType, setNewDealType] = useState('');
+
+  // Sync when trade changes
+  useEffect(() => {
+    const saved = localStorage.getItem(dealTypesKey);
+    if (saved) { try { setCustomDealTypes(JSON.parse(saved)); return; } catch { /* ignore */ } }
+    setCustomDealTypes(tradeConfig.dealTypes);
+  }, [selectedTrade?.id, tradeConfig.dealTypes, dealTypesKey]);
+
+  function saveDealTypes(types: string[]) {
+    setCustomDealTypes(types);
+    localStorage.setItem(dealTypesKey, JSON.stringify(types));
+  }
+
+  function addDealType() {
+    const trimmed = newDealType.trim();
+    if (!trimmed || customDealTypes.includes(trimmed)) return;
+    saveDealTypes([...customDealTypes, trimmed]);
+    setNewDealType('');
+  }
+
+  function removeDealType(type: string) {
+    saveDealTypes(customDealTypes.filter((t) => t !== type));
+  }
+
+  function resetDealTypes() {
+    saveDealTypes(tradeConfig.dealTypes);
+  }
+
   const [showAdd, setShowAdd] = useState(false);
   const [filter, setFilter] = useState('all');
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
@@ -56,6 +294,7 @@ export default function SalesPage() {
   const [adding, setAdding] = useState(false);
   const [folioFilter, setFolioFilter] = useState('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [teamEmailsText, setTeamEmailsText] = useState('');
 
   async function buildClient() {
     const token = await getToken();
@@ -68,6 +307,15 @@ export default function SalesPage() {
         const client = await buildClient();
         const result = await client.request<{ deals: Deal[] }>('GET', '/sales/deals');
         setDeals(result.deals || []);
+        // Also fetch team emails from server
+        try {
+          const teResult = await client.request<{ emails: string[] }>('GET', '/sales/team-emails');
+          const emails = teResult.emails || [];
+          setTeamEmailsText(emails.join('\n'));
+          localStorage.setItem('hawkeye_team_emails', emails.join('\n'));
+        } catch {
+          setTeamEmailsText(localStorage.getItem('hawkeye_team_emails') || '');
+        }
       } catch { /* ignore */ }
       finally { setLoading(false); }
     }
@@ -122,7 +370,15 @@ export default function SalesPage() {
 
         // Send Sale-Cue email to team
         const deal = deals.find((d) => d.id === dealId);
-        const teamEmails = (localStorage.getItem('hawkeye_team_emails') || '').split('\n').map((e) => e.trim()).filter(Boolean);
+        // Get team emails from both localStorage and server
+        let teamEmails: string[] = [];
+        try {
+          const teResult = await client.request<{ emails: string[] }>('GET', '/sales/team-emails');
+          teamEmails = teResult.emails || [];
+        } catch {
+          // Fallback to localStorage
+          teamEmails = (localStorage.getItem('hawkeye_team_emails') || '').split('\n').map((e: string) => e.trim()).filter(Boolean);
+        }
         if (teamEmails.length > 0 && deal) {
           try {
             await client.request('POST', '/sales/notify', {
@@ -168,7 +424,10 @@ export default function SalesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Sales Tracker</h2>
+        <div>
+          <h2 className="text-xl font-bold text-white">Sales Tracker</h2>
+          {selectedTrade && <p className="text-xs text-amber-400 mt-0.5">{selectedTrade.name}</p>}
+        </div>
         <button
           onClick={() => setShowAdd(!showAdd)}
           className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-500"
@@ -230,12 +489,63 @@ export default function SalesPage() {
         )}
       </div>
 
+      {/* Deal Types Settings */}
+      <div className="glass-card">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-white">🏷️ {tradeConfig.dealTypeLabel}s</p>
+            <p className="text-xs text-slate-400">{customDealTypes.length} types configured</p>
+          </div>
+          <button
+            onClick={() => setEditingDealTypes(!editingDealTypes)}
+            className="text-xs text-blue-400 hover:text-blue-300"
+          >
+            {editingDealTypes ? 'Done' : 'Edit'}
+          </button>
+        </div>
+        {editingDealTypes && (
+          <div className="mt-3 space-y-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newDealType}
+                onChange={(e) => setNewDealType(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDealType(); } }}
+                placeholder={`Add new ${tradeConfig.dealTypeLabel.toLowerCase()}...`}
+                className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+              />
+              <button
+                onClick={addDealType}
+                disabled={!newDealType.trim()}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
+              >
+                +
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {customDealTypes.map((type) => (
+                <span key={type} className="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded-full text-xs text-slate-300">
+                  {type}
+                  <button onClick={() => removeDealType(type)} className="text-red-400 hover:text-red-300 ml-0.5">×</button>
+                </span>
+              ))}
+            </div>
+            <button
+              onClick={resetDealTypes}
+              className="text-xs text-slate-500 hover:text-slate-300"
+            >
+              ↺ Reset to {selectedTrade?.name || 'default'} defaults
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Add Deal Form */}
       {showAdd && (
         <div className="glass-card space-y-3 animate-scale-in">
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contact name *" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
           <div className="flex gap-2">
-            <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Value ($)" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+            <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder={`${tradeConfig.valueLabel} ($)`} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
             <select value={stage} onChange={(e) => setStage(e.target.value)} className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
               {STAGES.filter((s) => s.id !== 'won' && s.id !== 'lost').map((s) => (
                 <option key={s.id} value={s.id}>{s.label}</option>
@@ -243,8 +553,8 @@ export default function SalesPage() {
             </select>
           </div>
           <select value={policyType} onChange={(e) => setPolicyType(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
-            <option value="">Select policy type...</option>
-            {POLICY_TYPES.map((pt) => (
+            <option value="">Select {tradeConfig.dealTypeLabel.toLowerCase()}...</option>
+            {customDealTypes.map((pt) => (
               <option key={pt} value={pt}>{pt}</option>
             ))}
           </select>
@@ -269,10 +579,10 @@ export default function SalesPage() {
             <h3 className="font-bold text-white">Edit Deal</h3>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contact name *" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
             <div className="flex gap-2">
-              <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Value ($)" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+              <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder={`${tradeConfig.valueLabel} ($)`} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
               <select value={policyType} onChange={(e) => setPolicyType(e.target.value)} className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
-                <option value="">Policy type</option>
-                {POLICY_TYPES.map((pt) => <option key={pt} value={pt}>{pt}</option>)}
+                <option value="">{tradeConfig.dealTypeLabel}</option>
+                {customDealTypes.map((pt) => <option key={pt} value={pt}>{pt}</option>)}
               </select>
             </div>
             <div className="flex gap-2">
@@ -520,12 +830,20 @@ export default function SalesPage() {
         <div className="mt-3 space-y-2">
           <p className="text-xs text-slate-400">Add team emails below. When a deal is marked as "Won", everyone on this list gets a Sale-Cue notification email.</p>
           <textarea
-            defaultValue={localStorage.getItem('hawkeye_team_emails') || ''}
-            onBlur={(e) => localStorage.setItem('hawkeye_team_emails', e.target.value)}
+            value={teamEmailsText}
+            onChange={(e) => setTeamEmailsText(e.target.value)}
+            onBlur={async (e) => {
+              const val = e.target.value;
+              localStorage.setItem('hawkeye_team_emails', val);
+              try {
+                const client = await buildClient();
+                await client.request('PUT', '/sales/team-emails', { emails: val.split('\n').map((em: string) => em.trim()).filter(Boolean) });
+              } catch { /* ignore */ }
+            }}
             placeholder="Enter emails, one per line:&#10;team@example.com&#10;agent2@example.com"
             className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20"
           />
-          <p className="text-xs text-slate-500">Emails are saved locally. Sale-Cue emails are sent when you move a deal to "Won".</p>
+          <p className="text-xs text-slate-500">Emails sync to server — works on all devices.</p>
         </div>
       </details>
     </div>

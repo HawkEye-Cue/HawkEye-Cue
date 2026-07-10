@@ -791,6 +791,12 @@ export class ApiStack extends cdk.Stack {
       integration: salesIntegration,
       authorizer,
     });
+    this.httpApi.addRoutes({
+      path: '/sales/team-emails',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
+      integration: salesIntegration,
+      authorizer,
+    });
 
     // ─── Calendar Handler ─────────────────────────────────────────────────
     const calendarHandlerFn = new lambda.Function(this, 'CalendarHandlerFn', {

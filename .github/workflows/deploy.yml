@@ -25,6 +25,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build web app
+        env:
+          VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_CLIENT_ID: ${{ secrets.VITE_COGNITO_CLIENT_ID }}
+          VITE_COGNITO_REGION: ${{ secrets.VITE_COGNITO_REGION }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_MEDIA_BUCKET_URL: ${{ secrets.VITE_MEDIA_BUCKET_URL }}
         run: pnpm --filter @social-lead-gen/web run build
 
       - name: Configure AWS credentials

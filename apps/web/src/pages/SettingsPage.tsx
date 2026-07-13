@@ -648,6 +648,14 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* Contact Us */}
+      <div className="text-center py-4">
+        <p className="text-xs text-slate-500">Need help or have feedback?</p>
+        <a href="mailto:briannafrashier@hawkeyecue.com" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+          📧 Contact Us: briannafrashier@hawkeyecue.com
+        </a>
+      </div>
     </div>
   );
 }

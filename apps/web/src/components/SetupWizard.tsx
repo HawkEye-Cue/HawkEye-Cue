@@ -81,18 +81,20 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     },
   ];
 
-  // Auto-advance when a step is completed
+  // Auto-advance when a step is completed — poll every second for changes
   useEffect(() => {
-    const step = steps[currentStep];
-    if (step && step.checkComplete()) {
-      if (currentStep < steps.length - 1) {
-        setCurrentStep(currentStep + 1);
-      } else {
-        // All done!
-        localStorage.setItem(`hawkeye_setup_complete_${user?.sub}`, 'true');
-        onComplete();
+    const interval = setInterval(() => {
+      const step = steps[currentStep];
+      if (step && step.checkComplete()) {
+        if (currentStep < steps.length - 1) {
+          setCurrentStep(currentStep + 1);
+        } else {
+          localStorage.setItem(`hawkeye_setup_complete_${user?.sub}`, 'true');
+          onComplete();
+        }
       }
-    }
+    }, 1000);
+    return () => clearInterval(interval);
   }, [selectedTrade, location.pathname, currentStep]);
 
   const step = steps[currentStep];

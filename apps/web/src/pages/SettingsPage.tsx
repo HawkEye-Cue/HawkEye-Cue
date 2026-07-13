@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import TradeSelector from '../components/TradeSelector';
@@ -160,6 +161,15 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-white">Settings</h2>
+
+      {/* Team Management Link */}
+      <Link to="/team" className="glass-card flex items-center justify-between hover:bg-white/5 transition-colors">
+        <div>
+          <p className="text-sm font-medium text-white">👥 Team Management</p>
+          <p className="text-xs text-slate-400">Create or manage your team, invite members</p>
+        </div>
+        <span className="text-slate-500">→</span>
+      </Link>
 
       {/* Checkout success/cancel banners */}
       {checkoutStatus === 'success' && (

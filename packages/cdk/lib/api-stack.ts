@@ -835,6 +835,68 @@ export class ApiStack extends cdk.Stack {
       new cdk.aws_events_targets.LambdaFunction(folioRecapFn)
     );
 
+    // ─── Team Handler ─────────────────────────────────────────────────────
+    const teamHandlerFn = new lambda.Function(this, 'TeamHandlerFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-TeamHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/team-handler'),
+      description: 'Handles team creation, invites, member management, and team stats',
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(teamHandlerFn);
+
+    // Grant SES for invite emails
+    teamHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['ses:SendEmail'],
+        resources: ['*'],
+      })
+    );
+
+    // Team routes
+    const teamIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'TeamIntegration',
+      teamHandlerFn
+    );
+    this.httpApi.addRoutes({
+      path: '/team',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/invite',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/accept',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/members/{memberId}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/name',
+      methods: [apigatewayv2.HttpMethod.PUT],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/stats',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: teamIntegration,
+      authorizer,
+    });
+
     // ─── Calendar Handler ─────────────────────────────────────────────────
     const calendarHandlerFn = new lambda.Function(this, 'CalendarHandlerFn', {
       ...lambdaDefaults,

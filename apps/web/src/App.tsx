@@ -12,6 +12,7 @@ import ContentCreatorPage from './pages/ContentCreatorPage';
 import CalendarPage from './pages/CalendarPage';
 import OpportunitiesPage from './pages/OpportunitiesPage';
 import SalesPage from './pages/SalesPage';
+import TeamPage from './pages/TeamPage';
 import NetworkPage from './pages/NetworkPage';
 import AppreciationsPage from './pages/AppreciationsPage';
 import KeywordsPage from './pages/KeywordsPage';
@@ -73,6 +74,7 @@ export default function App() {
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/opportunities" element={<OpportunitiesPage />} />
                 <Route path="/sales" element={<SalesPage />} />
+                <Route path="/team" element={<TeamPage />} />
                 <Route path="/network" element={<NetworkPage />} />
                 <Route path="/appreciations" element={<AppreciationsPage />} />
                 <Route path="/keywords" element={<KeywordsPage />} />

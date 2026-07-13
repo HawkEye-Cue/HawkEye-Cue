@@ -39,6 +39,7 @@ async function handleGetDeals(userId) {
     trade: item.trade || '',
     leadSource: item.leadSource || '',
     leadSourceNote: item.leadSourceNote || '',
+    bundleItems: item.bundleItems || undefined,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   }));
@@ -48,11 +49,16 @@ async function handleGetDeals(userId) {
 
 // POST /sales/deals
 async function handleCreateDeal(userId, body) {
-  const { name, value, stage, policyType, folio, contactName, contactEmail, contactPhone, notes, trade, leadSource, leadSourceNote } = body || {};
+  const { name, value, stage, policyType, folio, contactName, contactEmail, contactPhone, notes, trade, leadSource, leadSourceNote, bundleItems } = body || {};
   if (!name || !name.trim()) return err(400, 'INVALID_INPUT', 'Deal name is required');
 
   const dealId = randomUUID();
   const now = new Date().toISOString();
+
+  // For bundles, auto-sum the value from bundle items
+  const dealValue = (policyType === 'Bundle' && Array.isArray(bundleItems))
+    ? bundleItems.reduce((sum, i) => sum + (parseFloat(i.value) || 0), 0)
+    : (value || 0);
 
   await dynamo.send(new PutCommand({
     TableName: TABLE_NAME,
@@ -61,7 +67,7 @@ async function handleCreateDeal(userId, body) {
       SK: `DEAL#${now}#${dealId}`,
       dealId,
       dealName: name.trim(),
-      dealValue: value || 0,
+      dealValue,
       stage: STAGES.includes(stage) ? stage : 'prospect',
       policyType: policyType || '',
       folio: folio || new Date().toISOString().slice(0, 7),
@@ -72,12 +78,13 @@ async function handleCreateDeal(userId, body) {
       trade: trade || '',
       leadSource: leadSource || '',
       leadSourceNote: leadSourceNote || '',
+      bundleItems: (policyType === 'Bundle' && Array.isArray(bundleItems)) ? bundleItems.filter((i) => i.type && i.value) : undefined,
       createdAt: now,
       updatedAt: now,
     },
   }));
 
-  return ok({ id: dealId, name: name.trim(), value: value || 0, stage: stage || 'prospect', leadSource: leadSource || '', leadSourceNote: leadSourceNote || '', createdAt: now });
+  return ok({ id: dealId, name: name.trim(), value: dealValue, stage: stage || 'prospect', policyType: policyType || '', leadSource: leadSource || '', leadSourceNote: leadSourceNote || '', bundleItems: bundleItems || undefined, createdAt: now });
 }
 
 // PUT /sales/deals/{id}

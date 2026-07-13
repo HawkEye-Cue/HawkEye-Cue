@@ -9,14 +9,15 @@ interface Deal {
   value: number;
   stage: string;
   policyType: string;
-  folio: string; // e.g. "2026-06-18 to 2026-07-17"
+  folio: string;
   contactName: string;
   contactEmail: string;
   contactPhone: string;
   notes: string;
   trade: string;
-  leadSource: string;       // e.g. "Facebook Post", "Cold Call", "Referral"
-  leadSourceNote: string;   // specific detail — the post, the referral name, the call note
+  leadSource: string;
+  leadSourceNote: string;
+  bundleItems?: { type: string; value: number }[];
   createdAt: string;
 }
 
@@ -318,6 +319,7 @@ export default function SalesPage() {
   const [notes, setNotes] = useState('');
   const [leadSource, setLeadSource] = useState('');
   const [leadSourceNote, setLeadSourceNote] = useState('');
+  const [bundleItems, setBundleItems] = useState<{ type: string; value: string }[]>([]);
   const [adding, setAdding] = useState(false);
   const [folioFilter, setFolioFilter] = useState('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -355,8 +357,9 @@ export default function SalesPage() {
     try {
       const client = await buildClient();
       const result = await client.request<Deal>('POST', '/sales/deals', {
-        name: name.trim(), value: parseFloat(value) || 0, stage,
+        name: name.trim(), value: policyType === 'Bundle' ? bundleItems.reduce((s, i) => s + (parseFloat(i.value) || 0), 0) : (parseFloat(value) || 0), stage,
         policyType, folio: (defaultFolioStart && defaultFolioEnd) ? `${defaultFolioStart} to ${defaultFolioEnd}` : '', contactName: name.trim(), contactEmail, contactPhone, notes, leadSource, leadSourceNote,
+        bundleItems: policyType === 'Bundle' ? bundleItems.filter((i) => i.type && i.value) : undefined,
       });
       setDeals([result, ...deals]);
       resetForm();
@@ -432,7 +435,7 @@ export default function SalesPage() {
   function resetForm() {
     setName(''); setValue(''); setStage('prospect'); setPolicyType('');
     setContactName(''); setContactEmail(''); setContactPhone(''); setNotes('');
-    setLeadSource(''); setLeadSourceNote('');
+    setLeadSource(''); setLeadSourceNote(''); setBundleItems([]);
   }
 
   const filtered = (() => {
@@ -587,19 +590,57 @@ export default function SalesPage() {
         <div className="glass-card space-y-3 animate-scale-in">
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contact name *" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
           <div className="flex gap-2">
-            <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder={`${tradeConfig.valueLabel} ($)`} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
-            <select value={stage} onChange={(e) => setStage(e.target.value)} className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+            {policyType !== 'Bundle' && (
+              <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder={`${tradeConfig.valueLabel} ($)`} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+            )}
+            <select value={stage} onChange={(e) => setStage(e.target.value)} className={`px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm ${policyType === 'Bundle' ? 'flex-1' : ''}`}>
               {STAGES.filter((s) => s.id !== 'won' && s.id !== 'lost').map((s) => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
           </div>
-          <select value={policyType} onChange={(e) => setPolicyType(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+          <select value={policyType} onChange={(e) => { setPolicyType(e.target.value); if (e.target.value === 'Bundle' && bundleItems.length === 0) setBundleItems([{ type: '', value: '' }, { type: '', value: '' }]); }} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
             <option value="">Select {tradeConfig.dealTypeLabel.toLowerCase()}...</option>
             {customDealTypes.map((pt) => (
               <option key={pt} value={pt}>{pt}</option>
             ))}
           </select>
+          {policyType === 'Bundle' && (
+            <div className="space-y-2 bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+              <p className="text-xs text-amber-400 font-medium">📦 Bundle Breakdown</p>
+              {bundleItems.map((item, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <select
+                    value={item.type}
+                    onChange={(e) => { const updated = [...bundleItems]; updated[idx].type = e.target.value; setBundleItems(updated); }}
+                    className="flex-1 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                  >
+                    <option value="">Type...</option>
+                    {customDealTypes.filter((t) => t !== 'Bundle').map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <input
+                    type="number"
+                    value={item.value}
+                    onChange={(e) => { const updated = [...bundleItems]; updated[idx].value = e.target.value; setBundleItems(updated); }}
+                    placeholder="$"
+                    className="w-24 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                  />
+                  {bundleItems.length > 2 && (
+                    <button onClick={() => setBundleItems(bundleItems.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 text-sm">×</button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={() => setBundleItems([...bundleItems, { type: '', value: '' }])}
+                className="text-xs text-blue-400 hover:text-blue-300"
+              >
+                + Add another policy to bundle
+              </button>
+              <p className="text-xs text-green-400 font-medium">
+                Bundle Total: ${bundleItems.reduce((s, i) => s + (parseFloat(i.value) || 0), 0).toLocaleString()}
+              </p>
+            </div>
+          )}
           {defaultFolioStart && defaultFolioEnd && (
             <p className="text-xs text-slate-400 bg-slate-800 px-3 py-2 rounded-lg">📅 Folio: {defaultFolioStart} to {defaultFolioEnd}</p>
           )}
@@ -758,6 +799,23 @@ export default function SalesPage() {
                       {deal.leadSourceNote && (
                         <p className="text-xs text-indigo-400/70 mt-0.5">{deal.leadSourceNote}</p>
                       )}
+                    </div>
+                  )}
+
+                  {/* Bundle Breakdown */}
+                  {deal.policyType === 'Bundle' && deal.bundleItems && deal.bundleItems.length > 0 && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                      <p className="text-xs font-medium text-amber-300 mb-1">📦 Bundle Breakdown</p>
+                      {deal.bundleItems.map((item, i) => (
+                        <div key={i} className="flex justify-between text-xs">
+                          <span className="text-slate-300">{item.type}</span>
+                          <span className="text-green-400">${(item.value || 0).toLocaleString()}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between text-xs font-medium mt-1 pt-1 border-t border-amber-500/20">
+                        <span className="text-amber-300">Total</span>
+                        <span className="text-green-400">${deal.bundleItems.reduce((s, i) => s + (i.value || 0), 0).toLocaleString()}</span>
+                      </div>
                     </div>
                   )}
 

@@ -15,8 +15,33 @@ interface Deal {
   contactPhone: string;
   notes: string;
   trade: string;
+  leadSource: string;       // e.g. "Facebook Post", "Cold Call", "Referral"
+  leadSourceNote: string;   // specific detail — the post, the referral name, the call note
   createdAt: string;
 }
+
+const LEAD_SOURCES = [
+  { id: 'facebook-post', label: 'Facebook Post', icon: '📱' },
+  { id: 'instagram-post', label: 'Instagram Post', icon: '📸' },
+  { id: 'linkedin-post', label: 'LinkedIn Post', icon: '💼' },
+  { id: 'tiktok', label: 'TikTok', icon: '🎵' },
+  { id: 'nextdoor', label: 'Nextdoor', icon: '🏘️' },
+  { id: 'cold-call', label: 'Cold Call', icon: '📞' },
+  { id: 'warm-call', label: 'Warm Call', icon: '🤙' },
+  { id: 'referral', label: 'Referral', icon: '🤝' },
+  { id: 'walk-in', label: 'Walk-In', icon: '🚶' },
+  { id: 'website', label: 'Website Inquiry', icon: '🌐' },
+  { id: 'email-campaign', label: 'Email Campaign', icon: '✉️' },
+  { id: 'direct-mail', label: 'Direct Mail', icon: '📬' },
+  { id: 'door-knock', label: 'Door Knock', icon: '🚪' },
+  { id: 'networking-event', label: 'Networking Event', icon: '🎤' },
+  { id: 'google-ad', label: 'Google Ad', icon: '🔍' },
+  { id: 'facebook-ad', label: 'Facebook Ad', icon: '📣' },
+  { id: 'yard-sign', label: 'Yard Sign', icon: '🪧' },
+  { id: 'repeat-client', label: 'Repeat Client', icon: '🔄' },
+  { id: 'hawkeye-lead', label: 'HawkEye-Cue Lead', icon: '🦅' },
+  { id: 'other', label: 'Other', icon: '📌' },
+];
 
 const STAGES = [
   { id: 'prospect', label: 'Prospect', color: 'bg-slate-500/20 border-slate-500/30 text-slate-300' },
@@ -291,6 +316,8 @@ export default function SalesPage() {
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [leadSource, setLeadSource] = useState('');
+  const [leadSourceNote, setLeadSourceNote] = useState('');
   const [adding, setAdding] = useState(false);
   const [folioFilter, setFolioFilter] = useState('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -329,7 +356,7 @@ export default function SalesPage() {
       const client = await buildClient();
       const result = await client.request<Deal>('POST', '/sales/deals', {
         name: name.trim(), value: parseFloat(value) || 0, stage,
-        policyType, folio: (defaultFolioStart && defaultFolioEnd) ? `${defaultFolioStart} to ${defaultFolioEnd}` : '', contactName: name.trim(), contactEmail, contactPhone, notes,
+        policyType, folio: (defaultFolioStart && defaultFolioEnd) ? `${defaultFolioStart} to ${defaultFolioEnd}` : '', contactName: name.trim(), contactEmail, contactPhone, notes, leadSource, leadSourceNote,
       });
       setDeals([result, ...deals]);
       resetForm();
@@ -405,6 +432,7 @@ export default function SalesPage() {
   function resetForm() {
     setName(''); setValue(''); setStage('prospect'); setPolicyType('');
     setContactName(''); setContactEmail(''); setContactPhone(''); setNotes('');
+    setLeadSource(''); setLeadSourceNote('');
   }
 
   const filtered = (() => {
@@ -579,6 +607,15 @@ export default function SalesPage() {
             <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
             <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
           </div>
+          <select value={leadSource} onChange={(e) => setLeadSource(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+            <option value="">Where did this lead come from?</option>
+            {LEAD_SOURCES.map((s) => (
+              <option key={s.id} value={s.id}>{s.icon} {s.label}</option>
+            ))}
+          </select>
+          {leadSource && (
+            <input type="text" value={leadSourceNote} onChange={(e) => setLeadSourceNote(e.target.value)} placeholder={leadSource.includes('post') || leadSource.includes('ad') ? 'Link to the post or ad...' : leadSource === 'referral' ? 'Who referred them?' : leadSource.includes('call') ? 'Call notes — what triggered interest?' : 'Details about the source...'} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+          )}
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-16" />
           <button onClick={handleAdd} disabled={adding || !name.trim()} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50">
             {adding ? 'Saving...' : 'Save Deal'}
@@ -603,6 +640,15 @@ export default function SalesPage() {
               <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
               <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
             </div>
+            <select value={leadSource} onChange={(e) => setLeadSource(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+              <option value="">Lead source...</option>
+              {LEAD_SOURCES.map((s) => (
+                <option key={s.id} value={s.id}>{s.icon} {s.label}</option>
+              ))}
+            </select>
+            {leadSource && (
+              <input type="text" value={leadSourceNote} onChange={(e) => setLeadSourceNote(e.target.value)} placeholder="Source details..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+            )}
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm resize-none h-16" />
             <div className="flex gap-2">
               <button
@@ -617,8 +663,10 @@ export default function SalesPage() {
                       contactEmail,
                       contactPhone,
                       notes,
+                      leadSource,
+                      leadSourceNote,
                     });
-                    setDeals(deals.map((d) => d.id === editingDeal.id ? { ...d, name: name.trim(), value: parseFloat(value) || 0, policyType, contactEmail, contactPhone, notes } : d));
+                    setDeals(deals.map((d) => d.id === editingDeal.id ? { ...d, name: name.trim(), value: parseFloat(value) || 0, policyType, contactEmail, contactPhone, notes, leadSource, leadSourceNote } : d));
                     setEditingDeal(null);
                     resetForm();
                   } catch { /* ignore */ }
@@ -700,6 +748,19 @@ export default function SalesPage() {
                       {deal.contactEmail && <p>✉️ {deal.contactEmail}</p>}
                     </div>
                   )}
+
+                  {/* Lead Source Attribution */}
+                  {deal.leadSource && (
+                    <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-2">
+                      <p className="text-xs font-medium text-indigo-300">
+                        📍 Source: {LEAD_SOURCES.find((s) => s.id === deal.leadSource)?.icon} {LEAD_SOURCES.find((s) => s.id === deal.leadSource)?.label || deal.leadSource}
+                      </p>
+                      {deal.leadSourceNote && (
+                        <p className="text-xs text-indigo-400/70 mt-0.5">{deal.leadSourceNote}</p>
+                      )}
+                    </div>
+                  )}
+
                   {deal.notes && <p className="text-xs text-slate-500 italic">{deal.notes}</p>}
 
                   {/* Stage buttons */}
@@ -775,6 +836,8 @@ export default function SalesPage() {
                         setContactPhone(deal.contactPhone || '');
                         setContactEmail(deal.contactEmail || '');
                         setNotes(deal.notes || '');
+                        setLeadSource(deal.leadSource || '');
+                        setLeadSourceNote(deal.leadSourceNote || '');
                       }}
                       className="text-xs text-blue-400 hover:text-blue-300"
                     >

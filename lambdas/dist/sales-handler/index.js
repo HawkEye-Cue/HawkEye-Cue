@@ -37,6 +37,8 @@ async function handleGetDeals(userId) {
     contactPhone: item.contactPhone || '',
     notes: item.notes || '',
     trade: item.trade || '',
+    leadSource: item.leadSource || '',
+    leadSourceNote: item.leadSourceNote || '',
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   }));
@@ -46,7 +48,7 @@ async function handleGetDeals(userId) {
 
 // POST /sales/deals
 async function handleCreateDeal(userId, body) {
-  const { name, value, stage, policyType, folio, contactName, contactEmail, contactPhone, notes, trade } = body || {};
+  const { name, value, stage, policyType, folio, contactName, contactEmail, contactPhone, notes, trade, leadSource, leadSourceNote } = body || {};
   if (!name || !name.trim()) return err(400, 'INVALID_INPUT', 'Deal name is required');
 
   const dealId = randomUUID();
@@ -68,12 +70,14 @@ async function handleCreateDeal(userId, body) {
       contactPhone: contactPhone || '',
       notes: notes || '',
       trade: trade || '',
+      leadSource: leadSource || '',
+      leadSourceNote: leadSourceNote || '',
       createdAt: now,
       updatedAt: now,
     },
   }));
 
-  return ok({ id: dealId, name: name.trim(), value: value || 0, stage: stage || 'prospect', createdAt: now });
+  return ok({ id: dealId, name: name.trim(), value: value || 0, stage: stage || 'prospect', leadSource: leadSource || '', leadSourceNote: leadSourceNote || '', createdAt: now });
 }
 
 // PUT /sales/deals/{id}
@@ -98,6 +102,8 @@ async function handleUpdateDeal(userId, dealId, body) {
   if (body.contactEmail !== undefined) updates.contactEmail = body.contactEmail;
   if (body.contactPhone !== undefined) updates.contactPhone = body.contactPhone;
   if (body.notes !== undefined) updates.notes = body.notes;
+  if (body.leadSource !== undefined) updates.leadSource = body.leadSource;
+  if (body.leadSourceNote !== undefined) updates.leadSourceNote = body.leadSourceNote;
   updates.updatedAt = new Date().toISOString();
 
   const expressions = Object.keys(updates).map((k) => `#${k} = :${k}`);

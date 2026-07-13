@@ -166,13 +166,29 @@ export default function SettingsPage() {
       <h2 className="text-xl font-bold text-white">Settings</h2>
 
       {/* Team Management Link */}
-      <Link to="/team" className="glass-card flex items-center justify-between hover:bg-white/5 transition-colors">
-        <div>
-          <p className="text-sm font-medium text-white">👥 Team Management</p>
-          <p className="text-xs text-slate-400">Create or manage your team, invite members</p>
+      {currentTier === 'team' ? (
+        <Link to="/team" className="glass-card flex items-center justify-between hover:bg-white/5 transition-colors">
+          <div>
+            <p className="text-sm font-medium text-white">👥 Team Management</p>
+            <p className="text-xs text-slate-400">Manage your team, invite members, view stats</p>
+          </div>
+          <span className="text-slate-500">→</span>
+        </Link>
+      ) : (
+        <div className="glass-card flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-white">👥 Team Management</p>
+            <p className="text-xs text-slate-400">Invite up to 5 members, shared stats & leaderboard</p>
+          </div>
+          <button
+            onClick={() => handleUpgrade('team')}
+            disabled={loadingTier !== null}
+            className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
+          >
+            {loadingTier === 'team' ? '...' : 'Upgrade'}
+          </button>
         </div>
-        <span className="text-slate-500">→</span>
-      </Link>
+      )}
 
       {/* Checkout success/cancel banners */}
       {checkoutStatus === 'success' && (

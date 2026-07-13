@@ -72,8 +72,8 @@ const TRADE_CONFIGS: Record<string, TradeConfig> = {
     valueLabel: 'Premium',
   },
   'insurance-producer': {
-    dealTypes: ['Commercial General Liability', 'Workers Comp', 'Professional Liability', 'Property', 'Auto Fleet', 'Umbrella', 'Cyber', 'D&O', 'E&O', 'Other'],
-    dealTypeLabel: 'Coverage Type',
+    dealTypes: ['Home', 'Auto', 'Life', 'Commercial', 'Motorcycle', 'Trailer', 'Boat', 'Umbrella', 'Renters', 'Condo', 'Flood', 'Bundle', 'Other'],
+    dealTypeLabel: 'Policy Type',
     valueLabel: 'Premium',
   },
   'real-estate-agent': {

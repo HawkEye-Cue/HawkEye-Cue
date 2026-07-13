@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import TradeSelector from '../components/TradeSelector';
 import ExtensionTour from '../components/ExtensionTour';
+import LeadDetectionExplainer from '../components/LeadDetectionExplainer';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Subscription, SocialAccount } from '@social-lead-gen/shared';
 
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showExtensionTour, setShowExtensionTour] = useState(false);
+  const [showLeadExplainer, setShowLeadExplainer] = useState(false);
 
   // Check for checkout success/cancelled in URL params
   const params = new URLSearchParams(window.location.search);
@@ -541,6 +543,9 @@ export default function SettingsPage() {
         <p className="text-sm text-slate-400 mb-3">
           Install the HawkEye-Cue Chrome extension to detect leads while scrolling Facebook, Instagram, LinkedIn, and TikTok.
         </p>
+        <button onClick={() => setShowLeadExplainer(true)} className="text-xs text-blue-400 hover:text-blue-300 mb-3 block">
+          🔍 How does lead detection work? (Extension vs Connected Accounts)
+        </button>
 
         <div className="flex flex-wrap gap-2 mb-3">
           {/* Desktop: show Chrome Web Store link */}
@@ -572,6 +577,7 @@ export default function SettingsPage() {
       </div>
 
       {showExtensionTour && <ExtensionTour onClose={() => setShowExtensionTour(false)} />}
+      {showLeadExplainer && <LeadDetectionExplainer onClose={() => setShowLeadExplainer(false)} />}
 
       {/* Delete Account */}
       <div className="glass-card border-red-500/20">

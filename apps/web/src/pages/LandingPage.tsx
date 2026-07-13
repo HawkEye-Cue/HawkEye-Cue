@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import HawkAnimations from '../components/HawkAnimations';
 import ProductDemo from '../components/ProductDemo';
+import LeadDetectionExplainer from '../components/LeadDetectionExplainer';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 
 export default function LandingPage() {
   const containerRef = useScrollReveal();
   const [showDemo, setShowDemo] = useState(false);
+  const [showExplainer, setShowExplainer] = useState(false);
 
   return (
     <div ref={containerRef} className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
@@ -97,6 +99,7 @@ export default function LandingPage() {
               <div className="text-2xl mb-3">🦅</div>
               <h4 className="font-bold text-lg mb-2">Keyword Tracking</h4>
               <p className="text-sm text-slate-400">Our hawk icon appears when someone posts about needing your services. Detect leads while you scroll social media.</p>
+              <button onClick={() => setShowExplainer(true)} className="text-xs text-blue-400 hover:text-blue-300 mt-2">How does this work? →</button>
             </div>
             <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
               <div className="text-2xl mb-3">🙏</div>
@@ -263,6 +266,7 @@ export default function LandingPage() {
       </footer>
 
       {showDemo && <ProductDemo onClose={() => setShowDemo(false)} />}
+      {showExplainer && <LeadDetectionExplainer onClose={() => setShowExplainer(false)} />}
     </div>
   );
 }

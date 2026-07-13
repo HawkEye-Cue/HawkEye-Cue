@@ -45,7 +45,7 @@ export default function LandingPage() {
               ▶ See How It Works
             </button>
           </div>
-          <p className="text-sm text-amber-400 mt-6 animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>🦅 Built for trade professionals who want to grow</p>
+          <p className="text-sm text-amber-400 mt-6 animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>🦅 The CRM that connects your social media directly to your sales</p>
         </div>
       </section>
 
@@ -70,6 +70,11 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Tagline */}
+      <div className="text-center px-6 py-10 reveal">
+        <p className="text-xl md:text-2xl font-semibold text-slate-200 italic max-w-xl mx-auto">"Know what to post tomorrow because you know what made you money yesterday."</p>
+      </div>
 
       {/* Features */}
       <section className="px-6 py-20 relative">
@@ -116,6 +121,11 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Tagline */}
+      <div className="text-center px-6 py-10 reveal">
+        <p className="text-xl md:text-2xl font-semibold text-slate-200 italic max-w-xl mx-auto">"Know exactly what pipeline makes you the most money."</p>
+      </div>
 
       {/* Pricing */}
       <section id="pricing" className="px-6 py-20 max-w-2xl mx-auto">
@@ -192,6 +202,11 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Tagline */}
+      <div className="text-center px-6 py-10 reveal">
+        <p className="text-xl md:text-2xl font-semibold text-slate-200 italic max-w-xl mx-auto">"You already know how many sales you made. HawkEye-Cue tells you exactly why you made them."</p>
+      </div>
 
       {/* Testimonials */}
       <section className="px-6 py-20 relative">

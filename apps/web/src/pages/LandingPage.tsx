@@ -128,11 +128,11 @@ export default function LandingPage() {
       </div>
 
       {/* Pricing */}
-      <section id="pricing" className="px-6 py-20 max-w-2xl mx-auto">
+      <section id="pricing" className="px-6 py-20 max-w-5xl mx-auto">
         <h3 className="text-2xl font-bold text-center mb-4 reveal">Pricing</h3>
         <p className="text-center text-slate-400 mb-12 reveal">Simple plans that grow with your business</p>
 
-        <div className="grid md:grid-cols-3 gap-6 stagger-children">
+        <div className="grid md:grid-cols-3 gap-6 stagger-children items-start">
           {/* Base */}
           <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
             <h4 className="text-xl font-bold text-white">Base</h4>
@@ -172,33 +172,26 @@ export default function LandingPage() {
               Upgrade to Growth
             </Link>
           </div>
-        </div>
 
-        {/* Team Tier */}
-        <div className="glass-card-strong gradient-border mt-6 relative reveal hover:-translate-y-1 transition-transform duration-300">
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-purple-500/20">FOR TEAMS</div>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h4 className="text-xl font-bold text-white mt-2">Team</h4>
-              <div className="mt-1 mb-2">
-                <span className="text-3xl font-extrabold text-white">$79.99</span>
-                <span className="text-slate-400 text-sm">/mo</span>
-              </div>
-              <p className="text-sm text-slate-400">Up to 5 team members on one account</p>
+          {/* Team */}
+          <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-purple-500/20">FOR TEAMS</div>
+            <h4 className="text-xl font-bold text-white mt-2">Team</h4>
+            <div className="mt-2 mb-4">
+              <span className="text-3xl font-extrabold text-white">$79.99</span>
+              <span className="text-slate-400 text-sm">/mo</span>
             </div>
-            <ul className="text-sm text-slate-300 space-y-2 flex-1 md:px-8">
+            <ul className="text-sm text-slate-300 space-y-2 mb-6">
               <li>✓ Everything in Growth</li>
-              <li>👥 Up to 5 team members on one account</li>
+              <li>👥 Up to 5 team members</li>
               <li>👥 Shared keyword tracking & leads</li>
               <li>👥 Team collaboration on content</li>
               <li>👥 Shared calendar & scheduling</li>
               <li>👥 Team analytics dashboard</li>
             </ul>
-            <div className="md:w-40">
-              <Link to="/register" className="block text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
-                Get Team Plan
-              </Link>
-            </div>
+            <Link to="/register" className="block text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2.5 rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
+              Get Team Plan
+            </Link>
           </div>
         </div>
       </section>

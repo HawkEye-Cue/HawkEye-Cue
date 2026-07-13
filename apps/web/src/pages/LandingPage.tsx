@@ -262,7 +262,11 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-800/50 px-6 py-8 text-center text-sm text-slate-500">
-        <p>© 2025 HawkEye-Cue. All rights reserved.</p>
+        <p>© 2026 HawkEye-Cue. All rights reserved.</p>
+        <div className="flex justify-center gap-4 mt-2">
+          <a href="/privacy.html" className="text-slate-500 hover:text-slate-300 transition-colors">Privacy Policy</a>
+          <a href="mailto:briannafrashier@hawkeyecue.com" className="text-slate-500 hover:text-slate-300 transition-colors">Contact Us</a>
+        </div>
       </footer>
 
       {showDemo && <ProductDemo onClose={() => setShowDemo(false)} />}

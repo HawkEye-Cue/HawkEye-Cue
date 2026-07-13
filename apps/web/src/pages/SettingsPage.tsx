@@ -343,28 +343,6 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Beta Tester Banner */}
-        <div className="border border-amber-500/50 rounded-xl p-4 mb-4 bg-amber-950/20">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <span className="text-lg font-bold text-amber-300">🦅 Beta Tester</span>
-              <span className="text-sm text-amber-400 ml-2">FREE for 3 months</span>
-            </div>
-            <span className="bg-amber-600 text-white px-2 py-1 rounded text-xs font-bold">LIMITED</span>
-          </div>
-          <p className="text-sm text-slate-300 mb-2">
-            First 5 users get full Growth access completely free for 3 months. Help us shape the product!
-          </p>
-          <p className="text-xs text-amber-400 mb-3">⚡ Spots remaining: 5/5</p>
-          <button
-            onClick={() => handleUpgrade('growth')}
-            disabled={loadingTier !== null || currentTier === 'growth' || currentTier === 'team'}
-            className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-black py-2 rounded-lg text-sm font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {currentTier === 'growth' ? '✓ Current Plan' : loadingTier === 'growth' ? 'Redirecting to Stripe…' : 'Claim Beta Tester Spot'}
-          </button>
-        </div>
-
         {/* Pricing Tiers - Side by Side */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Base Tier */}

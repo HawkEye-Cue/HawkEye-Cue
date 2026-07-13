@@ -24,6 +24,7 @@ export default function ContentCreatorPage() {
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
+  const [postLength, setPostLength] = useState<'short' | 'medium' | 'long'>('medium');
   const [postType, setPostType] = useState('');
   const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
   const [baseText, setBaseText] = useState('');
@@ -58,6 +59,7 @@ export default function ContentCreatorPage() {
       const result = await client.generateContent({
         tone,
         postType,
+        postLength,
         platforms,
         baseText: baseText || undefined,
         tradeName: currentTrade?.name,
@@ -179,6 +181,26 @@ export default function ContentCreatorPage() {
               }`}
             >
               {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass-card">
+        <label className="block text-sm font-medium text-slate-300 mb-2">Post Length</label>
+        <div className="flex gap-2">
+          {([['short', '📝 Short', '1-2 sentences'], ['medium', '📄 Medium', '3-5 sentences'], ['long', '📰 Long', 'Full paragraph']] as const).map(([id, label, desc]) => (
+            <button
+              key={id}
+              onClick={() => setPostLength(id)}
+              className={`flex-1 px-3 py-2 rounded-lg text-center transition-all duration-200 ${
+                postLength === id
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              <p className="text-sm font-medium">{label}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
             </button>
           ))}
         </div>

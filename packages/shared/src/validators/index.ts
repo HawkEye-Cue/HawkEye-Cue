@@ -73,6 +73,7 @@ export function validatePassword(password: string): {
 export const contentGenerationRequestSchema = z.object({
   tone: toneSchema,
   postType: z.string().min(1, 'Post type is required'),
+  postLength: z.enum(['short', 'medium', 'long']).optional(),
   platforms: z
     .array(socialPlatformSchema)
     .min(1, 'At least one platform must be selected'),

@@ -798,6 +798,37 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
 
+    // ─── Folio Recap (EventBridge scheduled, runs daily at 8am UTC) ───────
+    const folioRecapFn = new lambda.Function(this, 'FolioRecapFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-FolioRecap',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/folio-recap'),
+      description: 'Monthly folio recap — sends team email with last month stats, top pipeline, top employee',
+      timeout: cdk.Duration.minutes(2),
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(folioRecapFn);
+
+    // Grant SES for sending recap emails
+    folioRecapFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['ses:SendEmail'],
+        resources: ['*'],
+      })
+    );
+
+    // EventBridge rule: run daily at 8:00 AM UTC (2:00 AM MDT)
+    const folioRecapRule = new cdk.aws_events.Rule(this, 'FolioRecapSchedule', {
+      ruleName: 'SocialLeadGen-FolioRecapSchedule',
+      schedule: cdk.aws_events.Schedule.cron({ minute: '0', hour: '8', day: '1', month: '*' }),
+      description: 'Triggers folio recap on the 1st of each month at 8:00 AM UTC',
+    });
+    folioRecapRule.addTarget(
+      new cdk.aws_events_targets.LambdaFunction(folioRecapFn)
+    );
+
     // ─── Calendar Handler ─────────────────────────────────────────────────
     const calendarHandlerFn = new lambda.Function(this, 'CalendarHandlerFn', {
       ...lambdaDefaults,

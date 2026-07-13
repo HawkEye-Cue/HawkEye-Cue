@@ -13,7 +13,7 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const { events, addEvent, removeEvent, removeAllByTitle } = useCalendar();
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -124,6 +124,7 @@ export default function CalendarPage() {
       addEvent({ date, title: newEventTitle.trim(), type: newEventType, link: newEventLink.trim() || undefined });
     }
 
+    localStorage.setItem(`hawkeye_first_event_${user?.sub}`, 'true');
     setNewEventTitle('');
     setNewEventLink('');
     setRepeatOption('none');

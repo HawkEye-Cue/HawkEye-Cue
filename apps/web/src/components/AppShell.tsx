@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
+import SetupWizard from './SetupWizard';
 
 const navItems = [
   { path: '/', label: 'Home', icon: '🏠', tour: 'home' },
@@ -23,6 +24,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const key = user?.sub ? `hawkeye_tour_done_${user.sub}` : 'hawkeye_tour_done';
     return !localStorage.getItem(key);
   });
+  const [showSetupWizard, setShowSetupWizard] = useState(() => {
+    const key = user?.sub ? `hawkeye_setup_complete_${user.sub}` : 'hawkeye_setup_complete';
+    return !localStorage.getItem(key);
+  });
 
   function handleTourComplete() {
     const key = user?.sub ? `hawkeye_tour_done_${user.sub}` : 'hawkeye_tour_done';
@@ -34,6 +39,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-slate-950">
       <HawkAnimations />
       {showTour && <GuidedTour onComplete={handleTourComplete} />}
+      {!showTour && showSetupWizard && (
+        <SetupWizard onComplete={() => {
+          const key = user?.sub ? `hawkeye_setup_complete_${user.sub}` : 'hawkeye_setup_complete';
+          localStorage.setItem(key, 'true');
+          setShowSetupWizard(false);
+        }} />
+      )}
 
       {/* Top Bar — glassmorphism */}
       <header className="sticky top-0 z-40 border-b border-white/10 px-3 sm:px-4 py-3 flex flex-col items-center gap-1" style={{ background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>

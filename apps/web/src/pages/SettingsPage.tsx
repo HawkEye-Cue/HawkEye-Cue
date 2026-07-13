@@ -445,6 +445,7 @@ export default function SettingsPage() {
                   const result = await client.addKeyword({ keyword: newKeyword.trim(), tradeId: selectedTrade.id });
                   setKeywords((prev) => [...prev, result]);
                   setNewKeyword('');
+                  localStorage.setItem(`hawkeye_keywords_added_${user?.sub}`, 'true');
                 } catch (err) {
                   setKeywordError(err instanceof Error ? err.message : 'Failed to add');
                 } finally { setAddingKeyword(false); }

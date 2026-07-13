@@ -251,7 +251,7 @@ const DEFAULT_TRADE_CONFIG: TradeConfig = {
 };
 
 export default function SalesPage() {
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const { selectedTrade } = useTrade();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -362,6 +362,7 @@ export default function SalesPage() {
         bundleItems: policyType === 'Bundle' ? bundleItems.filter((i) => i.type && i.value) : undefined,
       });
       setDeals([result, ...deals]);
+      localStorage.setItem(`hawkeye_first_deal_${user?.sub}`, 'true');
       resetForm();
       setShowAdd(false);
     } catch { /* ignore */ }

@@ -17,7 +17,7 @@ const PLATFORM_ICONS: Record<string, string> = {
 };
 
 export default function ContentCreatorPage() {
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
   const { events, removeEvent } = useCalendar();
@@ -66,6 +66,7 @@ export default function ContentCreatorPage() {
       // The API now returns platformContent with per-platform versions
       if (result.platformContent) {
         setPlatformContent(result.platformContent as Record<string, string>);
+        localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
       } else if (result.content) {
         // Fallback for old format
         const fallback: Record<string, string> = {};
@@ -73,6 +74,7 @@ export default function ContentCreatorPage() {
           fallback[p] = result.content;
         }
         setPlatformContent(fallback);
+        localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to generate content. Please try again.';

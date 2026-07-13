@@ -475,14 +475,28 @@ export default function SalesPage() {
             <input
               type="date"
               value={defaultFolioStart}
-              onChange={(e) => { setDefaultFolioStart(e.target.value); localStorage.setItem('hawkeye_folio_start', e.target.value); }}
+              onChange={(e) => {
+                setDefaultFolioStart(e.target.value);
+                localStorage.setItem('hawkeye_folio_start', e.target.value);
+                // Sync to server for folio recap notifications
+                buildClient().then((client) => {
+                  client.request('PUT', '/sales/folio-config', { folioStart: e.target.value, folioEnd: defaultFolioEnd });
+                }).catch(() => {});
+              }}
               className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
             />
             <span className="text-slate-500 text-xs">to</span>
             <input
               type="date"
               value={defaultFolioEnd}
-              onChange={(e) => { setDefaultFolioEnd(e.target.value); localStorage.setItem('hawkeye_folio_end', e.target.value); }}
+              onChange={(e) => {
+                setDefaultFolioEnd(e.target.value);
+                localStorage.setItem('hawkeye_folio_end', e.target.value);
+                // Sync to server for folio recap notifications
+                buildClient().then((client) => {
+                  client.request('PUT', '/sales/folio-config', { folioStart: defaultFolioStart, folioEnd: e.target.value });
+                }).catch(() => {});
+              }}
               className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
             />
           </div>

@@ -11,52 +11,38 @@ const ADMIN_EMAIL = 'notifications@hawkeyecue.com';
 
 /**
  * Folio Recap Lambda — runs daily via EventBridge.
- * On the first day of a new folio period, sends a recap email to team members
- * with: total premium/value sold last month, top performing pipeline type,
- * and top performing team member (by won deal value).
+ * Checks each user's folio end date. If today is the day AFTER their
+ * folio ended (i.e. the first day of their new folio), sends a recap
+ * email to their team with last folio's stats.
  */
 
-function getLastMonthFolio() {
-  const now = new Date();
-  // Last month range: first day of last month to last day of last month
-  const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const month = now.getMonth() === 0 ? 12 : now.getMonth(); // 1-indexed
-  const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
-  const lastDay = new Date(year, month, 0).toISOString().slice(0, 10);
-  return { firstDay, lastDay, label: `${firstDay} to ${lastDay}` };
+function getTodayStr() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-function isFolioFirstDay() {
-  const now = new Date();
-  return now.getDate() === 1;
+function getYesterdayStr() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
-async function getAllUsersWithDeals() {
-  // Scan for all users who have team emails configured
-  const users = [];
+async function getAllFolioConfigs() {
+  // Scan for all users who have a FOLIO_CONFIG record
+  const configs = [];
   let lastKey = undefined;
 
   do {
     const result = await dynamo.send(new ScanCommand({
       TableName: TABLE_NAME,
       FilterExpression: 'SK = :sk',
-      ExpressionAttributeValues: { ':sk': 'TEAM_EMAILS' },
+      ExpressionAttributeValues: { ':sk': 'FOLIO_CONFIG' },
       ExclusiveStartKey: lastKey,
     }));
-    users.push(...(result.Items || []));
+    configs.push(...(result.Items || []));
     lastKey = result.LastEvaluatedKey;
   } while (lastKey);
 
-  return users;
-}
-
-async function getDealsForUser(userId) {
-  const result = await dynamo.send(new QueryCommand({
-    TableName: TABLE_NAME,
-    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'DEAL#' },
-  }));
-  return result.Items || [];
+  return configs;
 }
 
 async function getTeamEmails(userId) {
@@ -69,74 +55,31 @@ async function getTeamEmails(userId) {
   return item?.emails || [];
 }
 
-function buildRecapEmail(stats, folioLabel) {
-  const { totalSold, wonDeals, topPipelineType, topPipelineValue, topEmployee, topEmployeeValue } = stats;
-
-  // Build a simple ASCII bar chart for pipeline types
-  const pipelineChart = stats.pipelineBreakdown
-    .slice(0, 5)
-    .map((p) => {
-      const barLength = Math.max(1, Math.round((p.value / (stats.totalSold || 1)) * 20));
-      const bar = '█'.repeat(barLength);
-      return `  ${p.type.padEnd(20)} ${bar} $${p.value.toLocaleString()} (${p.count} deals)`;
-    })
-    .join('\n');
-
-  // Build team performance chart
-  const teamChart = stats.teamBreakdown
-    .slice(0, 5)
-    .map((t) => {
-      const barLength = Math.max(1, Math.round((t.value / (stats.totalSold || 1)) * 20));
-      const bar = '█'.repeat(barLength);
-      return `  ${t.name.padEnd(20)} ${bar} $${t.value.toLocaleString()} (${t.count} won)`;
-    })
-    .join('\n');
-
-  const subject = `🦅 Folio Recap: $${totalSold.toLocaleString()} sold last month!`;
-
-  const body = `
-🦅 HawkEye-Cue — Monthly Folio Recap
-${'═'.repeat(45)}
-
-📅 Folio Period: ${folioLabel}
-💰 Total Sold: $${totalSold.toLocaleString()}
-🎯 Deals Won: ${wonDeals}
-
-${'─'.repeat(45)}
-🏆 TOP PERFORMING PIPELINE
-${'─'.repeat(45)}
-${pipelineChart || '  No data yet'}
-
-  ⭐ #1: ${topPipelineType || 'N/A'} — $${(topPipelineValue || 0).toLocaleString()}
-
-${'─'.repeat(45)}
-👥 TOP PERFORMING TEAM MEMBER
-${'─'.repeat(45)}
-${teamChart || '  No data yet'}
-
-  ⭐ #1: ${topEmployee || 'N/A'} — $${(topEmployeeValue || 0).toLocaleString()}
-
-${'═'.repeat(45)}
-Keep up the great work! 🦅
-
-— HawkEye-Cue Sales Tracker
-`;
-
-  return { subject, body };
+async function getDealsForUser(userId) {
+  const result = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'DEAL#' },
+  }));
+  return result.Items || [];
 }
 
-function computeStats(deals, folioLabel) {
-  // Filter deals that match last month's folio OR were won during last month
-  const lastMonth = getLastMonthFolio();
+function computeStats(deals, folioStart, folioEnd) {
+  const folioLabel = `${folioStart} to ${folioEnd}`;
+
+  // Filter deals that belong to this folio period
   const relevantDeals = deals.filter((d) => {
-    // Match by folio string if it contains the month
-    if (d.folio && d.folio.includes(lastMonth.firstDay.slice(0, 7))) return true;
-    // Match by folio label
+    // Match by folio string
     if (d.folio === folioLabel) return true;
-    // Match won deals by date
+    // Match won deals updated within the folio date range
     if (d.stage === 'won' && d.updatedAt) {
       const updated = d.updatedAt.slice(0, 10);
-      return updated >= lastMonth.firstDay && updated <= lastMonth.lastDay;
+      return updated >= folioStart && updated <= folioEnd;
+    }
+    // Match by creation date within folio range
+    if (d.createdAt) {
+      const created = d.createdAt.slice(0, 10);
+      return created >= folioStart && created <= folioEnd;
     }
     return false;
   });
@@ -154,7 +97,7 @@ function computeStats(deals, folioLabel) {
   }
   const pipelineBreakdown = Object.values(pipelineMap).sort((a, b) => b.value - a.value);
 
-  // Team member breakdown by contactName (the person who closed)
+  // Team member breakdown by deal name (the contact/agent who closed)
   const teamMap = {};
   for (const deal of wonDeals) {
     const name = deal.contactName || deal.dealName || 'Unknown';
@@ -167,6 +110,7 @@ function computeStats(deals, folioLabel) {
   return {
     totalSold,
     wonDeals: wonDeals.length,
+    totalDeals: relevantDeals.length,
     topPipelineType: pipelineBreakdown[0]?.type || null,
     topPipelineValue: pipelineBreakdown[0]?.value || 0,
     topEmployee: teamBreakdown[0]?.name || null,
@@ -176,40 +120,108 @@ function computeStats(deals, folioLabel) {
   };
 }
 
+function buildRecapEmail(stats, folioLabel) {
+  const { totalSold, wonDeals, totalDeals, topPipelineType, topPipelineValue, topEmployee, topEmployeeValue } = stats;
+
+  // Build a simple text bar chart for pipeline types
+  const pipelineChart = stats.pipelineBreakdown
+    .slice(0, 5)
+    .map((p) => {
+      const barLength = Math.max(1, Math.round((p.value / (totalSold || 1)) * 20));
+      const bar = '█'.repeat(barLength);
+      return `  ${p.type.padEnd(22)} ${bar} $${p.value.toLocaleString()} (${p.count} deals)`;
+    })
+    .join('\n');
+
+  // Build team performance chart
+  const teamChart = stats.teamBreakdown
+    .slice(0, 5)
+    .map((t) => {
+      const barLength = Math.max(1, Math.round((t.value / (totalSold || 1)) * 20));
+      const bar = '█'.repeat(barLength);
+      return `  ${t.name.padEnd(22)} ${bar} $${t.value.toLocaleString()} (${t.count} won)`;
+    })
+    .join('\n');
+
+  const subject = `🦅 Folio Recap: $${totalSold.toLocaleString()} sold last folio!`;
+
+  const body = `
+🦅 HawkEye-Cue — Folio Recap
+${'═'.repeat(45)}
+
+📅 Folio Period: ${folioLabel}
+💰 Premium Sold: $${totalSold.toLocaleString()}
+🎯 Deals Won: ${wonDeals} of ${totalDeals} total
+
+${'─'.repeat(45)}
+📊 TOP PERFORMING PIPELINE
+${'─'.repeat(45)}
+${pipelineChart || '  No deals closed this folio'}
+
+  ⭐ #1: ${topPipelineType || 'N/A'} — $${(topPipelineValue || 0).toLocaleString()}
+
+${'─'.repeat(45)}
+👥 TOP PERFORMING EMPLOYEE
+${'─'.repeat(45)}
+${teamChart || '  No team data'}
+
+  ⭐ #1: ${topEmployee || 'N/A'} — $${(topEmployeeValue || 0).toLocaleString()}
+
+${'═'.repeat(45)}
+New folio starts today — let's get after it! 🦅
+
+— HawkEye-Cue Sales Tracker
+`;
+
+  return { subject, body };
+}
+
 exports.handler = async () => {
   console.log('Folio Recap Lambda triggered');
 
-  // Only send recap on the 1st of the month
-  if (!isFolioFirstDay()) {
-    console.log('Not the first day of the month — skipping.');
-    return { statusCode: 200, body: 'Not folio first day, skipping' };
-  }
-
-  const lastMonth = getLastMonthFolio();
-  console.log(`Generating recap for folio: ${lastMonth.label}`);
+  const today = getTodayStr();
+  const yesterday = getYesterdayStr();
+  console.log(`Today: ${today}, checking for folios that ended yesterday: ${yesterday}`);
 
   try {
-    // Find all users with team emails configured
-    const teamEmailRecords = await getAllUsersWithDeals();
-    console.log(`Found ${teamEmailRecords.length} users with team email configurations`);
+    // Get all users who have folio configs
+    const folioConfigs = await getAllFolioConfigs();
+    console.log(`Found ${folioConfigs.length} users with folio configurations`);
 
     let emailsSent = 0;
 
-    for (const record of teamEmailRecords) {
-      const userId = record.PK.replace('USER#', '');
-      const emails = record.emails || [];
-      if (emails.length === 0) continue;
+    for (const config of folioConfigs) {
+      const userId = config.PK.replace('USER#', '');
+      const { folioStart, folioEnd } = config;
 
-      // Get all deals for this user
+      if (!folioEnd) continue;
+
+      // Check if yesterday was this user's folio end date
+      // This means today is the first day of their NEW folio — time to send recap
+      if (folioEnd !== yesterday) continue;
+
+      console.log(`User ${userId}: folio ended yesterday (${folioStart} to ${folioEnd}). Sending recap.`);
+
+      // Get team emails
+      const emails = await getTeamEmails(userId);
+      if (emails.length === 0) {
+        console.log(`User ${userId}: no team emails configured, skipping.`);
+        continue;
+      }
+
+      // Get all deals and compute stats for the ended folio
       const deals = await getDealsForUser(userId);
       if (deals.length === 0) continue;
 
-      // Compute stats for last month
-      const stats = computeStats(deals, lastMonth.label);
-      if (stats.totalSold === 0 && stats.wonDeals === 0) continue; // Nothing to report
+      const stats = computeStats(deals, folioStart, folioEnd);
+      if (stats.totalSold === 0 && stats.wonDeals === 0) {
+        console.log(`User ${userId}: no won deals in folio, skipping.`);
+        continue;
+      }
 
-      // Build and send email
-      const { subject, body } = buildRecapEmail(stats, lastMonth.label);
+      // Build and send recap email
+      const folioLabel = `${folioStart} to ${folioEnd}`;
+      const { subject, body } = buildRecapEmail(stats, folioLabel);
 
       for (const email of emails.slice(0, 10)) {
         try {
@@ -222,6 +234,7 @@ exports.handler = async () => {
             },
           }));
           emailsSent++;
+          console.log(`Recap sent to ${email} for user ${userId}`);
         } catch (e) {
           console.error(`Failed to send recap to ${email}:`, e.message);
         }

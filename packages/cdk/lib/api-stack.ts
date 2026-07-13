@@ -797,6 +797,12 @@ export class ApiStack extends cdk.Stack {
       integration: salesIntegration,
       authorizer,
     });
+    this.httpApi.addRoutes({
+      path: '/sales/folio-config',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
+      integration: salesIntegration,
+      authorizer,
+    });
 
     // ─── Folio Recap (EventBridge scheduled, runs daily at 8am UTC) ───────
     const folioRecapFn = new lambda.Function(this, 'FolioRecapFn', {
@@ -819,11 +825,11 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
-    // EventBridge rule: run daily at 8:00 AM UTC (2:00 AM MDT)
+    // EventBridge rule: run daily at 8:00 AM UTC to check each user's folio end date
     const folioRecapRule = new cdk.aws_events.Rule(this, 'FolioRecapSchedule', {
       ruleName: 'SocialLeadGen-FolioRecapSchedule',
-      schedule: cdk.aws_events.Schedule.cron({ minute: '0', hour: '8', day: '1', month: '*' }),
-      description: 'Triggers folio recap on the 1st of each month at 8:00 AM UTC',
+      schedule: cdk.aws_events.Schedule.cron({ minute: '0', hour: '8' }),
+      description: 'Triggers folio recap daily — Lambda checks if today is first day of any users new folio',
     });
     folioRecapRule.addTarget(
       new cdk.aws_events_targets.LambdaFunction(folioRecapFn)

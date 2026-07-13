@@ -45,7 +45,7 @@ export default function LandingPage() {
               ▶ See How It Works
             </button>
           </div>
-          <p className="text-sm text-amber-400 mt-6 animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>🔥 First 5 beta testers get 3 months FREE</p>
+          <p className="text-sm text-amber-400 mt-6 animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>🦅 Built for trade professionals who want to grow</p>
         </div>
       </section>
 
@@ -108,6 +108,11 @@ export default function LandingPage() {
               <h4 className="font-bold text-lg mb-2">Lead Management</h4>
               <p className="text-sm text-slate-400">Every opportunity tracked in one place. Follow up, convert, and see your stats grow.</p>
             </div>
+            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
+              <div className="text-2xl mb-3">💰</div>
+              <h4 className="font-bold text-lg mb-2">Sales Tracker</h4>
+              <p className="text-sm text-slate-400">Track your entire pipeline from lead to close. See where each sale came from, manage folios, and get monthly recap reports with top performers.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -118,25 +123,6 @@ export default function LandingPage() {
         <p className="text-center text-slate-400 mb-12 reveal">Simple plans that grow with your business</p>
 
         <div className="grid md:grid-cols-3 gap-6 stagger-children">
-          {/* Beta Tester */}
-          <div className="glass-card-strong border-amber-500/40 relative hover:-translate-y-2 transition-transform duration-300">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-amber-500/20">LIMITED — 5 SPOTS</div>
-            <h4 className="text-xl font-bold text-amber-300 mt-2">Beta Tester</h4>
-            <div className="mt-2 mb-4">
-              <span className="text-3xl font-extrabold text-white">$0</span>
-              <span className="text-slate-400 text-sm">/mo for 3 months</span>
-            </div>
-            <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ Full Growth access</li>
-              <li>✓ All features unlocked</li>
-              <li>✓ Help shape the product</li>
-              <li>✓ Priority support</li>
-            </ul>
-            <Link to="/register" className="block text-center bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2.5 rounded-lg font-bold hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200">
-              Claim Spot
-            </Link>
-          </div>
-
           {/* Base */}
           <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
             <h4 className="text-xl font-bold text-white">Base</h4>
@@ -211,39 +197,8 @@ export default function LandingPage() {
       <section className="px-6 py-20 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-slate-900/0 via-slate-900/50 to-slate-900/0 pointer-events-none"></div>
         <div className="max-w-2xl mx-auto relative z-10">
-          <h3 className="text-2xl font-bold text-center mb-12 reveal">What Beta Testers Say</h3>
-          <div className="grid md:grid-cols-3 gap-6 stagger-children">
-            <div className="glass-card-strong hover:-translate-y-1 transition-transform duration-300">
-              <p className="text-sm text-slate-300 italic mb-4">"I used to spend 2 hours a day on social media. Now HawkEye-Cue handles my posts and finds me leads while I'm on the job."</p>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-sm font-bold">M</div>
-                <div>
-                  <div className="text-sm font-semibold">Mike R.</div>
-                  <div className="text-xs text-slate-400">Roofing Contractor</div>
-                </div>
-              </div>
-            </div>
-            <div className="glass-card-strong hover:-translate-y-1 transition-transform duration-300">
-              <p className="text-sm text-slate-300 italic mb-4">"The keyword tracking is a game changer. I get notified the second someone in my area needs insurance help."</p>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center text-sm font-bold">S</div>
-                <div>
-                  <div className="text-sm font-semibold">Sarah T.</div>
-                  <div className="text-xs text-slate-400">Insurance Agent</div>
-                </div>
-              </div>
-            </div>
-            <div className="glass-card-strong hover:-translate-y-1 transition-transform duration-300">
-              <p className="text-sm text-slate-300 italic mb-4">"The Collaborate tab connected me with 3 roofers who now send me referrals every week. Worth every penny."</p>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-700 rounded-full flex items-center justify-center text-sm font-bold">J</div>
-                <div>
-                  <div className="text-sm font-semibold">Jake L.</div>
-                  <div className="text-xs text-slate-400">General Contractor</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <h3 className="text-2xl font-bold text-center mb-6 reveal">Reviews</h3>
+          <p className="text-center text-slate-400 mb-12 reveal">Check back soon for reviews!</p>
         </div>
       </section>
 
@@ -271,13 +226,6 @@ export default function LandingPage() {
               <span className="text-slate-500 group-open:rotate-45 transition-transform duration-200 text-xl">+</span>
             </summary>
             <p className="text-sm text-slate-400 mt-3">Yes. Cancel anytime and you'll keep access until the end of your billing period. No contracts, no hidden fees.</p>
-          </details>
-          <details className="glass-card group cursor-pointer">
-            <summary className="font-semibold text-white flex items-center justify-between">
-              What's the Beta Tester deal?
-              <span className="text-slate-500 group-open:rotate-45 transition-transform duration-200 text-xl">+</span>
-            </summary>
-            <p className="text-sm text-slate-400 mt-3">The first 5 users get full Growth access completely free for 3 months. You help us improve the product with feedback, and you get all features at no cost. After 3 months, you can choose any plan.</p>
           </details>
           <details className="glass-card group cursor-pointer">
             <summary className="font-semibold text-white flex items-center justify-between">

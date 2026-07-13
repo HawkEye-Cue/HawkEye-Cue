@@ -25,6 +25,16 @@ jobs:
       - name: Build shared package
         run: pnpm --filter @social-lead-gen/shared run build
 
+      - name: Build CDK package
+        run: pnpm --filter @social-lead-gen/cdk run build
+
+      - name: Deploy CDK stack (Lambdas + API + EventBridge)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: cd packages/cdk && npx cdk deploy --all --require-approval never
+
       - name: Build web app
         env:
           VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}

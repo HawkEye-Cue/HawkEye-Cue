@@ -80,6 +80,7 @@ export default function SettingsPage() {
         const result = await client.getKeywords();
         const kws = Array.isArray(result) ? result : (result as any)?.keywords || [];
         setKeywords(kws);
+        if (kws.length > 0) localStorage.setItem(`hawkeye_keywords_added_${user?.sub}`, 'true');
       } catch { /* ignore */ }
       finally { setKeywordsLoading(false); }
     }
@@ -464,6 +465,7 @@ export default function SettingsPage() {
                 const result = await client.addKeyword({ keyword: newKeyword.trim(), tradeId: selectedTrade.id });
                 setKeywords((prev) => [...prev, result]);
                 setNewKeyword('');
+                localStorage.setItem(`hawkeye_keywords_added_${user?.sub}`, 'true');
               } catch (err) {
                 setKeywordError(err instanceof Error ? err.message : 'Failed to add');
               } finally { setAddingKeyword(false); }
@@ -520,6 +522,7 @@ export default function SettingsPage() {
                       const client = await buildClient();
                       const result = await client.addKeyword({ keyword: kw, tradeId: selectedTrade.id });
                       setKeywords((prev) => [...prev, result]);
+                      localStorage.setItem(`hawkeye_keywords_added_${user?.sub}`, 'true');
                     } catch { /* ignore */ }
                   }}
                   className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-slate-400 hover:bg-blue-900/30 hover:text-blue-300 transition-colors"

@@ -26,10 +26,10 @@
   // ─── Post Selectors Per Platform ──────────────────────────────────────────
 
   const POST_SELECTORS = {
-    facebook: '[data-ad-preview="message"], [data-ad-comet-preview="message"], div[dir="auto"][style*="text-align"]',
-    instagram: 'article div span, article h1',
-    linkedin: '.feed-shared-update-v2__description, .update-components-text',
-    tiktok: '[data-e2e="browse-video-desc"], .tiktok-1ejylhp-DivContainer',
+    facebook: '[data-ad-preview="message"], [data-ad-comet-preview="message"], div[dir="auto"][style*="text-align"], div[data-ad-rendering-role="story_message"], div.x1iorvi4[dir="auto"], div.xdj266r[dir="auto"]',
+    instagram: 'article div span, article h1, article div._a9zs',
+    linkedin: '.feed-shared-update-v2__description, .update-components-text, .feed-shared-text',
+    tiktok: '[data-e2e="browse-video-desc"], .tiktok-1ejylhp-DivContainer, [data-e2e="video-desc"]',
   };
 
   // ─── Keyword Matching ─────────────────────────────────────────────────────
@@ -230,12 +230,18 @@
       return;
     }
 
-    const elements = document.querySelectorAll(selector);
+    // Primary selectors
+    let elements = document.querySelectorAll(selector);
+
+    // Facebook fallback: if primary selectors find nothing, try broader approach
+    if (platform === 'facebook' && elements.length === 0) {
+      elements = document.querySelectorAll('div[dir="auto"]');
+    }
 
     elements.forEach((el) => {
       // Create a unique ID for this element to avoid re-processing
       const text = el.textContent?.trim() || '';
-      if (!text || text.length < 20) return;
+      if (!text || text.length < 10) return;
 
       const postId = text.slice(0, 100);
       if (processedPosts.has(postId)) return;
@@ -295,6 +301,7 @@
     }
 
     console.log(`[HawkEye] Scanning for ${keywords.length} keywords on ${platform}`);
+    console.log(`[HawkEye] Keywords:`, keywords);
 
     // Initial scan
     scanFeed();

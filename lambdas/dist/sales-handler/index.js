@@ -195,68 +195,6 @@ exports.handler = async (event) => {
       return ok({ emails });
     }
 
-    // GET /sales/team-emails
-    if (method === 'GET' && path === '/sales/team-emails') {
-      const result = await dynamo.send(new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND SK = :sk',
-        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_EMAILS' },
-      }));
-      const item = (result.Items || [])[0];
-      return ok({ emails: item?.emails || [] });
-    }
-
-    // PUT /sales/team-emails
-    if (method === 'PUT' && path === '/sales/team-emails') {
-      const body = event.body ? JSON.parse(event.body) : {};
-      const emails = (body.emails || []).filter(Boolean);
-      await dynamo.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: { PK: `USER#${userId}`, SK: 'TEAM_EMAILS', emails },
-      }));
-      return ok({ emails });
-    }
-
-    // Team emails storage
-    if (method === 'GET' && path === '/sales/team-emails') {
-      var getResult = await dynamo.send(new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND SK = :sk',
-        ExpressionAttributeValues: { ':pk': 'USER#' + userId, ':sk': 'TEAM_EMAILS' },
-      }));
-      var item = (getResult.Items || [])[0];
-      return ok({ emails: item ? item.emails : [] });
-    }
-    if (method === 'PUT' && path === '/sales/team-emails') {
-      var body2 = event.body ? JSON.parse(event.body) : {};
-      await dynamo.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: { PK: 'USER#' + userId, SK: 'TEAM_EMAILS', emails: body2.emails || [] },
-      }));
-      return ok({ saved: true });
-    }
-
-    // GET /sales/team-emails
-    if (method === 'GET' && path === '/sales/team-emails') {
-      const result = await dynamo.send(new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND SK = :sk',
-        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'SALES_TEAM_EMAILS' },
-      }));
-      const item = (result.Items || [])[0];
-      return ok({ emails: item?.emails || [] });
-    }
-
-    // PUT /sales/team-emails
-    if (method === 'PUT' && path === '/sales/team-emails') {
-      const body = event.body ? JSON.parse(event.body) : {};
-      await dynamo.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: { PK: `USER#${userId}`, SK: 'SALES_TEAM_EMAILS', emails: body.emails || [] },
-      }));
-      return ok({ saved: true });
-    }
-
     // GET /sales/folio-config — get user's folio date range
     if (method === 'GET' && path === '/sales/folio-config') {
       const result = await dynamo.send(new QueryCommand({

@@ -16,6 +16,13 @@ export default function DashboardPage() {
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
 
+  // Redirect new users to onboarding
+  useEffect(() => {
+    if (!localStorage.getItem('hawkeye_onboarded')) {
+      navigate('/onboarding', { replace: true });
+    }
+  }, [navigate]);
+
   useEffect(() => {
     async function fetchTodayPosts() {
       try {

@@ -17,23 +17,21 @@ function getUserId(event) { return event.requestContext?.authorizer?.jwt?.claims
 // ─── Get user's team info ─────────────────────────────────────────────────────
 async function getUserTeam(userId) {
   // Check if user is a team admin (owns a team)
-  const adminResult = await dynamo.send(new QueryCommand({
+  const adminResult = await dynamo.send(new GetCommand({
     TableName: TABLE_NAME,
-    KeyConditionExpression: 'PK = :pk AND SK = :sk',
-    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_ADMIN' },
+    Key: { PK: `USER#${userId}`, SK: 'TEAM_ADMIN' },
   }));
-  if ((adminResult.Items || []).length > 0) {
-    return { ...adminResult.Items[0], role: 'admin' };
+  if (adminResult.Item) {
+    return { ...adminResult.Item, role: 'admin' };
   }
 
   // Check if user is a team member
-  const memberResult = await dynamo.send(new QueryCommand({
+  const memberResult = await dynamo.send(new GetCommand({
     TableName: TABLE_NAME,
-    KeyConditionExpression: 'PK = :pk AND SK = :sk',
-    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_MEMBER' },
+    Key: { PK: `USER#${userId}`, SK: 'TEAM_MEMBER' },
   }));
-  if ((memberResult.Items || []).length > 0) {
-    return { ...memberResult.Items[0], role: 'member' };
+  if (memberResult.Item) {
+    return { ...memberResult.Item, role: 'member' };
   }
 
   return null;
@@ -137,6 +135,11 @@ async function inviteMember(teamId, adminUserId, inviteEmail) {
     return err(400, 'ALREADY_MEMBER', 'This person is already on your team');
   }
 
+  // Check if already invited
+  if (invites.some((i) => i.email === inviteEmail && i.status === 'pending')) {
+    return err(400, 'ALREADY_INVITED', 'This person already has a pending invite');
+  }
+
   const inviteId = randomUUID();
   const now = new Date().toISOString();
 
@@ -175,6 +178,12 @@ async function inviteMember(teamId, adminUserId, inviteEmail) {
 
 // ─── Accept invite ────────────────────────────────────────────────────────────
 async function acceptInvite(userId, inviteId) {
+  // Check if user already belongs to a team
+  const existingTeam = await getUserTeam(userId);
+  if (existingTeam) {
+    return err(400, 'ALREADY_IN_TEAM', 'You are already part of a team. Leave your current team first.');
+  }
+
   // Get user profile
   const profile = await dynamo.send(new GetCommand({
     TableName: TABLE_NAME,
@@ -402,6 +411,15 @@ exports.handler = async (event) => {
     if (method === 'POST' && path === '/team') {
       const existing = await getUserTeam(userId);
       if (existing) return err(400, 'ALREADY_HAS_TEAM', 'You already have a team');
+
+      // Verify user has team subscription
+      const profile = await dynamo.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      }));
+      if (profile.Item?.subscriptionTier !== 'team') {
+        return err(403, 'NOT_TEAM_TIER', 'You need a Team subscription to create a team. Upgrade in Settings.');
+      }
 
       const body = event.body ? JSON.parse(event.body) : {};
       const result = await createTeam(userId, body.teamName);

@@ -45,6 +45,7 @@ export default function TeamPage() {
   const [stats, setStats] = useState<{ members: MemberStat[]; totalWonValue: number } | null>(null);
   const [inviteCode, setInviteCode] = useState('');
   const [accepting, setAccepting] = useState(false);
+  const [error, setError] = useState('');
 
   async function buildClient() {
     const token = await getToken();
@@ -72,27 +73,32 @@ export default function TeamPage() {
   async function handleCreateTeam() {
     if (!teamName.trim()) return;
     setCreating(true);
+    setError('');
     try {
       const client = await buildClient();
       await client.request('POST', '/team', { teamName: teamName.trim() });
-      // Refetch
       const result = await client.request<{ team: Team | null }>('GET', '/team');
       setTeam(result.team);
-    } catch { /* ignore */ }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to create team';
+      setError(msg.includes('NOT_TEAM_TIER') ? 'You need a Team subscription to create a team. Upgrade in Settings.' : msg);
+    }
     finally { setCreating(false); }
   }
 
   async function handleInvite() {
     if (!inviteEmail.trim()) return;
     setInviting(true);
+    setError('');
     try {
       const client = await buildClient();
       await client.request('POST', '/team/invite', { email: inviteEmail.trim() });
       setInviteEmail('');
-      // Refetch
       const result = await client.request<{ team: Team | null }>('GET', '/team');
       setTeam(result.team);
-    } catch { /* ignore */ }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to send invite');
+    }
     finally { setInviting(false); }
   }
 
@@ -108,13 +114,16 @@ export default function TeamPage() {
   async function handleAcceptInvite() {
     if (!inviteCode.trim()) return;
     setAccepting(true);
+    setError('');
     try {
       const client = await buildClient();
       await client.request('POST', '/team/accept', { inviteId: inviteCode.trim() });
       const result = await client.request<{ team: Team | null }>('GET', '/team');
       setTeam(result.team);
       setInviteCode('');
-    } catch { /* ignore */ }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to join team');
+    }
     finally { setAccepting(false); }
   }
 
@@ -125,6 +134,12 @@ export default function TeamPage() {
     return (
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-white">👥 Team</h2>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
+            {error}
+          </div>
+        )}
 
         {/* Create a team */}
         <div className="glass-card space-y-3">

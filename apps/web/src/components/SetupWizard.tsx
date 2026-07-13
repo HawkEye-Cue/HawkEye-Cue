@@ -153,6 +153,21 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
           {step.action} →
         </button>
 
+        {/* Skip / Next step */}
+        <button
+          onClick={() => {
+            if (currentStep < steps.length - 1) {
+              setCurrentStep(currentStep + 1);
+            } else {
+              localStorage.setItem(`hawkeye_setup_complete_${user?.sub}`, 'true');
+              onComplete();
+            }
+          }}
+          className="w-full mt-2 text-slate-500 py-1.5 text-xs hover:text-slate-300 transition-colors"
+        >
+          Skip this step →
+        </button>
+
         {/* Step dots */}
         <div className="flex justify-center gap-1.5 mt-3">
           {steps.map((s, i) => (

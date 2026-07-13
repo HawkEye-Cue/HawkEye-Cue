@@ -80,7 +80,7 @@ export default function LandingPage() {
       <section className="px-6 py-20 relative">
         {/* Subtle section background */}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-900/0 via-slate-900/50 to-slate-900/0 pointer-events-none"></div>
-        <div className="max-w-2xl mx-auto relative z-10">
+        <div className="max-w-4xl mx-auto relative z-10">
           <h3 className="text-2xl font-bold text-center mb-12 reveal">Features</h3>
           <div className="grid md:grid-cols-2 gap-6 stagger-children">
             <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">

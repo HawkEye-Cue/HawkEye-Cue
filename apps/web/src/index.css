@@ -130,6 +130,7 @@ body::after {
   .stagger-children.visible > *:nth-child(4) { transition-delay: 0.3s; opacity: 1; transform: translateY(0); }
   .stagger-children.visible > *:nth-child(5) { transition-delay: 0.4s; opacity: 1; transform: translateY(0); }
   .stagger-children.visible > *:nth-child(6) { transition-delay: 0.5s; opacity: 1; transform: translateY(0); }
+  .stagger-children.visible > *:nth-child(n+7) { transition-delay: 0.6s; opacity: 1; transform: translateY(0); }
 
   /* Shimmer button effect */
   .btn-shimmer {

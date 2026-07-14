@@ -576,7 +576,10 @@ export default function SalesPage() {
                 return (
                   <div key={deal.id} className="bg-white/5 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium text-white">{deal.name}</p>
+                      <div>
+                        <p className="text-sm font-medium text-white">{deal.name}</p>
+                        {deal.leadSourceNote && <p className="text-xs text-slate-500">via {deal.leadSourceNote}</p>}
+                      </div>
                       <span className="text-xs text-slate-500">Day {daysSinceCreated}</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-700 rounded-full mb-2 overflow-hidden">
@@ -770,7 +773,7 @@ export default function SalesPage() {
             ))}
           </select>
           {leadSource && (
-            <input type="text" value={leadSourceNote} onChange={(e) => setLeadSourceNote(e.target.value)} placeholder={leadSource.includes('post') || leadSource.includes('ad') ? 'Link to the post or ad...' : leadSource === 'referral' ? 'Who referred them?' : leadSource.includes('call') ? 'Call notes — what triggered interest?' : 'Details about the source...'} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+            <input type="text" value={leadSourceNote} onChange={(e) => setLeadSourceNote(e.target.value)} placeholder={leadSource === 'internet-lead' ? 'Lead vendor (e.g. QuoteWizard, EverQuote, Datalot, Hometown Quotes...)' : leadSource.includes('post') || leadSource.includes('ad') ? 'Link to the post or ad...' : leadSource === 'referral' ? 'Who referred them?' : leadSource.includes('call') ? 'Call notes — what triggered interest?' : 'Details about the source...'} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
           )}
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-16" />
           <button onClick={handleAdd} disabled={adding || !name.trim()} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50">
@@ -910,8 +913,9 @@ export default function SalesPage() {
                     <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-2">
                       <p className="text-xs font-medium text-indigo-300">
                         📍 Source: {LEAD_SOURCES.find((s) => s.id === deal.leadSource)?.icon} {LEAD_SOURCES.find((s) => s.id === deal.leadSource)?.label || deal.leadSource}
+                        {deal.leadSource === 'internet-lead' && deal.leadSourceNote && <span className="text-indigo-400"> via {deal.leadSourceNote}</span>}
                       </p>
-                      {deal.leadSourceNote && (
+                      {deal.leadSourceNote && deal.leadSource !== 'internet-lead' && (
                         <p className="text-xs text-indigo-400/70 mt-0.5">{deal.leadSourceNote}</p>
                       )}
                     </div>

@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
+  const [followUpDeals, setFollowUpDeals] = useState<{ id: string; name: string; stage: string; policyType: string; createdAt: string }[]>([]);
 
   // Redirect new users to onboarding
   useEffect(() => {
@@ -38,7 +39,6 @@ export default function DashboardPage() {
         // Fetch lead stats
         try {
           const statsResult = await client.getOpportunityStats();
-          // Handle both { stats: {...} } wrapper and flat format, and snake_case vs camelCase
           const s = (statsResult as any)?.stats || statsResult;
           setLeadStats({
             total: s.total || 0,
@@ -46,6 +46,16 @@ export default function DashboardPage() {
             followedUp: s.followedUp || s.followed_up || 0,
             converted: s.converted || 0,
           });
+        } catch { /* ignore */ }
+
+        // Fetch deals needing follow-up (active deals older than 2 days)
+        try {
+          const dealsResult = await client.request<{ deals: any[] }>('GET', '/sales/deals');
+          const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+          const needsFollowUp = (dealsResult.deals || []).filter((d: any) =>
+            ['prospect', 'contacted', 'quoted'].includes(d.stage) && d.createdAt < twoDaysAgo
+          ).slice(0, 5);
+          setFollowUpDeals(needsFollowUp);
         } catch { /* ignore */ }
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
         // Auto-clean: only show posts from today that haven't been published before today
@@ -164,6 +174,16 @@ export default function DashboardPage() {
                   <span className="text-sm text-slate-300 truncate block">{(post.content || 'Scheduled post').slice(0, 50)}</span>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded ${post.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{post.status}</span>
+              </div>
+            ))}
+            {/* Sales Follow-Ups */}
+            {followUpDeals.map((deal) => (
+              <div key={deal.id} className="flex items-center gap-3 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10 cursor-pointer hover:bg-amber-500/10" onClick={() => navigate('/sales')}>
+                <span className="text-sm">💰</span>
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm text-amber-300 truncate block">Follow up: {deal.name}</span>
+                  <span className="text-xs text-slate-500">{deal.policyType || deal.stage} · {Math.floor((Date.now() - new Date(deal.createdAt).getTime()) / (1000 * 60 * 60 * 24))}d since contact</span>
+                </div>
               </div>
             ))}
           </div>

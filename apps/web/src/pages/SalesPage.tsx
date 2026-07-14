@@ -22,6 +22,7 @@ interface Deal {
 }
 
 const LEAD_SOURCES = [
+  { id: 'internet-lead', label: 'Internet Lead', icon: '🌐' },
   { id: 'facebook-post', label: 'Facebook Post', icon: '📱' },
   { id: 'instagram-post', label: 'Instagram Post', icon: '📸' },
   { id: 'linkedin-post', label: 'LinkedIn Post', icon: '💼' },
@@ -42,6 +43,26 @@ const LEAD_SOURCES = [
   { id: 'repeat-client', label: 'Repeat Client', icon: '🔄' },
   { id: 'hawkeye-lead', label: 'HawkEye-Cue Lead', icon: '🦅' },
   { id: 'other', label: 'Other', icon: '📌' },
+];
+
+// Internet Lead follow-up sequence — aggressive front-loaded 21-day framework
+// Based on industry data: 8-10 touches needed, leads go cold within minutes
+const INTERNET_LEAD_SEQUENCE = [
+  { day: 0, time: '0 min', type: 'sms', task: "Send intro SMS: Hi [Name], this is [You] with [Agency]. I just received your request — I'd love to help. When's a good time to chat?" },
+  { day: 0, time: '5 min', type: 'call', task: 'Call #1 — introduce yourself, ask about their needs, set appointment if possible' },
+  { day: 0, time: '30 min', type: 'email', task: 'Send welcome email with your info, what to expect, and a link to schedule a call' },
+  { day: 1, time: 'Morning', type: 'call', task: 'Call #2 — follow up if no answer yesterday. Leave voicemail referencing your SMS' },
+  { day: 1, time: 'Afternoon', type: 'sms', task: "Text: Just left you a voicemail — wanted to make sure you saw my message. Happy to help whenever you're ready!" },
+  { day: 2, time: 'Morning', type: 'email', task: "Send value email — 3 things most people don't know about [policy type] or a helpful tip" },
+  { day: 3, time: 'Morning', type: 'call', task: 'Call #3 — try a different time of day than previous attempts' },
+  { day: 4, time: 'Morning', type: 'sms', task: 'Text: Hi [Name], just checking in. Still happy to help you find the best rate. No pressure!' },
+  { day: 5, time: 'Morning', type: 'email', task: 'Send comparison/quote preview email if you have enough info, or ask for details needed' },
+  { day: 7, time: 'Morning', type: 'call', task: 'Call #4 — one-week mark. Hey, just wanted to circle back...' },
+  { day: 7, time: 'Afternoon', type: 'sms', task: "Text: I know life gets busy. I'm here whenever you're ready to chat about your options." },
+  { day: 10, time: 'Morning', type: 'email', task: 'Send "Did you find what you needed?" email — soft re-engagement' },
+  { day: 14, time: 'Morning', type: 'call', task: 'Call #5 — two-week check-in. Last strong push before spacing out' },
+  { day: 14, time: 'Afternoon', type: 'sms', task: "Text: Hi [Name], I haven't forgotten about you. Let me know if I can still help!" },
+  { day: 21, time: 'Morning', type: 'email', task: "Final follow-up email: I don't want to bother you — if you've found coverage elsewhere, no worries! If not, I'm a text away." },
 ];
 
 const STAGES = [
@@ -816,6 +837,36 @@ export default function SalesPage() {
                       <div className="flex justify-between text-xs font-medium mt-1 pt-1 border-t border-amber-500/20">
                         <span className="text-amber-300">Total</span>
                         <span className="text-green-400">${deal.bundleItems.reduce((s, i) => s + (i.value || 0), 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Internet Lead Follow-Up Sequence */}
+                  {deal.leadSource === 'internet-lead' && (
+                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg px-3 py-2">
+                      <p className="text-xs font-medium text-orange-300 mb-2">⚡ Internet Lead — 21-Day Follow-Up Sequence</p>
+                      <p className="text-xs text-slate-500 mb-2">8-10 touches needed. Front-loaded for speed.</p>
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {INTERNET_LEAD_SEQUENCE.map((step, idx) => {
+                          const storageKey = `hawkeye_seq_${deal.id}_${idx}`;
+                          const isChecked = localStorage.getItem(storageKey) === 'true';
+                          return (
+                            <label key={idx} className={`flex items-start gap-2 p-1.5 rounded text-xs cursor-pointer hover:bg-white/5 ${isChecked ? 'opacity-50' : ''}`}>
+                              <input
+                                type="checkbox"
+                                defaultChecked={isChecked}
+                                onChange={(e) => { localStorage.setItem(storageKey, String(e.target.checked)); }}
+                                className="mt-0.5 w-3.5 h-3.5 rounded shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <span className={`font-medium ${step.type === 'call' ? 'text-blue-300' : step.type === 'sms' ? 'text-green-300' : 'text-purple-300'}`}>
+                                  {step.type === 'call' ? '📞' : step.type === 'sms' ? '💬' : '✉️'} Day {step.day} · {step.time}
+                                </span>
+                                <p className="text-slate-400 mt-0.5">{step.task}</p>
+                              </div>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

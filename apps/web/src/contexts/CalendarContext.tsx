@@ -101,12 +101,13 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     } catch { /* ignore */ }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const removeAllByTitle = useCallback(async (title: string) => {
-    setEvents((prev) => prev.filter((e) => e.title !== title));
+  const removeAllByTitle = useCallback(async (titleMatch: string) => {
+    // Remove events where title contains the match string (supports partial matching)
+    setEvents((prev) => prev.filter((e) => !e.title.includes(titleMatch)));
 
     try {
       const client = await buildClient();
-      await client.request('DELETE', `/calendar/events/bulk?title=${encodeURIComponent(title)}`);
+      await client.request('DELETE', `/calendar/events/bulk?title=${encodeURIComponent(titleMatch)}`);
     } catch { /* ignore */ }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 

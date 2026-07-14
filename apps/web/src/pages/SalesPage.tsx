@@ -275,7 +275,7 @@ const DEFAULT_TRADE_CONFIG: TradeConfig = {
 export default function SalesPage() {
   const { getToken, user } = useAuth();
   const { selectedTrade } = useTrade();
-  const { addEvent } = useCalendar();
+  const { addEvent, removeAllByTitle } = useCalendar();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -468,9 +468,12 @@ export default function SalesPage() {
 
   async function handleDelete(dealId: string) {
     try {
+      const deal = deals.find((d) => d.id === dealId);
       const client = await buildClient();
       await client.request('DELETE', `/sales/deals/${dealId}`);
       setDeals(deals.filter((d) => d.id !== dealId));
+      // Remove related calendar events
+      if (deal) removeAllByTitle(deal.name);
     } catch { /* ignore */ }
   }
 
@@ -1040,6 +1043,8 @@ export default function SalesPage() {
                               const dateStr = `${snoozeDate.getFullYear()}-${String(snoozeDate.getMonth() + 1).padStart(2, '0')}-${String(snoozeDate.getDate()).padStart(2, '0')}`;
                               // Add calendar cue for the re-surface date
                               addEvent({ date: dateStr, title: `🦅 Re-Cue: ${deal.name} (${opt.label})`, type: 'task' });
+                              // Remove old follow-up events for this deal from calendar
+                              removeAllByTitle(deal.name);
                               // Move deal to "lost" to hide from active list
                               try {
                                 const client = await buildClient();
@@ -1069,6 +1074,7 @@ export default function SalesPage() {
                               const client = await buildClient();
                               await client.request('DELETE', `/sales/deals/${deal.id}`);
                               setDeals(deals.filter((d) => d.id !== deal.id));
+                              removeAllByTitle(deal.name);
                             } catch { /* ignore */ }
                             setConfirmDeleteId(null);
                           }}

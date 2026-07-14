@@ -1010,7 +1010,7 @@ export default function SalesPage() {
                       }}
                       className="text-xs text-purple-400 hover:text-purple-300"
                     >
-                      😴 Snooze
+                      🦅 Re-Cue
                     </button>
                     <button
                       onClick={() => { setSnoozeId(null); setConfirmDeleteId(deal.id); }}
@@ -1020,10 +1020,10 @@ export default function SalesPage() {
                     </button>
                   </div>
 
-                  {/* Snooze options */}
+                  {/* Re-Cue options */}
                   {snoozeId === deal.id && (
                     <div className="mt-2 p-3 bg-purple-950/30 border border-purple-500/30 rounded-lg">
-                      <p className="text-xs text-purple-300 mb-2">Re-surface this lead in:</p>
+                      <p className="text-xs text-purple-300 mb-2">🦅 Re-Cue this lead — bring it back in:</p>
                       <div className="flex flex-wrap gap-2">
                         {[
                           { label: '1 week', days: 7 },
@@ -1039,12 +1039,12 @@ export default function SalesPage() {
                               const snoozeDate = new Date(Date.now() + opt.days * 24 * 60 * 60 * 1000);
                               const dateStr = `${snoozeDate.getFullYear()}-${String(snoozeDate.getMonth() + 1).padStart(2, '0')}-${String(snoozeDate.getDate()).padStart(2, '0')}`;
                               // Add calendar cue for the re-surface date
-                              addEvent({ date: dateStr, title: `🔄 Follow up: ${deal.name} (snoozed ${opt.label})`, type: 'task' });
+                              addEvent({ date: dateStr, title: `🦅 Re-Cue: ${deal.name} (${opt.label})`, type: 'task' });
                               // Move deal to "lost" to hide from active list
                               try {
                                 const client = await buildClient();
-                                await client.request('PUT', `/sales/deals/${deal.id}`, { stage: 'lost', notes: `${deal.notes ? deal.notes + ' | ' : ''}Snoozed ${opt.label} — resurfaces ${dateStr}` });
-                                setDeals(deals.map((d) => d.id === deal.id ? { ...d, stage: 'lost', notes: `${d.notes ? d.notes + ' | ' : ''}Snoozed ${opt.label} — resurfaces ${dateStr}` } : d));
+                                await client.request('PUT', `/sales/deals/${deal.id}`, { stage: 'lost', notes: `${deal.notes ? deal.notes + ' | ' : ''}Re-Cued ${opt.label} — resurfaces ${dateStr}` });
+                                setDeals(deals.map((d) => d.id === deal.id ? { ...d, stage: 'lost', notes: `${d.notes ? d.notes + ' | ' : ''}Re-Cued ${opt.label} — resurfaces ${dateStr}` } : d));
                               } catch { /* ignore */ }
                               setSnoozeId(null);
                             }}

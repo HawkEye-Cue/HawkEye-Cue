@@ -143,29 +143,72 @@ export default function DashboardPage() {
       {/* Daily Cues */}
       <details className="glass-card" open>
         <summary className="font-semibold text-white cursor-pointer">Today's Cues</summary>
-        <div className="mt-3 max-h-64 overflow-y-auto">
-        {(todayEvents.length > 0 || todayPosts.length > 0) ? (
+        <div className="mt-3 max-h-[500px] overflow-y-auto">
+        {(todayEvents.length > 0 || todayPosts.length > 0 || followUpDeals.length > 0) ? (
           <div className="space-y-2">
-            {/* Calendar events (posts, tasks, reminders) */}
-            {todayEvents.map((event) => (
-              <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
-                <input
-                  type="checkbox"
-                  checked={event.completed}
-                  onChange={() => toggleComplete(event.id)}
-                  className="w-4 h-4 rounded"
-                />
-                <span className="text-sm">{typeIcons[event.type]}</span>
-                <span className={`text-sm ${event.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
-                  {event.title}
-                </span>
-                {(event as any).link && (
-                  <a href={(event as any).link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-blue-400">🔗</a>
-                )}
-                {event.completed && <span className="text-green-400 text-xs font-medium ml-1">✓ Done</span>}
-                <span className={`text-xs capitalize ml-auto ${typeColors[event.type]}`}>{event.type}</span>
-              </label>
-            ))}
+            {/* Group calendar events by client name */}
+            {(() => {
+              // Separate client-specific events (internet lead tasks) from general events
+              const clientEvents: Record<string, typeof todayEvents> = {};
+              const generalEvents: typeof todayEvents = [];
+
+              for (const event of todayEvents) {
+                // Extract client name from title pattern: "📞 ClientName — task..."
+                const match = event.title.match(/^[📞💬✉️🔑📤]\s+(.+?)\s+—\s+/);
+                if (match) {
+                  const clientName = match[1];
+                  if (!clientEvents[clientName]) clientEvents[clientName] = [];
+                  clientEvents[clientName].push(event);
+                } else {
+                  generalEvents.push(event);
+                }
+              }
+
+              const clientNames = Object.keys(clientEvents);
+
+              return (
+                <>
+                  {/* General events (non-client-specific) */}
+                  {generalEvents.map((event) => (
+                    <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+                      <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded" />
+                      <span className="text-sm">{typeIcons[event.type]}</span>
+                      <span className={`text-sm ${event.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>{event.title}</span>
+                      {(event as any).link && <a href={(event as any).link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-blue-400">🔗</a>}
+                      {event.completed && <span className="text-green-400 text-xs font-medium ml-1">✓</span>}
+                      <span className={`text-xs capitalize ml-auto ${typeColors[event.type]}`}>{event.type}</span>
+                    </label>
+                  ))}
+
+                  {/* Client-grouped events (collapsible per client) */}
+                  {clientNames.map((clientName) => {
+                    const events = clientEvents[clientName];
+                    const completedCount = events.filter((e) => e.completed).length;
+                    return (
+                      <details key={clientName} className="bg-orange-500/5 border border-orange-500/10 rounded-lg">
+                        <summary className="flex items-center justify-between p-2 cursor-pointer hover:bg-orange-500/10 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">⚡</span>
+                            <span className="text-sm font-medium text-orange-300">{clientName}</span>
+                          </div>
+                          <span className="text-xs text-slate-500">{completedCount}/{events.length} done</span>
+                        </summary>
+                        <div className="px-2 pb-2 space-y-1">
+                          {events.map((event) => (
+                            <label key={event.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/5 cursor-pointer text-xs">
+                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded" />
+                              <span className={event.completed ? 'line-through text-slate-500' : 'text-slate-300'}>{event.title.replace(/^[📞💬✉️🔑📤]\s+.+?\s+—\s+/, '')}</span>
+                              {event.completed && <span className="text-green-400 ml-auto">✓</span>}
+                            </label>
+                          ))}
+                        </div>
+                      </details>
+                    );
+                  })}
+                </>
+              );
+            })()}
+
             {/* Scheduled posts from API */}
             {todayPosts.map((post) => (
               <div key={post.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">

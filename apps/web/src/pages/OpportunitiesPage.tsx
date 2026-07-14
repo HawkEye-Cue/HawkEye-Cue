@@ -97,7 +97,10 @@ export default function OpportunitiesPage() {
         else if (deleted?.status === 'converted') updated.converted--;
         return updated;
       });
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error('Failed to delete lead:', e);
+      alert('Failed to delete. Please try again.');
+    }
   }
 
   return (

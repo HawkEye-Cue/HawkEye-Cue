@@ -99,7 +99,7 @@ export default function OpportunitiesPage() {
       });
     } catch (e) {
       console.error('Failed to delete lead:', e);
-      alert('Failed to delete. Please try again.');
+      alert('Failed to delete: ' + (e instanceof Error ? e.message : String(e)));
     }
   }
 

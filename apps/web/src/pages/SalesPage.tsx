@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
+import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
 
 interface Deal {
@@ -274,6 +275,7 @@ const DEFAULT_TRADE_CONFIG: TradeConfig = {
 export default function SalesPage() {
   const { getToken, user } = useAuth();
   const { selectedTrade } = useTrade();
+  const { addEvent } = useCalendar();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -384,6 +386,23 @@ export default function SalesPage() {
       });
       setDeals([result, ...deals]);
       localStorage.setItem(`hawkeye_first_deal_${user?.sub}`, 'true');
+
+      // Auto-schedule internet lead follow-up sequence as calendar cues
+      if (leadSource === 'internet-lead') {
+        const startDate = new Date();
+        for (const step of INTERNET_LEAD_SEQUENCE) {
+          const eventDate = new Date(startDate);
+          eventDate.setDate(eventDate.getDate() + step.day);
+          const dateStr = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
+          const icon = step.type === 'call' ? '📞' : step.type === 'sms' ? '💬' : '✉️';
+          addEvent({
+            date: dateStr,
+            title: `${icon} ${name.trim()} — ${step.task.slice(0, 60)}`,
+            type: 'task',
+          });
+        }
+      }
+
       resetForm();
       setShowAdd(false);
     } catch { /* ignore */ }
@@ -531,6 +550,49 @@ export default function SalesPage() {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ⚡ Internet Leads Section */}
+      {(() => {
+        const internetLeads = deals.filter((d) => d.leadSource === 'internet-lead' && !['won', 'lost'].includes(d.stage));
+        if (internetLeads.length === 0) return null;
+        return (
+          <div className="glass-card border-orange-500/20">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-bold text-orange-300">⚡ Internet Leads ({internetLeads.length})</p>
+                <p className="text-xs text-slate-500">Aggressive 21-day sequence — speed to lead wins</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {internetLeads.map((deal) => {
+                const completedSteps = INTERNET_LEAD_SEQUENCE.filter((_, idx) => localStorage.getItem(`hawkeye_seq_${deal.id}_${idx}`) === 'true').length;
+                const progress = Math.round((completedSteps / INTERNET_LEAD_SEQUENCE.length) * 100);
+                const daysSinceCreated = Math.floor((Date.now() - new Date(deal.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                const nextStep = INTERNET_LEAD_SEQUENCE.find((s, idx) => localStorage.getItem(`hawkeye_seq_${deal.id}_${idx}`) !== 'true' && s.day <= daysSinceCreated);
+                return (
+                  <div key={deal.id} className="bg-white/5 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium text-white">{deal.name}</p>
+                      <span className="text-xs text-slate-500">Day {daysSinceCreated}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-700 rounded-full mb-2 overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-orange-500 to-green-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-400">{completedSteps}/{INTERNET_LEAD_SEQUENCE.length} touches done</span>
+                      {nextStep && (
+                        <span className="text-xs text-orange-400">
+                          Next: {nextStep.type === 'call' ? '📞' : nextStep.type === 'sms' ? '💬' : '✉️'} {nextStep.task.slice(0, 30)}...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );

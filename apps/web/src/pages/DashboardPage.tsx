@@ -143,104 +143,82 @@ export default function DashboardPage() {
       {/* Daily Cues */}
       <details className="glass-card" open>
         <summary className="font-semibold text-white cursor-pointer">Today's Cues</summary>
-        <div className="mt-3 max-h-[500px] overflow-y-auto">
+        <div className="mt-3 space-y-2">
         {(todayEvents.length > 0 || todayPosts.length > 0 || followUpDeals.length > 0) ? (
-          <div className="space-y-2">
-            {/* Group calendar events by client name */}
+          <>
             {(() => {
-              // Separate client-specific events (internet lead tasks) from general events
               const clientEvents: Record<string, typeof todayEvents> = {};
               const generalEvents: typeof todayEvents = [];
-
               for (const event of todayEvents) {
-                // Extract client name from title pattern: "📞 ClientName — task..."
-                const match = event.title.match(/^[📞💬✉️🔑📤]\s+(.+?)\s+—\s+/);
+                const match = event.title.match(/^.{1,4}\s+(.+?)\s+—\s+/);
                 if (match) {
-                  const clientName = match[1];
-                  if (!clientEvents[clientName]) clientEvents[clientName] = [];
-                  clientEvents[clientName].push(event);
+                  const name = match[1];
+                  if (!clientEvents[name]) clientEvents[name] = [];
+                  clientEvents[name].push(event);
                 } else {
                   generalEvents.push(event);
                 }
               }
-
-              const clientNames = Object.keys(clientEvents);
-
               return (
                 <>
-                  {/* General events (non-client-specific) */}
-                  {generalEvents.map((event) => (
-                    <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
-                      <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded" />
-                      <span className="text-sm">{typeIcons[event.type]}</span>
-                      <span className={`text-sm ${event.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>{event.title}</span>
-                      {(event as any).link && <a href={(event as any).link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-blue-400">🔗</a>}
-                      {event.completed && <span className="text-green-400 text-xs font-medium ml-1">✓</span>}
-                      <span className={`text-xs capitalize ml-auto ${typeColors[event.type]}`}>{event.type}</span>
-                    </label>
-                  ))}
-
-                  {/* Client-grouped events (collapsible per client) */}
-                  {clientNames.map((clientName) => {
-                    const events = clientEvents[clientName];
-                    const completedCount = events.filter((e) => e.completed).length;
+                  {/* Per-client dropdowns */}
+                  {Object.entries(clientEvents).map(([name, evts]) => {
+                    const done = evts.filter((e) => e.completed).length;
                     return (
-                      <details key={clientName} className="bg-orange-500/5 border border-orange-500/10 rounded-lg">
-                        <summary className="flex items-center justify-between p-2 cursor-pointer hover:bg-orange-500/10 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">⚡</span>
-                            <span className="text-sm font-medium text-orange-300">{clientName}</span>
-                          </div>
-                          <span className="text-xs text-slate-500">{completedCount}/{events.length} done</span>
+                      <details key={name} className={`rounded-lg border ${done === evts.length ? 'border-green-500/20 bg-green-500/5' : 'border-orange-500/15 bg-orange-500/5'}`}>
+                        <summary className="flex items-center justify-between px-3 py-2 cursor-pointer">
+                          <span className={`text-sm font-medium ${done === evts.length ? 'text-green-400' : 'text-white'}`}>{done === evts.length ? '✅' : '⚡'} {name}</span>
+                          <span className="text-xs text-slate-500">{done}/{evts.length}</span>
                         </summary>
-                        <div className="px-2 pb-2 space-y-1">
-                          {events.map((event) => (
-                            <label key={event.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-white/5 cursor-pointer text-xs">
-                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded" />
-                              <span className={event.completed ? 'line-through text-slate-500' : 'text-slate-300'}>{event.title.replace(/^[📞💬✉️🔑📤]\s+.+?\s+—\s+/, '')}</span>
-                              {event.completed && <span className="text-green-400 ml-auto">✓</span>}
+                        <div className="px-3 pb-2 space-y-1">
+                          {evts.map((ev) => (
+                            <label key={ev.id} className="flex items-start gap-2 py-1 cursor-pointer">
+                              <input type="checkbox" checked={ev.completed} onChange={() => toggleComplete(ev.id)} className="w-3.5 h-3.5 rounded mt-0.5 shrink-0" />
+                              <span className={`text-xs ${ev.completed ? 'line-through text-slate-600' : 'text-slate-300'}`}>{ev.title.replace(/^.{1,4}\s+.+?\s+—\s+/, '')}</span>
                             </label>
                           ))}
                         </div>
                       </details>
                     );
                   })}
+                  {/* General tasks */}
+                  {generalEvents.map((event) => (
+                    <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                      <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded" />
+                      <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-300'}`}>{event.title}</span>
+                    </label>
+                  ))}
                 </>
               );
             })()}
-
-            {/* Scheduled posts from API */}
+            {/* Scheduled posts */}
             {todayPosts.map((post) => (
-              <div key={post.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
+              <div key={post.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
                 <span className="text-sm">📤</span>
-                <div className="min-w-0 flex-1">
-                  <span className="text-sm text-slate-300 truncate block">{(post.content || 'Scheduled post').slice(0, 50)}</span>
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded ${post.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{post.status}</span>
+                <span className="text-sm text-slate-300 truncate flex-1">{(post.content || 'Scheduled post').slice(0, 50)}</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded ${post.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{post.status}</span>
               </div>
             ))}
-            {/* Sales Follow-Ups */}
+            {/* Sales follow-ups */}
             {followUpDeals.map((deal) => (
-              <div key={deal.id} className="flex items-center gap-3 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10 cursor-pointer hover:bg-amber-500/10" onClick={() => navigate('/sales')}>
+              <div key={deal.id} className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10 cursor-pointer hover:bg-amber-500/10" onClick={() => navigate('/sales')}>
                 <span className="text-sm">💰</span>
-                <div className="min-w-0 flex-1">
-                  <span className="text-sm text-amber-300 truncate block">Follow up: {deal.name}</span>
-                  <span className="text-xs text-slate-500">{deal.policyType || deal.stage} · {Math.floor((Date.now() - new Date(deal.createdAt).getTime()) / (1000 * 60 * 60 * 24))}d since contact</span>
-                </div>
+                <span className="text-sm text-amber-300 truncate flex-1">{deal.name}</span>
+                <span className="text-xs text-slate-500">{Math.floor((Date.now() - new Date(deal.createdAt).getTime()) / (1000 * 60 * 60 * 24))}d</span>
               </div>
             ))}
-          </div>
+          </>
         ) : (
           <div className="space-y-2">
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 rounded" />
               <span className="text-sm text-slate-300">Post a {selectedTrade.postTypes[0]} on social media</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 rounded" />
               <span className="text-sm text-slate-300">Check for new keyword matches</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 rounded" />
               <span className="text-sm text-slate-300">Follow up on recent leads</span>
             </label>

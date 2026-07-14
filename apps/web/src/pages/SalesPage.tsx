@@ -996,16 +996,15 @@ export default function SalesPage() {
       )}
 
       {/* Folio Total */}
-      {filtered.length > 0 && (
+      {filtered.filter((d) => d.stage === 'won').length > 0 && (
         <div className="glass-card-strong border-green-500/20">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-white">Folio Total</p>
-              <p className="text-xs text-slate-400">{filtered.length} deal{filtered.length !== 1 ? 's' : ''} {folioFilter !== 'all' ? `in ${folioFilter}` : ''}</p>
+              <p className="text-xs text-slate-400">{filtered.filter((d) => d.stage === 'won').length} won {folioFilter !== 'all' ? `in ${folioFilter}` : ''}</p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-green-400">${filtered.reduce((sum, d) => sum + d.value, 0).toLocaleString()}</p>
-              <p className="text-xs text-slate-500">Won: ${filtered.filter((d) => d.stage === 'won').reduce((sum, d) => sum + d.value, 0).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-green-400">${filtered.filter((d) => d.stage === 'won').reduce((sum, d) => sum + d.value, 0).toLocaleString()}</p>
             </div>
           </div>
         </div>

@@ -505,6 +505,37 @@ export default function SalesPage() {
         </div>
       </div>
 
+      {/* Follow-Ups Due */}
+      {(() => {
+        const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+        const needsFollowUp = deals.filter((d) =>
+          ['prospect', 'contacted', 'quoted'].includes(d.stage) &&
+          d.createdAt < twoDaysAgo
+        );
+        if (needsFollowUp.length === 0) return null;
+        return (
+          <div className="glass-card border-amber-500/20">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-amber-300">📋 Follow-Ups Due ({needsFollowUp.length})</p>
+              <a href="/" className="text-xs text-blue-400 hover:text-blue-300">View on Dashboard →</a>
+            </div>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {needsFollowUp.slice(0, 5).map((d) => (
+                <div key={d.id} className="flex items-center justify-between bg-white/5 px-2 py-1.5 rounded">
+                  <div className="min-w-0">
+                    <p className="text-xs text-white truncate">{d.name}</p>
+                    <p className="text-xs text-slate-500">{d.policyType || 'No type'} · {d.stage}</p>
+                  </div>
+                  <span className="text-xs text-amber-400 shrink-0 ml-2">
+                    {Math.floor((Date.now() - new Date(d.createdAt).getTime()) / (1000 * 60 * 60 * 24))}d ago
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Folio Settings */}
       <div className="glass-card">
         <div className="flex items-center justify-between">
@@ -887,55 +918,6 @@ export default function SalesPage() {
                     ))}
                   </div>
 
-                  {/* Edit & Delete */}
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      onClick={() => {
-                        const newName = prompt('Edit name:', deal.name);
-                        if (newName && newName.trim() !== deal.name) {
-                          buildClient().then((client) => {
-                            client.request('PUT', `/sales/deals/${deal.id}`, { name: newName.trim() });
-                            setDeals(deals.map((d) => d.id === deal.id ? { ...d, name: newName.trim() } : d));
-                          });
-                        }
-                      }}
-                      className="text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      ✏️ Edit
-                    </button>
-                    <button
-                      onClick={() => setConfirmDeleteId(deal.id)}
-                      className="text-xs text-red-400 hover:text-red-300"
-                    >
-                      🗑️ Delete
-                    </button>
-                  </div>
-                  {confirmDeleteId === deal.id && (
-                    <div className="mt-2 p-3 bg-red-950/30 border border-red-500/30 rounded-lg">
-                      <p className="text-xs text-red-300 mb-2">Are you sure you want to delete this deal? This cannot be undone.</p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={async () => {
-                            try {
-                              const client = await buildClient();
-                              await client.request('DELETE', `/sales/deals/${deal.id}`);
-                              setDeals(deals.filter((d) => d.id !== deal.id));
-                            } catch { /* ignore */ }
-                            setConfirmDeleteId(null);
-                          }}
-                          className="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-500"
-                        >
-                          Yes, Delete
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="px-3 py-1.5 bg-slate-700 text-slate-300 rounded text-xs hover:bg-slate-600"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={() => {

@@ -22,6 +22,10 @@ export default function CalendarPage() {
   const [newEventLink, setNewEventLink] = useState('');
   const [repeatOption, setRepeatOption] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly'>('none');
 
+  // Folio dates for calendar highlighting
+  const folioStart = localStorage.getItem('hawkeye_folio_start') || '';
+  const folioEnd = localStorage.getItem('hawkeye_folio_end') || '';
+
   // Fetch real scheduled posts from API
   useEffect(() => {
     async function fetchPosts() {
@@ -202,20 +206,32 @@ export default function CalendarPage() {
             const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
             const future = isFuture(day);
             const dayEvents = getEventsForDay(day);
+            const dateStr = getDateStr(day);
+            const isFolioStart = dateStr === folioStart;
+            const isFolioEnd = dateStr === folioEnd;
+            const isInFolio = folioStart && folioEnd && dateStr >= folioStart && dateStr <= folioEnd;
 
             return (
               <div
                 key={day}
                 onClick={() => handleDayClick(day)}
                 className={`aspect-square flex flex-col items-center justify-start pt-1 rounded-lg text-sm relative group ${
-                  isToday
+                  isFolioStart
+                    ? 'bg-green-600/30 border border-green-500/50 text-green-300 font-bold'
+                    : isFolioEnd
+                    ? 'bg-red-600/30 border border-red-500/50 text-red-300 font-bold'
+                    : isToday
                     ? 'bg-blue-600 text-white font-bold'
+                    : isInFolio
+                    ? 'bg-amber-500/10 border border-amber-500/20 text-slate-300 hover:bg-amber-500/20 cursor-pointer'
                     : future
                     ? 'text-slate-300 hover:bg-slate-700 cursor-pointer'
                     : 'text-slate-500 cursor-not-allowed'
                 }`}
               >
                 <span>{day}</span>
+                {isFolioStart && <span className="text-[8px] text-green-400 leading-tight">START</span>}
+                {isFolioEnd && <span className="text-[8px] text-red-400 leading-tight">END</span>}
                 {dayEvents.length > 0 && (
                   <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
                     {dayEvents.slice(0, 3).map((e) => (

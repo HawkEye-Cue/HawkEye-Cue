@@ -13,6 +13,7 @@ import CalendarPage from './pages/CalendarPage';
 import OpportunitiesPage from './pages/OpportunitiesPage';
 import SalesPage from './pages/SalesPage';
 import TeamPage from './pages/TeamPage';
+import HawkInsightsPage from './pages/HawkInsightsPage';
 import NetworkPage from './pages/NetworkPage';
 import AppreciationsPage from './pages/AppreciationsPage';
 import KeywordsPage from './pages/KeywordsPage';
@@ -75,6 +76,7 @@ export default function App() {
                 <Route path="/opportunities" element={<OpportunitiesPage />} />
                 <Route path="/sales" element={<SalesPage />} />
                 <Route path="/team" element={<TeamPage />} />
+                <Route path="/hawk-insights" element={<HawkInsightsPage />} />
                 <Route path="/network" element={<NetworkPage />} />
                 <Route path="/appreciations" element={<AppreciationsPage />} />
                 <Route path="/keywords" element={<KeywordsPage />} />

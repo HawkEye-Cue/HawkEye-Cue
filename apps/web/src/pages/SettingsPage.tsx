@@ -190,6 +190,15 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Hawk Insights */}
+      <Link to="/hawk-insights" className="glass-card flex items-center justify-between hover:bg-white/5 transition-colors">
+        <div>
+          <p className="text-sm font-medium text-white">🦅 Hawk Insights</p>
+          <p className="text-xs text-slate-400">See where your leads come from, top platforms, peak times</p>
+        </div>
+        <span className="text-slate-500">→</span>
+      </Link>
+
       {/* Checkout success/cancel banners */}
       {checkoutStatus === 'success' && (
         <div className="p-3 rounded-lg bg-green-950/40 border border-green-500/40 text-sm text-green-300">

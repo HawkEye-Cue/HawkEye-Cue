@@ -346,6 +346,7 @@ export default function SalesPage() {
   const [adding, setAdding] = useState(false);
   const [folioFilter, setFolioFilter] = useState('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [snoozeId, setSnoozeId] = useState<string | null>(null);
   const [teamEmailsText, setTeamEmailsText] = useState('');
 
   async function buildClient() {
@@ -1002,12 +1003,60 @@ export default function SalesPage() {
                       ✏️ Edit
                     </button>
                     <button
-                      onClick={() => setConfirmDeleteId(deal.id)}
+                      onClick={() => {
+                        const snoozeDealId = deal.id === confirmDeleteId ? null : deal.id;
+                        setConfirmDeleteId(null);
+                        setSnoozeId(snoozeId === deal.id ? null : deal.id);
+                      }}
+                      className="text-xs text-purple-400 hover:text-purple-300"
+                    >
+                      😴 Snooze
+                    </button>
+                    <button
+                      onClick={() => { setSnoozeId(null); setConfirmDeleteId(deal.id); }}
                       className="text-xs text-red-400 hover:text-red-300"
                     >
                       🗑️ Delete
                     </button>
                   </div>
+
+                  {/* Snooze options */}
+                  {snoozeId === deal.id && (
+                    <div className="mt-2 p-3 bg-purple-950/30 border border-purple-500/30 rounded-lg">
+                      <p className="text-xs text-purple-300 mb-2">Re-surface this lead in:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { label: '1 week', days: 7 },
+                          { label: '2 weeks', days: 14 },
+                          { label: '1 month', days: 30 },
+                          { label: '3 months', days: 90 },
+                          { label: '6 months', days: 180 },
+                          { label: '1 year', days: 365 },
+                        ].map((opt) => (
+                          <button
+                            key={opt.days}
+                            onClick={async () => {
+                              const snoozeDate = new Date(Date.now() + opt.days * 24 * 60 * 60 * 1000);
+                              const dateStr = `${snoozeDate.getFullYear()}-${String(snoozeDate.getMonth() + 1).padStart(2, '0')}-${String(snoozeDate.getDate()).padStart(2, '0')}`;
+                              // Add calendar cue for the re-surface date
+                              addEvent({ date: dateStr, title: `🔄 Follow up: ${deal.name} (snoozed ${opt.label})`, type: 'task' });
+                              // Move deal to "lost" to hide from active list
+                              try {
+                                const client = await buildClient();
+                                await client.request('PUT', `/sales/deals/${deal.id}`, { stage: 'lost', notes: `${deal.notes ? deal.notes + ' | ' : ''}Snoozed ${opt.label} — resurfaces ${dateStr}` });
+                                setDeals(deals.map((d) => d.id === deal.id ? { ...d, stage: 'lost', notes: `${d.notes ? d.notes + ' | ' : ''}Snoozed ${opt.label} — resurfaces ${dateStr}` } : d));
+                              } catch { /* ignore */ }
+                              setSnoozeId(null);
+                            }}
+                            className="px-2.5 py-1.5 bg-purple-600/20 border border-purple-500/30 rounded text-xs text-purple-300 hover:bg-purple-600/40"
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <button onClick={() => setSnoozeId(null)} className="text-xs text-slate-500 mt-2 hover:text-slate-300">Cancel</button>
+                    </div>
+                  )}
 
                   {/* Delete confirmation */}
                   {confirmDeleteId === deal.id && (

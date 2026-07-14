@@ -16,6 +16,14 @@ export default function DashboardPage() {
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
   const [followUpDeals, setFollowUpDeals] = useState<{ id: string; name: string; stage: string; policyType: string; createdAt: string }[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Refetch when page becomes visible (user navigates back)
+  useEffect(() => {
+    const handleFocus = () => setRefreshKey((k) => k + 1);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
 
   // Redirect new users to onboarding
   useEffect(() => {
@@ -97,7 +105,7 @@ export default function DashboardPage() {
       }
     }
     fetchTodayPosts();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const todayStr = (() => {
     const now = new Date();

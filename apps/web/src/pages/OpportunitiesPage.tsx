@@ -28,6 +28,7 @@ const statusColors: Record<string, string> = {
 export default function OpportunitiesPage() {
   const { getToken } = useAuth();
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
+  const [groupBy, setGroupBy] = useState<'none' | 'platform' | 'keyword'>('none');
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [stats, setStats] = useState<OpportunityStats>({ total: 0, new: 0, followedUp: 0, converted: 0 });
   const [loading, setLoading] = useState(true);
@@ -103,6 +104,48 @@ export default function OpportunitiesPage() {
     }
   }
 
+  function renderLeadCard(lead: Opportunity) {
+    return (
+      <div key={lead.id} className="glass-card">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-lg">{platformIcons[lead.sourcePlatform] || '📱'}</span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white">{lead.sourceAuthor}</p>
+              <p className="text-xs text-slate-500">{(lead as any).keywordText || (lead as any).keywordId || 'Keyword match'} • {lead.sourcePlatform || ''} • {new Date(lead.detectedAt || (lead as any).createdAt).toLocaleDateString()}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>
+              {lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? 'Converted' : 'New'}
+            </span>
+            <button onClick={() => handleDelete(lead.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+          </div>
+        </div>
+        <p className="text-sm text-slate-300 italic bg-white/5 p-2 rounded-lg mb-3">&quot;{lead.sourceContent.slice(0, 150)}{lead.sourceContent.length > 150 ? '...' : ''}&quot;</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {lead.status === 'new' && (
+            <button onClick={() => handleUpdateStatus(lead.id, 'followed_up')} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-600/30 disabled:opacity-50">
+              {updatingId === lead.id ? '...' : '📞 Mark Followed Up'}
+            </button>
+          )}
+          {(lead.status === 'new' || lead.status === 'followed_up') && (
+            <button onClick={() => handleUpdateStatus(lead.id, 'converted')} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">
+              {updatingId === lead.id ? '...' : '✓ Mark Converted'}
+            </button>
+          )}
+          {lead.sourceUrl && (
+            <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10">View Post ↗</a>
+          )}
+        </div>
+        <details className="mt-3">
+          <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">📝 Notes</summary>
+          <textarea defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''} onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)} placeholder="Add notes about this lead..." className="w-full mt-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16" />
+        </details>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-white">Lead Cues</h2>
@@ -144,6 +187,20 @@ export default function OpportunitiesPage() {
         ))}
       </div>
 
+      {/* Group By */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-slate-500">Group by:</span>
+        {([['none', 'None'], ['platform', 'Platform'], ['keyword', 'Keyword']] as const).map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => setGroupBy(val)}
+            className={`px-3 py-1 rounded-full text-xs ${groupBy === val ? 'bg-blue-600 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Leads List */}
       {loading ? (
         <p className="text-sm text-slate-500">Loading leads...</p>
@@ -157,71 +214,36 @@ export default function OpportunitiesPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {leads.map((lead) => (
-            <div key={lead.id} className="glass-card">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-lg">{platformIcons[lead.sourcePlatform] || '📱'}</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-white">{lead.sourceAuthor}</p>
-                    <p className="text-xs text-slate-500">{lead.keywordText || (lead as any).keywordId || 'Keyword match'} • {(lead as any).sourcePlatform || ''} • {new Date(lead.detectedAt || (lead as any).createdAt).toLocaleDateString()}</p>
+          {groupBy !== 'none' ? (
+            // Grouped view
+            (() => {
+              const groups: Record<string, Opportunity[]> = {};
+              for (const lead of leads) {
+                const key = groupBy === 'platform'
+                  ? (lead.sourcePlatform || 'unknown')
+                  : ((lead as any).keywordText || (lead as any).keywordId || 'Unknown keyword');
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(lead);
+              }
+              return Object.entries(groups).sort((a, b) => b[1].length - a[1].length).map(([groupName, groupLeads]) => (
+                <details key={groupName} className="glass-card" open>
+                  <summary className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm font-medium text-white">
+                      {groupBy === 'platform' && <span className="mr-1">{platformIcons[groupName] || '📱'}</span>}
+                      {groupBy === 'platform' ? groupName.charAt(0).toUpperCase() + groupName.slice(1) : groupName}
+                    </span>
+                    <span className="text-xs text-slate-500">{groupLeads.length} leads</span>
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {groupLeads.map((lead) => renderLeadCard(lead))}
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>
-                    {lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? 'Converted' : 'New'}
-                  </span>
-                  <button onClick={() => handleDelete(lead.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
-                </div>
-              </div>
-
-              {/* Post content preview */}
-              <p className="text-sm text-slate-300 italic bg-white/5 p-2 rounded-lg mb-3">"{lead.sourceContent.slice(0, 150)}{lead.sourceContent.length > 150 ? '...' : ''}"</p>
-
-              {/* Action buttons */}
-              <div className="flex flex-wrap items-center gap-2">
-                {lead.status === 'new' && (
-                  <button
-                    onClick={() => handleUpdateStatus(lead.id, 'followed_up')}
-                    disabled={updatingId === lead.id}
-                    className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-600/30 disabled:opacity-50"
-                  >
-                    {updatingId === lead.id ? '...' : '📞 Mark Followed Up'}
-                  </button>
-                )}
-                {(lead.status === 'new' || lead.status === 'followed_up') && (
-                  <button
-                    onClick={() => handleUpdateStatus(lead.id, 'converted')}
-                    disabled={updatingId === lead.id}
-                    className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50"
-                  >
-                    {updatingId === lead.id ? '...' : '✓ Mark Converted'}
-                  </button>
-                )}
-                {lead.sourceUrl && (
-                  <a
-                    href={lead.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10"
-                  >
-                    View Post ↗
-                  </a>
-                )}
-              </div>
-
-              {/* Notes */}
-              <details className="mt-3">
-                <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">📝 Notes</summary>
-                <textarea
-                  defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''}
-                  onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)}
-                  placeholder="Add notes about this lead..."
-                  className="w-full mt-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16"
-                />
-              </details>
-            </div>
-          ))}
+                </details>
+              ));
+            })()
+          ) : (
+            // Flat view
+            leads.map((lead) => renderLeadCard(lead))
+          )}
         </div>
       )}
     </div>

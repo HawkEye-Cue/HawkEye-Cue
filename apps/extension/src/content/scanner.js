@@ -7,6 +7,8 @@
   'use strict';
 
   let keywords = [];
+  let wingmanKeywords = [];
+  let wingmanName = '';
   let processedPosts = new Set();
   let isScanning = false;
 
@@ -70,6 +72,9 @@
 
     // Position relative to the post
     postElement.style.position = postElement.style.position || 'relative';
+    postElement.style.border = '2px solid #3b82f6';
+    postElement.style.borderRadius = '12px';
+    postElement.style.boxShadow = '0 0 12px rgba(59, 130, 246, 0.3)';
     postElement.appendChild(overlay);
 
     // Toggle panel on badge click
@@ -177,6 +182,41 @@
 
   // ─── Extract Author Name ──────────────────────────────────────────────────
 
+  function createWingmanOverlay(postElement, matchedKeywords, postText) {
+    if (postElement.querySelector('.hawkeye-overlay')) return;
+    if (postElement.querySelector('.wingman-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'wingman-overlay';
+    overlay.style.cssText = 'position:absolute;top:8px;right:8px;z-index:99999;font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
+    overlay.innerHTML = `
+      <div style="display:flex;align-items:center;gap:4px;background:linear-gradient(135deg,#1a1a2e,#16213e);border:2px solid #f59e0b;border-radius:20px;padding:4px 10px;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.3);">
+        <span style="font-size:16px;">🤝</span>
+        <span style="font-size:11px;font-weight:700;color:#f59e0b;">Wingman</span>
+      </div>
+      <div class="wingman-panel" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;width:280px;background:#1a1a2e;border:1px solid #f59e0b;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:12px 14px;">
+        <p style="font-size:13px;font-weight:600;color:#f59e0b;margin:0 0 6px 0;">🤝 Shout out ${wingmanName || 'your Wingman'}!</p>
+        <p style="font-size:11px;color:#94a3b8;margin:0 0 8px 0;">This post mentions: <strong style="color:#f59e0b;">${matchedKeywords.join(', ')}</strong></p>
+        <p style="font-size:11px;color:#cbd5e1;margin:0;">Recommend ${wingmanName || 'your partner'} in the comments to build the relationship. They will reciprocate!</p>
+      </div>
+    `;
+
+    postElement.style.position = postElement.style.position || 'relative';
+    postElement.style.border = '2px solid #f59e0b';
+    postElement.style.borderRadius = '12px';
+    postElement.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.3)';
+    postElement.appendChild(overlay);
+
+    const badge = overlay.querySelector('div');
+    const panel = overlay.querySelector('.wingman-panel');
+    badge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+
+  // ─── Extract Author Name (original) ──────────────────────────────────────
+
   function extractAuthorName(postElement) {
     // Try common selectors for author names per platform
     const selectors = {
@@ -257,6 +297,16 @@
           }
         }
         createHawkOverlay(postContainer, matched, text);
+      } else if (wingmanKeywords.length > 0) {
+        // Check wingman keywords
+        const wingmanMatched = wingmanKeywords.filter((kw) => text.toLowerCase().includes(kw.toLowerCase()));
+        if (wingmanMatched.length > 0) {
+          let postContainer = el;
+          for (let i = 0; i < 3; i++) {
+            if (postContainer.parentElement) postContainer = postContainer.parentElement;
+          }
+          createWingmanOverlay(postContainer, wingmanMatched, text);
+        }
       }
     });
 
@@ -295,12 +345,17 @@
 
     keywords = storedKeywords;
 
-    if (keywords.length === 0) {
+    // Load wingman keywords from storage
+    const wmResult = await chrome.storage.local.get(['wingmanKeywords', 'wingmanName']);
+    wingmanKeywords = wmResult.wingmanKeywords || [];
+    wingmanName = wmResult.wingmanName || '';
+
+    if (keywords.length === 0 && wingmanKeywords.length === 0) {
       console.log('[HawkEye] No keywords configured');
       return;
     }
 
-    console.log(`[HawkEye] Scanning for ${keywords.length} keywords on ${platform}`);
+    console.log(`[HawkEye] Scanning for ${keywords.length} keywords + ${wingmanKeywords.length} wingman keywords on ${platform}`);
     console.log(`[HawkEye] Keywords:`, keywords);
 
     // Initial scan

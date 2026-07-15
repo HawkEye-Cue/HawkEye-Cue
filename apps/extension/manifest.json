@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "HawkEye-Cue",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Detect leads and mentions while scrolling social media. A hawk icon appears when someone posts about needing your services.",
   "permissions": [
     "storage",

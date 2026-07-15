@@ -95,6 +95,9 @@ async function showDashboard() {
           keywords.length > 0
             ? `Tracking ${keywords.length} keyword${keywords.length !== 1 ? 's' : ''}`
             : 'No keywords set up yet — add them in Settings';
+
+        // Also sync wingman keywords from localStorage (passed via web app)
+        // Wingman keywords are stored locally per user, fetch from API or use stored
       } else {
         document.getElementById('keywords-info').textContent = 'Failed to load keywords';
       }

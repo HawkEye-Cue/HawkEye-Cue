@@ -14,7 +14,10 @@ export default function SettingsScreen({ onLogout }: Props) {
     getUserEmail().then((e) => setEmail(e || ''));
     apiRequest<any>('GET', '/subscription').then((res) => {
       setTier(res.tier || 'free');
-    }).catch(() => {});
+    }).catch((e) => {
+      console.log('Subscription fetch error:', e.message);
+      setTier('error: ' + e.message);
+    });
   }, []);
 
   const tierLabels: Record<string, string> = { free: '🪺 Nest (Free)', base: '🪺 Nest', growth: '🦅 Flight', soar: '🚀 Soar', team: '🏔️ Summit' };

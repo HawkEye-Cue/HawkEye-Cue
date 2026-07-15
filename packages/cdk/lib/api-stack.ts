@@ -33,6 +33,8 @@ export class ApiStack extends cdk.Stack {
           'https://hawkeyecue.com',
           'https://www.hawkeyecue.com',
           'http://localhost:5173',
+          'http://localhost:8081',
+          'http://localhost:19006',
         ],
         allowHeaders: ['Authorization', 'Content-Type'],
         allowMethods: [

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import { signIn } from '../utils/api';
 
 interface Props {
@@ -7,25 +7,27 @@ interface Props {
   onLogin: () => void;
 }
 
+function showAlert(title: string, msg: string) {
+  if (Platform.OS === 'web') { window.alert(`${title}: ${msg}`); }
+  else { const { Alert } = require('react-native'); Alert.alert(title, msg); }
+}
+
 export default function LoginScreen({ navigation, onLogin }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
-      return;
-    }
+    if (!email || !password) { setError('Please enter email and password'); return; }
     setLoading(true);
+    setError('');
     try {
       await signIn(email.trim().toLowerCase(), password);
       onLogin();
     } catch (e: any) {
-      Alert.alert('Login Failed', e.message || 'Invalid credentials');
-    } finally {
-      setLoading(false);
-    }
+      setError(e.message || 'Invalid credentials');
+    } finally { setLoading(false); }
   };
 
   return (
@@ -34,6 +36,8 @@ export default function LoginScreen({ navigation, onLogin }: Props) {
         <Text style={styles.logo}>🦅</Text>
         <Text style={styles.title}>HawkEye-Cue</Text>
         <Text style={styles.subtitle}>Sign in to your account</Text>
+
+        {error ? <Text style={{ color: '#ef4444', textAlign: 'center', marginBottom: 12, fontSize: 13 }}>{error}</Text> : null}
 
         <TextInput
           style={styles.input}

@@ -1,14 +1,40 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 const API_URL = 'https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com';
 const COGNITO_REGION = 'us-east-1';
-const COGNITO_CLIENT_ID = '333anc07o123neh75j0d5ui4dk';
+const COGNITO_CLIENT_ID = '2cr45bt815hr68i0j021murak'; // Extension client (USER_PASSWORD_AUTH enabled)
+
+// ─── Storage abstraction (SecureStore on native, localStorage on web) ─────────
+
+async function getItem(key: string): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem(key);
+  }
+  return SecureStore.getItemAsync(key);
+}
+
+async function setItem(key: string, value: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    localStorage.setItem(key, value);
+    return;
+  }
+  await SecureStore.setItemAsync(key, value);
+}
+
+async function deleteItem(key: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem(key);
+    return;
+  }
+  await SecureStore.deleteItemAsync(key);
+}
 
 // ─── Token Management ─────────────────────────────────────────────────────────
 
 export async function getToken(): Promise<string | null> {
-  const token = await SecureStore.getItemAsync('authToken');
-  const expiry = await SecureStore.getItemAsync('tokenExpiry');
+  const token = await getItem('authToken');
+  const expiry = await getItem('tokenExpiry');
   if (!token || !expiry || Date.now() >= parseInt(expiry)) {
     return null;
   }
@@ -16,22 +42,22 @@ export async function getToken(): Promise<string | null> {
 }
 
 export async function saveToken(idToken: string, expiresIn: number): Promise<void> {
-  await SecureStore.setItemAsync('authToken', idToken);
-  await SecureStore.setItemAsync('tokenExpiry', String(Date.now() + expiresIn * 1000));
+  await setItem('authToken', idToken);
+  await setItem('tokenExpiry', String(Date.now() + expiresIn * 1000));
 }
 
 export async function clearToken(): Promise<void> {
-  await SecureStore.deleteItemAsync('authToken');
-  await SecureStore.deleteItemAsync('tokenExpiry');
-  await SecureStore.deleteItemAsync('userEmail');
+  await deleteItem('authToken');
+  await deleteItem('tokenExpiry');
+  await deleteItem('userEmail');
 }
 
 export async function getUserEmail(): Promise<string | null> {
-  return SecureStore.getItemAsync('userEmail');
+  return getItem('userEmail');
 }
 
 export async function saveUserEmail(email: string): Promise<void> {
-  await SecureStore.setItemAsync('userEmail', email);
+  await setItem('userEmail', email);
 }
 
 // ─── Cognito Auth ─────────────────────────────────────────────────────────────

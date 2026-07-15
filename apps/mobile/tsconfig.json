@@ -3,13 +3,23 @@
     "outDir": "./dist",
     "rootDir": ".",
     "jsx": "react-jsx",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "module": "ESNext",
     "strict": true,
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "App.tsx", "app.config.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*",
+    "App.tsx",
+    "app.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "extends": "expo/tsconfig.base"
 }

@@ -13,6 +13,7 @@ import CalendarScreen from './src/screens/CalendarScreen';
 import OpportunitiesScreen from './src/screens/OpportunitiesScreen';
 import SalesScreen from './src/screens/SalesScreen';
 import CollaborateScreen from './src/screens/CollaborateScreen';
+import AppreciationsScreen from './src/screens/AppreciationsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
@@ -31,7 +32,7 @@ const Stack = createNativeStackNavigator();
 
 function TabIcon({ label }: { label: string }) {
   const icons: Record<string, string> = {
-    Home: '🏠', Create: '✨', Calendar: '📅', Leads: '🎯', Sales: '💰', Network: '🤝', More: '⚙️',
+    Home: '🏠', Create: '✨', Calendar: '📅', Leads: '🎯', Sales: '💰', Collaborate: '🤝', Thanks: '🙏', More: '⚙️',
   };
   return <Text style={{ fontSize: 20 }}>{icons[label] || '•'}</Text>;
 }
@@ -50,15 +51,17 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
         },
         tabBarActiveTintColor: '#f59e0b',
         tabBarInactiveTintColor: '#64748b',
-        tabBarLabelStyle: { fontSize: 10 },
+        tabBarLabelStyle: { fontSize: 9 },
         tabBarIcon: () => <TabIcon label={route.name} />,
       })}
     >
       <Tab.Screen name="Home" component={DashboardScreen} />
       <Tab.Screen name="Create" component={ContentCreatorScreen} />
-      <Tab.Screen name="Sales" component={SalesScreen} />
+      <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen name="Leads" component={OpportunitiesScreen} />
-      <Tab.Screen name="Network" component={CollaborateScreen} />
+      <Tab.Screen name="Sales" component={SalesScreen} />
+      <Tab.Screen name="Collaborate" component={CollaborateScreen} />
+      <Tab.Screen name="Thanks" component={AppreciationsScreen} />
       <Tab.Screen name="More">
         {(props) => <SettingsScreen {...props} onLogout={onLogout} />}
       </Tab.Screen>

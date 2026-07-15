@@ -66,6 +66,14 @@ export default function NetworkPage() {
   const [newWingmanKw, setNewWingmanKw] = useState('');
   const [wingmanName, setWingmanName] = useState(() => localStorage.getItem(`hawkeye_wingman_name_${user?.sub}`) || '');
   const [showWingman, setShowWingman] = useState(false);
+  const [wingmanTier, setWingmanTier] = useState('free');
+
+  // Check tier for Wingman access
+  useEffect(() => {
+    buildClient().then((client) => client.request<{ tier: string }>('GET', '/subscription')).then((res) => setWingmanTier(res.tier || 'free')).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasWingmanAccess = ['soar', 'team', 'summit'].includes(wingmanTier);
   const [showAddContact, setShowAddContact] = useState(false);
   const [contactName, setContactName] = useState('');
   const [contactTrade, setContactTrade] = useState('');
@@ -238,9 +246,15 @@ export default function NetworkPage() {
       <details className="glass-card border-amber-500/20" open={showWingman}>
         <summary className="font-semibold text-amber-300 cursor-pointer flex items-center justify-between" onClick={(e) => { e.preventDefault(); setShowWingman(!showWingman); }}>
           <span>🤝 Wingman — Relationship Builder</span>
-          <span className="text-xs text-slate-500">{wingmanKeywords.length} keywords</span>
+          {hasWingmanAccess ? <span className="text-xs text-slate-500">{wingmanKeywords.length} keywords</span> : <span className="text-xs text-amber-500">Soar</span>}
         </summary>
-        {showWingman && (
+        {showWingman && !hasWingmanAccess && (
+          <div className="mt-3 text-center py-4">
+            <p className="text-sm text-slate-400 mb-3">Wingman helps you build relationships that generate referrals. Available on the Soar plan.</p>
+            <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-6 py-2 rounded-lg text-sm font-bold hover:opacity-90">Upgrade to Soar</a>
+          </div>
+        )}
+        {showWingman && hasWingmanAccess && (
           <div className="mt-3 space-y-3">
             <p className="text-xs text-slate-400">Add keywords for your referral partners. When you see posts matching these while scrolling, shout them out! They'll reciprocate with referrals.</p>
 

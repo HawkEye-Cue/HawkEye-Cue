@@ -278,6 +278,39 @@ export default function SalesPage() {
   const { addEvent, removeAllByTitle } = useCalendar();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tier, setTier] = useState<string>('free');
+
+  // Check subscription tier
+  useEffect(() => {
+    async function checkTier() {
+      try {
+        const token = await getToken();
+        const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+        const sub = await client.request<{ tier: string }>('GET', '/subscription');
+        setTier(sub.tier || 'free');
+      } catch { /* default to free */ }
+    }
+    checkTier();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Gate: Sales Tracker requires Soar or higher
+  const hasAccess = ['soar', 'team', 'summit'].includes(tier);
+
+  if (!hasAccess && tier !== 'free') {
+    // Still loading tier, don't show gate yet
+  }
+  if (!hasAccess && !loading) {
+    return (
+      <div className="space-y-6 text-center py-12">
+        <div className="text-5xl">🚀</div>
+        <h2 className="text-2xl font-bold text-white">Sales Tracker</h2>
+        <p className="text-slate-400 max-w-sm mx-auto">Track your entire pipeline, see where every sale comes from, manage folios, and get monthly recaps. Available on the Soar plan.</p>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">
+          Upgrade to Soar — $29.99/mo
+        </a>
+      </div>
+    );
+  }
 
   // Get trade-specific config
   const tradeConfig = useMemo(() => {

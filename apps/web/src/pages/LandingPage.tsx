@@ -135,65 +135,83 @@ export default function LandingPage() {
         <h3 className="text-2xl font-bold text-center mb-4 reveal">Pricing</h3>
         <p className="text-center text-slate-400 mb-12 reveal">Simple plans that grow with your business</p>
 
-        <div className="grid md:grid-cols-3 gap-6 stagger-children items-start">
-          {/* Base */}
+        <div className="grid md:grid-cols-4 gap-4 stagger-children items-start">
+          {/* Nest (Free) */}
           <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
-            <h4 className="text-xl font-bold text-white">Base</h4>
+            <h4 className="text-xl font-bold text-white">🪺 Nest</h4>
             <div className="mt-2 mb-4">
-              <span className="text-3xl font-extrabold text-white">$9.99</span>
-              <span className="text-slate-400 text-sm">/mo</span>
+              <span className="text-3xl font-extrabold text-white">Free</span>
             </div>
             <ul className="text-sm text-slate-300 space-y-2 mb-6">
               <li>✓ AI-powered post creation</li>
               <li>✓ Post scheduling & calendar</li>
-              <li>✓ Track all your posts</li>
               <li>✓ Trade-specific suggestions</li>
               <li>✓ Multi-platform support</li>
             </ul>
             <Link to="/register" className="block text-center btn-primary py-2.5 btn-shimmer">
-              Get Started
+              Get Started Free
             </Link>
           </div>
 
-          {/* Growth */}
-          <div className="glass-card-strong gradient-border relative hover:-translate-y-2 transition-transform duration-300">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-blue-500/20">MOST POPULAR</div>
-            <h4 className="text-xl font-bold text-white mt-2">Growth</h4>
+          {/* Flight */}
+          <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
+            <h4 className="text-xl font-bold text-white">🦅 Flight</h4>
             <div className="mt-2 mb-4">
               <span className="text-3xl font-extrabold text-white">$19.99</span>
               <span className="text-slate-400 text-sm">/mo</span>
             </div>
             <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ Everything in Base</li>
+              <li>✓ Everything in Nest</li>
               <li>🦅 Keyword tracking while scrolling</li>
               <li>🦅 Hawk icon alerts on matches</li>
               <li>🦅 Appreciations tracking</li>
-              <li>🦅 Connection tracking</li>
               <li>🦅 Browser extension</li>
+              <li>🦅 Lead detection</li>
             </ul>
-            <Link to="/register" className="block text-center bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2.5 rounded-lg font-medium hover:shadow-lg hover:shadow-purple-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
-              Upgrade to Growth
+            <Link to="/register" className="block text-center bg-gradient-to-r from-blue-600 to-blue-500 text-white py-2.5 rounded-lg font-medium hover:shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
+              Start Flying
             </Link>
           </div>
 
-          {/* Team */}
-          <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-purple-500/20">FOR TEAMS</div>
-            <h4 className="text-xl font-bold text-white mt-2">Team</h4>
+          {/* Soar */}
+          <div className="glass-card-strong gradient-border relative hover:-translate-y-2 transition-transform duration-300">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-amber-500/20">MOST POPULAR</div>
+            <h4 className="text-xl font-bold text-white mt-2">🚀 Soar</h4>
             <div className="mt-2 mb-4">
-              <span className="text-3xl font-extrabold text-white">$79.99</span>
+              <span className="text-3xl font-extrabold text-white">$29.99</span>
               <span className="text-slate-400 text-sm">/mo</span>
             </div>
             <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ Everything in Growth</li>
+              <li>✓ Everything in Flight</li>
+              <li>💰 Sales Tracker & Pipeline</li>
+              <li>💰 Lead source attribution</li>
+              <li>💰 Folio recaps & analytics</li>
+              <li>🤝 <strong>Wingman</strong> — relationship builder</li>
+              <li>🤝 Wingman keywords for shoutouts</li>
+              <li>📊 Hawk Insights analytics</li>
+            </ul>
+            <Link to="/register" className="block text-center bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2.5 rounded-lg font-bold hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
+              Start Soaring
+            </Link>
+          </div>
+
+          {/* Summit */}
+          <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-purple-500/20">FOR TEAMS</div>
+            <h4 className="text-xl font-bold text-white mt-2">🏔️ Summit</h4>
+            <div className="mt-2 mb-4">
+              <span className="text-3xl font-extrabold text-white">$119.99</span>
+              <span className="text-slate-400 text-sm">/mo</span>
+            </div>
+            <ul className="text-sm text-slate-300 space-y-2 mb-6">
+              <li>✓ Everything in Soar</li>
               <li>👥 Up to 5 team members</li>
-              <li>👥 Shared keyword tracking & leads</li>
-              <li>👥 Team collaboration on content</li>
-              <li>👥 Shared calendar & scheduling</li>
+              <li>👥 Team leaderboard & stats</li>
+              <li>👥 Shared leads & calendar</li>
               <li>👥 Team analytics dashboard</li>
             </ul>
             <Link to="/register" className="block text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2.5 rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
-              Get Team Plan
+              Reach the Summit
             </Link>
           </div>
         </div>

@@ -58,6 +58,14 @@ export default function NetworkPage() {
   // --- Contacts State ---
   const [contacts, setContacts] = useState<NetworkContact[]>([]);
   const [contactsLoading, setContactsLoading] = useState(true);
+
+  // --- Wingman State ---
+  const [wingmanKeywords, setWingmanKeywords] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`hawkeye_wingman_${user?.sub}`) || '[]'); } catch { return []; }
+  });
+  const [newWingmanKw, setNewWingmanKw] = useState('');
+  const [wingmanName, setWingmanName] = useState(() => localStorage.getItem(`hawkeye_wingman_name_${user?.sub}`) || '');
+  const [showWingman, setShowWingman] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [contactName, setContactName] = useState('');
   const [contactTrade, setContactTrade] = useState('');
@@ -225,6 +233,87 @@ export default function NetworkPage() {
           </button>
         )}
       </div>
+
+      {/* Wingman Section */}
+      <details className="glass-card border-amber-500/20" open={showWingman}>
+        <summary className="font-semibold text-amber-300 cursor-pointer flex items-center justify-between" onClick={(e) => { e.preventDefault(); setShowWingman(!showWingman); }}>
+          <span>🤝 Wingman — Relationship Builder</span>
+          <span className="text-xs text-slate-500">{wingmanKeywords.length} keywords</span>
+        </summary>
+        {showWingman && (
+          <div className="mt-3 space-y-3">
+            <p className="text-xs text-slate-400">Add keywords for your referral partners. When you see posts matching these while scrolling, shout them out! They'll reciprocate with referrals.</p>
+
+            {/* Wingman Name */}
+            <div>
+              <label className="text-xs text-slate-500 block mb-1">Your Wingman's Name</label>
+              <input
+                type="text"
+                value={wingmanName}
+                onChange={(e) => { setWingmanName(e.target.value); localStorage.setItem(`hawkeye_wingman_name_${user?.sub}`, e.target.value); }}
+                placeholder="e.g. Mike's Roofing, Sarah at State Farm..."
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+              />
+            </div>
+
+            {/* Add Wingman Keyword */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newWingmanKw}
+                onChange={(e) => setNewWingmanKw(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newWingmanKw.trim()) {
+                    const updated = [...wingmanKeywords, newWingmanKw.trim()];
+                    setWingmanKeywords(updated);
+                    localStorage.setItem(`hawkeye_wingman_${user?.sub}`, JSON.stringify(updated));
+                    setNewWingmanKw('');
+                  }
+                }}
+                placeholder="+ Add keyword to cue your Wingman..."
+                className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+              />
+              <button
+                onClick={() => {
+                  if (!newWingmanKw.trim()) return;
+                  const updated = [...wingmanKeywords, newWingmanKw.trim()];
+                  setWingmanKeywords(updated);
+                  localStorage.setItem(`hawkeye_wingman_${user?.sub}`, JSON.stringify(updated));
+                  setNewWingmanKw('');
+                }}
+                disabled={!newWingmanKw.trim()}
+                className="px-3 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-500 disabled:opacity-50"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Wingman Keywords List */}
+            {wingmanKeywords.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {wingmanKeywords.map((kw, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500/15 border border-amber-500/25 rounded-full text-xs text-amber-300">
+                    {kw}
+                    <button onClick={() => {
+                      const updated = wingmanKeywords.filter((_, i) => i !== idx);
+                      setWingmanKeywords(updated);
+                      localStorage.setItem(`hawkeye_wingman_${user?.sub}`, JSON.stringify(updated));
+                    }} className="text-amber-400 hover:text-red-400 ml-0.5">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {wingmanKeywords.length > 0 && wingmanName && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                <p className="text-xs text-amber-300 font-medium">How it works:</p>
+                <p className="text-xs text-slate-400 mt-1">When you see posts containing "{wingmanKeywords[0]}" while scrolling, recommend <strong className="text-white">{wingmanName}</strong>. They see the shoutout, appreciate it, and send you referrals back.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </details>
+
       <p className="text-sm text-slate-400">Connect with trades in your area for referrals and partnerships</p>
 
       {/* Region Picker Modal */}

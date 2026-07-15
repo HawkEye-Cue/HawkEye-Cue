@@ -261,7 +261,7 @@ export class ApiClient {
   }
 
   async createCheckout(
-    tier: 'base' | 'growth' | 'team',
+    tier: 'base' | 'growth' | 'soar' | 'team',
     couponCode?: string,
   ): Promise<{ checkoutUrl: string }> {
     const body: { tier: string; couponCode?: string } = { tier };

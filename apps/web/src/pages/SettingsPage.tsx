@@ -120,7 +120,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleUpgrade(tier: 'base' | 'growth' | 'team') {
+  async function handleUpgrade(tier: 'base' | 'growth' | 'soar' | 'team') {
     setLoadingTier(tier);
     setCheckoutError(null);
     try {
@@ -157,7 +157,7 @@ export default function SettingsPage() {
   const currentTier = subscription?.tier ?? 'free';
 
   function tierLabel(tier: string) {
-    const labels: Record<string, string> = { free: 'Free', base: 'Base', growth: 'Growth', team: 'Team' };
+    const labels: Record<string, string> = { free: 'Nest (Free)', nest: 'Nest (Free)', base: 'Nest (Free)', flight: 'Flight', growth: 'Flight', soar: 'Soar', team: 'Summit', summit: 'Summit' };
     return labels[tier] ?? tier;
   }
 
@@ -352,78 +352,66 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Pricing Tiers - Side by Side */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Base Tier */}
-          <div className={`border rounded-xl p-4 ${currentTier === 'base' ? 'border-green-500/50 bg-green-950/20' : 'border-slate-600'}`}>
+        {/* Pricing Tiers */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Flight */}
+          <div className={`border rounded-xl p-4 ${['growth', 'flight'].includes(currentTier) ? 'border-green-500/50 bg-green-950/20' : 'border-blue-500/50 bg-blue-950/20'}`}>
             <div className="mb-2">
-              <span className="text-lg font-bold text-white">Base</span>
-              <p className="text-sm text-slate-400">$9.99/mo</p>
-            </div>
-            {currentTier === 'base' && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
-            <ul className="text-xs text-slate-300 space-y-1 mb-3">
-              <li>✓ AI post creation</li>
-              <li>✓ Scheduling & calendar</li>
-              <li>✓ Post analytics</li>
-              <li>✓ Trade suggestions</li>
-            </ul>
-            {currentTier !== 'base' && (
-              <button
-                onClick={() => handleUpgrade('base')}
-                disabled={loadingTier !== null || currentTier === 'growth' || currentTier === 'team'}
-                className="w-full bg-slate-600 text-white py-2 rounded-lg text-xs font-medium hover:bg-slate-500 disabled:opacity-50"
-              >
-                {loadingTier === 'base' ? 'Loading…' : 'Subscribe'}
-              </button>
-            )}
-          </div>
-
-          {/* Growth Tier */}
-          <div className={`border rounded-xl p-4 ${currentTier === 'growth' ? 'border-green-500/50 bg-green-950/20' : 'border-blue-500/50 bg-blue-950/20'}`}>
-            <div className="mb-2">
-              <span className="text-lg font-bold text-white">Growth</span>
-              <span className="ml-1 bg-blue-600 text-white px-1.5 py-0.5 rounded text-xs">Popular</span>
+              <span className="text-lg font-bold text-white">🦅 Flight</span>
               <p className="text-sm text-blue-400">$19.99/mo</p>
             </div>
-            {currentTier === 'growth' && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
+            {['growth', 'flight'].includes(currentTier) && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
             <ul className="text-xs text-slate-300 space-y-1 mb-3">
-              <li>✓ Everything in Base</li>
-              <li>🦅 Keyword scanning</li>
-              <li>🦅 Hawk icon alerts</li>
+              <li>✓ Everything in Nest</li>
+              <li>🦅 Keyword tracking</li>
+              <li>🦅 Hawk alerts & extension</li>
               <li>🦅 Appreciations</li>
-              <li>🦅 Browser extension</li>
+              <li>🦅 Lead detection</li>
             </ul>
-            {currentTier !== 'growth' && (
-              <button
-                onClick={() => handleUpgrade('growth')}
-                disabled={loadingTier !== null || currentTier === 'team'}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
-              >
+            {!['growth', 'flight', 'soar', 'team', 'summit'].includes(currentTier) && (
+              <button onClick={() => handleUpgrade('growth')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50">
                 {loadingTier === 'growth' ? 'Loading…' : 'Upgrade'}
               </button>
             )}
           </div>
 
-          {/* Team Tier */}
-          <div className={`border rounded-xl p-4 ${currentTier === 'team' ? 'border-green-500/50 bg-green-950/20' : 'border-purple-500/50 bg-purple-950/20'}`}>
+          {/* Soar */}
+          <div className={`border rounded-xl p-4 ${(currentTier as string) === 'soar' ? 'border-green-500/50 bg-green-950/20' : 'border-amber-500/50 bg-amber-950/20'}`}>
             <div className="mb-2">
-              <span className="text-lg font-bold text-white">Team</span>
-              <p className="text-sm text-purple-400">$79.99/mo</p>
+              <span className="text-lg font-bold text-white">🚀 Soar</span>
+              <span className="ml-1 bg-amber-500 text-black px-1.5 py-0.5 rounded text-xs font-bold">Popular</span>
+              <p className="text-sm text-amber-400">$29.99/mo</p>
             </div>
-            {currentTier === 'team' && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
+            {(currentTier as string) === 'soar' && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
             <ul className="text-xs text-slate-300 space-y-1 mb-3">
-              <li>✓ Everything in Growth</li>
-              <li>👥 5 team members</li>
-              <li>👥 Shared leads</li>
-              <li>👥 Team calendar</li>
-              <li>👥 Team analytics</li>
+              <li>✓ Everything in Flight</li>
+              <li>💰 Sales Tracker & Pipeline</li>
+              <li>🤝 Wingman relationships</li>
+              <li>📊 Hawk Insights</li>
+              <li>💰 Folio recaps</li>
             </ul>
-            {currentTier !== 'team' && (
-              <button
-                onClick={() => handleUpgrade('team')}
-                disabled={loadingTier !== null}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
-              >
+            {!['soar', 'team', 'summit'].includes(currentTier as string) && (
+              <button onClick={() => handleUpgrade('soar')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+                {loadingTier === 'soar' ? 'Loading…' : 'Upgrade'}
+              </button>
+            )}
+          </div>
+
+          {/* Summit */}
+          <div className={`border rounded-xl p-4 sm:col-span-2 ${['team', 'summit'].includes(currentTier) ? 'border-green-500/50 bg-green-950/20' : 'border-purple-500/50 bg-purple-950/20'}`}>
+            <div className="mb-2">
+              <span className="text-lg font-bold text-white">🏔️ Summit</span>
+              <p className="text-sm text-purple-400">$119.99/mo</p>
+            </div>
+            {['team', 'summit'].includes(currentTier) && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
+            <ul className="text-xs text-slate-300 space-y-1 mb-3">
+              <li>✓ Everything in Soar</li>
+              <li>👥 Up to 5 team members</li>
+              <li>👥 Team leaderboard & stats</li>
+              <li>👥 Shared leads & calendar</li>
+            </ul>
+            {!['team', 'summit'].includes(currentTier) && (
+              <button onClick={() => handleUpgrade('team')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50">
                 {loadingTier === 'team' ? 'Loading…' : 'Upgrade'}
               </button>
             )}

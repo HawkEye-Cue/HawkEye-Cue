@@ -32,6 +32,15 @@ export default function SettingsScreen({ onLogout }: Props) {
 
       {/* Quick Links */}
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>Upgrade Plan</Text>
+        <TouchableOpacity style={[styles.linkRow]} onPress={() => Linking.openURL('https://hawkeyecue.com/settings')}>
+          <Text style={styles.linkText}>🚀 Upgrade your plan on hawkeyecue.com</Text>
+          <Text style={styles.arrow}>→</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* More Links */}
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Quick Links</Text>
         <TouchableOpacity style={styles.linkRow} onPress={() => Linking.openURL('https://hawkeyecue.com/settings')}>
           <Text style={styles.linkText}>🔑 Manage Keywords</Text>

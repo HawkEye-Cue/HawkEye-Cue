@@ -210,10 +210,11 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
-    // Stripe Price IDs — these match the products created in Stripe Dashboard (live mode)
-    subscriptionHandlerFn.addEnvironment('STRIPE_PRICE_BASE', 'price_1Tg5C7D0B5PTsk5eqGCIt3hh');
+    // Stripe Price IDs — new tier structure
+    subscriptionHandlerFn.addEnvironment('STRIPE_PRICE_BASE', 'price_1Tg5DnD0B5PTsk5ePqsicJF6');
     subscriptionHandlerFn.addEnvironment('STRIPE_PRICE_GROWTH', 'price_1Tg5DnD0B5PTsk5ePqsicJF6');
-    subscriptionHandlerFn.addEnvironment('STRIPE_PRICE_TEAM', 'price_1Tg5FFD0B5PTsk5eMbU5zIzc');
+    subscriptionHandlerFn.addEnvironment('STRIPE_PRICE_SOAR', 'price_1TtIyDD0B5PTsk5eRvabYqmG');
+    subscriptionHandlerFn.addEnvironment('STRIPE_PRICE_TEAM', 'price_1TtItpD0B5PTsk5e988EbiUS');
 
     // ─── Stripe Webhook Handler (NO auth) ─────────────────────────────────
     const stripeWebhookFn = new lambda.Function(this, 'StripeWebhookFn', {

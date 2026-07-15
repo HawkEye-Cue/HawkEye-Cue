@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
-import AsyncStorage from 'react-native-async-storage' ;
-
-// Note: AsyncStorage would need to be added as dependency. For now using simple state.
 
 export default function CollaborateScreen() {
   const [wingmanName, setWingmanName] = useState('');

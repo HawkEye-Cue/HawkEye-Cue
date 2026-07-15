@@ -4,6 +4,7 @@
     "rootDir": ".",
     "jsx": "react-jsx",
     "lib": ["ES2022"],
+    "module": "ESNext",
     "strict": true,
     "moduleResolution": "bundler",
     "esModuleInterop": true,

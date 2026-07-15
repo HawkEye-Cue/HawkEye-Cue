@@ -1,113 +1,69 @@
-import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar, Text } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import { getToken, clearToken } from './src/utils/api';
+import React from 'react';
+import { SafeAreaView, StatusBar, StyleSheet, Platform, View, Text } from 'react-native';
 
-// Screens
-import DashboardScreen from './src/screens/DashboardScreen';
-import ContentCreatorScreen from './src/screens/ContentCreatorScreen';
-import CalendarScreen from './src/screens/CalendarScreen';
-import OpportunitiesScreen from './src/screens/OpportunitiesScreen';
-import SalesScreen from './src/screens/SalesScreen';
-import CollaborateScreen from './src/screens/CollaborateScreen';
-import AppreciationsScreen from './src/screens/AppreciationsScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
-import LoginScreen from './src/screens/LoginScreen';
-import RegisterScreen from './src/screens/RegisterScreen';
-
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  } as any),
-});
-
-const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
-
-function TabIcon({ label }: { label: string }) {
-  const icons: Record<string, string> = {
-    Home: '🏠', Create: '✨', Calendar: '📅', Leads: '🎯', Sales: '💰', Collaborate: '🤝', Thanks: '🙏', More: '⚙️',
-  };
-  return <Text style={{ fontSize: 20 }}>{icons[label] || '•'}</Text>;
+// WebView doesn't work on web, so we use an iframe fallback
+let WebViewComponent: any = null;
+try {
+  WebViewComponent = require('react-native-webview').WebView;
+} catch {
+  // Web fallback
 }
 
-function MainTabs({ onLogout }: { onLogout: () => void }) {
+function WebApp() {
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.container}>
+        <iframe
+          src="https://hawkeyecue.com"
+          style={{ flex: 1, width: '100%', height: '100%', border: 'none' } as any}
+        />
+      </View>
+    );
+  }
+
+  if (!WebViewComponent) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>WebView not available</Text>
+      </View>
+    );
+  }
+
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#0f172a',
-          borderTopColor: '#1e293b',
-          height: 65,
-          paddingBottom: 10,
-          paddingTop: 5,
-        },
-        tabBarActiveTintColor: '#f59e0b',
-        tabBarInactiveTintColor: '#64748b',
-        tabBarLabelStyle: { fontSize: 9 },
-        tabBarIcon: () => <TabIcon label={route.name} />,
-      })}
-    >
-      <Tab.Screen name="Home" component={DashboardScreen} />
-      <Tab.Screen name="Create" component={ContentCreatorScreen} />
-      <Tab.Screen name="Calendar" component={CalendarScreen} />
-      <Tab.Screen name="Leads" component={OpportunitiesScreen} />
-      <Tab.Screen name="Sales" component={SalesScreen} />
-      <Tab.Screen name="Collaborate" component={CollaborateScreen} />
-      <Tab.Screen name="Thanks" component={AppreciationsScreen} />
-      <Tab.Screen name="More">
-        {(props) => <SettingsScreen {...props} onLogout={onLogout} />}
-      </Tab.Screen>
-    </Tab.Navigator>
+    <WebViewComponent
+      source={{ uri: 'https://hawkeyecue.com' }}
+      style={styles.webview}
+      startInLoadingState={true}
+      javaScriptEnabled={true}
+      domStorageEnabled={true}
+      sharedCookiesEnabled={true}
+      allowsBackForwardNavigationGestures={true}
+      pullToRefreshEnabled={true}
+      overScrollMode="content"
+    />
   );
 }
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-
-  // Check auth on mount
-  useEffect(() => {
-    async function checkAuth() {
-      const token = await getToken();
-      setIsLoggedIn(!!token);
-    }
-    checkAuth();
-  }, []);
-
-  // Request notification permissions
-  useEffect(() => {
-    Notifications.requestPermissionsAsync();
-  }, []);
-
-  const handleLogout = async () => {
-    await clearToken();
-    setIsLoggedIn(false);
-  };
-
-  if (isLoggedIn === null) {
-    return null; // Loading
-  }
-
   return (
-    <NavigationContainer>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
-      {isLoggedIn ? (
-        <MainTabs onLogout={handleLogout} />
-      ) : (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Login">
-            {(props) => <LoginScreen {...props} onLogin={() => setIsLoggedIn(true)} />}
-          </Stack.Screen>
-          <Stack.Screen name="Register" component={RegisterScreen} />
-        </Stack.Navigator>
-      )}
-    </NavigationContainer>
+      <WebApp />
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+  },
+  webview: {
+    flex: 1,
+  },
+  errorText: {
+    color: '#fff',
+    textAlign: 'center',
+    marginTop: 100,
+  },
+});

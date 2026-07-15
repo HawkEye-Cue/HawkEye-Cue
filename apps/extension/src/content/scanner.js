@@ -115,7 +115,7 @@
           platform,
           authorName,
           postContent: postText.slice(0, 500),
-          postUrl: window.location.href.startsWith('http') ? window.location.href : 'https://facebook.com',
+          postUrl: extractPostUrl(postElement) || window.location.href,
         },
       }, (response) => {
         if (chrome.runtime.lastError) {
@@ -159,7 +159,7 @@
           taggerName: authorName,
           platform,
           postContent: postText.slice(0, 500),
-          postUrl: window.location.href,
+          postUrl: extractPostUrl(postElement) || window.location.href,
         },
       }, (response) => {
         if (chrome.runtime.lastError) {
@@ -236,6 +236,33 @@
       container = container.parentElement;
       const author = container.querySelector(sel);
       if (author) return author.textContent.trim();
+    }
+    return null;
+  }
+
+  // ─── Extract Post URL ───────────────────────────────────────────────────
+
+  function extractPostUrl(postElement) {
+    // Try to find a permalink link in or near the post
+    let container = postElement;
+    for (let i = 0; i < 5; i++) {
+      if (!container.parentElement) break;
+      container = container.parentElement;
+
+      // Facebook: look for timestamp links that are usually permalinks
+      const links = container.querySelectorAll('a[href*="/posts/"], a[href*="/permalink/"], a[href*="story_fbid"], a[href*="/p/"], a[href*="/reel/"]');
+      if (links.length > 0) {
+        const href = links[0].href;
+        if (href && href.startsWith('http')) return href;
+      }
+
+      // LinkedIn: look for activity links
+      const liLinks = container.querySelectorAll('a[href*="/feed/update/"], a[href*="activity"]');
+      if (liLinks.length > 0) return liLinks[0].href;
+
+      // Instagram: look for /p/ links
+      const igLinks = container.querySelectorAll('a[href*="/p/"]');
+      if (igLinks.length > 0) return igLinks[0].href;
     }
     return null;
   }

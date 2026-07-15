@@ -209,6 +209,17 @@ export default function OpportunitiesPage() {
                   </a>
                 )}
               </div>
+
+              {/* Notes */}
+              <details className="mt-3">
+                <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">📝 Notes</summary>
+                <textarea
+                  defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''}
+                  onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)}
+                  placeholder="Add notes about this lead..."
+                  className="w-full mt-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16"
+                />
+              </details>
             </div>
           ))}
         </div>

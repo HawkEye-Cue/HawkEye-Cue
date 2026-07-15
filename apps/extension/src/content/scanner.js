@@ -61,7 +61,7 @@
         </div>
         <div class="hawkeye-panel-body">
           <p class="hawkeye-keywords">Keywords: <strong>${matchedKeywords.join(', ')}</strong></p>
-          <p class="hawkeye-preview">"${postText.slice(0, 120)}${postText.length > 120 ? '...' : ''}"</p>
+          <p class="hawkeye-preview">"${postText.slice(0, 300)}${postText.length > 300 ? '...' : ''}"</p>
           <div class="hawkeye-actions">
             <button class="hawkeye-btn hawkeye-btn-lead">💼 Save as Lead</button>
             <button class="hawkeye-btn hawkeye-btn-appreciate">🙏 Save Appreciation</button>
@@ -84,12 +84,28 @@
 
     badge.addEventListener('click', (e) => {
       e.stopPropagation();
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      const isShowing = panel.style.display !== 'none';
+      panel.style.display = isShowing ? 'none' : 'block';
+      // Add/remove backdrop
+      let backdrop = document.getElementById('hawkeye-backdrop');
+      if (!isShowing) {
+        if (!backdrop) {
+          backdrop = document.createElement('div');
+          backdrop.id = 'hawkeye-backdrop';
+          backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999998;';
+          backdrop.addEventListener('click', () => { panel.style.display = 'none'; backdrop.remove(); });
+          document.body.appendChild(backdrop);
+        }
+      } else if (backdrop) {
+        backdrop.remove();
+      }
     });
 
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       panel.style.display = 'none';
+      const backdrop = document.getElementById('hawkeye-backdrop');
+      if (backdrop) backdrop.remove();
     });
 
     // Save as Lead

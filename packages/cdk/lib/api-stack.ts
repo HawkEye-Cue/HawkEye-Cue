@@ -111,6 +111,17 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // Grant Secrets Manager read access for Stripe (needed for subscription cancellation on account delete)
+    tradeHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Stripe*`,
+        ],
+      })
+    );
+
     // ─── Content Handler ──────────────────────────────────────────────────
     const contentHandlerFn = new lambda.Function(this, 'ContentHandlerFn', {
       ...lambdaDefaults,

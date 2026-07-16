@@ -21,10 +21,11 @@ export default function ContentCreatorPage() {
   const { getToken, user } = useAuth();
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
-  const { events, removeEvent } = useCalendar();
+  const { events, removeEvent, toggleComplete } = useCalendar();
   const { showToast } = useToast();
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
+  const [showHawkSwoop, setShowHawkSwoop] = useState(false);
   const [createMode, setCreateMode] = useState<'ai' | 'own'>('ai');
   const [ownContent, setOwnContent] = useState('');
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
@@ -143,18 +144,46 @@ export default function ContentCreatorPage() {
         </div>
       )}
 
+      {/* Hawk Swoop Animation */}
+      {showHawkSwoop && (
+        <div className="fixed inset-0 pointer-events-none z-[9999]">
+          <div className="absolute animate-[hawkSwoop_1.2s_ease-in-out_forwards] text-6xl" style={{ top: '40%', left: '-80px' }}>
+            🦅
+          </div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-[fadeInOut_1.2s_ease-in-out_forwards]">
+            <p className="text-2xl font-bold text-amber-400 text-center drop-shadow-lg">Nailed it! 🔥</p>
+          </div>
+        </div>
+      )}
+
       {/* Today's Items - collapsible */}
-      <details className="glass-card">
+      <details className="glass-card" open>
         <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
           <span>Today's Cues</span>
-          <span className="text-xs text-slate-400">{todayCalendarEvents.length + todayPosts.length}</span>
+          <span className="text-xs text-slate-400">
+            {todayCalendarEvents.filter((e) => e.completed).length}/{todayCalendarEvents.length} done
+          </span>
         </summary>
-        <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
-          {todayCalendarEvents.map((e) => (
-            <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className={`w-2 h-2 shrink-0 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
-                <span className="text-sm text-slate-300 truncate">{e.title}</span>
+        <div className="mt-3 max-h-60 overflow-y-auto space-y-2" id="todays-cues-list">
+          {todayCalendarEvents.map((e, idx) => (
+            <div
+              key={e.id}
+              id={`cue-${e.id}`}
+              className={`flex items-center justify-between p-2.5 rounded-lg transition-all duration-300 ${
+                e.completed
+                  ? 'bg-green-900/20 border border-green-500/20'
+                  : idx === todayCalendarEvents.findIndex((ev) => !ev.completed)
+                    ? 'bg-amber-500/10 border border-amber-500/30 shadow-sm shadow-amber-500/10'
+                    : 'bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {e.completed ? (
+                  <span className="text-green-400 text-lg shrink-0">✓</span>
+                ) : (
+                  <span className={`w-2.5 h-2.5 shrink-0 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
+                )}
+                <span className={`text-sm truncate ${e.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{e.title}</span>
                 {e.link && (
                   <a
                     href={e.link}
@@ -168,7 +197,27 @@ export default function ContentCreatorPage() {
                   </a>
                 )}
               </div>
-              <button onClick={() => removeEvent(e.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+              {!e.completed ? (
+                <button
+                  onClick={() => {
+                    toggleComplete(e.id);
+                    setShowHawkSwoop(true);
+                    setTimeout(() => setShowHawkSwoop(false), 1400);
+                    // Auto-scroll to next uncompleted cue
+                    setTimeout(() => {
+                      const nextUncompleted = todayCalendarEvents.find((ev) => ev.id !== e.id && !ev.completed);
+                      if (nextUncompleted) {
+                        document.getElementById(`cue-${nextUncompleted.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }, 500);
+                  }}
+                  className="shrink-0 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg transition-all active:scale-90"
+                >
+                  Done ✓
+                </button>
+              ) : (
+                <span className="text-xs text-green-400 font-medium shrink-0">Complete</span>
+              )}
             </div>
           ))}
           {todayPosts.map((p) => (

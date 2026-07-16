@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hawk swoop animation */
+@keyframes hawkSwoop {
+  0% { transform: translate(0, 0) rotate(-10deg) scale(1); opacity: 1; }
+  40% { transform: translate(50vw, -30px) rotate(5deg) scale(1.3); opacity: 1; }
+  70% { transform: translate(85vw, 10px) rotate(-5deg) scale(1.1); opacity: 0.8; }
+  100% { transform: translate(110vw, -20px) rotate(10deg) scale(0.8); opacity: 0; }
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  30% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+
 :root {
   --primary: #3b82f6;
   --primary-hover: #2563eb;

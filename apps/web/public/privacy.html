@@ -8,56 +8,137 @@
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; background: #0f172a; color: #e2e8f0; line-height: 1.7; }
 h1 { color: #f59e0b; margin-bottom: 8px; }
 h2 { color: #f1f5f9; margin-top: 32px; }
+h3 { color: #94a3b8; margin-top: 20px; }
 p, li { color: #cbd5e1; }
 a { color: #60a5fa; }
 .updated { color: #64748b; font-size: 14px; margin-bottom: 32px; }
+table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #334155; }
+th { color: #f1f5f9; }
+td { color: #cbd5e1; }
 </style>
 </head>
 <body>
 <h1>Privacy Policy</h1>
-<p class="updated">Last updated: July 6, 2026</p>
+<p class="updated">Last updated: July 15, 2026</p>
 
-<p>HawkEye-Cue ("we", "our", or "us") operates the HawkEye-Cue web application and browser extension. This privacy policy explains how we collect, use, and protect your information.</p>
+<p>HawkEye-Cue ("we", "our", or "us") operates the HawkEye-Cue web application (hawkeyecue.com), mobile app, and browser extension. This privacy policy explains how we collect, use, share, and protect your information.</p>
 
 <h2>Information We Collect</h2>
-<p><strong>Account Information:</strong> When you create an account, we collect your email address and encrypted password through AWS Cognito.</p>
-<p><strong>Website Content (Browser Extension):</strong> The browser extension reads text content on social media pages (Facebook, Instagram, LinkedIn, TikTok) solely to match against your saved keywords. This content is processed locally in your browser and is not stored on our servers unless you explicitly save a post as a lead.</p>
-<p><strong>Authentication Tokens:</strong> The extension stores a session token locally to keep you signed in.</p>
-<p><strong>Leads and Appreciations:</strong> When you choose to save a lead or appreciation, the post content and author name are stored in your account.</p>
+
+<h3>Account Information</h3>
+<p>When you create an account, we collect:</p>
+<ul>
+<li><strong>Email address</strong> — required for authentication and account management</li>
+<li><strong>Phone number</strong> — optional, used for SMS-based multi-factor authentication (MFA)</li>
+<li><strong>User ID</strong> — automatically assigned by our authentication system (AWS Cognito)</li>
+</ul>
+
+<h3>Content You Create</h3>
+<ul>
+<li><strong>Names</strong> — contact names you enter in deals, referral partners, and collaborate posts</li>
+<li><strong>AI-generated content</strong> — text prompts you provide and social media posts generated for you</li>
+<li><strong>Calendar events</strong> — tasks and events you create</li>
+<li><strong>Sales data</strong> — deal names, values, stages, and notes you enter in the Sales Tracker</li>
+<li><strong>Network contacts</strong> — names, phone numbers, emails, and notes for referral partners you add</li>
+<li><strong>Collaborate posts</strong> — content you post on the collaboration board, which is visible to other users in your selected state(s)</li>
+</ul>
+
+<h3>Media</h3>
+<ul>
+<li><strong>Photos and videos</strong> — images and videos you upload for social media posts. These are stored in our cloud storage and may be shared with social media platforms when you publish.</li>
+</ul>
+
+<h3>Payment Information</h3>
+<ul>
+<li><strong>Subscription data</strong> — your plan tier, billing period, and payment status. Credit card details are processed and stored exclusively by Stripe; we never see or store your full card number.</li>
+</ul>
+
+<h3>Device Information</h3>
+<ul>
+<li><strong>Push notification tokens</strong> — if you enable notifications, we collect a device identifier to deliver push notifications via AWS SNS.</li>
+</ul>
+
+<h3>Browser Extension Data</h3>
+<ul>
+<li>The browser extension reads text content on social media pages (Facebook, Instagram, LinkedIn, TikTok) solely to match against your saved keywords.</li>
+<li>This content is processed locally in your browser and is <strong>not</strong> sent to our servers unless you explicitly click "Save as Lead" or "Save Appreciation."</li>
+<li>The extension stores a session token locally to keep you signed in.</li>
+</ul>
 
 <h2>How We Use Your Information</h2>
 <ul>
-<li>To provide keyword matching and lead detection while you browse social media</li>
-<li>To store and display your saved leads and appreciations</li>
-<li>To generate AI-powered content for your social media posts</li>
+<li>To authenticate you and manage your account</li>
+<li>To provide keyword matching and lead detection</li>
+<li>To generate AI-powered social media content tailored to your trade</li>
 <li>To publish scheduled posts to your connected social accounts</li>
+<li>To store and display your sales pipeline, calendar, and contacts</li>
+<li>To send transactional emails (team invites, deal notifications, folio recaps)</li>
+<li>To deliver push notifications about new leads and post status</li>
+<li>To display your collaborate board posts to other users in your region</li>
 </ul>
 
 <h2>Data Sharing</h2>
-<p>We do not sell your personal information. We share data only with:</p>
+<p>We do not sell your personal information. We share data only with the following service providers to operate the app:</p>
+
+<table>
+<tr><th>Provider</th><th>Data Shared</th><th>Purpose</th></tr>
+<tr><td>AWS Cognito</td><td>Email, phone number</td><td>Authentication and MFA</td></tr>
+<tr><td>AWS SES</td><td>Email address</td><td>Sending transactional emails</td></tr>
+<tr><td>AWS SNS</td><td>Device push token</td><td>Push notifications</td></tr>
+<tr><td>Amazon Bedrock</td><td>Text prompts you provide</td><td>AI content generation</td></tr>
+<tr><td>Bundle.social</td><td>Post content, media files</td><td>Publishing to social media platforms</td></tr>
+<tr><td>Stripe</td><td>Email, subscription tier</td><td>Payment processing</td></tr>
+</table>
+
+<h2>Data Visible to Other Users</h2>
+<p>When you post on the <strong>Collaborate board</strong>, the following is visible to other HawkEye-Cue users in your selected state(s):</p>
 <ul>
-<li><strong>AWS:</strong> Cloud infrastructure for hosting and authentication</li>
-<li><strong>Bundle.social:</strong> To publish posts to your connected social media accounts (only when you explicitly connect and schedule posts)</li>
-<li><strong>Stripe:</strong> To process subscription payments (we do not store credit card numbers)</li>
+<li>Your display name and trade</li>
+<li>Your post content and replies</li>
 </ul>
+<p>Your email, phone number, sales data, keywords, and other account information are never visible to other users.</p>
 
 <h2>Data Security</h2>
-<p>We use encryption in transit (HTTPS) and at rest. Authentication is handled by AWS Cognito with industry-standard security practices.</p>
+<ul>
+<li>All data is encrypted in transit (HTTPS/TLS)</li>
+<li>Authentication is handled by AWS Cognito with industry-standard security</li>
+<li>Sensitive credentials (API keys, Stripe keys) are stored in AWS Secrets Manager</li>
+<li>User tokens are stored securely on-device (Secure Store on mobile, encrypted storage in browser)</li>
+</ul>
+
+<h2>Data Retention and Deletion</h2>
+<p>We retain your data for as long as your account is active. You can delete your account and all associated data at any time:</p>
+<ul>
+<li><strong>In the app:</strong> Go to Settings → "Delete My Account"</li>
+<li><strong>Via web:</strong> Visit <a href="https://hawkeyecue.com/settings">hawkeyecue.com/settings</a> → "Delete My Account"</li>
+</ul>
+<p>When you delete your account, the following is permanently removed:</p>
+<ul>
+<li>Your profile, email, and login credentials</li>
+<li>All saved keywords, leads, and appreciations</li>
+<li>All calendar events and sales deals</li>
+<li>All network contacts and collaborate posts</li>
+<li>Connected social accounts are disconnected</li>
+<li>Any active subscription is cancelled immediately (no further charges)</li>
+</ul>
 
 <h2>Browser Extension Specifics</h2>
-<p>The HawkEye-Cue browser extension:</p>
 <ul>
-<li>Only reads page content on facebook.com, instagram.com, linkedin.com, and tiktok.com</li>
+<li>Only activates on facebook.com, instagram.com, linkedin.com, and tiktok.com</li>
 <li>Processes keyword matching locally in your browser</li>
 <li>Only sends data to our servers when you explicitly click "Save as Lead" or "Save Appreciation"</li>
-<li>Does not track browsing history or activity outside of the supported social media sites</li>
+<li>Does not track browsing history or activity outside supported sites</li>
 <li>Does not inject ads or modify page content beyond the hawk icon overlay</li>
 </ul>
 
-<h2>Your Rights</h2>
-<p>You can delete your account and all associated data at any time by contacting us. You can disconnect social accounts and remove saved leads from the Settings page.</p>
+<h2>Children's Privacy</h2>
+<p>HawkEye-Cue is not intended for children under 13. We do not knowingly collect information from children under 13.</p>
+
+<h2>Changes to This Policy</h2>
+<p>We may update this policy from time to time. We will notify users of significant changes via email or in-app notification.</p>
 
 <h2>Contact</h2>
-<p>For questions about this privacy policy, contact us at <a href="mailto:support@hawkeyecue.com">support@hawkeyecue.com</a>.</p>
+<p>For questions about this privacy policy, contact us at <a href="mailto:briannafrashier@hawkeyecue.com">briannafrashier@hawkeyecue.com</a>.</p>
 </body>
 </html>

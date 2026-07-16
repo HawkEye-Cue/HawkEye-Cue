@@ -350,8 +350,8 @@ export interface TierLimits {
 }
 
 export const TIER_LIMITS: Record<'free' | 'growth' | 'pro', TierLimits> = {
-  free: { aiGenerations: 10, keywords: 5, scheduledPosts: 10 },
-  growth: { aiGenerations: 100, keywords: 50, scheduledPosts: Infinity },
+  free: { aiGenerations: 5, keywords: 5, scheduledPosts: 10 },
+  growth: { aiGenerations: 200, keywords: 50, scheduledPosts: Infinity },
   pro: { aiGenerations: Infinity, keywords: Infinity, scheduledPosts: Infinity },
 };
 

@@ -241,7 +241,7 @@ export default function CalendarPage() {
                 )}
                 {/* + button on hover for future days */}
                 {future && !isToday && (
-                  <span className="absolute bottom-0.5 right-0.5 text-xs text-slate-500 group-hover:text-blue-400 hidden group-hover:block">+</span>
+                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[10px] text-blue-400 font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-500 pointer-events-none">+ to calendar</span>
                 )}
               </div>
             );

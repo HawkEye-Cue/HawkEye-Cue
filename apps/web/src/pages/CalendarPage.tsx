@@ -163,13 +163,13 @@ export default function CalendarPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-bold text-white shrink-0">Calendar</h2>
-        <div className="flex gap-1 bg-slate-700 border border-slate-500 rounded-lg p-1.5 shadow-md">
+        <div className="flex gap-1 bg-slate-900 border-2 border-slate-500 rounded-lg p-1.5 shadow-lg">
           {(['month', 'week', 'day'] as ViewMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-md text-xs sm:text-sm capitalize font-medium transition-all duration-200 ${
-                viewMode === mode ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30' : 'text-white bg-slate-600 hover:bg-slate-500'
+              className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-md text-xs sm:text-sm capitalize font-bold transition-all duration-200 ${
+                viewMode === mode ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-white bg-slate-600 hover:bg-slate-500 border border-slate-400'
               }`}
             >
               {mode}

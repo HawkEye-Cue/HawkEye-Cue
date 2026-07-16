@@ -24,13 +24,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TradeProvider>
-            <CalendarProvider>
-              <ToastProvider>
+          <ToastProvider>
+            <TradeProvider>
+              <CalendarProvider>
                 <App />
-              </ToastProvider>
-            </CalendarProvider>
-          </TradeProvider>
+              </CalendarProvider>
+            </TradeProvider>
+          </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>
     </BrowserRouter>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
+import { useToast } from '../contexts/ToastContext';
 import { TRADES, ApiClient } from '@social-lead-gen/shared';
 import type { NetworkPost, NetworkContact } from '@social-lead-gen/shared';
 
@@ -34,6 +35,7 @@ const POST_TYPES = [
 export default function NetworkPage() {
   const { getToken, user } = useAuth();
   const { selectedTrade } = useTrade();
+  const { showToast } = useToast();
 
   // --- Region State ---
   const [userRegions, setUserRegions] = useState<string[]>([]);
@@ -164,6 +166,7 @@ export default function NetworkPage() {
       const post = await client.createNetworkPost({ content: newContent.trim(), type: newType, tradeFilter: newTradeFilter });
       setPosts([post, ...posts]);
       setNewContent('');
+      showToast('✓ Posted');
     } catch (e) {
       setPostError(e instanceof Error ? e.message : 'Failed to post');
     } finally { setPosting(false); }
@@ -205,6 +208,7 @@ export default function NetworkPage() {
       setContacts([contact, ...contacts]);
       setContactName(''); setContactTrade(''); setContactPhone(''); setContactEmail(''); setContactNotes('');
       setShowAddContact(false);
+      showToast('✓ Contact saved');
     } catch { /* ignore */ }
     finally { setAddingContact(false); }
   }

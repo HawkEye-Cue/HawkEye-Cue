@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
+import { useToast } from '../contexts/ToastContext';
 import TradeSelector from '../components/TradeSelector';
 import ExtensionTour from '../components/ExtensionTour';
 import LeadDetectionExplainer from '../components/LeadDetectionExplainer';
@@ -11,6 +12,7 @@ import type { Subscription, SocialAccount } from '@social-lead-gen/shared';
 export default function SettingsPage() {
   const { user, getToken, logout } = useAuth();
   const { selectedTrade } = useTrade();
+  const { showToast } = useToast();
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -459,6 +461,7 @@ export default function SettingsPage() {
                 setKeywords((prev) => [...prev, result]);
                 setNewKeyword('');
                 localStorage.setItem(`hawkeye_keywords_added_${user?.sub}`, 'true');
+                showToast('✓ Keyword added');
               } catch (err) {
                 setKeywordError(err instanceof Error ? err.message : 'Failed to add');
               } finally { setAddingKeyword(false); }

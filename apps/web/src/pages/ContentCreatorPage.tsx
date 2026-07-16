@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useToast } from '../contexts/ToastContext';
 import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
 import type { SocialPlatform, ScheduledPost, Trade } from '@social-lead-gen/shared';
 
@@ -21,6 +22,7 @@ export default function ContentCreatorPage() {
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
   const { events, removeEvent } = useCalendar();
+  const { showToast } = useToast();
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
@@ -69,6 +71,7 @@ export default function ContentCreatorPage() {
       if (result.platformContent) {
         setPlatformContent(result.platformContent as Record<string, string>);
         localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
+        showToast('✓ Content generated');
       } else if (result.content) {
         // Fallback for old format
         const fallback: Record<string, string> = {};
@@ -77,6 +80,7 @@ export default function ContentCreatorPage() {
         }
         setPlatformContent(fallback);
         localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
+        showToast('✓ Content generated');
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to generate content. Please try again.';

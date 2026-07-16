@@ -146,9 +146,21 @@ export default function ContentCreatorPage() {
         <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
           {todayCalendarEvents.map((e) => (
             <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
-                <span className="text-sm text-slate-300">{e.title}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className={`w-2 h-2 shrink-0 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
+                <span className="text-sm text-slate-300 truncate">{e.title}</span>
+                {e.link && (
+                  <a
+                    href={e.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(ev) => ev.stopPropagation()}
+                    className="text-blue-400 hover:text-blue-300 shrink-0"
+                    title={e.link}
+                  >
+                    🔗
+                  </a>
+                )}
               </div>
               <button onClick={() => removeEvent(e.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
             </div>

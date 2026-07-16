@@ -74,30 +74,35 @@ async function handleListTrades() {
   return respond(200, { trades });
 }
 
-// PUT /trade/select — user selects their trade
+// PUT /trade/select — user selects their trade(s)
 async function handleSelectTrade(userId, body) {
-  const { tradeId } = body || {};
+  const { tradeId, tradeIds } = body || {};
 
-  if (typeof tradeId !== 'string' || tradeId.length < 1) {
-    return respond(400, { error: { code: 'VALIDATION_ERROR', message: 'tradeId is required' } });
+  // Support both single tradeId (backward compat) and array of tradeIds
+  const ids = tradeIds || (tradeId ? [tradeId] : []);
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return respond(400, { error: { code: 'VALIDATION_ERROR', message: 'tradeId or tradeIds is required' } });
   }
 
-  // Validate that tradeId is a real trade (max 100 chars to prevent injection-sized payloads)
-  if (tradeId.length > 100) {
-    return respond(400, { error: { code: 'VALIDATION_ERROR', message: 'tradeId is too long' } });
+  // Validate all IDs
+  for (const id of ids) {
+    if (typeof id !== 'string' || id.length < 1 || id.length > 100) {
+      return respond(400, { error: { code: 'VALIDATION_ERROR', message: 'Invalid tradeId' } });
+    }
   }
 
   await dynamo.send(
     new UpdateCommand({
       TableName: TABLE_NAME,
       Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
-      UpdateExpression: 'SET selectedTradeId = :tid',
-      ExpressionAttributeValues: { ':tid': tradeId },
+      UpdateExpression: 'SET selectedTradeId = :tid, selectedTradeIds = :tids',
+      ExpressionAttributeValues: { ':tid': ids[0], ':tids': ids },
       ConditionExpression: 'attribute_exists(PK)',
     })
   );
 
-  return respond(200, { tradeId });
+  return respond(200, { tradeId: ids[0], tradeIds: ids });
 }
 
 // PUT /profile/mfa — update MFA delivery preference
@@ -141,6 +146,7 @@ async function handleGetProfile(userId) {
     email: item.email,
     mfaMethod: item.mfaMethod || 'email',
     selectedTradeId: item.selectedTradeId || null,
+    selectedTradeIds: item.selectedTradeIds || (item.selectedTradeId ? [item.selectedTradeId] : []),
   });
 }
 

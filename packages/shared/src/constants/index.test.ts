@@ -43,7 +43,7 @@ describe('TRADES', () => {
 describe('TIER_LIMITS', () => {
   it('free tier has correct limits', () => {
     expect(TIER_LIMITS.free).toEqual({
-      aiGenerations: 10,
+      aiGenerations: 5,
       keywords: 5,
       scheduledPosts: 10,
     });
@@ -51,15 +51,23 @@ describe('TIER_LIMITS', () => {
 
   it('growth tier has correct limits', () => {
     expect(TIER_LIMITS.growth).toEqual({
-      aiGenerations: 100,
+      aiGenerations: 200,
       keywords: 50,
       scheduledPosts: Infinity,
     });
   });
 
-  it('pro tier has unlimited everything', () => {
-    expect(TIER_LIMITS.pro).toEqual({
-      aiGenerations: Infinity,
+  it('soar tier has correct limits', () => {
+    expect(TIER_LIMITS.soar).toEqual({
+      aiGenerations: 300,
+      keywords: Infinity,
+      scheduledPosts: Infinity,
+    });
+  });
+
+  it('team tier has correct limits', () => {
+    expect(TIER_LIMITS.team).toEqual({
+      aiGenerations: 500,
       keywords: Infinity,
       scheduledPosts: Infinity,
     });

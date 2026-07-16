@@ -74,9 +74,8 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         baseUrl: import.meta.env.VITE_API_URL as string,
         getToken: async () => token,
       });
-      // Save primary trade for backward compat + all trade IDs
       if (trades.length > 0) {
-        await client.selectTrade(trades[0].id);
+        await client.request('PUT', '/trade/select', { tradeIds: trades.map((t) => t.id) });
       }
     } catch {
       // ignore
@@ -94,7 +93,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
       getToken().then((token) => {
         if (!token || updated.length === 0) return;
         const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-        client.selectTrade(updated[0].id).catch(() => {});
+        client.request('PUT', '/trade/select', { tradeIds: updated.map((t) => t.id) }).catch(() => {});
       });
       return updated;
     });

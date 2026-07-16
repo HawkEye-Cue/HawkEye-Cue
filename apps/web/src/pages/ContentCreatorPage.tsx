@@ -186,19 +186,19 @@ export default function ContentCreatorPage() {
       </details>
 
       {/* Mode Toggle */}
-      <div className="flex gap-2 bg-slate-900 border-2 border-slate-500 rounded-xl p-2 shadow-lg">
+      <div className="flex gap-2 bg-black border-2 border-amber-500 rounded-xl p-2 shadow-xl shadow-amber-500/10">
         <button
           onClick={() => setCreateMode('ai')}
-          className={`flex-1 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-200 ${
-            createMode === 'ai' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-white bg-slate-600 hover:bg-slate-500 border border-slate-400'
+          className={`flex-1 px-4 py-3.5 rounded-lg text-base font-bold transition-all duration-200 ${
+            createMode === 'ai' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 scale-[1.02]' : 'text-white bg-slate-500 hover:bg-slate-400 border-2 border-slate-300'
           }`}
         >
           ✨ AI Generate
         </button>
         <button
           onClick={() => setCreateMode('own')}
-          className={`flex-1 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-200 ${
-            createMode === 'own' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'text-white bg-slate-600 hover:bg-slate-500 border border-slate-400'
+          className={`flex-1 px-4 py-3.5 rounded-lg text-base font-bold transition-all duration-200 ${
+            createMode === 'own' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/40 scale-[1.02]' : 'text-white bg-slate-500 hover:bg-slate-400 border-2 border-slate-300'
           }`}
         >
           ✍️ Write My Own

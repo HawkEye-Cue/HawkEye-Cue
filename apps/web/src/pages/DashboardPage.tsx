@@ -327,7 +327,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </details>
-            ))
+            ))}
             </>
           ) : (
             <p className="text-sm text-slate-400">No cues scheduled for today</p>

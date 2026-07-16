@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 
 interface TeamMember {
@@ -36,6 +37,7 @@ interface MemberStat {
 
 export default function TeamPage() {
   const { getToken } = useAuth();
+  const { showToast } = useToast();
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -96,6 +98,7 @@ export default function TeamPage() {
       setInviteEmail('');
       const result = await client.request<{ team: Team | null }>('GET', '/team');
       setTeam(result.team);
+      showToast('✓ Invite sent');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to send invite');
     }
@@ -103,11 +106,13 @@ export default function TeamPage() {
   }
 
   async function handleRemoveMember(memberId: string) {
+    if (!confirm('Remove this team member? They will lose access to shared team features.')) return;
     try {
       const client = await buildClient();
       await client.request('DELETE', `/team/members/${memberId}`);
       const result = await client.request<{ team: Team | null }>('GET', '/team');
       setTeam(result.team);
+      showToast('✓ Member removed');
     } catch { /* ignore */ }
   }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 
 interface Appreciation {
@@ -40,6 +41,7 @@ const platformColors: Record<string, string> = {
 
 export default function AppreciationsPage() {
   const { getToken } = useAuth();
+  const { showToast } = useToast();
   const [mentions, setMentions] = useState<Appreciation[]>([]);
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,6 +131,7 @@ export default function AppreciationsPage() {
       setAddName(''); setAddContent(''); setAddUrl(''); setAddTrade('');
       setShowAddForm(false);
       await fetchData();
+      showToast('✓ Appreciation saved');
     } catch (e) {
       console.error('Failed to add:', e);
     } finally {

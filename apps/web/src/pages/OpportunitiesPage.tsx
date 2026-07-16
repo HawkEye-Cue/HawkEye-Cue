@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
 
@@ -27,6 +28,7 @@ const statusColors: Record<string, string> = {
 
 export default function OpportunitiesPage() {
   const { getToken } = useAuth();
+  const { showToast } = useToast();
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
   const [groupBy, setGroupBy] = useState<'none' | 'platform' | 'keyword'>('none');
   const [leads, setLeads] = useState<Opportunity[]>([]);
@@ -81,6 +83,7 @@ export default function OpportunitiesPage() {
         else if (newStatus === 'converted') updated.converted++;
         return updated;
       });
+      showToast('✓ Saved');
     } catch { /* ignore */ }
     finally { setUpdatingId(null); }
   }
@@ -122,7 +125,7 @@ export default function OpportunitiesPage() {
             <button onClick={() => handleDelete(lead.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
           </div>
         </div>
-        <p className="text-sm text-slate-300 italic bg-white/5 p-2 rounded-lg mb-3">&quot;{lead.sourceContent.slice(0, 150)}{lead.sourceContent.length > 150 ? '...' : ''}&quot;</p>
+        <p className="text-sm text-slate-300 italic bg-white/5 p-2 rounded-lg mb-3">&quot;{(lead.sourceContent || '').slice(0, 150)}{(lead.sourceContent || '').length > 150 ? '...' : ''}&quot;</p>
         <div className="flex flex-wrap items-center gap-2">
           {lead.status === 'new' && (
             <button onClick={() => handleUpdateStatus(lead.id, 'followed_up')} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-600/30 disabled:opacity-50">

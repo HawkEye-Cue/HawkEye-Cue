@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 
 export interface CalendarEvent {
@@ -25,6 +26,7 @@ const CalendarContext = createContext<CalendarState | undefined>(undefined);
 
 export function CalendarProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, getToken } = useAuth();
+  const { showToast } = useToast();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,6 +79,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       });
       // Replace temp ID with server ID
       setEvents((prev) => prev.map((e) => e.id === tempId ? { ...result } : e));
+      showToast('✓ Saved');
     } catch {
       // Keep the local version — it'll sync next time
     }
@@ -89,6 +92,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     try {
       const client = await buildClient();
       await client.request('PUT', `/calendar/events/${id}/toggle`);
+      showToast('✓ Saved');
     } catch { /* revert silently on failure */ }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -98,6 +102,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     try {
       const client = await buildClient();
       await client.request('DELETE', `/calendar/events/${id}`);
+      showToast('✓ Removed');
     } catch { /* ignore */ }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 

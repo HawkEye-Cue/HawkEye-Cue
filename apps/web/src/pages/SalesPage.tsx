@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 
 interface Deal {
@@ -276,6 +277,7 @@ export default function SalesPage() {
   const { getToken, user } = useAuth();
   const { selectedTrade } = useTrade();
   const { addEvent, removeAllByTitle } = useCalendar();
+  const { showToast } = useToast();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState<string>('free');
@@ -439,6 +441,7 @@ export default function SalesPage() {
 
       resetForm();
       setShowAdd(false);
+      showToast('✓ Deal saved');
     } catch { /* ignore */ }
     finally { setAdding(false); }
   }
@@ -448,6 +451,7 @@ export default function SalesPage() {
       const client = await buildClient();
       await client.request('PUT', `/sales/deals/${dealId}`, { stage: newStage });
       setDeals(deals.map((d) => d.id === dealId ? { ...d, stage: newStage } : d));
+      showToast('✓ Saved');
 
       // 🎉 Celebrate when deal moves to Won!
       if (newStage === 'won') {

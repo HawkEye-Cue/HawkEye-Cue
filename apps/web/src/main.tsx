@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import { TradeProvider } from './contexts/TradeContext';
 import { CalendarProvider } from './contexts/CalendarContext';
+import { ToastProvider } from './contexts/ToastContext';
 import App from './App';
 import './index.css';
 
@@ -25,7 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <TradeProvider>
             <CalendarProvider>
-              <App />
+              <ToastProvider>
+                <App />
+              </ToastProvider>
             </CalendarProvider>
           </TradeProvider>
         </AuthProvider>

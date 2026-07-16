@@ -262,11 +262,24 @@ export default function DashboardPage() {
       <details className="glass-card" open>
         <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
           <span>Your Scheduled Cues</span>
-          <span className="text-xs text-slate-400">{todayPosts.length} items</span>
+          <span className="text-xs text-slate-400">{todayPosts.length + todayEvents.length} items</span>
         </summary>
         <div className="mt-3 space-y-2">
-          {todayPosts.length > 0 ? (
-            todayPosts.map((post) => (
+          {(todayPosts.length > 0 || todayEvents.length > 0) ? (
+            <>
+              {/* Calendar events */}
+              {todayEvents.map((event) => (
+                <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
+                  <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded shrink-0" />
+                  <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-300'}`}>{event.title}</span>
+                  {event.link && (
+                    <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:text-blue-300 shrink-0" title={event.link}>🔗</a>
+                  )}
+                  <span className={`text-xs ${typeColors[event.type]}`}>{typeIcons[event.type]}</span>
+                </div>
+              ))}
+              {/* Scheduled posts */}
+              {todayPosts.map((post) => (
               <details key={post.id} className="rounded-lg bg-white/5 overflow-hidden">
                 <summary className="flex items-center justify-between p-2 cursor-pointer hover:bg-white/5">
                   <div className="min-w-0 flex-1">
@@ -315,6 +328,7 @@ export default function DashboardPage() {
                 </div>
               </details>
             ))
+            </>
           ) : (
             <p className="text-sm text-slate-400">No cues scheduled for today</p>
           )}

@@ -25,6 +25,8 @@ export default function ContentCreatorPage() {
   const { showToast } = useToast();
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
+  const [createMode, setCreateMode] = useState<'ai' | 'own'>('ai');
+  const [ownContent, setOwnContent] = useState('');
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postLength, setPostLength] = useState<'short' | 'medium' | 'long'>('medium');
   const [postType, setPostType] = useState('');
@@ -183,6 +185,28 @@ export default function ContentCreatorPage() {
         </div>
       </details>
 
+      {/* Mode Toggle */}
+      <div className="flex gap-2 bg-slate-800 border border-slate-600 rounded-xl p-1.5">
+        <button
+          onClick={() => setCreateMode('ai')}
+          className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+            createMode === 'ai' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:text-white hover:bg-slate-700'
+          }`}
+        >
+          ✨ AI Generate
+        </button>
+        <button
+          onClick={() => setCreateMode('own')}
+          className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+            createMode === 'own' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-300 hover:text-white hover:bg-slate-700'
+          }`}
+        >
+          ✍️ Write My Own
+        </button>
+      </div>
+
+      {createMode === 'ai' && (
+      <>
       <div className="glass-card">
         <label className="block text-sm font-medium text-slate-300 mb-2">Tone</label>
         <div className="flex flex-wrap gap-2">
@@ -352,6 +376,120 @@ export default function ContentCreatorPage() {
       >
         {loading ? '✨ Generating for each platform...' : '✨ Generate Content'}
       </button>
+      </>
+      )}
+
+      {createMode === 'own' && (
+      <>
+      {/* Platforms for own post */}
+      <div className="glass-card">
+        <label className="block text-sm font-medium text-slate-300 mb-2">Platforms</label>
+        <div className="flex flex-wrap gap-2">
+          {SOCIAL_PLATFORMS.map((p) => (
+            <button
+              key={p}
+              onClick={() => togglePlatform(p)}
+              className={`px-4 py-2 rounded-full text-sm capitalize transition-all duration-200 ${
+                platforms.includes(p)
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              {PLATFORM_ICONS[p] || ''} {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Write your own post */}
+      <div className="glass-card">
+        <label className="block text-sm font-medium text-slate-300 mb-2">Your Post</label>
+        <textarea
+          value={ownContent}
+          onChange={(e) => setOwnContent(e.target.value)}
+          placeholder="Write your post here exactly as you want it to appear..."
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 resize-none h-36 focus:border-blue-500/50 focus:outline-none transition-colors"
+        />
+        <p className="text-xs text-slate-500 mt-1">{ownContent.length} characters</p>
+      </div>
+
+      {/* Media Upload for own post */}
+      <div className="glass-card">
+        <label className="block text-sm font-medium text-slate-300 mb-2">Media (optional)</label>
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="cursor-pointer px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors">
+            + Add Image
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setImageFile(file);
+                  setImagePreview(URL.createObjectURL(file));
+                }
+              }}
+            />
+          </label>
+          <label className="cursor-pointer px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors">
+            + Add Video
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setVideoFile(file);
+                  setVideoName(file.name);
+                }
+              }}
+            />
+          </label>
+          {imagePreview && (
+            <div className="relative">
+              <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
+              <button
+                onClick={() => { setImageFile(null); setImagePreview(null); }}
+                className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+          )}
+          {videoName && (
+            <div className="relative flex items-center gap-2 px-3 py-2 bg-purple-900/30 border border-purple-500/30 rounded-lg">
+              <span className="text-sm text-purple-300">🎬 {videoName}</span>
+              <button
+                onClick={() => { setVideoFile(null); setVideoName(null); }}
+                className="w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Use Own Content button — sets platformContent so the rest of the page works */}
+      <button
+        onClick={() => {
+          if (!ownContent.trim() || platforms.length === 0) return;
+          const content: Record<string, string> = {};
+          for (const p of platforms) {
+            content[p] = ownContent.trim();
+          }
+          setPlatformContent(content);
+          showToast('✓ Ready to post');
+        }}
+        disabled={!ownContent.trim() || platforms.length === 0}
+        className="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl text-base font-medium disabled:opacity-50 transition-all duration-200"
+      >
+        ✍️ Use This Post
+      </button>
+      </>
+      )}
 
       {platformContent && (
         <div className="space-y-4 animate-scale-in">

@@ -436,15 +436,13 @@ exports.handler = async (event) => {
       return ok({ deals: allDeals });
     }
 
-    // POST /sales/notify — send Sale-Cue email to team + linked partners
+    // POST /sales/notify — send Sale-Cue email to linked partners
     if (method === 'POST' && path === '/sales/notify') {
       const body = event.body ? JSON.parse(event.body) : {};
-      const { emails, dealName, dealValue, policyType, folio, soldBy } = body;
-      if (!emails || !Array.isArray(emails) || emails.length === 0) {
-        return err(400, 'INVALID_INPUT', 'emails array is required');
-      }
+      const { emails = [], dealName, dealValue, policyType, folio, soldBy } = body;
+
       try {
-        // Also get linked partners' emails
+        // Get linked partners' emails automatically
         const linksResult = await dynamo.send(new QueryCommand({
           TableName: TABLE_NAME,
           KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
@@ -453,6 +451,10 @@ exports.handler = async (event) => {
         }));
         const linkedEmails = (linksResult.Items || []).map((l) => l.partnerEmail).filter(Boolean);
         const allEmails = [...new Set([...emails, ...linkedEmails])]; // deduplicate
+
+        if (allEmails.length === 0) {
+          return ok({ sent: 0, message: 'No linked partners to notify' });
+        }
 
         for (const email of allEmails.slice(0, 20)) {
           const soldByLine = soldBy ? `\nSold By: ${soldBy}` : '';

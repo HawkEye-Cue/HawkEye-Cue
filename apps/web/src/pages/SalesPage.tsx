@@ -512,28 +512,19 @@ export default function SalesPage() {
         }
         setTimeout(() => ctr.remove(), 3500);
 
-        // Send Sale-Cue email to team
+        // Send Sale-Cue notification to linked partners automatically
         const deal = deals.find((d) => d.id === dealId);
-        // Get team emails from both localStorage and server
-        let teamEmails: string[] = [];
-        try {
-          const teResult = await client.request<{ emails: string[] }>('GET', '/sales/team-emails');
-          teamEmails = teResult.emails || [];
-        } catch {
-          // Fallback to localStorage
-          teamEmails = (localStorage.getItem('hawkeye_team_emails') || '').split('\n').map((e: string) => e.trim()).filter(Boolean);
-        }
-        if (teamEmails.length > 0 && deal) {
+        if (deal) {
           try {
             await client.request('POST', '/sales/notify', {
-              emails: teamEmails,
+              emails: [],
               dealName: deal.name,
               dealValue: deal.value,
               policyType: deal.policyType,
               folio: deal.folio,
               soldBy: deal.soldBy || '',
             });
-            showToast('🦅 Team notified!');
+            showToast('🦅 Linked partners notified!');
           } catch { /* non-fatal */ }
         }
       }
@@ -1257,30 +1248,6 @@ export default function SalesPage() {
           </div>
         </div>
       )}
-
-      {/* Team Emails for Sale-Cue notifications */}
-      <details className="glass-card">
-        <summary className="text-sm font-medium text-white cursor-pointer">🔔 Sale-Cue Team Notifications</summary>
-        <div className="mt-3 space-y-2">
-          <p className="text-xs text-slate-400">Add team emails below. When a deal is marked as "Won", everyone on this list gets a Sale-Cue notification email.</p>
-          <textarea
-            value={teamEmailsText}
-            onChange={(e) => setTeamEmailsText(e.target.value)}
-            onBlur={async (e) => {
-              const val = e.target.value;
-              localStorage.setItem('hawkeye_team_emails', val);
-              try {
-                const client = await buildClient();
-                await client.request('PUT', '/sales/team-emails', { emails: val.split('\n').map((em: string) => em.trim()).filter(Boolean) });
-                showToast('✓ Team emails saved');
-              } catch { /* ignore */ }
-            }}
-            placeholder="Enter emails, one per line:&#10;team@example.com&#10;agent2@example.com"
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20"
-          />
-          <p className="text-xs text-slate-500">Emails sync to server — works on all devices.</p>
-        </div>
-      </details>
 
       {/* Linked Accounts */}
       <details className="glass-card">

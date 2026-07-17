@@ -32,6 +32,8 @@ async function handleGetEvents(userId) {
     type: item.eventType,
     completed: item.completed || false,
     link: item.link || null,
+    notes: item.notes || '',
+    notesSavedAt: item.notesSavedAt || null,
   }));
 
   return ok({ events });
@@ -127,6 +129,31 @@ async function handleBulkDelete(userId, title) {
   return ok({ deleted: (queryResult.Items || []).length });
 }
 
+// PUT /calendar/events/{id}/notes
+async function handleUpdateNotes(userId, eventId, body) {
+  const { notes } = body || {};
+
+  const queryResult = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    FilterExpression: 'eventId = :eid',
+    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'CAL#', ':eid': eventId },
+  }));
+
+  const item = (queryResult.Items || [])[0];
+  if (!item) return err(404, 'NOT_FOUND', 'Event not found');
+
+  const now = new Date().toISOString();
+  await dynamo.send(new UpdateCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: item.PK, SK: item.SK },
+    UpdateExpression: 'SET notes = :n, notesSavedAt = :t',
+    ExpressionAttributeValues: { ':n': notes || '', ':t': now },
+  }));
+
+  return ok({ id: eventId, notes: notes || '', notesSavedAt: now });
+}
+
 exports.handler = async (event) => {
   try {
     const method = event.requestContext?.http?.method ?? event.httpMethod;
@@ -145,6 +172,11 @@ exports.handler = async (event) => {
     if (method === 'PUT' && path.match(/^\/calendar\/events\/[^/]+\/toggle$/)) {
       const eventId = path.split('/calendar/events/')[1].split('/toggle')[0];
       return handleToggle(userId, eventId);
+    }
+    if (method === 'PUT' && path.match(/^\/calendar\/events\/[^/]+\/notes$/)) {
+      const eventId = path.split('/calendar/events/')[1].split('/notes')[0];
+      const body = event.body ? JSON.parse(event.body) : {};
+      return handleUpdateNotes(userId, eventId, body);
     }
     if (method === 'DELETE' && path === '/calendar/events/bulk') {
       const title = event.queryStringParameters?.title;

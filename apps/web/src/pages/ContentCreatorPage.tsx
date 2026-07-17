@@ -21,7 +21,7 @@ export default function ContentCreatorPage() {
   const { getToken, user } = useAuth();
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
-  const { events, removeEvent, toggleComplete } = useCalendar();
+  const { events, removeEvent, toggleComplete, updateNotes } = useCalendar();
   const { showToast } = useToast();
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
@@ -260,34 +260,19 @@ export default function ContentCreatorPage() {
               <div className="px-3 pb-3 pt-1 border-t border-white/5">
                 <label className="text-xs text-slate-500 block mb-1">Notes</label>
                 <textarea
-                  defaultValue={localStorage.getItem(`hawkeye_cue_notes_${e.id}`) || ''}
+                  defaultValue={e.notes || ''}
                   id={`cue-notes-${e.id}`}
-                  onBlur={(ev) => {
-                    const val = ev.target.value.trim();
-                    if (val) {
-                      localStorage.setItem(`hawkeye_cue_notes_${e.id}`, val);
-                    } else {
-                      localStorage.removeItem(`hawkeye_cue_notes_${e.id}`);
-                    }
-                  }}
                   placeholder="Add notes, reminders, or anything you want to remember..."
                   className="w-full px-2.5 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20 focus:border-blue-500/50 focus:outline-none"
                 />
-                {localStorage.getItem(`hawkeye_cue_saved_${e.id}`) && (
-                  <p className="text-[10px] text-slate-500 mt-1">Last saved: {localStorage.getItem(`hawkeye_cue_saved_${e.id}`)}</p>
+                {e.notesSavedAt && (
+                  <p className="text-[10px] text-slate-500 mt-1">Last saved: {new Date(e.notesSavedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(e.notesSavedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
                 )}
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const textarea = document.getElementById(`cue-notes-${e.id}`) as HTMLTextAreaElement;
                     const val = textarea?.value?.trim() || '';
-                    if (val) {
-                      localStorage.setItem(`hawkeye_cue_notes_${e.id}`, val);
-                    } else {
-                      localStorage.removeItem(`hawkeye_cue_notes_${e.id}`);
-                    }
-                    const now = new Date();
-                    const timestamp = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                    localStorage.setItem(`hawkeye_cue_saved_${e.id}`, timestamp);
+                    await updateNotes(e.id, val);
                     showToast('✓ Notes saved');
                   }}
                   className="mt-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all active:scale-95"

@@ -11,6 +11,8 @@ export interface CalendarEvent {
   type: 'post' | 'task' | 'reminder';
   completed: boolean;
   link?: string;
+  notes?: string;
+  notesSavedAt?: string | null;
 }
 
 interface CalendarState {
@@ -19,6 +21,7 @@ interface CalendarState {
   toggleComplete: (id: string) => void;
   removeEvent: (id: string) => void;
   removeAllByTitle: (title: string) => void;
+  updateNotes: (id: string, notes: string) => Promise<void>;
   loading: boolean;
 }
 
@@ -116,8 +119,16 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     } catch { /* ignore */ }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const updateNotes = useCallback(async (id: string, notes: string) => {
+    try {
+      const client = await buildClient();
+      const result = await client.request<{ notesSavedAt: string }>('PUT', `/calendar/events/${id}/notes`, { notes });
+      setEvents((prev) => prev.map((e) => e.id === id ? { ...e, notes, notesSavedAt: result.notesSavedAt } : e));
+    } catch { /* ignore */ }
+  }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <CalendarContext.Provider value={{ events, addEvent, toggleComplete, removeEvent, removeAllByTitle, loading }}>
+    <CalendarContext.Provider value={{ events, addEvent, toggleComplete, removeEvent, removeAllByTitle, updateNotes, loading }}>
       {children}
     </CalendarContext.Provider>
   );

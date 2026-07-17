@@ -35,11 +35,19 @@ export default function OpportunitiesPage() {
   const [stats, setStats] = useState<OpportunityStats>({ total: 0, new: 0, followedUp: 0, converted: 0 });
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [tier, setTier] = useState('free');
 
   async function buildClient() {
     const token = await getToken();
     return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
   }
+
+  // Check tier
+  useEffect(() => {
+    buildClient().then((client) => client.request<{ tier: string }>('GET', '/subscription')).then((res) => setTier(res.tier || 'free')).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasAccess = ['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(tier);
 
   async function fetchData() {
     try {
@@ -145,6 +153,17 @@ export default function OpportunitiesPage() {
           <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">📝 Notes</summary>
           <textarea defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''} onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)} placeholder="Add notes about this lead..." className="w-full mt-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16" />
         </details>
+      </div>
+    );
+  }
+
+  if (!hasAccess && !loading) {
+    return (
+      <div className="space-y-6 text-center py-12">
+        <div className="text-5xl">🎯</div>
+        <h2 className="text-2xl font-bold text-white">Lead Detection</h2>
+        <p className="text-slate-400 max-w-sm mx-auto">Find leads automatically from social media using keyword tracking and the browser extension. Available on the Flight plan.</p>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-blue-600 to-blue-500 text-white px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">Upgrade to Flight</a>
       </div>
     );
   }

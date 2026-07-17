@@ -127,9 +127,7 @@ export default function SettingsPage() {
     setCheckoutError(null);
     try {
       const client = await buildClient();
-      console.log('[Checkout] Calling createCheckout for tier:', tier, 'coupon:', couponCode || 'none');
       const { checkoutUrl } = await client.createCheckout(tier, couponCode.trim() || undefined);
-      console.log('[Checkout] Got URL, redirecting:', checkoutUrl);
       window.location.href = checkoutUrl;
     } catch (e: unknown) {
       console.error('[Checkout] Error:', e);

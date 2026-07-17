@@ -178,7 +178,6 @@ export default function DashboardPage() {
                   const token = await getToken();
                   const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
                   const result = await client.request<any>('POST', '/sales/linked/accept', { linkId: invite.id });
-                  console.log('Accept result:', result);
                   setPendingLinkInvites((prev) => prev.filter((i) => i.id !== invite.id));
                 } catch (e) {
                   console.error('Accept failed:', e);

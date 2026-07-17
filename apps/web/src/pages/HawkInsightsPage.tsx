@@ -24,11 +24,19 @@ export default function HawkInsightsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tier, setTier] = useState('free');
 
   async function buildClient() {
     const token = await getToken();
     return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
   }
+
+  // Check tier
+  useEffect(() => {
+    buildClient().then((client) => client.request<{ tier: string }>('GET', '/subscription')).then((res) => setTier(res.tier || 'free')).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasAccess = ['soar', 'team', 'summit'].includes(tier);
 
   useEffect(() => {
     async function fetchData() {
@@ -118,6 +126,17 @@ export default function HawkInsightsPage() {
     if (hour === 0) return '12am';
     if (hour === 12) return '12pm';
     return hour < 12 ? `${hour}am` : `${hour - 12}pm`;
+  }
+
+  if (!hasAccess && !loading) {
+    return (
+      <div className="space-y-6 text-center py-12">
+        <div className="text-5xl">📊</div>
+        <h2 className="text-2xl font-bold text-white">Hawk Insights</h2>
+        <p className="text-slate-400 max-w-sm mx-auto">See where your leads come from, top platforms, peak times, and deal source attribution. Available on the Soar plan.</p>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">Upgrade to Soar</a>
+      </div>
+    );
   }
 
   return (

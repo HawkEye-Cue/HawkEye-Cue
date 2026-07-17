@@ -46,6 +46,14 @@ export default function AppreciationsPage() {
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
   const [loading, setLoading] = useState(true);
   const [thankingId, setThankingId] = useState<string | null>(null);
+  const [tier, setTier] = useState('free');
+
+  // Check tier
+  useEffect(() => {
+    buildClient().then((client) => client.request<{ tier: string }>('GET', '/subscription')).then((res) => setTier(res.tier || 'free')).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasAccess = ['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(tier);
 
   // Filters
   const [platformFilter, setPlatformFilter] = useState<string>('all');
@@ -216,6 +224,17 @@ export default function AppreciationsPage() {
 
   if (loading) {
     return <p className="text-slate-400">Loading appreciations…</p>;
+  }
+
+  if (!hasAccess && !loading) {
+    return (
+      <div className="space-y-6 text-center py-12">
+        <div className="text-5xl">🙏</div>
+        <h2 className="text-2xl font-bold text-white">Appreciations</h2>
+        <p className="text-slate-400 max-w-sm mx-auto">Track mentions, shoutouts, and recommendations from your network. Available on the Flight plan.</p>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-blue-600 to-blue-500 text-white px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">Upgrade to Flight</a>
+      </div>
+    );
   }
 
   return (

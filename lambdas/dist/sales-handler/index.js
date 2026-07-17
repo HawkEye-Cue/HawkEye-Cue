@@ -63,6 +63,7 @@ async function handleGetDeals(userId) {
     trade: item.trade || '',
     leadSource: item.leadSource || '',
     leadSourceNote: item.leadSourceNote || '',
+    soldBy: item.soldBy || '',
     bundleItems: item.bundleItems || undefined,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
@@ -73,7 +74,7 @@ async function handleGetDeals(userId) {
 
 // POST /sales/deals
 async function handleCreateDeal(userId, body) {
-  const { name, value, stage, policyType, folio, contactName, contactEmail, contactPhone, notes, trade, leadSource, leadSourceNote, bundleItems } = body || {};
+  const { name, value, stage, policyType, folio, contactName, contactEmail, contactPhone, notes, trade, leadSource, leadSourceNote, soldBy, bundleItems } = body || {};
   if (!name || !name.trim()) return err(400, 'INVALID_INPUT', 'Deal name is required');
 
   const dealId = randomUUID();
@@ -103,6 +104,7 @@ async function handleCreateDeal(userId, body) {
       leadSource: leadSource || '',
       leadSourceNote: leadSourceNote || '',
       bundleItems: (policyType === 'Bundle' && Array.isArray(bundleItems)) ? bundleItems.filter((i) => i.type && i.value) : undefined,
+      soldBy: soldBy || '',
       createdAt: now,
       updatedAt: now,
     },
@@ -490,8 +492,8 @@ exports.handler = async (event) => {
         for (const deal of (dealsResult.Items || [])) {
           allDeals.push({
             id: deal.dealId,
-            name: deal.name,
-            value: deal.value || 0,
+            name: deal.dealName,
+            value: deal.dealValue || 0,
             stage: deal.stage,
             policyType: deal.policyType || '',
             soldBy: deal.soldBy || '',

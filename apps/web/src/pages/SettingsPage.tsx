@@ -159,7 +159,7 @@ export default function SettingsPage() {
   const currentTier = subscription?.tier ?? 'free';
 
   function tierLabel(tier: string) {
-    const labels: Record<string, string> = { free: 'Nest (Free)', nest: 'Nest (Free)', base: 'Nest (Free)', flight: 'Flight', growth: 'Flight', soar: 'Soar', team: 'Summit', summit: 'Summit' };
+    const labels: Record<string, string> = { free: 'Nest (Free)', nest: 'Nest (Free)', base: 'Flight', flight: 'Flight', growth: 'Flight', soar: 'Soar', team: 'Summit', summit: 'Summit' };
     return labels[tier] ?? tier;
   }
 

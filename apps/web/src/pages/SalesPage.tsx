@@ -499,6 +499,7 @@ export default function SalesPage() {
               policyType: deal.policyType,
               folio: deal.folio,
             });
+            showToast('🦅 Team notified!');
           } catch { /* non-fatal */ }
         }
       }
@@ -1209,6 +1210,7 @@ export default function SalesPage() {
               try {
                 const client = await buildClient();
                 await client.request('PUT', '/sales/team-emails', { emails: val.split('\n').map((em: string) => em.trim()).filter(Boolean) });
+                showToast('✓ Team emails saved');
               } catch { /* ignore */ }
             }}
             placeholder="Enter emails, one per line:&#10;team@example.com&#10;agent2@example.com"

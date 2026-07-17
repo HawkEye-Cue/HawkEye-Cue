@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
   const [followUpDeals, setFollowUpDeals] = useState<{ id: string; name: string; stage: string; policyType: string; createdAt: string }[]>([]);
   const [engagement, setEngagement] = useState<{ totalLikes: number; totalComments: number; totalShares: number; postStats: any[] } | null>(null);
+  const [pendingLinkInvites, setPendingLinkInvites] = useState<{ id: string; partnerEmail: string; partnerName: string }[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Refetch when page becomes visible (user navigates back)
@@ -73,6 +74,12 @@ export default function DashboardPage() {
           if (engResult && (engResult.totalLikes > 0 || engResult.totalComments > 0)) {
             setEngagement(engResult);
           }
+        } catch { /* ignore */ }
+        // Fetch pending link invites
+        try {
+          const linksResult = await client.request<{ links: any[] }>('GET', '/sales/linked');
+          const pending = (linksResult.links || []).filter((l: any) => l.status === 'pending');
+          setPendingLinkInvites(pending);
         } catch { /* ignore */ }
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
         // Auto-clean: only show posts from today that haven't been published before today
@@ -156,6 +163,31 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Pending Link Invites Banner */}
+      {pendingLinkInvites.length > 0 && pendingLinkInvites.map((invite) => (
+        <div key={invite.id} className="p-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-2 border-amber-500/40 animate-pulse-slow">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-amber-300">🔗 Link Request</p>
+              <p className="text-xs text-slate-300 mt-0.5"><strong>{invite.partnerName || invite.partnerEmail}</strong> wants to link Sales Trackers with you</p>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  const token = await getToken();
+                  const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                  await client.request('POST', '/sales/linked/accept', { linkId: invite.id });
+                  setPendingLinkInvites((prev) => prev.filter((i) => i.id !== invite.id));
+                } catch { /* ignore */ }
+              }}
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg shrink-0 active:scale-95 transition-all"
+            >
+              Accept ✓
+            </button>
+          </div>
+        </div>
+      ))}
 
       {/* Daily Cues */}
       <details className="glass-card" open>

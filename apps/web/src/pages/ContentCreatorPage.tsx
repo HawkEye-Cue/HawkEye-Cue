@@ -164,61 +164,81 @@ export default function ContentCreatorPage() {
             {todayCalendarEvents.filter((e) => e.completed).length}/{todayCalendarEvents.length} done
           </span>
         </summary>
-        <div className="mt-3 max-h-60 overflow-y-auto space-y-2" id="todays-cues-list">
+        <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">
           {todayCalendarEvents.map((e, idx) => (
-            <div
+            <details
               key={e.id}
               id={`cue-${e.id}`}
-              className={`flex items-center justify-between p-2.5 rounded-lg transition-all duration-300 ${
+              className={`rounded-lg transition-all duration-300 ${
                 e.completed
                   ? 'bg-green-900/20 border border-green-500/20'
                   : idx === todayCalendarEvents.findIndex((ev) => !ev.completed)
                     ? 'bg-amber-500/10 border border-amber-500/30 shadow-sm shadow-amber-500/10'
-                    : 'bg-white/5'
+                    : 'bg-white/5 border border-transparent'
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {e.completed ? (
-                  <span className="text-green-400 text-lg shrink-0">✓</span>
-                ) : (
-                  <span className={`w-2.5 h-2.5 shrink-0 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
-                )}
-                <span className={`text-sm truncate ${e.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{e.title}</span>
-                {e.link && (
-                  <a
-                    href={e.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(ev) => ev.stopPropagation()}
-                    className="text-blue-400 hover:text-blue-300 shrink-0"
-                    title={e.link}
+              <summary className="flex items-center justify-between p-2.5 cursor-pointer">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {e.completed ? (
+                    <span className="text-green-400 text-lg shrink-0">✓</span>
+                  ) : (
+                    <span className={`w-2.5 h-2.5 shrink-0 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
+                  )}
+                  <span className={`text-sm truncate ${e.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{e.title}</span>
+                  {e.link && (
+                    <a
+                      href={e.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(ev) => ev.stopPropagation()}
+                      className="text-blue-400 hover:text-blue-300 shrink-0"
+                      title={e.link}
+                    >
+                      🔗
+                    </a>
+                  )}
+                </div>
+                {!e.completed ? (
+                  <button
+                    onClick={(ev) => {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      toggleComplete(e.id);
+                      setShowHawkSwoop(true);
+                      setTimeout(() => setShowHawkSwoop(false), 1400);
+                      setTimeout(() => {
+                        const nextUncompleted = todayCalendarEvents.find((ev2) => ev2.id !== e.id && !ev2.completed);
+                        if (nextUncompleted) {
+                          document.getElementById(`cue-${nextUncompleted.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 500);
+                    }}
+                    className="shrink-0 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg transition-all active:scale-90"
                   >
-                    🔗
-                  </a>
+                    Done ✓
+                  </button>
+                ) : (
+                  <span className="text-xs text-green-400 font-medium shrink-0">Complete</span>
                 )}
-              </div>
-              {!e.completed ? (
-                <button
-                  onClick={() => {
-                    toggleComplete(e.id);
-                    setShowHawkSwoop(true);
-                    setTimeout(() => setShowHawkSwoop(false), 1400);
-                    // Auto-scroll to next uncompleted cue
-                    setTimeout(() => {
-                      const nextUncompleted = todayCalendarEvents.find((ev) => ev.id !== e.id && !ev.completed);
-                      if (nextUncompleted) {
-                        document.getElementById(`cue-${nextUncompleted.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    }, 500);
+              </summary>
+              <div className="px-3 pb-3 pt-1 border-t border-white/5">
+                <label className="text-xs text-slate-500 block mb-1">Notes</label>
+                <textarea
+                  defaultValue={localStorage.getItem(`hawkeye_cue_notes_${e.id}`) || ''}
+                  onBlur={(ev) => {
+                    const val = ev.target.value.trim();
+                    if (val) {
+                      localStorage.setItem(`hawkeye_cue_notes_${e.id}`, val);
+                    } else {
+                      localStorage.removeItem(`hawkeye_cue_notes_${e.id}`);
+                    }
+                    showToast('✓ Notes saved');
                   }}
-                  className="shrink-0 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg transition-all active:scale-90"
-                >
-                  Done ✓
-                </button>
-              ) : (
-                <span className="text-xs text-green-400 font-medium shrink-0">Complete</span>
-              )}
-            </div>
+                  placeholder="Add notes, reminders, or anything you want to remember..."
+                  className="w-full px-2.5 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20 focus:border-blue-500/50 focus:outline-none"
+                />
+              </div>
+            </details>
           ))}
           {todayPosts.map((p) => (
             <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">

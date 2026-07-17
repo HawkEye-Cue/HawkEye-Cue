@@ -166,24 +166,38 @@ export default function ContentCreatorPage() {
         </summary>
         {/* Copy & Open All Groups button */}
         {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && platformContent && (
-          <button
-            onClick={() => {
-              const links = todayCalendarEvents.filter((e) => e.link && !e.completed).map((e) => e.link!);
-              const content = Object.values(platformContent)[0] || '';
-              navigator.clipboard.writeText(content);
-              for (const link of links) {
-                window.open(link, '_blank');
-              }
-              showToast(`✓ Post copied + ${links.length} groups opened — paste away! 🦅`);
-            }}
-            className="mt-3 w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
-          >
-            🚀 Copy Post & Open All Groups ({todayCalendarEvents.filter((e) => e.link && !e.completed).length})
-          </button>
+          <div className="mt-3 space-y-2">
+            <button
+              onClick={() => {
+                const content = Object.values(platformContent)[0] || '';
+                navigator.clipboard.writeText(content);
+                showToast('✓ Post copied to clipboard!');
+              }}
+              className="w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+            >
+              📋 Copy Post to Clipboard
+            </button>
+            <p className="text-xs text-slate-400 text-center">Post copied → tap each group below → paste (Ctrl+V) → post</p>
+            <div className="space-y-1.5">
+              {todayCalendarEvents.filter((e) => e.link && !e.completed).map((e) => (
+                <a
+                  key={e.id}
+                  href={e.link!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
+                >
+                  <span className="text-blue-400">🔗</span>
+                  <span className="text-sm text-blue-300 truncate flex-1">{e.title}</span>
+                  <span className="text-xs text-slate-500 shrink-0">Open →</span>
+                </a>
+              ))}
+            </div>
+          </div>
         )}
         {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && !platformContent && (
           <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
-            <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy Post & Open All Groups"</strong> to paste it into each group</p>
+            <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy Post to Clipboard"</strong> to paste it into each group</p>
           </div>
         )}
         <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">

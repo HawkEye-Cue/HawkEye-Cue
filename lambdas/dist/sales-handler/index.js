@@ -383,11 +383,11 @@ exports.handler = async (event) => {
       return ok({ accepted: true });
     }
 
-    // DELETE /sales/linked/{id} — remove a link
+    // DELETE /sales/linked/{id} — remove a link (mutual — removes from both sides)
     const linkedDeleteMatch = path.match(/^\/sales\/linked\/([^/]+)$/);
     if (method === 'DELETE' && linkedDeleteMatch) {
       const linkId = linkedDeleteMatch[1];
-      // Find and delete the link
+      // Find and delete the link on this user's side
       const linkResult = await dynamo.send(new QueryCommand({
         TableName: TABLE_NAME,
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
@@ -397,6 +397,19 @@ exports.handler = async (event) => {
       const linkItem = (linkResult.Items || [])[0];
       if (linkItem) {
         await dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { PK: linkItem.PK, SK: linkItem.SK } }));
+
+        // Also remove the reciprocal link on the partner's side
+        if (linkItem.partnerUserId) {
+          const partnerLinksResult = await dynamo.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+            FilterExpression: 'partnerUserId = :uid',
+            ExpressionAttributeValues: { ':pk': `USER#${linkItem.partnerUserId}`, ':sk': 'LINK#', ':uid': userId },
+          }));
+          for (const partnerLink of (partnerLinksResult.Items || [])) {
+            await dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { PK: partnerLink.PK, SK: partnerLink.SK } }));
+          }
+        }
       }
       return ok({ deleted: true });
     }

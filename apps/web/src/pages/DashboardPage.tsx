@@ -177,9 +177,13 @@ export default function DashboardPage() {
                 try {
                   const token = await getToken();
                   const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-                  await client.request('POST', '/sales/linked/accept', { linkId: invite.id });
+                  const result = await client.request<any>('POST', '/sales/linked/accept', { linkId: invite.id });
+                  console.log('Accept result:', result);
                   setPendingLinkInvites((prev) => prev.filter((i) => i.id !== invite.id));
-                } catch { /* ignore */ }
+                } catch (e) {
+                  console.error('Accept failed:', e);
+                  alert('Failed to accept: ' + (e instanceof Error ? e.message : String(e)));
+                }
               }}
               className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg shrink-0 active:scale-95 transition-all"
             >

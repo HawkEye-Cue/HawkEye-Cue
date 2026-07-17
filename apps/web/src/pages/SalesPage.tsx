@@ -377,6 +377,13 @@ export default function SalesPage() {
   });
   const [newSalesperson, setNewSalesperson] = useState('');
 
+  // Linked accounts
+  const [linkedAccounts, setLinkedAccounts] = useState<{ id: string; partnerEmail: string; partnerName: string; status: string }[]>([]);
+  const [linkedDeals, setLinkedDeals] = useState<any[]>([]);
+  const [linkInviteEmail, setLinkInviteEmail] = useState('');
+  const [linkInviting, setLinkInviting] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<{ linkId: string; inviterEmail: string }[]>([]);
+
   async function buildClient() {
     const token = await getToken();
     return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
@@ -421,6 +428,16 @@ export default function SalesPage() {
             setSalespeople(prefs.salespeople);
             localStorage.setItem('hawkeye_salespeople', JSON.stringify(prefs.salespeople));
           }
+        } catch { /* ignore */ }
+        // Fetch linked accounts and their deals
+        try {
+          const linksResult = await client.request<{ links: any[] }>('GET', '/sales/linked');
+          setLinkedAccounts(linksResult.links || []);
+          // Find pending invites for this user (where someone else invited them)
+          const pending = (linksResult.links || []).filter((l: any) => l.status === 'pending');
+          // Also fetch linked deals
+          const linkedDealsResult = await client.request<{ deals: any[] }>('GET', '/sales/linked/deals');
+          setLinkedDeals(linkedDealsResult.deals || []);
         } catch { /* ignore */ }
       } catch { /* ignore */ }
       finally { setLoading(false); }
@@ -1264,6 +1281,145 @@ export default function SalesPage() {
           <p className="text-xs text-slate-500">Emails sync to server — works on all devices.</p>
         </div>
       </details>
+
+      {/* Linked Accounts */}
+      <details className="glass-card">
+        <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
+          <span>🔗 Linked Accounts</span>
+          <span className="text-xs text-slate-400">{linkedAccounts.filter((l) => l.status === 'active').length} linked</span>
+        </summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-slate-400">Link with other HawkEye-Cue users to share your Sales Tracker. Both of you will see each other's deals and get Sale-Cue notifications.</p>
+
+          {/* Invite form */}
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={linkInviteEmail}
+              onChange={(e) => setLinkInviteEmail(e.target.value)}
+              placeholder="Partner's email..."
+              className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+            />
+            <button
+              onClick={async () => {
+                if (!linkInviteEmail.trim()) return;
+                setLinkInviting(true);
+                try {
+                  const client = await buildClient();
+                  await client.request('POST', '/sales/linked/invite', { email: linkInviteEmail.trim() });
+                  setLinkInviteEmail('');
+                  showToast('✓ Invite sent!');
+                  // Refresh links
+                  const linksResult = await client.request<{ links: any[] }>('GET', '/sales/linked');
+                  setLinkedAccounts(linksResult.links || []);
+                } catch (e) {
+                  showToast('Failed to send invite');
+                } finally { setLinkInviting(false); }
+              }}
+              disabled={linkInviting || !linkInviteEmail.trim()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+            >
+              {linkInviting ? '...' : 'Invite'}
+            </button>
+          </div>
+
+          {/* Pending invites TO this user (they need to accept) */}
+          {linkedAccounts.filter((l) => l.status === 'pending' && !l.partnerEmail).length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-amber-300 font-medium">Pending invites to accept:</p>
+              {linkedAccounts.filter((l) => l.status === 'pending').map((link) => (
+                <div key={link.id} className="flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <span className="text-sm text-amber-300">{link.partnerName || link.partnerEmail}</span>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const client = await buildClient();
+                        await client.request('POST', '/sales/linked/accept', { linkId: link.id });
+                        showToast('✓ Link accepted!');
+                        const linksResult = await client.request<{ links: any[] }>('GET', '/sales/linked');
+                        setLinkedAccounts(linksResult.links || []);
+                        const dealsResult = await client.request<{ deals: any[] }>('GET', '/sales/linked/deals');
+                        setLinkedDeals(dealsResult.deals || []);
+                      } catch { showToast('Failed to accept'); }
+                    }}
+                    className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg"
+                  >
+                    Accept
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Active linked accounts */}
+          {linkedAccounts.filter((l) => l.status === 'active').length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-slate-500 font-medium">Linked partners:</p>
+              {linkedAccounts.filter((l) => l.status === 'active').map((link) => (
+                <div key={link.id} className="flex items-center justify-between p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400 text-sm">✓</span>
+                    <span className="text-sm text-white">{link.partnerName || link.partnerEmail}</span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`Remove link with ${link.partnerName || link.partnerEmail}?`)) return;
+                      try {
+                        const client = await buildClient();
+                        await client.request('DELETE', `/sales/linked/${link.id}`);
+                        setLinkedAccounts((prev) => prev.filter((l) => l.id !== link.id));
+                        showToast('✓ Link removed');
+                      } catch { /* ignore */ }
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pending outgoing invites */}
+          {linkedAccounts.filter((l) => l.status === 'pending').length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-slate-500">Pending:</p>
+              {linkedAccounts.filter((l) => l.status === 'pending').map((link) => (
+                <div key={link.id} className="flex items-center justify-between p-1.5 text-xs text-slate-400">
+                  <span>⏳ {link.partnerEmail} — waiting to accept</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </details>
+
+      {/* Linked Partners' Deals */}
+      {linkedDeals.length > 0 && (
+        <details className="glass-card border-blue-500/20">
+          <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
+            <span>🤝 Partner Deals</span>
+            <span className="text-xs text-slate-400">{linkedDeals.length} deals</span>
+          </summary>
+          <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
+            {linkedDeals.map((deal) => (
+              <div key={deal.id} className="p-2.5 rounded-lg bg-white/5 border border-white/5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-white">{deal.name}</span>
+                  {deal.value > 0 && <span className="text-sm font-medium text-green-400">${deal.value.toLocaleString()}</span>}
+                </div>
+                <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                  <span className="text-blue-400">{deal.partnerName}</span>
+                  <span>•</span>
+                  <span>{deal.stage}</span>
+                  {deal.policyType && <><span>•</span><span>{deal.policyType}</span></>}
+                  {deal.soldBy && <><span>•</span><span>Sold by {deal.soldBy}</span></>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

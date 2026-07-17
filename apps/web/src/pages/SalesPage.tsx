@@ -298,22 +298,6 @@ export default function SalesPage() {
   // Gate: Sales Tracker requires Soar or higher
   const hasAccess = ['soar', 'team', 'summit'].includes(tier);
 
-  if (!hasAccess && tier !== 'free') {
-    // Still loading tier, don't show gate yet
-  }
-  if (!hasAccess && !loading) {
-    return (
-      <div className="space-y-6 text-center py-12">
-        <div className="text-5xl">🚀</div>
-        <h2 className="text-2xl font-bold text-white">Sales Tracker</h2>
-        <p className="text-slate-400 max-w-sm mx-auto">Track your entire pipeline, see where every sale comes from, manage folios, and get monthly recaps. Available on the Soar plan.</p>
-        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">
-          Upgrade to Soar — $29.99/mo
-        </a>
-      </div>
-    );
-  }
-
   // Get trade-specific config
   const tradeConfig = useMemo(() => {
     if (!selectedTrade) return DEFAULT_TRADE_CONFIG;
@@ -533,6 +517,17 @@ export default function SalesPage() {
   const totalValue = deals.reduce((sum, d) => sum + d.value, 0);
   const wonValue = deals.filter((d) => d.stage === 'won').reduce((sum, d) => sum + d.value, 0);
   const activeDeals = deals.filter((d) => !['won', 'lost'].includes(d.stage)).length;
+
+  if (!hasAccess && !loading) {
+    return (
+      <div className="space-y-6 text-center py-12">
+        <div className="text-5xl">🚀</div>
+        <h2 className="text-2xl font-bold text-white">Sales Tracker</h2>
+        <p className="text-slate-400 max-w-sm mx-auto">Track your entire pipeline, see where every sale comes from, manage folios, and get monthly recaps. Available on the Soar plan.</p>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">Upgrade to Soar</a>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

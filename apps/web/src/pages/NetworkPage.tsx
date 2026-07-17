@@ -542,7 +542,7 @@ export default function NetworkPage() {
                       {/* Reply button */}
                       <div className="mt-3 flex items-center gap-3">
                         <button
-                          onClick={() => setReplyingTo(replyingTo === post.id ? null : post.id)}
+                          onClick={() => { setReplyingTo(replyingTo === post.id ? null : post.id); setReplyContent(''); }}
                           className="text-xs text-slate-400 hover:text-blue-400 min-h-[44px] flex items-center transition-colors"
                         >
                           💬 Reply {post.replies?.length ? `(${post.replies.length})` : ''}

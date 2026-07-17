@@ -711,6 +711,19 @@ export default function ContentCreatorPage() {
                       baseUrl: import.meta.env.VITE_API_URL as string,
                       getToken: async () => token,
                     });
+
+                    // Upload media if provided
+                    let schedMediaUrls: string[] = [];
+                    if (imageFile) {
+                      const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
+                      await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
+                      schedMediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
+                    } else if (videoFile) {
+                      const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
+                      await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
+                      schedMediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
+                    }
+
                     const scheduledAt = new Date(input.value).toISOString();
                     const content = Object.values(platformContent)[0] || '';
                     await client.schedulePosts({
@@ -718,7 +731,7 @@ export default function ContentCreatorPage() {
                       content,
                       platforms,
                       scheduledAt,
-                      mediaUrls: [],
+                      mediaUrls: schedMediaUrls,
                     });
                     setSuccess('✓ Scheduled! Check the Calendar tab.');
                     setScheduling(false);

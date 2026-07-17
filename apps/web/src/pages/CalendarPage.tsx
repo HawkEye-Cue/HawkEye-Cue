@@ -92,6 +92,9 @@ export default function CalendarPage() {
   };
 
   const handleDayClick = (day: number) => {
+    // Only open modal if day has events or is in the future
+    const dayEvents = getEventsForDay(day);
+    if (!isFuture(day) && dayEvents.length === 0) return;
     setSelectedDay(day);
     setShowModal(true);
   };

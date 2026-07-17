@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 
 interface ToastState {
@@ -10,12 +10,18 @@ const ToastContext = createContext<ToastState | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearTimeout2 = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((message: string) => {
+    // Clear previous timeouts to prevent flickering
+    if (hideTimeout.current) clearTimeout(hideTimeout.current);
+    if (clearTimeout2.current) clearTimeout(clearTimeout2.current);
+
     setToast(message);
     setVisible(true);
-    setTimeout(() => setVisible(false), 1500);
-    setTimeout(() => setToast(null), 2000);
+    hideTimeout.current = setTimeout(() => setVisible(false), 1500);
+    clearTimeout2.current = setTimeout(() => setToast(null), 2000);
   }, []);
 
   return (

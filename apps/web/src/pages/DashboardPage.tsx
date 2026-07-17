@@ -78,8 +78,8 @@ export default function DashboardPage() {
         // Fetch pending link invites
         try {
           const linksResult = await client.request<{ links: any[] }>('GET', '/sales/linked');
-          const pending = (linksResult.links || []).filter((l: any) => l.status === 'pending');
-          setPendingLinkInvites(pending);
+          const incoming = (linksResult.links || []).filter((l: any) => l.status === 'incoming' || (l.status === 'pending' && l.direction === 'incoming'));
+          setPendingLinkInvites(incoming);
         } catch { /* ignore */ }
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
         // Auto-clean: only show posts from today that haven't been published before today

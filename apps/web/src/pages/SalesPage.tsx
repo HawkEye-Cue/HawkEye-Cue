@@ -1291,10 +1291,10 @@ export default function SalesPage() {
           </div>
 
           {/* Pending invites TO this user (they need to accept) */}
-          {linkedAccounts.filter((l) => l.status === 'pending' && !l.partnerEmail).length > 0 && (
+          {linkedAccounts.filter((l) => l.status === 'incoming').length > 0 && (
             <div className="space-y-1.5">
               <p className="text-xs text-amber-300 font-medium">Pending invites to accept:</p>
-              {linkedAccounts.filter((l) => l.status === 'pending').map((link) => (
+              {linkedAccounts.filter((l) => l.status === 'incoming').map((link) => (
                 <div key={link.id} className="flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
                   <span className="text-sm text-amber-300">{link.partnerName || link.partnerEmail}</span>
                   <button

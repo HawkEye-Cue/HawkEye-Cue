@@ -256,8 +256,9 @@ exports.handler = async (event) => {
 
     // ─── Linked Accounts ────────────────────────────────────────────────────
 
-    // GET /sales/linked — get all linked partners
+    // GET /sales/linked — get all linked partners + incoming invites
     if (method === 'GET' && path === '/sales/linked') {
+      // Get links stored under this user's PK
       const result = await dynamo.send(new QueryCommand({
         TableName: TABLE_NAME,
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
@@ -268,9 +269,49 @@ exports.handler = async (event) => {
         partnerEmail: item.partnerEmail,
         partnerUserId: item.partnerUserId,
         partnerName: item.partnerName || item.partnerEmail,
-        status: item.linkStatus, // 'pending' or 'active'
+        status: item.linkStatus,
         createdAt: item.createdAt,
+        direction: 'outgoing',
       }));
+
+      // Also check for incoming pending invites (stored under other users, indexed by this user's email)
+      const profileResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'PROFILE' },
+      }));
+      const userEmail = (profileResult.Items || [])[0]?.email || '';
+
+      if (userEmail) {
+        const incomingResult = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          IndexName: 'GSI1',
+          KeyConditionExpression: 'GSI1PK = :pk',
+          ExpressionAttributeValues: { ':pk': `LINKINVITE#${userEmail.toLowerCase()}` },
+        }));
+        for (const item of (incomingResult.Items || [])) {
+          if (item.linkStatus === 'pending') {
+            const inviterUserId = item.PK.replace('USER#', '');
+            // Get inviter's email
+            const inviterResult = await dynamo.send(new QueryCommand({
+              TableName: TABLE_NAME,
+              KeyConditionExpression: 'PK = :pk AND SK = :sk',
+              ExpressionAttributeValues: { ':pk': item.PK, ':sk': 'PROFILE' },
+            }));
+            const inviterEmail = (inviterResult.Items || [])[0]?.email || 'Unknown';
+            links.push({
+              id: item.linkId,
+              partnerEmail: inviterEmail,
+              partnerUserId: inviterUserId,
+              partnerName: inviterEmail,
+              status: 'incoming',
+              createdAt: item.createdAt,
+              direction: 'incoming',
+            });
+          }
+        }
+      }
+
       return ok({ links });
     }
 

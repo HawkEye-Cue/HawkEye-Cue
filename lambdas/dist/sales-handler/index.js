@@ -257,13 +257,13 @@ exports.handler = async (event) => {
     // POST /sales/notify — send Sale-Cue email to team
     if (method === 'POST' && path === '/sales/notify') {
       const body = event.body ? JSON.parse(event.body) : {};
-      const { emails, dealName, dealValue, policyType, folio } = body;
+      const { emails, dealName, dealValue, policyType, folio, soldBy } = body;
       if (!emails || !Array.isArray(emails) || emails.length === 0) {
         return err(400, 'INVALID_INPUT', 'emails array is required');
       }
       try {
         for (const email of emails.slice(0, 10)) { // max 10 emails
-          await sendEmail(email, `🦅 Sale-Cue! ${dealName} — WON!`, `🎉 A deal was just closed!\n\nDeal: ${dealName}\nValue: $${dealValue || 0}\nPolicy Type: ${policyType || 'N/A'}\nFolio: ${folio || 'N/A'}\n\nGreat work team! 🦅\n\n— HawkEye-Cue`);
+          await sendEmail(email, `🦅 Sale-Cue! ${dealName} — WON!`, `🎉 A deal was just closed!\n\nDeal: ${dealName}\nValue: $${dealValue || 0}\nPolicy Type: ${policyType || 'N/A'}\nSold By: ${soldBy || 'N/A'}\nFolio: ${folio || 'N/A'}\n\nGreat work team! 🦅\n\n— HawkEye-Cue`);
         }
         return ok({ sent: emails.length });
       } catch (e) {

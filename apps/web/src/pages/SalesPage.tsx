@@ -19,6 +19,7 @@ interface Deal {
   trade: string;
   leadSource: string;
   leadSourceNote: string;
+  soldBy?: string;
   bundleItems?: { type: string; value: number }[];
   createdAt: string;
 }
@@ -361,6 +362,7 @@ export default function SalesPage() {
   const [notes, setNotes] = useState('');
   const [leadSource, setLeadSource] = useState('');
   const [leadSourceNote, setLeadSourceNote] = useState('');
+  const [soldBy, setSoldBy] = useState('');
   const [bundleItems, setBundleItems] = useState<{ type: string; value: string }[]>([]);
   const [adding, setAdding] = useState(false);
   const [folioFilter, setFolioFilter] = useState('all');
@@ -368,6 +370,12 @@ export default function SalesPage() {
   const [snoozeId, setSnoozeId] = useState<string | null>(null);
   const [teamEmailsText, setTeamEmailsText] = useState('');
   const [unconvertedLeads, setUnconvertedLeads] = useState<{ id: string; authorName: string; platform: string; postContent: string; detectedAt: string }[]>([]);
+
+  // Team members / salespeople for the "Sold By" dropdown
+  const [salespeople, setSalespeople] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('hawkeye_salespeople') || '[]'); } catch { return []; }
+  });
+  const [newSalesperson, setNewSalesperson] = useState('');
 
   async function buildClient() {
     const token = await getToken();
@@ -406,6 +414,14 @@ export default function SalesPage() {
             detectedAt: l.detectedAt || l.createdAt || '',
           })));
         } catch { /* ignore */ }
+        // Fetch salespeople from server preferences
+        try {
+          const prefs = await client.request<any>('GET', '/profile/preferences');
+          if (prefs.salespeople && prefs.salespeople.length > 0) {
+            setSalespeople(prefs.salespeople);
+            localStorage.setItem('hawkeye_salespeople', JSON.stringify(prefs.salespeople));
+          }
+        } catch { /* ignore */ }
       } catch { /* ignore */ }
       finally { setLoading(false); }
     }
@@ -419,7 +435,7 @@ export default function SalesPage() {
       const client = await buildClient();
       const result = await client.request<Deal>('POST', '/sales/deals', {
         name: name.trim(), value: policyType === 'Bundle' ? bundleItems.reduce((s, i) => s + (parseFloat(i.value) || 0), 0) : (parseFloat(value) || 0), stage,
-        policyType, folio: (defaultFolioStart && defaultFolioEnd) ? `${defaultFolioStart} to ${defaultFolioEnd}` : '', contactName: name.trim(), contactEmail, contactPhone, notes, leadSource, leadSourceNote,
+        policyType, folio: (defaultFolioStart && defaultFolioEnd) ? `${defaultFolioStart} to ${defaultFolioEnd}` : '', contactName: name.trim(), contactEmail, contactPhone, notes, leadSource, leadSourceNote, soldBy,
         bundleItems: policyType === 'Bundle' ? bundleItems.filter((i) => i.type && i.value) : undefined,
       });
       setDeals([result, ...deals]);
@@ -498,6 +514,7 @@ export default function SalesPage() {
               dealValue: deal.value,
               policyType: deal.policyType,
               folio: deal.folio,
+              soldBy: deal.soldBy || soldBy || 'Unknown',
             });
             showToast('🦅 Team notified!');
           } catch { /* non-fatal */ }
@@ -520,7 +537,7 @@ export default function SalesPage() {
   function resetForm() {
     setName(''); setValue(''); setStage('prospect'); setPolicyType('');
     setContactName(''); setContactEmail(''); setContactPhone(''); setNotes('');
-    setLeadSource(''); setLeadSourceNote(''); setBundleItems([]);
+    setLeadSource(''); setLeadSourceNote(''); setSoldBy(''); setBundleItems([]);
   }
 
   const filtered = (() => {
@@ -862,6 +879,34 @@ export default function SalesPage() {
           {leadSource && (
             <input type="text" value={leadSourceNote} onChange={(e) => setLeadSourceNote(e.target.value)} placeholder={leadSource === 'internet-lead' ? 'Lead vendor (e.g. QuoteWizard, EverQuote, Datalot, Hometown Quotes...)' : leadSource.includes('post') || leadSource.includes('ad') ? 'Link to the post or ad...' : leadSource === 'referral' ? 'Who referred them?' : leadSource.includes('call') ? 'Call notes — what triggered interest?' : 'Details about the source...'} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
           )}
+          {/* Sold By */}
+          <div>
+            <div className="flex gap-2">
+              <select value={soldBy} onChange={(e) => setSoldBy(e.target.value)} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <option value="">Who sold this?</option>
+                {salespeople.map((sp) => (
+                  <option key={sp} value={sp}>{sp}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  const name = prompt('Add a salesperson/employee name:');
+                  if (name && name.trim() && !salespeople.includes(name.trim())) {
+                    const updated = [...salespeople, name.trim()];
+                    setSalespeople(updated);
+                    localStorage.setItem('hawkeye_salespeople', JSON.stringify(updated));
+                    setSoldBy(name.trim());
+                    // Sync to server
+                    buildClient().then((client) => client.request('PUT', '/profile/preferences', { salespeople: updated })).catch(() => {});
+                  }
+                }}
+                className="px-3 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm font-medium"
+              >
+                + Add
+              </button>
+            </div>
+          </div>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-16" />
           <button onClick={handleAdd} disabled={adding || !name.trim()} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50">
             {adding ? 'Saving...' : 'Save Deal'}

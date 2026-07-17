@@ -70,6 +70,13 @@ export class AuthStack extends cdk.Stack {
         resources: [`arn:aws:dynamodb:${this.region}:${this.account}:table/${tableName}`],
       })
     );
+    createChallengeFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Resend*`],
+      })
+    );
 
     new lambda.Function(this, 'VerifyAuthChallengeFn', {
       ...lambdaDefaults,

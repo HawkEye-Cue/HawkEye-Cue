@@ -91,6 +91,17 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // Grant Secrets Manager for Resend API key (email sending)
+    this.authPostConfirmationFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Resend*`,
+        ],
+      })
+    );
+
     // ─── Trade Handler ────────────────────────────────────────────────────
     const tradeHandlerFn = new lambda.Function(this, 'TradeHandlerFn', {
       ...lambdaDefaults,
@@ -776,6 +787,17 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // Grant Secrets Manager for Resend API key
+    salesHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Resend*`,
+        ],
+      })
+    );
+
     // Sales routes
     const salesIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
       'SalesIntegration',
@@ -839,6 +861,17 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // Grant Secrets Manager for Resend API key
+    folioRecapFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Resend*`,
+        ],
+      })
+    );
+
     // EventBridge rule: run daily at 8:00 AM UTC to check each user's folio end date
     const folioRecapRule = new cdk.aws_events.Rule(this, 'FolioRecapSchedule', {
       ruleName: 'SocialLeadGen-FolioRecapSchedule',
@@ -866,6 +899,17 @@ export class ApiStack extends cdk.Stack {
         effect: iam.Effect.ALLOW,
         actions: ['ses:SendEmail'],
         resources: ['*'],
+      })
+    );
+
+    // Grant Secrets Manager for Resend API key
+    teamHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Resend*`,
+        ],
       })
     );
 

@@ -2,13 +2,37 @@
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, QueryCommand, PutCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
-const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const { randomUUID } = require('crypto');
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const ses = new SESClient({ region: 'us-east-1' });
+const secretsClient = new SecretsManagerClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
-const ADMIN_EMAIL = 'notifications@hawkeyecue.com';
+const FROM_EMAIL = 'HawkEye-Cue <notifications@hawkeyecue.com>';
+
+// ─── Resend Email Helper ──────────────────────────────────────────────────────
+let resendApiKey = null;
+async function getResendKey() {
+  if (resendApiKey) return resendApiKey;
+  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Resend' }));
+  const secret = JSON.parse(result.SecretString);
+  resendApiKey = secret.RESEND_API_KEY;
+  return resendApiKey;
+}
+
+async function sendEmail(to, subject, text) {
+  const apiKey = await getResendKey();
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject, text }),
+  });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Resend error (${response.status}): ${err}`);
+  }
+  return response.json();
+}
 
 function ok(body) { return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 function err(status, code, message) { return { statusCode: status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: { code, message } }) }; }
@@ -239,16 +263,7 @@ exports.handler = async (event) => {
       }
       try {
         for (const email of emails.slice(0, 10)) { // max 10 emails
-          await ses.send(new SendEmailCommand({
-            Source: ADMIN_EMAIL,
-            Destination: { ToAddresses: [email] },
-            Message: {
-              Subject: { Data: `🦅 Sale-Cue! ${dealName} — WON!` },
-              Body: {
-                Text: { Data: `🎉 A deal was just closed!\n\nDeal: ${dealName}\nValue: $${dealValue || 0}\nPolicy Type: ${policyType || 'N/A'}\nFolio: ${folio || 'N/A'}\n\nGreat work team! 🦅\n\n— HawkEye-Cue` },
-              },
-            },
-          }));
+          await sendEmail(email, `🦅 Sale-Cue! ${dealName} — WON!`, `🎉 A deal was just closed!\n\nDeal: ${dealName}\nValue: $${dealValue || 0}\nPolicy Type: ${policyType || 'N/A'}\nFolio: ${folio || 'N/A'}\n\nGreat work team! 🦅\n\n— HawkEye-Cue`);
         }
         return ok({ sent: emails.length });
       } catch (e) {

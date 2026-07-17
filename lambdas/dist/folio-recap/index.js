@@ -2,12 +2,36 @@
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, ScanCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
-const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const ses = new SESClient({ region: 'us-east-1' });
+const secretsClient = new SecretsManagerClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
-const ADMIN_EMAIL = 'notifications@hawkeyecue.com';
+const FROM_EMAIL = 'HawkEye-Cue <notifications@hawkeyecue.com>';
+
+// ─── Resend Email Helper ──────────────────────────────────────────────────────
+let resendApiKey = null;
+async function getResendKey() {
+  if (resendApiKey) return resendApiKey;
+  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Resend' }));
+  const secret = JSON.parse(result.SecretString);
+  resendApiKey = secret.RESEND_API_KEY;
+  return resendApiKey;
+}
+
+async function sendEmail(to, subject, text) {
+  const apiKey = await getResendKey();
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject, text }),
+  });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Resend error (${response.status}): ${err}`);
+  }
+  return response.json();
+}
 
 /**
  * Folio Recap Lambda — runs daily via EventBridge.
@@ -225,14 +249,7 @@ exports.handler = async () => {
 
       for (const email of emails.slice(0, 10)) {
         try {
-          await ses.send(new SendEmailCommand({
-            Source: ADMIN_EMAIL,
-            Destination: { ToAddresses: [email] },
-            Message: {
-              Subject: { Data: subject },
-              Body: { Text: { Data: body } },
-            },
-          }));
+          await sendEmail(email, subject, body);
           emailsSent++;
           console.log(`Recap sent to ${email} for user ${userId}`);
         } catch (e) {

@@ -178,9 +178,85 @@ async function saveLeadAndNotify(userId, lead) {
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
+// ─── Save Engagement Stats ────────────────────────────────────────────────────
+
+async function saveEngagementStats(userId, teamId) {
+  // Fetch recent posts with their engagement data
+  const posts = await bundleApiCall('GET', `/post?teamId=${teamId}&limit=10`);
+  if (!posts || !posts.data) return;
+
+  let totalLikes = 0;
+  let totalComments = 0;
+  let totalShares = 0;
+  const postStats = [];
+
+  for (const post of posts.data) {
+    const likes = post.likes || post.reactions || 0;
+    const comments = post.comments || 0;
+    const shares = post.shares || 0;
+    totalLikes += likes;
+    totalComments += comments;
+    totalShares += shares;
+    postStats.push({
+      postId: post.id,
+      content: (post.text || post.title || '').slice(0, 80),
+      platform: (post.socialAccountType || 'unknown').toLowerCase(),
+      likes, comments, shares,
+      createdAt: post.createdAt || post.postDate || '',
+    });
+  }
+
+  // Save engagement summary to user's profile
+  const now = new Date().toISOString();
+  await dynamo.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      PK: `USER#${userId}`,
+      SK: 'ENGAGEMENT#LATEST',
+      totalLikes, totalComments, totalShares,
+      postStats: postStats.slice(0, 5),
+      updatedAt: now,
+    },
+  }));
+}
+
+// ─── Save Comment as Engagement Notification ──────────────────────────────────
+
+async function saveCommentNotification(userId, comment) {
+  const id = randomUUID();
+  const now = new Date().toISOString();
+
+  // Deduplicate by commentId
+  const existing = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    FilterExpression: 'commentId = :cid',
+    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'NOTIFY#', ':cid': comment.commentId },
+    Limit: 1,
+  }));
+  if ((existing.Items || []).length > 0) return false;
+
+  await dynamo.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      PK: `USER#${userId}`,
+      SK: `NOTIFY#${now}#${id}`,
+      notificationId: id,
+      type: 'comment',
+      commentId: comment.commentId,
+      authorName: comment.authorName,
+      text: comment.text,
+      platform: comment.platform,
+      createdAt: now,
+    },
+  }));
+  return true;
+}
+
 /**
  * EventBridge Scheduled Lambda — runs every 15 minutes.
  * Scans connected social accounts for new comments/mentions matching user keywords.
+ * Also tracks engagement stats and notifies on all new comments.
  */
 exports.handler = async () => {
   console.log('Lead scanner starting...');
@@ -190,13 +266,26 @@ exports.handler = async () => {
     console.log(`Found ${users.length} users with keywords and connected accounts`);
 
     let totalLeads = 0;
+    let totalNotifications = 0;
 
     for (const user of users) {
       try {
         const comments = await getRecentComments(user.teamId);
         console.log(`User ${user.email}: ${comments.length} recent comments to scan`);
 
+        // Save engagement stats
+        try {
+          await saveEngagementStats(user.userId, user.teamId);
+        } catch (e) {
+          console.error(`Failed to save engagement stats for ${user.email}:`, e.message);
+        }
+
         for (const comment of comments) {
+          // Save ALL comments as notifications (not just keyword matches)
+          const notified = await saveCommentNotification(user.userId, comment);
+          if (notified) totalNotifications++;
+
+          // Check keywords for lead detection
           const matched = matchKeywords(comment.text, user.keywords);
           if (matched.length > 0) {
             const saved = await saveLeadAndNotify(user.userId, {
@@ -211,8 +300,8 @@ exports.handler = async () => {
       }
     }
 
-    console.log(`Lead scanner complete. ${totalLeads} new leads found.`);
-    return { statusCode: 200, body: `Scanned ${users.length} users, found ${totalLeads} leads` };
+    console.log(`Lead scanner complete. ${totalLeads} leads, ${totalNotifications} notifications.`);
+    return { statusCode: 200, body: `Scanned ${users.length} users, found ${totalLeads} leads, ${totalNotifications} notifications` };
   } catch (e) {
     console.error('Lead scanner error:', e);
     return { statusCode: 500, body: e.message };

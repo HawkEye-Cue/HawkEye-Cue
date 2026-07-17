@@ -300,6 +300,18 @@ exports.handler = async (event) => {
       return handleGetPreferences(userId);
     }
 
+    if (method === 'GET' && path === '/profile/engagement') {
+      const result = await dynamo.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND SK = :sk',
+          ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'ENGAGEMENT#LATEST' },
+        })
+      );
+      const item = (result.Items || [])[0];
+      return respond(200, item ? { totalLikes: item.totalLikes || 0, totalComments: item.totalComments || 0, totalShares: item.totalShares || 0, postStats: item.postStats || [], updatedAt: item.updatedAt } : { totalLikes: 0, totalComments: 0, totalShares: 0, postStats: [] });
+    }
+
     if (method === 'PUT' && path === '/profile/preferences') {
       const body = event.body ? JSON.parse(event.body) : {};
       return handleUpdatePreferences(userId, body);

@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
   const [followUpDeals, setFollowUpDeals] = useState<{ id: string; name: string; stage: string; policyType: string; createdAt: string }[]>([]);
+  const [engagement, setEngagement] = useState<{ totalLikes: number; totalComments: number; totalShares: number; postStats: any[] } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Refetch when page becomes visible (user navigates back)
@@ -64,6 +65,14 @@ export default function DashboardPage() {
             ['prospect', 'contacted', 'quoted'].includes(d.stage) && d.createdAt < twoDaysAgo
           ).slice(0, 5);
           setFollowUpDeals(needsFollowUp);
+        } catch { /* ignore */ }
+
+        // Fetch engagement stats
+        try {
+          const engResult = await client.request<any>('GET', '/profile/engagement');
+          if (engResult && (engResult.totalLikes > 0 || engResult.totalComments > 0)) {
+            setEngagement(engResult);
+          }
         } catch { /* ignore */ }
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
         // Auto-clean: only show posts from today that haven't been published before today
@@ -257,6 +266,38 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Engagement Summary */}
+      {engagement && (engagement.totalLikes > 0 || engagement.totalComments > 0) && (
+        <div className="glass-card">
+          <h3 className="font-semibold text-white mb-3">📊 Post Engagement</h3>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center p-3 rounded-lg bg-pink-500/5 border border-pink-500/10">
+              <div className="text-xl font-bold text-pink-400">{engagement.totalLikes}</div>
+              <div className="text-xs text-slate-400">Likes</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
+              <div className="text-xl font-bold text-blue-400">{engagement.totalComments}</div>
+              <div className="text-xs text-slate-400">Comments</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-green-500/5 border border-green-500/10">
+              <div className="text-xl font-bold text-green-400">{engagement.totalShares}</div>
+              <div className="text-xs text-slate-400">Shares</div>
+            </div>
+          </div>
+          {engagement.postStats && engagement.postStats.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              <p className="text-xs text-slate-500">Recent posts:</p>
+              {engagement.postStats.slice(0, 3).map((post: any, i: number) => (
+                <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-white/5 text-xs">
+                  <span className="text-slate-300 truncate flex-1">{post.content || 'Post'}</span>
+                  <span className="text-slate-500 shrink-0 ml-2">❤️{post.likes} 💬{post.comments}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Your Scheduled Cues */}
       <details className="glass-card" open>

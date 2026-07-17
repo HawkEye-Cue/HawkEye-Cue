@@ -504,6 +504,12 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
     this.httpApi.addRoutes({
+      path: '/profile/engagement',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: tradeIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
       path: '/profile/mfa',
       methods: [apigatewayv2.HttpMethod.PUT],
       integration: tradeIntegration,

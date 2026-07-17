@@ -147,7 +147,48 @@ async function handleGetProfile(userId) {
     mfaMethod: item.mfaMethod || 'email',
     selectedTradeId: item.selectedTradeId || null,
     selectedTradeIds: item.selectedTradeIds || (item.selectedTradeId ? [item.selectedTradeId] : []),
+    preferences: item.preferences || {},
   });
+}
+
+// GET /profile/preferences
+async function handleGetPreferences(userId) {
+  const result = await dynamo.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND SK = :sk',
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'PROFILE' },
+    })
+  );
+  const item = (result.Items || [])[0];
+  return respond(200, item?.preferences || {});
+}
+
+// PUT /profile/preferences
+async function handleUpdatePreferences(userId, body) {
+  // Merge incoming preferences with existing ones
+  const result = await dynamo.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND SK = :sk',
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'PROFILE' },
+    })
+  );
+  const item = (result.Items || [])[0];
+  const existing = item?.preferences || {};
+  const merged = { ...existing, ...body };
+
+  await dynamo.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      UpdateExpression: 'SET preferences = :p',
+      ExpressionAttributeValues: { ':p': merged },
+    })
+  );
+
+  return respond(200, merged);
+}
 }
 
 // DELETE /profile/delete — permanently delete user account
@@ -253,6 +294,15 @@ exports.handler = async (event) => {
 
     if (method === 'GET' && path === '/profile') {
       return handleGetProfile(userId);
+    }
+
+    if (method === 'GET' && path === '/profile/preferences') {
+      return handleGetPreferences(userId);
+    }
+
+    if (method === 'PUT' && path === '/profile/preferences') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      return handleUpdatePreferences(userId, body);
     }
 
     if (method === 'PUT' && path === '/profile/mfa') {

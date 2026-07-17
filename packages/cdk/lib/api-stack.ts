@@ -498,6 +498,12 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
     this.httpApi.addRoutes({
+      path: '/profile/preferences',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
+      integration: tradeIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
       path: '/profile/mfa',
       methods: [apigatewayv2.HttpMethod.PUT],
       integration: tradeIntegration,

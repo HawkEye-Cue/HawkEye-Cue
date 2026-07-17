@@ -70,6 +70,19 @@ export default function NetworkPage() {
   const [showWingman, setShowWingman] = useState(false);
   const [wingmanTier, setWingmanTier] = useState('free');
 
+  // Sync wingman from server on mount (cross-device sync)
+  useEffect(() => {
+    buildClient().then((client) => client.request<any>('GET', '/profile/preferences')).then((prefs) => {
+      if (prefs.wingmanKeywords) { setWingmanKeywords(prefs.wingmanKeywords); localStorage.setItem(`hawkeye_wingman_${user?.sub}`, JSON.stringify(prefs.wingmanKeywords)); }
+      if (prefs.wingmanName) { setWingmanName(prefs.wingmanName); localStorage.setItem(`hawkeye_wingman_name_${user?.sub}`, prefs.wingmanName); }
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save wingman to server whenever it changes
+  function saveWingmanToServer(keywords: string[], name: string) {
+    buildClient().then((client) => client.request('PUT', '/profile/preferences', { wingmanKeywords: keywords, wingmanName: name })).catch(() => {});
+  }
+
   // Check tier for Wingman access
   useEffect(() => {
     buildClient().then((client) => client.request<{ tier: string }>('GET', '/subscription')).then((res) => setWingmanTier(res.tier || 'free')).catch(() => {});
@@ -268,7 +281,7 @@ export default function NetworkPage() {
               <input
                 type="text"
                 value={wingmanName}
-                onChange={(e) => { setWingmanName(e.target.value); localStorage.setItem(`hawkeye_wingman_name_${user?.sub}`, e.target.value); }}
+                onChange={(e) => { setWingmanName(e.target.value); localStorage.setItem(`hawkeye_wingman_name_${user?.sub}`, e.target.value); saveWingmanToServer(wingmanKeywords, e.target.value); }}
                 placeholder="e.g. Mike's Roofing, Sarah at State Farm..."
                 className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
               />
@@ -285,6 +298,7 @@ export default function NetworkPage() {
                     const updated = [...wingmanKeywords, newWingmanKw.trim()];
                     setWingmanKeywords(updated);
                     localStorage.setItem(`hawkeye_wingman_${user?.sub}`, JSON.stringify(updated));
+                    saveWingmanToServer(updated, wingmanName);
                     setNewWingmanKw('');
                   }
                 }}
@@ -297,6 +311,7 @@ export default function NetworkPage() {
                   const updated = [...wingmanKeywords, newWingmanKw.trim()];
                   setWingmanKeywords(updated);
                   localStorage.setItem(`hawkeye_wingman_${user?.sub}`, JSON.stringify(updated));
+                  saveWingmanToServer(updated, wingmanName);
                   setNewWingmanKw('');
                 }}
                 disabled={!newWingmanKw.trim()}
@@ -316,6 +331,7 @@ export default function NetworkPage() {
                       const updated = wingmanKeywords.filter((_, i) => i !== idx);
                       setWingmanKeywords(updated);
                       localStorage.setItem(`hawkeye_wingman_${user?.sub}`, JSON.stringify(updated));
+                      saveWingmanToServer(updated, wingmanName);
                     }} className="text-amber-400 hover:text-red-400 ml-0.5">×</button>
                   </span>
                 ))}

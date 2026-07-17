@@ -388,6 +388,12 @@ export default function SalesPage() {
         } catch {
           setTeamEmailsText(localStorage.getItem('hawkeye_team_emails') || '');
         }
+        // Fetch folio config from server (cross-device sync)
+        try {
+          const folioResult = await client.request<{ folioStart?: string; folioEnd?: string }>('GET', '/sales/folio-config');
+          if (folioResult.folioStart) { setDefaultFolioStart(folioResult.folioStart); localStorage.setItem('hawkeye_folio_start', folioResult.folioStart); }
+          if (folioResult.folioEnd) { setDefaultFolioEnd(folioResult.folioEnd); localStorage.setItem('hawkeye_folio_end', folioResult.folioEnd); }
+        } catch { /* use localStorage defaults */ }
       } catch { /* ignore */ }
       finally { setLoading(false); }
     }

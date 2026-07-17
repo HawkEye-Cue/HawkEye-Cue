@@ -254,7 +254,189 @@ exports.handler = async (event) => {
       return ok({ folioStart, folioEnd });
     }
 
-    // POST /sales/notify — send Sale-Cue email to team
+    // ─── Linked Accounts ────────────────────────────────────────────────────
+
+    // GET /sales/linked — get all linked partners
+    if (method === 'GET' && path === '/sales/linked') {
+      const result = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'LINK#' },
+      }));
+      const links = (result.Items || []).map((item) => ({
+        id: item.linkId,
+        partnerEmail: item.partnerEmail,
+        partnerUserId: item.partnerUserId,
+        partnerName: item.partnerName || item.partnerEmail,
+        status: item.linkStatus, // 'pending' or 'active'
+        createdAt: item.createdAt,
+      }));
+      return ok({ links });
+    }
+
+    // POST /sales/linked/invite — send a link invite
+    if (method === 'POST' && path === '/sales/linked/invite') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const { email: inviteEmail } = body;
+      if (!inviteEmail || typeof inviteEmail !== 'string') {
+        return err(400, 'INVALID_INPUT', 'email is required');
+      }
+
+      // Get inviter's email from profile
+      const profileResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'PROFILE' },
+      }));
+      const profile = (profileResult.Items || [])[0];
+      const inviterEmail = profile?.email || 'Unknown';
+
+      const linkId = require('crypto').randomUUID();
+      const now = new Date().toISOString();
+
+      // Save pending link on inviter's side
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${userId}`,
+          SK: `LINK#${linkId}`,
+          linkId,
+          partnerEmail: inviteEmail.trim().toLowerCase(),
+          partnerUserId: null,
+          partnerName: inviteEmail.trim().toLowerCase(),
+          linkStatus: 'pending',
+          createdAt: now,
+          GSI1PK: `LINKINVITE#${inviteEmail.trim().toLowerCase()}`,
+          GSI1SK: `FROM#${userId}`,
+        },
+      }));
+
+      // Send invite email
+      try {
+        await sendEmail(inviteEmail.trim(), '🦅 You\'ve been invited to link accounts on HawkEye-Cue!', `${inviterEmail} wants to link their Sales Tracker with yours on HawkEye-Cue!\n\nWhen linked, you'll both see each other's deals and get Sale-Cue notifications when either of you closes a deal.\n\nLog in at https://hawkeyecue.com/sales to accept.\n\n— HawkEye-Cue`);
+      } catch (e) {
+        console.error('Failed to send link invite email:', e.message);
+      }
+
+      return ok({ linkId, email: inviteEmail, status: 'pending' });
+    }
+
+    // POST /sales/linked/accept — accept a pending link invite
+    if (method === 'POST' && path === '/sales/linked/accept') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const { linkId: acceptLinkId } = body;
+
+      // Get current user's email
+      const myProfileResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'PROFILE' },
+      }));
+      const myProfile = (myProfileResult.Items || [])[0];
+      const myEmail = myProfile?.email || '';
+
+      // Find pending invites for this user's email via GSI1
+      const invitesResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: 'GSI1',
+        KeyConditionExpression: 'GSI1PK = :pk',
+        ExpressionAttributeValues: { ':pk': `LINKINVITE#${myEmail.toLowerCase()}` },
+      }));
+
+      const invite = (invitesResult.Items || []).find((i) => i.linkId === acceptLinkId);
+      if (!invite) return err(404, 'NOT_FOUND', 'Invite not found');
+
+      const inviterUserId = invite.PK.replace('USER#', '');
+      const now = new Date().toISOString();
+
+      // Update inviter's link to active
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: invite.PK, SK: invite.SK },
+        UpdateExpression: 'SET linkStatus = :s, partnerUserId = :uid, partnerName = :name',
+        ExpressionAttributeValues: { ':s': 'active', ':uid': userId, ':name': myEmail },
+      }));
+
+      // Create reciprocal link on accepter's side
+      const reciprocalId = require('crypto').randomUUID();
+      const inviterProfile = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${inviterUserId}`, ':sk': 'PROFILE' },
+      }));
+      const inviterEmail = (inviterProfile.Items || [])[0]?.email || 'Unknown';
+
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${userId}`,
+          SK: `LINK#${reciprocalId}`,
+          linkId: reciprocalId,
+          partnerEmail: inviterEmail,
+          partnerUserId: inviterUserId,
+          partnerName: inviterEmail,
+          linkStatus: 'active',
+          createdAt: now,
+        },
+      }));
+
+      return ok({ accepted: true });
+    }
+
+    // DELETE /sales/linked/{id} — remove a link
+    const linkedDeleteMatch = path.match(/^\/sales\/linked\/([^/]+)$/);
+    if (method === 'DELETE' && linkedDeleteMatch) {
+      const linkId = linkedDeleteMatch[1];
+      // Find and delete the link
+      const linkResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        FilterExpression: 'linkId = :lid',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'LINK#', ':lid': linkId },
+      }));
+      const linkItem = (linkResult.Items || [])[0];
+      if (linkItem) {
+        await dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { PK: linkItem.PK, SK: linkItem.SK } }));
+      }
+      return ok({ deleted: true });
+    }
+
+    // GET /sales/linked/deals — get deals from all linked partners
+    if (method === 'GET' && path === '/sales/linked/deals') {
+      // Get active links
+      const linksResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        FilterExpression: 'linkStatus = :s',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'LINK#', ':s': 'active' },
+      }));
+
+      const allDeals = [];
+      for (const link of (linksResult.Items || [])) {
+        if (!link.partnerUserId) continue;
+        const dealsResult = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':pk': `USER#${link.partnerUserId}`, ':sk': 'DEAL#' },
+        }));
+        for (const deal of (dealsResult.Items || [])) {
+          allDeals.push({
+            id: deal.dealId,
+            name: deal.name,
+            value: deal.value || 0,
+            stage: deal.stage,
+            policyType: deal.policyType || '',
+            soldBy: deal.soldBy || '',
+            createdAt: deal.createdAt,
+            partnerName: link.partnerName || link.partnerEmail,
+          });
+        }
+      }
+
+      return ok({ deals: allDeals });
+    }
+
+    // POST /sales/notify — send Sale-Cue email to team + linked partners
     if (method === 'POST' && path === '/sales/notify') {
       const body = event.body ? JSON.parse(event.body) : {};
       const { emails, dealName, dealValue, policyType, folio, soldBy } = body;
@@ -262,10 +444,21 @@ exports.handler = async (event) => {
         return err(400, 'INVALID_INPUT', 'emails array is required');
       }
       try {
-        for (const email of emails.slice(0, 10)) { // max 10 emails
-          await sendEmail(email, `🦅 Sale-Cue! ${dealName} — WON!`, `🎉 A deal was just closed!\n\nDeal: ${dealName}\nValue: $${dealValue || 0}\nPolicy Type: ${policyType || 'N/A'}\nSold By: ${soldBy || 'N/A'}\nFolio: ${folio || 'N/A'}\n\nGreat work team! 🦅\n\n— HawkEye-Cue`);
+        // Also get linked partners' emails
+        const linksResult = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          FilterExpression: 'linkStatus = :s',
+          ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'LINK#', ':s': 'active' },
+        }));
+        const linkedEmails = (linksResult.Items || []).map((l) => l.partnerEmail).filter(Boolean);
+        const allEmails = [...new Set([...emails, ...linkedEmails])]; // deduplicate
+
+        for (const email of allEmails.slice(0, 20)) {
+          const soldByLine = soldBy ? `\nSold By: ${soldBy}` : '';
+          await sendEmail(email, `🦅 Sale-Cue! ${dealName} — WON!`, `🎉 A deal was just closed!\n\nDeal: ${dealName}\nValue: $${dealValue || 0}\nPolicy Type: ${policyType || 'N/A'}${soldByLine}\nFolio: ${folio || 'N/A'}\n\nGreat work team! 🦅\n\n— HawkEye-Cue`);
         }
-        return ok({ sent: emails.length });
+        return ok({ sent: allEmails.length });
       } catch (e) {
         console.error('Failed to send Sale-Cue emails:', e);
         return err(500, 'EMAIL_FAILED', 'Failed to send notification emails');

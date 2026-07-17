@@ -851,6 +851,36 @@ export class ApiStack extends cdk.Stack {
       integration: salesIntegration,
       authorizer,
     });
+    this.httpApi.addRoutes({
+      path: '/sales/linked',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: salesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/sales/linked/invite',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: salesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/sales/linked/accept',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: salesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/sales/linked/{id}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: salesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/sales/linked/deals',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: salesIntegration,
+      authorizer,
+    });
 
     // ─── Folio Recap (EventBridge scheduled, runs daily at 8am UTC) ───────
     const folioRecapFn = new lambda.Function(this, 'FolioRecapFn', {

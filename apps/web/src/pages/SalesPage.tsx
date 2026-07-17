@@ -514,7 +514,7 @@ export default function SalesPage() {
               dealValue: deal.value,
               policyType: deal.policyType,
               folio: deal.folio,
-              soldBy: deal.soldBy || soldBy || 'Unknown',
+              soldBy: deal.soldBy || '',
             });
             showToast('🦅 Team notified!');
           } catch { /* non-fatal */ }

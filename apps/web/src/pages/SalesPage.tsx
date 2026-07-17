@@ -367,6 +367,7 @@ export default function SalesPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [snoozeId, setSnoozeId] = useState<string | null>(null);
   const [teamEmailsText, setTeamEmailsText] = useState('');
+  const [unconvertedLeads, setUnconvertedLeads] = useState<{ id: string; authorName: string; platform: string; postContent: string; detectedAt: string }[]>([]);
 
   async function buildClient() {
     const token = await getToken();
@@ -394,6 +395,17 @@ export default function SalesPage() {
           if (folioResult.folioStart) { setDefaultFolioStart(folioResult.folioStart); localStorage.setItem('hawkeye_folio_start', folioResult.folioStart); }
           if (folioResult.folioEnd) { setDefaultFolioEnd(folioResult.folioEnd); localStorage.setItem('hawkeye_folio_end', folioResult.folioEnd); }
         } catch { /* use localStorage defaults */ }
+        // Fetch unconverted leads for "Convert from Lead" feature
+        try {
+          const leadsResult = await client.request<any>('GET', '/opportunities?status=new');
+          const items = leadsResult.items || leadsResult.opportunities || [];
+          setUnconvertedLeads(items.slice(0, 10).map((l: any) => ({
+            id: l.id, authorName: l.sourceAuthor || l.authorName || 'Unknown',
+            platform: l.sourcePlatform || l.platform || 'facebook',
+            postContent: (l.sourceContent || l.postContent || '').slice(0, 100),
+            detectedAt: l.detectedAt || l.createdAt || '',
+          })));
+        } catch { /* ignore */ }
       } catch { /* ignore */ }
       finally { setLoading(false); }
     }
@@ -549,6 +561,38 @@ export default function SalesPage() {
           {showAdd ? '−' : '+ Add Deal'}
         </button>
       </div>
+
+      {/* Convert from Lead — shows recent leads that can be turned into deals */}
+      {showAdd && unconvertedLeads.length > 0 && (
+        <div className="glass-card border-blue-500/20">
+          <p className="text-xs font-medium text-blue-300 mb-2">⚡ Quick convert — tap a lead to auto-fill:</p>
+          <div className="space-y-1.5 max-h-32 overflow-y-auto">
+            {unconvertedLeads.map((lead) => (
+              <button
+                key={lead.id}
+                onClick={() => {
+                  setName(lead.authorName);
+                  const platformSourceMap: Record<string, string> = { facebook: 'facebook-post', instagram: 'instagram-post', linkedin: 'linkedin-post', tiktok: 'tiktok' };
+                  setLeadSource(platformSourceMap[lead.platform] || 'hawkeye-lead');
+                  setLeadSourceNote(`From ${lead.platform} — "${lead.postContent.slice(0, 60)}"`);
+                  // Mark lead as converted
+                  buildClient().then((client) => client.request('PUT', `/opportunities/${lead.id}/status`, { status: 'converted' })).catch(() => {});
+                  setUnconvertedLeads((prev) => prev.filter((l) => l.id !== lead.id));
+                  showToast('✓ Lead info loaded — fill in the rest');
+                }}
+                className="w-full text-left p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{lead.platform === 'facebook' ? '📘' : lead.platform === 'instagram' ? '📷' : lead.platform === 'linkedin' ? '💼' : '🎵'}</span>
+                  <span className="text-sm text-white font-medium">{lead.authorName}</span>
+                  <span className="text-[10px] text-slate-500 ml-auto">{lead.detectedAt ? new Date(lead.detectedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5 truncate">{lead.postContent}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2">

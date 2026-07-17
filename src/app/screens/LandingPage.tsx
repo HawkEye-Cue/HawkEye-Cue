@@ -148,7 +148,7 @@ export function LandingPage({ onGetStarted, onViewPricing }: LandingPageProps) {
           <StepCard
             number={1}
             title="Choose Your Trade"
-            description="Select your industry from 15+ trades. Get pre-loaded keywords and post templates."
+            description="Select your industry from 56 trades. Get pre-loaded keywords and post templates."
           />
           <StepCard
             number={2}
@@ -252,7 +252,7 @@ export function LandingPage({ onGetStarted, onViewPricing }: LandingPageProps) {
           />
           <FAQItem
             question="What trades do you support?"
-            answer="We support 15+ trades including roofers, plumbers, electricians, contractors, HVAC, landscaping, pool service, auto shops, realtors, insurance agents, and more."
+            answer="We support 56 trades including roofers, plumbers, electricians, contractors, HVAC, landscaping, pool service, auto shops, realtors, insurance agents, and many more."
           />
           <FAQItem
             question="Can I cancel anytime?"

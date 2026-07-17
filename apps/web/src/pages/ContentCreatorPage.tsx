@@ -26,6 +26,9 @@ export default function ContentCreatorPage() {
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [showHawkSwoop, setShowHawkSwoop] = useState(false);
+  const [personalOnlyCues, setPersonalOnlyCues] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('hawkeye_personal_cues') || '[]')); } catch { return new Set(); }
+  });
   const [createMode, setCreateMode] = useState<'ai' | 'own'>('ai');
   const [ownContent, setOwnContent] = useState('');
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
@@ -201,16 +204,25 @@ export default function ContentCreatorPage() {
           </div>
         )}
         <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">
-          {todayCalendarEvents.map((e, idx) => (
+          {[...todayCalendarEvents].sort((a, b) => {
+            const aPersonal = personalOnlyCues.has(a.id) ? 1 : 0;
+            const bPersonal = personalOnlyCues.has(b.id) ? 1 : 0;
+            return aPersonal - bPersonal;
+          }).map((e, idx, sortedArr) => {
+            const isPersonalOnly = personalOnlyCues.has(e.id);
+            const firstPersonalIdx = sortedArr.findIndex((ev) => personalOnlyCues.has(ev.id));
+            return (
             <details
               key={e.id}
               id={`cue-${e.id}`}
               className={`rounded-lg transition-all duration-300 ${
                 e.completed
                   ? 'bg-green-900/20 border border-green-500/20'
-                  : idx === todayCalendarEvents.findIndex((ev) => !ev.completed)
-                    ? 'bg-amber-500/10 border border-amber-500/30 shadow-sm shadow-amber-500/10'
-                    : 'bg-white/5 border border-transparent'
+                  : isPersonalOnly
+                    ? 'bg-purple-500/10 border border-purple-500/30'
+                    : idx === sortedArr.findIndex((ev) => !ev.completed && !personalOnlyCues.has(ev.id))
+                      ? 'bg-amber-500/10 border border-amber-500/30 shadow-sm shadow-amber-500/10'
+                      : 'bg-white/5 border border-transparent'
               }`}
             >
               <summary className="flex items-center justify-between p-2.5 cursor-pointer">
@@ -220,7 +232,8 @@ export default function ContentCreatorPage() {
                   ) : (
                     <span className={`w-2.5 h-2.5 shrink-0 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
                   )}
-                  <span className={`text-sm truncate ${e.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{e.title}</span>
+                  <span className={`text-sm truncate ${e.completed ? 'line-through text-slate-500' : isPersonalOnly ? 'text-purple-300' : 'text-slate-200'}`}>{e.title}</span>
+                  {isPersonalOnly && <span className="text-[10px] bg-purple-600/30 text-purple-300 px-1.5 py-0.5 rounded-full shrink-0">👤</span>}
                   {e.link && (
                     <a
                       href={e.link}
@@ -258,6 +271,23 @@ export default function ContentCreatorPage() {
                 )}
               </summary>
               <div className="px-3 pb-3 pt-1 border-t border-white/5">
+                {/* Personal Only toggle */}
+                <button
+                  onClick={() => {
+                    const updated = new Set(personalOnlyCues);
+                    if (updated.has(e.id)) { updated.delete(e.id); } else { updated.add(e.id); }
+                    setPersonalOnlyCues(updated);
+                    localStorage.setItem('hawkeye_personal_cues', JSON.stringify([...updated]));
+                    showToast(updated.has(e.id) ? '👤 Marked as personal-only group' : '🏢 Marked as business page OK');
+                  }}
+                  className={`mb-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    isPersonalOnly
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {isPersonalOnly ? '👤 Personal Only' : '👤 Mark as Personal Only'}
+                </button>
                 <label className="text-xs text-slate-500 block mb-1">Notes</label>
                 <textarea
                   defaultValue={e.notes || ''}
@@ -281,7 +311,8 @@ export default function ContentCreatorPage() {
                 </button>
               </div>
             </details>
-          ))}
+          );
+          })}
           {todayPosts.map((p) => (
             <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
               <div className="min-w-0">

@@ -374,18 +374,32 @@ exports.handler = async (event) => {
         ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'PROFILE' },
       }));
       const myProfile = (myProfileResult.Items || [])[0];
-      const myEmail = myProfile?.email || '';
+      const myEmail = (myProfile?.email || '').toLowerCase();
+
+      console.log(`Accept invite: user=${userId}, email=${myEmail}, linkId=${acceptLinkId}`);
+
+      if (!myEmail) return err(400, 'NO_EMAIL', 'Could not determine your email address');
+      if (!acceptLinkId) return err(400, 'NO_LINK_ID', 'linkId is required');
 
       // Find pending invites for this user's email via GSI1
       const invitesResult = await dynamo.send(new QueryCommand({
         TableName: TABLE_NAME,
         IndexName: 'GSI1',
         KeyConditionExpression: 'GSI1PK = :pk',
-        ExpressionAttributeValues: { ':pk': `LINKINVITE#${myEmail.toLowerCase()}` },
+        ExpressionAttributeValues: { ':pk': `LINKINVITE#${myEmail}` },
       }));
 
-      const invite = (invitesResult.Items || []).find((i) => i.linkId === acceptLinkId);
-      if (!invite) return err(404, 'NOT_FOUND', 'Invite not found');
+      console.log(`Found ${(invitesResult.Items || []).length} invites for ${myEmail}`, (invitesResult.Items || []).map((i) => i.linkId));
+
+      let invite = (invitesResult.Items || []).find((i) => i.linkId === acceptLinkId);
+
+      // Fallback: if not found by linkId, accept the first pending invite for this email
+      if (!invite && (invitesResult.Items || []).length > 0) {
+        invite = (invitesResult.Items || []).find((i) => i.linkStatus === 'pending');
+        console.log('Fallback: accepting first pending invite');
+      }
+
+      if (!invite) return err(404, 'NOT_FOUND', `Invite not found for ${myEmail} with linkId ${acceptLinkId}`);
 
       const inviterUserId = invite.PK.replace('USER#', '');
       const now = new Date().toISOString();

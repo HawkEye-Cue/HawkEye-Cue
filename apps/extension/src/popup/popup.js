@@ -37,10 +37,12 @@ async function signIn(email, password) {
   }
 
   const idToken = data.AuthenticationResult.IdToken;
+  const refreshToken = data.AuthenticationResult.RefreshToken;
   const expiresIn = data.AuthenticationResult.ExpiresIn; // seconds
 
   await chrome.storage.local.set({
     authToken: idToken,
+    refreshToken: refreshToken,
     tokenExpiry: Date.now() + (expiresIn * 1000),
     userEmail: email,
   });

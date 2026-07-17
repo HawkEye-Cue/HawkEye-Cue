@@ -139,4 +139,40 @@ chrome.alarms.onAlarm.addListener(function(alarm) {
       .catch(function() {});
     });
   }
+
+  // Auto-refresh token before it expires
+  if (alarm.name === 'refreshToken') {
+    chrome.storage.local.get(['refreshToken', 'tokenExpiry'], function(result) {
+      if (!result.refreshToken) return;
+      // Only refresh if token expires within 10 minutes
+      if (result.tokenExpiry && Date.now() < result.tokenExpiry - (10 * 60 * 1000)) return;
+
+      fetch('https://cognito-idp.us-east-1.amazonaws.com/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-amz-json-1.1',
+          'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
+        },
+        body: JSON.stringify({
+          AuthFlow: 'REFRESH_TOKEN_AUTH',
+          ClientId: '2cr45bt815hr68i0j021murak',
+          AuthParameters: { REFRESH_TOKEN: result.refreshToken },
+        }),
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.AuthenticationResult && data.AuthenticationResult.IdToken) {
+          chrome.storage.local.set({
+            authToken: data.AuthenticationResult.IdToken,
+            tokenExpiry: Date.now() + ((data.AuthenticationResult.ExpiresIn || 3600) * 1000),
+          });
+          console.log('[HawkEye] Token refreshed automatically');
+        }
+      })
+      .catch(function(e) { console.log('[HawkEye] Token refresh failed:', e); });
+    });
+  }
 });
+
+// Create token refresh alarm (runs every 45 minutes — token lasts 60 min)
+chrome.alarms.create('refreshToken', { periodInMinutes: 45 });

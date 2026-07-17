@@ -164,6 +164,28 @@ export default function ContentCreatorPage() {
             {todayCalendarEvents.filter((e) => e.completed).length}/{todayCalendarEvents.length} done
           </span>
         </summary>
+        {/* Copy & Open All Groups button */}
+        {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && platformContent && (
+          <button
+            onClick={() => {
+              const links = todayCalendarEvents.filter((e) => e.link && !e.completed).map((e) => e.link!);
+              const content = Object.values(platformContent)[0] || '';
+              navigator.clipboard.writeText(content);
+              for (const link of links) {
+                window.open(link, '_blank');
+              }
+              showToast(`✓ Post copied + ${links.length} groups opened — paste away! 🦅`);
+            }}
+            className="mt-3 w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+          >
+            🚀 Copy Post & Open All Groups ({todayCalendarEvents.filter((e) => e.link && !e.completed).length})
+          </button>
+        )}
+        {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && !platformContent && (
+          <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
+            <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy Post & Open All Groups"</strong> to paste it into each group</p>
+          </div>
+        )}
         <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">
           {todayCalendarEvents.map((e, idx) => (
             <details

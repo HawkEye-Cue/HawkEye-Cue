@@ -20,7 +20,7 @@ export default function DashboardPage() {
   const [pendingLinkInvites, setPendingLinkInvites] = useState<{ id: string; partnerEmail: string; partnerName: string }[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentTier, setCurrentTier] = useState<string>('free');
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => !localStorage.getItem('hawkeye_welcome_dismissed'));
 
   // Refetch when page becomes visible (user navigates back)
   useEffect(() => {
@@ -196,6 +196,12 @@ export default function DashboardPage() {
               className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-xl text-sm transition-all active:scale-95"
             >
               Got it — Let's Go! 🚀
+            </button>
+            <button
+              onClick={() => { setShowWelcomeBanner(false); localStorage.setItem('hawkeye_welcome_dismissed', 'true'); }}
+              className="w-full mt-2 py-2 text-slate-500 hover:text-slate-300 text-xs transition-colors"
+            >
+              Do not show again
             </button>
           </div>
         </div>

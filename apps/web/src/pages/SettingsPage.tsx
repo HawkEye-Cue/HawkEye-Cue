@@ -107,7 +107,7 @@ export default function SettingsPage() {
     } catch (e) {
       console.error('Failed to get connect link:', e);
       const msg = e instanceof Error ? e.message : 'Connection failed';
-      alert(msg);
+      alert('Unable to connect right now. Please try again in a moment. If this persists, contact support.');
       setConnectingPlatform(null);
     }
   }

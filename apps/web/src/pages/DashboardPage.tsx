@@ -314,10 +314,19 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-500 mt-2">Add items via the Calendar tab to see your cues here</p>
           </div>
         )}
+        {todayEvents.length > 0 && todayEvents.every((e) => e.completed) && (
+          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-green-500/20 border border-amber-500/30 text-center relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute animate-[hawkSwoop_3s_ease-in-out_infinite] text-4xl" style={{ top: '20%', left: '-60px' }}>🦅</div>
+            </div>
+            <div className="text-3xl mb-2">🎉</div>
+            <p className="text-lg font-bold text-amber-300">Today's cues are done!</p>
+            <p className="text-sm text-slate-300 mt-1">Let's watch them take flight 🦅</p>
+            <p className="text-xs text-slate-500 mt-2">Your posts are out in the world working for you. Time to soar.</p>
+          </div>
+        )}
         </div>
       </details>
-
-      {/* Lead Cues */}
       <div className="glass-card cursor-pointer hover:-translate-y-0.5 transition-transform" onClick={() => navigate('/opportunities')}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-white">Lead Cues</h3>

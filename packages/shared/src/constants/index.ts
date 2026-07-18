@@ -339,6 +339,12 @@ export const TRADES: Trade[] = [
     defaultKeywords: ['insurance producer', 'policy quote', 'commercial insurance', 'liability coverage', 'insurance broker'],
     postTypes: ['Educational', 'Tips', 'Testimonial', 'Market Update', 'Coverage Spotlight'],
   },
+  {
+    id: 'travel-agent',
+    name: 'Travel Agent',
+    defaultKeywords: ['travel agent', 'Disney', 'cruise', 'vacation', 'trip planning', 'all-inclusive', 'honeymoon'],
+    postTypes: ['Destination Spotlight', 'Deal Alert', 'Tips', 'Testimonial', 'Travel Inspiration', 'Group Trip'],
+  },
 ];
 
 // --- Tier Limits ---

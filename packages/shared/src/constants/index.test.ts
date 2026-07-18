@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { TRADES, TIER_LIMITS, SOCIAL_PLATFORMS } from './index.js';
 
 describe('TRADES', () => {
-  it('contains exactly 56 trades', () => {
-    expect(TRADES).toHaveLength(56);
+  it('contains exactly 57 trades', () => {
+    expect(TRADES).toHaveLength(57);
   });
 
   it('each trade has required fields', () => {

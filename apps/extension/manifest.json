@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "HawkEye-Cue",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Detect leads and mentions while scrolling social media. A hawk icon appears when someone posts about needing your services.",
   "permissions": [
     "storage",
@@ -15,6 +15,13 @@
     "https://www.tiktok.com/*",
     "https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com/*"
   ],
+  "externally_connectable": {
+    "matches": [
+      "https://hawkeyecue.com/*",
+      "https://*.hawkeyecue.com/*",
+      "https://do8mke590kd4p.cloudfront.net/*"
+    ]
+  },
   "background": {
     "service_worker": "src/background.js"
   },

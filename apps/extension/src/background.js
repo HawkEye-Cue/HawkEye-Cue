@@ -176,3 +176,30 @@ chrome.alarms.onAlarm.addListener(function(alarm) {
 
 // Create token refresh alarm (runs every 45 minutes — token lasts 60 min)
 chrome.alarms.create('refreshToken', { periodInMinutes: 45 });
+
+// ─── External message listener (receives token from hawkeyecue.com website) ───
+chrome.runtime.onMessageExternal.addListener(function(message, sender, sendResponse) {
+  if (message.type === 'ACTIVATE_EXTENSION' && message.token) {
+    chrome.storage.local.set({
+      authToken: message.token,
+      refreshToken: message.refreshToken || null,
+      tokenExpiry: Date.now() + (3600 * 1000), // 1 hour
+      userEmail: message.email || '',
+    }, function() {
+      // Also fetch keywords immediately
+      fetch(API_BASE + '/keywords', { headers: { 'Authorization': 'Bearer ' + message.token } })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        var keywords = (Array.isArray(data) ? data : data.keywords || []).map(function(k) { return k.keyword || k; });
+        chrome.storage.local.set({ keywords: keywords });
+      })
+      .catch(function() {});
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+  if (message.type === 'CHECK_EXTENSION') {
+    sendResponse({ installed: true, version: chrome.runtime.getManifest().version });
+    return false;
+  }
+});

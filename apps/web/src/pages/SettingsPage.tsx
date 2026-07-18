@@ -575,7 +575,35 @@ export default function SettingsPage() {
 
         <div className="mt-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
           <p className="text-xs text-blue-300 font-medium">🔑 Extension not detecting your login?</p>
-          <p className="text-xs text-slate-400 mt-1">After installing, you must <strong className="text-white">log out and log back in</strong> to hawkeyecue.com once. This syncs your session with the extension. You only need to do this the first time.</p>
+          <p className="text-xs text-slate-400 mt-1">Click the button below to activate your extension instantly — no second login needed.</p>
+          <button
+            onClick={async () => {
+              const EXTENSION_ID = 'oapbnbiijbhieeefdcfnnmkfcnebalkd';
+              try {
+                const token = await getToken();
+                if (!token) { showToast('❌ Please log in first'); return; }
+                const w = window as any;
+                if (typeof w.chrome !== 'undefined' && w.chrome.runtime && w.chrome.runtime.sendMessage) {
+                  w.chrome.runtime.sendMessage(EXTENSION_ID, { type: 'ACTIVATE_EXTENSION', token, email: user?.email || '' }, (response: any) => {
+                    if (w.chrome.runtime.lastError) {
+                      showToast('❌ Extension not found. Make sure it\'s installed and enabled.');
+                    } else if (response?.success) {
+                      showToast('✓ Extension activated! Start scrolling to detect leads.');
+                    } else {
+                      showToast('❌ Could not connect to extension. Try reinstalling.');
+                    }
+                  });
+                } else {
+                  showToast('❌ Extension not detected. Install it first, then click here.');
+                }
+              } catch {
+                showToast('❌ Something went wrong. Try again.');
+              }
+            }}
+            className="mt-2 w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95"
+          >
+            🔗 Activate Extension Now
+          </button>
         </div>
 
         {/* Mobile note */}

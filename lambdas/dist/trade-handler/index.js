@@ -322,6 +322,23 @@ exports.handler = async (event) => {
       return handleUpdateMfa(userId, body);
     }
 
+    if (method === 'POST' && path === '/profile/suggestion') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const { message } = body;
+      if (!message || typeof message !== 'string') return respond(400, { error: { code: 'INVALID_INPUT', message: 'message is required' } });
+      const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email || 'Unknown user';
+      try {
+        await sendEmail(
+          ['briannafrashier@gmail.com', 'rmfrashier888@gmail.com'],
+          `💡 HawkEye-Cue Suggestion from ${userEmail}`,
+          `New suggestion from ${userEmail}:\n\n${message}`
+        );
+      } catch (e) {
+        console.error('Failed to send suggestion email:', e);
+      }
+      return respond(200, { sent: true });
+    }
+
     if (method === 'DELETE' && path === '/profile/delete') {
       return handleDeleteAccount(userId, event);
     }

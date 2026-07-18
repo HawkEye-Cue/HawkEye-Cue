@@ -510,6 +510,12 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
     this.httpApi.addRoutes({
+      path: '/profile/suggestion',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: tradeIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
       path: '/profile/mfa',
       methods: [apigatewayv2.HttpMethod.PUT],
       integration: tradeIntegration,

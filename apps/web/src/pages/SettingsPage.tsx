@@ -638,14 +638,19 @@ export default function SettingsPage() {
             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-24 focus:border-blue-500/50 focus:outline-none"
           />
           <button
-            onClick={() => {
+            onClick={async () => {
               const textarea = document.getElementById('suggestion-input') as HTMLTextAreaElement;
               const text = textarea?.value?.trim();
               if (!text) return;
-              const subject = encodeURIComponent(`💡 Suggestion from ${user?.email || 'a user'}`);
-              const body = encodeURIComponent(text);
-              window.open(`mailto:briannafrashier@hawkeyecue.com?subject=${subject}&body=${body}`, '_self');
-              textarea.value = '';
+              try {
+                const token = await getToken();
+                const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                await client.request('POST', '/profile/suggestion', { message: text });
+                textarea.value = '';
+                showToast('Thanks for your suggestion! 🦅');
+              } catch {
+                alert('Failed to send. Please try again.');
+              }
             }}
             className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-sm font-medium transition-all"
           >

@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const [pendingLinkInvites, setPendingLinkInvites] = useState<{ id: string; partnerEmail: string; partnerName: string }[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentTier, setCurrentTier] = useState<string>('free');
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
 
   // Refetch when page becomes visible (user navigates back)
   useEffect(() => {
@@ -170,6 +171,35 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Welcome Banner — shows once per user */}
+      {showWelcomeBanner && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="max-w-sm w-full bg-slate-900 border-2 border-blue-500/50 rounded-2xl p-6 shadow-2xl shadow-blue-500/20 text-center">
+            <div className="text-5xl mb-4">🦅</div>
+            <h2 className="text-xl font-bold text-white mb-3">Welcome to HawkEye-Cue!</h2>
+            <p className="text-sm text-slate-300 leading-relaxed mb-4">
+              We're a brand-new platform, so there may be a few bumps in our flight as we grow. If you run into anything or have ideas, we want to hear from you!
+            </p>
+            <div className="space-y-2 mb-5">
+              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors" onClick={() => { setShowWelcomeBanner(false); navigate('/settings#suggestion'); }}>
+                <p className="text-sm text-blue-300">💡 Send a suggestion on the <strong>Settings</strong> tab →</p>
+              </div>
+              <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <p className="text-sm text-purple-300">📧 Or email <a href="mailto:briannafrashier@hawkeyecue.com" className="underline font-bold text-white">briannafrashier@hawkeyecue.com</a></p>
+                <p className="text-xs text-slate-400 mt-1">She'll respond promptly</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">Thanks for being an early flier! 🙌</p>
+            <button
+              onClick={() => { setShowWelcomeBanner(false); }}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-xl text-sm transition-all active:scale-95"
+            >
+              Got it — Let's Go! 🚀
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Pending Link Invites Banner */}
       {pendingLinkInvites.length > 0 && pendingLinkInvites.map((invite) => (

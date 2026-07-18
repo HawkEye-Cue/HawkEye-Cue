@@ -36,6 +36,15 @@ export default function SettingsPage() {
   const params = new URLSearchParams(window.location.search);
   const checkoutStatus = params.get('checkout');
 
+  // Scroll to suggestion box if hash is #suggestion
+  useEffect(() => {
+    if (window.location.hash === '#suggestion') {
+      setTimeout(() => {
+        document.getElementById('suggestion')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, []);
+
   async function buildClient() {
     const token = await getToken();
     return new ApiClient({
@@ -244,9 +253,14 @@ export default function SettingsPage() {
       {/* Connected Social Accounts */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Connected Social Accounts</h3>
-        <p className="text-sm text-slate-400 mb-4">
+        <p className="text-sm text-slate-400 mb-2">
           Connect your social media accounts to publish posts directly from HawkEye.
         </p>
+        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-4">
+          <p className="text-xs text-amber-300 font-medium">⚠️ Business Pages Required</p>
+          <p className="text-xs text-slate-400 mt-1">You must connect a <strong className="text-white">Facebook Business Page</strong> or <strong className="text-white">Instagram Business/Creator account</strong>. Personal profiles cannot be connected. If you don't have a business page, create one on Facebook first, then connect it here.</p>
+          <p className="text-xs text-slate-400 mt-2">📌 When prompted, select <strong className="text-amber-300">"Business Access"</strong> — not "Standard Access." This allows HawkEye-Cue to post on your behalf.</p>
+        </div>
 
         {socialLoading ? (
           <p className="text-sm text-slate-500">Loading accounts…</p>
@@ -559,6 +573,11 @@ export default function SettingsPage() {
 
         <p className="text-xs text-slate-500">💡 Chrome may show a safety warning — this is normal for new extensions. Click "Continue to install" to proceed.</p>
 
+        <div className="mt-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+          <p className="text-xs text-blue-300 font-medium">🔑 Extension not detecting your login?</p>
+          <p className="text-xs text-slate-400 mt-1">After installing, you must <strong className="text-white">log out and log back in</strong> to hawkeyecue.com once. This syncs your session with the extension. You only need to do this the first time.</p>
+        </div>
+
         {/* Mobile note */}
         <div className="sm:hidden mt-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
           <p className="text-sm text-slate-300 mb-1">📱 You're on mobile</p>
@@ -626,7 +645,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Suggestion Box */}
-      <details className="glass-card">
+      <details id="suggestion" className="glass-card" open={window.location.hash === '#suggestion'}>
         <summary className="font-semibold text-white cursor-pointer flex items-center gap-2">
           💡 Have a Suggestion?
         </summary>

@@ -188,6 +188,10 @@ export default function ContentCreatorPage() {
                   href={e.link!}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => {
+                    toggleComplete(e.id);
+                    showToast('✓ Done — opening group');
+                  }}
                   className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
                 >
                   <span className="text-blue-400">🔗</span>

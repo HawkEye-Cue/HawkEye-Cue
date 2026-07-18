@@ -1,0 +1,66 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "9a03a8ebc524804f1bedf0ee7737ce67cc7be52b3d6c72938c81d866b43d4019": {
+      "displayName": "DefineAuthChallengeFn/Code",
+      "source": {
+        "path": "asset.9a03a8ebc524804f1bedf0ee7737ce67cc7be52b3d6c72938c81d866b43d4019",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "971598352824-us-east-1-3a191fbb": {
+          "bucketName": "cdk-hnb659fds-assets-971598352824-us-east-1",
+          "objectKey": "9a03a8ebc524804f1bedf0ee7737ce67cc7be52b3d6c72938c81d866b43d4019.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::971598352824:role/cdk-hnb659fds-file-publishing-role-971598352824-us-east-1"
+        }
+      }
+    },
+    "b6d9756f41df2c70e9c6de7eecb2bf30d31e90842b75d6b97d4571cbe17571ae": {
+      "displayName": "CreateAuthChallengeFn/Code",
+      "source": {
+        "path": "asset.b6d9756f41df2c70e9c6de7eecb2bf30d31e90842b75d6b97d4571cbe17571ae",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "971598352824-us-east-1-218f9091": {
+          "bucketName": "cdk-hnb659fds-assets-971598352824-us-east-1",
+          "objectKey": "b6d9756f41df2c70e9c6de7eecb2bf30d31e90842b75d6b97d4571cbe17571ae.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::971598352824:role/cdk-hnb659fds-file-publishing-role-971598352824-us-east-1"
+        }
+      }
+    },
+    "1f53a83d687cb7ec7aefd0b9b239f1e744c89640669c8f302677d3d40e4cda67": {
+      "displayName": "VerifyAuthChallengeFn/Code",
+      "source": {
+        "path": "asset.1f53a83d687cb7ec7aefd0b9b239f1e744c89640669c8f302677d3d40e4cda67",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "971598352824-us-east-1-cc310e37": {
+          "bucketName": "cdk-hnb659fds-assets-971598352824-us-east-1",
+          "objectKey": "1f53a83d687cb7ec7aefd0b9b239f1e744c89640669c8f302677d3d40e4cda67.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::971598352824:role/cdk-hnb659fds-file-publishing-role-971598352824-us-east-1"
+        }
+      }
+    },
+    "a770e1de2c8f2e10efbfad7cf899b84aa66111c43fe31ca79e0442deab5dc448": {
+      "displayName": "SocialLeadGen-Auth Template",
+      "source": {
+        "path": "SocialLeadGen-Auth.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "971598352824-us-east-1-70ae9d17": {
+          "bucketName": "cdk-hnb659fds-assets-971598352824-us-east-1",
+          "objectKey": "a770e1de2c8f2e10efbfad7cf899b84aa66111c43fe31ca79e0442deab5dc448.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::971598352824:role/cdk-hnb659fds-file-publishing-role-971598352824-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

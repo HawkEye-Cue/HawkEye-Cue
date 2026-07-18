@@ -11,12 +11,13 @@ try {
 
 function WebApp() {
   if (Platform.OS === 'web') {
+    // On web preview, just redirect to the actual site
+    if (typeof window !== 'undefined') {
+      window.location.href = 'https://hawkeyecue.com';
+    }
     return (
       <View style={styles.container}>
-        <iframe
-          src="https://hawkeyecue.com"
-          style={{ flex: 1, width: '100%', height: '100%', border: 'none' } as any}
-        />
+        <Text style={styles.errorText}>Redirecting to hawkeyecue.com...</Text>
       </View>
     );
   }

@@ -133,6 +133,17 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // Grant Secrets Manager read access for Resend (needed for suggestion emails)
+    tradeHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Resend*`,
+        ],
+      })
+    );
+
     // ─── Content Handler ──────────────────────────────────────────────────
     const contentHandlerFn = new lambda.Function(this, 'ContentHandlerFn', {
       ...lambdaDefaults,

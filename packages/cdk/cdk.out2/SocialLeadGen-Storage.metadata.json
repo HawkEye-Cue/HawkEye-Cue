@@ -1,0 +1,133 @@
+{
+  "/SocialLeadGen-Storage": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:18:22)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Storage/MediaBucketName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MediaBucketName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new StorageStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\storage-stack.ts:39:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:18:22)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Storage/MediaBucketArn": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MediaBucketArn"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new StorageStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\storage-stack.ts:44:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:18:22)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Storage/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Storage/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Storage/MediaUploadsBucket/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MediaUploadsBucketBCE0CF0B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new StorageStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\storage-stack.ts:11:24)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:18:22)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Storage/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Storage/Exports/Output{\"Ref\":\"MediaUploadsBucketBCE0CF0B\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefMediaUploadsBucketBCE0CF0BB67C5D38"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Storage/Exports/Output{\"Fn::GetAtt\":[\"MediaUploadsBucketBCE0CF0B\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttMediaUploadsBucketBCE0CF0BArn11B3DE90"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Storage/MediaUploadsBucket/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MediaUploadsBucketPolicyBEAF392C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new StorageStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\storage-stack.ts:11:24)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:18:22)"
+      ]
+    }
+  ]
+}

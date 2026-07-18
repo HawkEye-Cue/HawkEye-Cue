@@ -134,7 +134,16 @@ export default function HawkInsightsPage() {
         <div className="text-5xl">📊</div>
         <h2 className="text-2xl font-bold text-white">Hawk Insights</h2>
         <p className="text-slate-400 max-w-sm mx-auto">See where your leads come from, top platforms, peak times, and deal source attribution. Available on the Soar plan.</p>
-        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">Upgrade to Soar</a>
+        <div className="max-w-sm mx-auto text-left mt-4 space-y-2">
+          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">What you'll get:</p>
+          <ul className="text-sm text-slate-300 space-y-1.5">
+            <li>📊 Lead source breakdown — see which platforms produce results</li>
+            <li>⏰ Peak activity times — know when to post for maximum impact</li>
+            <li>💰 Deal attribution — trace every sale back to its source</li>
+            <li>📈 Weekly and monthly trend reports</li>
+          </ul>
+        </div>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Soar — $29.99/mo</a>
       </div>
     );
   }

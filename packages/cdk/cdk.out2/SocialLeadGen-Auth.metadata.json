@@ -1,0 +1,338 @@
+{
+  "/SocialLeadGen-Auth": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/UserPoolId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:153:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/UserPoolArn": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolArn"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:158:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/WebClientId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebClientId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:163:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/MobileClientId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MobileClientId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:168:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/ExtensionClientId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExtensionClientId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:173:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/DefineAuthChallengeFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DefineAuthChallengeFnB0C28523"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:31:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/CreateAuthChallengeFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CreateAuthChallengeFn194629DD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:39:31)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/VerifyAuthChallengeFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VerifyAuthChallengeFn53BA0B24"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:81:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/SocialLeadGenUserPool/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SocialLeadGenUserPoolE18CCB6C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new UserPool2 in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:92:21)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/Exports/Output{\"Ref\":\"SocialLeadGenUserPoolUserPoolAuthorizerClient24F2266F\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefSocialLeadGenUserPoolUserPoolAuthorizerClient24F2266FB4E487AB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/Exports/Output{\"Ref\":\"SocialLeadGenUserPoolE18CCB6C\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefSocialLeadGenUserPoolE18CCB6C93142E64"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/Exports/Output{\"Fn::GetAtt\":[\"SocialLeadGenUserPoolE18CCB6C\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttSocialLeadGenUserPoolE18CCB6CArn81A2979E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/DefineAuthChallengeFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DefineAuthChallengeFnServiceRole217771FE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:31:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/CreateAuthChallengeFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CreateAuthChallengeFnServiceRoleFC96E196"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:39:31)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/VerifyAuthChallengeFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VerifyAuthChallengeFnServiceRole8A7D8B80"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:81:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/SocialLeadGenUserPool/WebClient/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SocialLeadGenUserPoolWebClientA2500C5B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.addClient in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:121:36)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/SocialLeadGenUserPool/MobileClient/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SocialLeadGenUserPoolMobileClientEF9FF3E6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.addClient in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:131:39)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/SocialLeadGenUserPool/ExtensionClient/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SocialLeadGenUserPoolExtensionClient80CB59B3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.addClient in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:142:42)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/SocialLeadGenUserPool/UserPoolAuthorizerClient/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SocialLeadGenUserPoolUserPoolAuthorizerClient24F2266F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Auth/CreateAuthChallengeFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CreateAuthChallengeFnServiceRoleDefaultPolicyD1AA681F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.addToRolePolicy in aws-cdk-lib...",
+        "new AuthStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\auth-stack.ts:52:23)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:19:19)",
+        "...node internals..."
+      ]
+    }
+  ]
+}

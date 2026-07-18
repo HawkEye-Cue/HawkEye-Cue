@@ -1,0 +1,21 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "cc91bdd15ec90806b0accd9a33ff18fb1c87c866808b0fbd315c7cd7f5875734": {
+      "displayName": "SocialLeadGen-Storage Template",
+      "source": {
+        "path": "SocialLeadGen-Storage.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "971598352824-us-east-1-d135fcc3": {
+          "bucketName": "cdk-hnb659fds-assets-971598352824-us-east-1",
+          "objectKey": "cc91bdd15ec90806b0accd9a33ff18fb1c87c866808b0fbd315c7cd7f5875734.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::971598352824:role/cdk-hnb659fds-file-publishing-role-971598352824-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

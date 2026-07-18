@@ -17,31 +17,6 @@ const cognito = new CognitoIdentityProviderClient({});
 const secretsClient = new SecretsManagerClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
 const USER_POOL_ID = process.env.USER_POOL_ID || 'us-east-1_33Q0cOjOf';
-const FROM_EMAIL = 'HawkEye-Cue <notifications@hawkeyecue.com>';
-
-// ─── Resend Email Helper ──────────────────────────────────────────────────────
-let resendApiKey = null;
-async function getResendKey() {
-  if (resendApiKey) return resendApiKey;
-  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Resend' }));
-  const secret = JSON.parse(result.SecretString);
-  resendApiKey = secret.RESEND_API_KEY;
-  return resendApiKey;
-}
-
-async function sendEmail(to, subject, text) {
-  const apiKey = await getResendKey();
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject, text }),
-  });
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Resend error (${response.status}): ${err}`);
-  }
-  return response.json();
-}
 
 // ─── Stripe helper (lazy-loaded) ──────────────────────────────────────────────
 let stripeInstance = null;
@@ -214,6 +189,7 @@ async function handleUpdatePreferences(userId, body) {
 
   return respond(200, merged);
 }
+}
 
 // DELETE /profile/delete — permanently delete user account
 async function handleDeleteAccount(userId, event) {
@@ -344,23 +320,6 @@ exports.handler = async (event) => {
     if (method === 'PUT' && path === '/profile/mfa') {
       const body = event.body ? JSON.parse(event.body) : {};
       return handleUpdateMfa(userId, body);
-    }
-
-    if (method === 'POST' && path === '/profile/suggestion') {
-      const body = event.body ? JSON.parse(event.body) : {};
-      const { message } = body;
-      if (!message || typeof message !== 'string') return respond(400, { error: { code: 'INVALID_INPUT', message: 'message is required' } });
-      const userEmail = event.requestContext?.authorizer?.jwt?.claims?.email || 'Unknown user';
-      try {
-        await sendEmail(
-          ['briannafrashier@gmail.com', 'rmfrashier888@gmail.com'],
-          `💡 HawkEye-Cue Suggestion from ${userEmail}`,
-          `New suggestion from ${userEmail}:\n\n${message}`
-        );
-      } catch (e) {
-        console.error('Failed to send suggestion email:', e);
-      }
-      return respond(200, { sent: true });
     }
 
     if (method === 'DELETE' && path === '/profile/delete') {

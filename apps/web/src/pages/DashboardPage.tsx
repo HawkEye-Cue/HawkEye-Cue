@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [engagement, setEngagement] = useState<{ totalLikes: number; totalComments: number; totalShares: number; postStats: any[] } | null>(null);
   const [pendingLinkInvites, setPendingLinkInvites] = useState<{ id: string; partnerEmail: string; partnerName: string }[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [currentTier, setCurrentTier] = useState<string>('free');
 
   // Refetch when page becomes visible (user navigates back)
   useEffect(() => {
@@ -45,6 +46,12 @@ export default function DashboardPage() {
         const now = new Date();
         const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const result = await client.getPosts({ startDate: today, endDate: today });
+
+        // Fetch subscription tier
+        try {
+          const sub = await client.request<{ tier: string }>('GET', '/subscription');
+          setCurrentTier(sub.tier || 'free');
+        } catch { /* default to free */ }
 
         // Fetch lead stats
         try {
@@ -331,6 +338,58 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Upgrade Promo for Nest (Free) Users */}
+      {['free', 'nest'].includes(currentTier) && (
+        <div className="glass-card border border-amber-500/20">
+          <h3 className="font-semibold text-white mb-3 flex items-center gap-2">🚀 Unlock More Power</h3>
+          <p className="text-sm text-slate-400 mb-4">You're on the Nest (Free) plan. Upgrade to get tools that grow your business faster.</p>
+          
+          <div className="space-y-3">
+            {/* Flight Tier Features */}
+            <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/15">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-bold text-blue-400">🦅 Flight — $19.99/mo</span>
+                <button onClick={() => navigate('/settings')} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-lg font-medium transition-colors">Upgrade</button>
+              </div>
+              <ul className="text-xs text-slate-300 space-y-1.5">
+                <li className="flex items-start gap-2"><span className="text-blue-400">•</span>Keyword tracking — get alerted when someone posts about your services</li>
+                <li className="flex items-start gap-2"><span className="text-blue-400">•</span>Browser extension — detects leads while you scroll social media</li>
+                <li className="flex items-start gap-2"><span className="text-blue-400">•</span>Appreciations — track mentions and shoutouts from your network</li>
+                <li className="flex items-start gap-2"><span className="text-blue-400">•</span>Lead detection — automatically find potential customers</li>
+              </ul>
+            </div>
+
+            {/* Soar Tier Features */}
+            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-bold text-amber-400">🚀 Soar — $29.99/mo</span>
+                <button onClick={() => navigate('/settings')} className="text-xs bg-amber-500 hover:bg-amber-400 text-black px-3 py-1 rounded-lg font-bold transition-colors">Upgrade</button>
+              </div>
+              <ul className="text-xs text-slate-300 space-y-1.5">
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Sales Tracker — full pipeline from prospect to closed deal</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Wingman relationships — track referral partners and commissions</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Hawk Insights — see where your leads come from, peak times, top platforms</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Folio recaps — monthly reports emailed to you</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Linked accounts — share deals with partners automatically</li>
+              </ul>
+            </div>
+
+            {/* Summit Tier Features */}
+            <div className="p-3 rounded-xl bg-purple-500/5 border border-purple-500/15">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-bold text-purple-400">🏔️ Summit — $119.99/mo</span>
+                <button onClick={() => navigate('/settings')} className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded-lg font-medium transition-colors">Upgrade</button>
+              </div>
+              <ul className="text-xs text-slate-300 space-y-1.5">
+                <li className="flex items-start gap-2"><span className="text-purple-400">•</span>Everything in Soar, plus team management</li>
+                <li className="flex items-start gap-2"><span className="text-purple-400">•</span>Up to 5 team members with shared leads and calendar</li>
+                <li className="flex items-start gap-2"><span className="text-purple-400">•</span>Team leaderboard and performance stats</li>
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 

@@ -649,7 +649,7 @@ export default function SettingsPage() {
                 textarea.value = '';
                 showToast('Thanks for your suggestion! 🦅');
               } catch {
-                alert('Failed to send. Please try again.');
+                showToast('❌ Failed to send. Please try again.');
               }
             }}
             className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-sm font-medium transition-all"

@@ -232,7 +232,16 @@ export default function AppreciationsPage() {
         <div className="text-5xl">🙏</div>
         <h2 className="text-2xl font-bold text-white">Appreciations</h2>
         <p className="text-slate-400 max-w-sm mx-auto">Track mentions, shoutouts, and recommendations from your network. Available on the Flight plan.</p>
-        <a href="/settings" className="inline-block bg-gradient-to-r from-blue-600 to-blue-500 text-white px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">Upgrade to Flight</a>
+        <div className="max-w-sm mx-auto text-left mt-4 space-y-2">
+          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">What you'll get:</p>
+          <ul className="text-sm text-slate-300 space-y-1.5">
+            <li>🙏 See every time someone recommends or shouts you out</li>
+            <li>💬 Track mentions across Facebook, Instagram, and LinkedIn</li>
+            <li>📈 Build a record of your social proof over time</li>
+            <li>🙌 Send quick thank-you replies to keep relationships strong</li>
+          </ul>
+        </div>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-blue-600 to-blue-500 text-white px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Flight — $19.99/mo</a>
       </div>
     );
   }

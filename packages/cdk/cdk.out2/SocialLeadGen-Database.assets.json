@@ -1,0 +1,21 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "f8e532f4083f5da2573ab1b05ddf816154d9869de712755f872dc4ba1200d183": {
+      "displayName": "SocialLeadGen-Database Template",
+      "source": {
+        "path": "SocialLeadGen-Database.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "971598352824-us-east-1-0c883d8c": {
+          "bucketName": "cdk-hnb659fds-assets-971598352824-us-east-1",
+          "objectKey": "f8e532f4083f5da2573ab1b05ddf816154d9869de712755f872dc4ba1200d183.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::971598352824:role/cdk-hnb659fds-file-publishing-role-971598352824-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

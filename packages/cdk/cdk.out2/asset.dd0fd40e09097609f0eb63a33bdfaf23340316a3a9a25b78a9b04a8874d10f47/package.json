@@ -1,0 +1,9 @@
+{
+  "name": "trade-handler",
+  "version": "1.0.0",
+  "main": "index.js",
+  "description": "Handles trade selection, profile, MFA, and account deletion",
+  "dependencies": {
+    "stripe": "^22.2.0"
+  }
+}

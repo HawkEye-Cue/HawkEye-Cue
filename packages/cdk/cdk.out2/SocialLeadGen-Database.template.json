@@ -1,0 +1,186 @@
+{
+ "Resources": {
+  "SocialLeadGenTable4893752E": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI2PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI2SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "GSI1",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI1PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI1SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     },
+     {
+      "IndexName": "GSI2",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI2PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI2SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "SocialLeadGen"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Database/SocialLeadGenTable/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSMzK10DNQTCwv1k1OydbNyUzSqw4uSUzO1kksL45PqcxLzM1PSdKrDklMyknVcU7LAzNqdYJSi/NLi5LBQv6lJQWlJbU6efkpqXpZxfplRiZ6huZ6BopZxZmZukWleSWZual6QRAaAKHbF4dyAAAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Database/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "TableName": {
+   "Value": {
+    "Ref": "SocialLeadGenTable4893752E"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-TableName"
+   }
+  },
+  "TableArn": {
+   "Value": {
+    "Fn::GetAtt": [
+     "SocialLeadGenTable4893752E",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "SocialLeadGen-TableArn"
+   }
+  },
+  "ExportsOutputFnGetAttSocialLeadGenTable4893752EArnA044B9BA": {
+   "Value": {
+    "Fn::GetAtt": [
+     "SocialLeadGenTable4893752E",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "SocialLeadGen-Database:ExportsOutputFnGetAttSocialLeadGenTable4893752EArnA044B9BA"
+   }
+  },
+  "ExportsOutputRefSocialLeadGenTable4893752EE77C2928": {
+   "Value": {
+    "Ref": "SocialLeadGenTable4893752E"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-Database:ExportsOutputRefSocialLeadGenTable4893752EE77C2928"
+   }
+  },
+  "ExportsOutputFnGetAttSocialLeadGenTable4893752EStreamArnDFEB7474": {
+   "Value": {
+    "Fn::GetAtt": [
+     "SocialLeadGenTable4893752E",
+     "StreamArn"
+    ]
+   },
+   "Export": {
+    "Name": "SocialLeadGen-Database:ExportsOutputFnGetAttSocialLeadGenTable4893752EStreamArnDFEB7474"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

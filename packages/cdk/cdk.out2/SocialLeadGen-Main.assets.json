@@ -1,0 +1,21 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "b7812c74fd9cdc8196b593ea8e4714754040fa449a827d5764be6c30cd65b607": {
+      "displayName": "SocialLeadGen-Main Template",
+      "source": {
+        "path": "SocialLeadGen-Main.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "971598352824-us-east-1-2a199b23": {
+          "bucketName": "cdk-hnb659fds-assets-971598352824-us-east-1",
+          "objectKey": "b7812c74fd9cdc8196b593ea8e4714754040fa449a827d5764be6c30cd65b607.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::971598352824:role/cdk-hnb659fds-file-publishing-role-971598352824-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

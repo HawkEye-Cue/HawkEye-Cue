@@ -1,0 +1,554 @@
+{
+ "Resources": {
+  "DefineAuthChallengeFnServiceRole217771FE": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/DefineAuthChallengeFn/ServiceRole/Resource"
+   }
+  },
+  "DefineAuthChallengeFnB0C28523": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-971598352824-us-east-1",
+     "S3Key": "9a03a8ebc524804f1bedf0ee7737ce67cc7be52b3d6c72938c81d866b43d4019.zip"
+    },
+    "Description": "Cognito Define Auth Challenge — controls MFA flow (not yet active)",
+    "FunctionName": "SocialLeadGen-DefineAuthChallenge",
+    "Handler": "index.handler",
+    "MemorySize": 128,
+    "Role": {
+     "Fn::GetAtt": [
+      "DefineAuthChallengeFnServiceRole217771FE",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs20.x",
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "DefineAuthChallengeFnServiceRole217771FE"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/DefineAuthChallengeFn/Resource",
+    "aws:asset:path": "asset.9a03a8ebc524804f1bedf0ee7737ce67cc7be52b3d6c72938c81d866b43d4019",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "CreateAuthChallengeFnServiceRoleFC96E196": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/CreateAuthChallengeFn/ServiceRole/Resource"
+   }
+  },
+  "CreateAuthChallengeFnServiceRoleDefaultPolicyD1AA681F": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": "sns:Publish",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": "dynamodb:GetItem",
+       "Effect": "Allow",
+       "Resource": "arn:aws:dynamodb:us-east-1:971598352824:table/SocialLeadGen"
+      },
+      {
+       "Action": "secretsmanager:GetSecretValue",
+       "Effect": "Allow",
+       "Resource": "arn:aws:secretsmanager:us-east-1:971598352824:secret:SocialLeadGen/Resend*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "CreateAuthChallengeFnServiceRoleDefaultPolicyD1AA681F",
+    "Roles": [
+     {
+      "Ref": "CreateAuthChallengeFnServiceRoleFC96E196"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/CreateAuthChallengeFn/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "CreateAuthChallengeFn194629DD": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-971598352824-us-east-1",
+     "S3Key": "b6d9756f41df2c70e9c6de7eecb2bf30d31e90842b75d6b97d4571cbe17571ae.zip"
+    },
+    "Description": "Cognito Create Auth Challenge — generates and sends MFA code (not yet active)",
+    "Environment": {
+     "Variables": {
+      "TABLE_NAME": "SocialLeadGen",
+      "FROM_EMAIL": "noreply@hawkeyecue.com"
+     }
+    },
+    "FunctionName": "SocialLeadGen-CreateAuthChallenge",
+    "Handler": "index.handler",
+    "MemorySize": 128,
+    "Role": {
+     "Fn::GetAtt": [
+      "CreateAuthChallengeFnServiceRoleFC96E196",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs20.x",
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "CreateAuthChallengeFnServiceRoleDefaultPolicyD1AA681F",
+    "CreateAuthChallengeFnServiceRoleFC96E196"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/CreateAuthChallengeFn/Resource",
+    "aws:asset:path": "asset.b6d9756f41df2c70e9c6de7eecb2bf30d31e90842b75d6b97d4571cbe17571ae",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "VerifyAuthChallengeFnServiceRole8A7D8B80": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/VerifyAuthChallengeFn/ServiceRole/Resource"
+   }
+  },
+  "VerifyAuthChallengeFn53BA0B24": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-971598352824-us-east-1",
+     "S3Key": "1f53a83d687cb7ec7aefd0b9b239f1e744c89640669c8f302677d3d40e4cda67.zip"
+    },
+    "Description": "Cognito Verify Auth Challenge — checks MFA code (not yet active)",
+    "FunctionName": "SocialLeadGen-VerifyAuthChallenge",
+    "Handler": "index.handler",
+    "MemorySize": 128,
+    "Role": {
+     "Fn::GetAtt": [
+      "VerifyAuthChallengeFnServiceRole8A7D8B80",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs20.x",
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "VerifyAuthChallengeFnServiceRole8A7D8B80"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/VerifyAuthChallengeFn/Resource",
+    "aws:asset:path": "asset.1f53a83d687cb7ec7aefd0b9b239f1e744c89640669c8f302677d3d40e4cda67",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "SocialLeadGenUserPoolE18CCB6C": {
+   "Type": "AWS::Cognito::UserPool",
+   "Properties": {
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": false
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "EmailConfiguration": {
+     "EmailSendingAccount": "COGNITO_DEFAULT",
+     "ReplyToEmailAddress": "noreply@verificationemail.com"
+    },
+    "EmailVerificationMessage": "Your verification code is {####}",
+    "EmailVerificationSubject": "Verify your Social Lead Gen account",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireNumbers": true,
+      "RequireSymbols": true,
+      "RequireUppercase": true
+     }
+    },
+    "Schema": [
+     {
+      "Mutable": true,
+      "Name": "email",
+      "Required": true
+     }
+    ],
+    "SmsVerificationMessage": "The verification code to your new account is {####}",
+    "UserPoolName": "SocialLeadGen-UserPool",
+    "UsernameAttributes": [
+     "email"
+    ],
+    "VerificationMessageTemplate": {
+     "DefaultEmailOption": "CONFIRM_WITH_CODE",
+     "EmailMessage": "Your verification code is {####}",
+     "EmailSubject": "Verify your Social Lead Gen account",
+     "SmsMessage": "The verification code to your new account is {####}"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/SocialLeadGenUserPool/Resource"
+   }
+  },
+  "SocialLeadGenUserPoolWebClientA2500C5B": {
+   "Type": "AWS::Cognito::UserPoolClient",
+   "Properties": {
+    "AllowedOAuthFlows": [
+     "implicit",
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "profile",
+     "phone",
+     "email",
+     "openid",
+     "aws.cognito.signin.user.admin"
+    ],
+    "CallbackURLs": [
+     "https://example.com"
+    ],
+    "ClientName": "SocialLeadGen-Web",
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "GenerateSecret": false,
+    "PreventUserExistenceErrors": "ENABLED",
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "UserPoolId": {
+     "Ref": "SocialLeadGenUserPoolE18CCB6C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/SocialLeadGenUserPool/WebClient/Resource"
+   }
+  },
+  "SocialLeadGenUserPoolMobileClientEF9FF3E6": {
+   "Type": "AWS::Cognito::UserPoolClient",
+   "Properties": {
+    "AllowedOAuthFlows": [
+     "implicit",
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "profile",
+     "phone",
+     "email",
+     "openid",
+     "aws.cognito.signin.user.admin"
+    ],
+    "CallbackURLs": [
+     "https://example.com"
+    ],
+    "ClientName": "SocialLeadGen-Mobile",
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "GenerateSecret": false,
+    "PreventUserExistenceErrors": "ENABLED",
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "UserPoolId": {
+     "Ref": "SocialLeadGenUserPoolE18CCB6C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/SocialLeadGenUserPool/MobileClient/Resource"
+   }
+  },
+  "SocialLeadGenUserPoolExtensionClient80CB59B3": {
+   "Type": "AWS::Cognito::UserPoolClient",
+   "Properties": {
+    "AllowedOAuthFlows": [
+     "implicit",
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "profile",
+     "phone",
+     "email",
+     "openid",
+     "aws.cognito.signin.user.admin"
+    ],
+    "CallbackURLs": [
+     "https://example.com"
+    ],
+    "ClientName": "SocialLeadGen-Extension",
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "GenerateSecret": false,
+    "PreventUserExistenceErrors": "ENABLED",
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "UserPoolId": {
+     "Ref": "SocialLeadGenUserPoolE18CCB6C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/SocialLeadGenUserPool/ExtensionClient/Resource"
+   }
+  },
+  "SocialLeadGenUserPoolUserPoolAuthorizerClient24F2266F": {
+   "Type": "AWS::Cognito::UserPoolClient",
+   "Properties": {
+    "AllowedOAuthFlows": [
+     "implicit",
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "profile",
+     "phone",
+     "email",
+     "openid",
+     "aws.cognito.signin.user.admin"
+    ],
+    "CallbackURLs": [
+     "https://example.com"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "UserPoolId": {
+     "Ref": "SocialLeadGenUserPoolE18CCB6C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/SocialLeadGenUserPool/UserPoolAuthorizerClient/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/02MwQrCMAyGn8V7F3VT9KqCV2XiWWJXR1zXikkVKX13qUPx9H35k/wllPMlTEb45EI3XWHpDPEgqDuFTz5Fi/25QYjb4LSQd2pzcV9PirCHWHtrcvzh3lvSrzwOlhRXJ2Q2wrDKUFzBOujOyBrZKO1bR+IhHtnc997b/Przr2wsGSf/qyFJSX1KD4ItuTYf7ILcgiTlfGPgyuNHOYPpAiajKxMV9+CEegP1wDenfSlu/gAAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Auth/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "UserPoolId": {
+   "Value": {
+    "Ref": "SocialLeadGenUserPoolE18CCB6C"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-UserPoolId"
+   }
+  },
+  "UserPoolArn": {
+   "Value": {
+    "Fn::GetAtt": [
+     "SocialLeadGenUserPoolE18CCB6C",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "SocialLeadGen-UserPoolArn"
+   }
+  },
+  "WebClientId": {
+   "Value": {
+    "Ref": "SocialLeadGenUserPoolWebClientA2500C5B"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-WebClientId"
+   }
+  },
+  "MobileClientId": {
+   "Value": {
+    "Ref": "SocialLeadGenUserPoolMobileClientEF9FF3E6"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-MobileClientId"
+   }
+  },
+  "ExtensionClientId": {
+   "Value": {
+    "Ref": "SocialLeadGenUserPoolExtensionClient80CB59B3"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-ExtensionClientId"
+   }
+  },
+  "ExportsOutputRefSocialLeadGenUserPoolUserPoolAuthorizerClient24F2266FB4E487AB": {
+   "Value": {
+    "Ref": "SocialLeadGenUserPoolUserPoolAuthorizerClient24F2266F"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-Auth:ExportsOutputRefSocialLeadGenUserPoolUserPoolAuthorizerClient24F2266FB4E487AB"
+   }
+  },
+  "ExportsOutputRefSocialLeadGenUserPoolE18CCB6C93142E64": {
+   "Value": {
+    "Ref": "SocialLeadGenUserPoolE18CCB6C"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-Auth:ExportsOutputRefSocialLeadGenUserPoolE18CCB6C93142E64"
+   }
+  },
+  "ExportsOutputFnGetAttSocialLeadGenUserPoolE18CCB6CArn81A2979E": {
+   "Value": {
+    "Fn::GetAtt": [
+     "SocialLeadGenUserPoolE18CCB6C",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "SocialLeadGen-Auth:ExportsOutputFnGetAttSocialLeadGenUserPoolE18CCB6CArn81A2979E"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

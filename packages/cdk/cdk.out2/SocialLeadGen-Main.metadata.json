@@ -1,0 +1,148 @@
+{
+  "/SocialLeadGen-Main": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:31:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/TableName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TableName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new MainStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\main-stack.ts:24:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:31:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/MediaBucketName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MediaBucketName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new MainStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\main-stack.ts:29:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:31:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/UserPoolId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new MainStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\main-stack.ts:34:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:31:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/ApiUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiUrl"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new MainStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\main-stack.ts:39:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:31:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/CloudFrontDomainName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CloudFrontDomainName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new MainStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\main-stack.ts:44:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:31:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/CloudFrontDistributionId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CloudFrontDistributionId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new MainStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\main-stack.ts:49:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:31:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/SiteBucketName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteBucketName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new MainStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\main-stack.ts:54:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:31:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Main/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ]
+}

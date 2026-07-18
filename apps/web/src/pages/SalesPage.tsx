@@ -568,7 +568,18 @@ export default function SalesPage() {
         <div className="text-5xl">🚀</div>
         <h2 className="text-2xl font-bold text-white">Sales Tracker</h2>
         <p className="text-slate-400 max-w-sm mx-auto">Track your entire pipeline, see where every sale comes from, manage folios, and get monthly recaps. Available on the Soar plan.</p>
-        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">Upgrade to Soar</a>
+        <div className="max-w-sm mx-auto text-left mt-4 space-y-2">
+          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">What you'll get:</p>
+          <ul className="text-sm text-slate-300 space-y-1.5">
+            <li>💰 Full sales pipeline — prospect → contacted → quoted → won</li>
+            <li>📊 See which lead sources bring the most deals</li>
+            <li>🤝 Linked accounts — share deals with partners automatically</li>
+            <li>📧 Monthly folio recaps emailed to you</li>
+            <li>👤 Track who sold each deal (for teams)</li>
+            <li>📈 Hawk Insights — analytics on leads, platforms, peak times</li>
+          </ul>
+        </div>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Soar — $29.99/mo</a>
       </div>
     );
   }

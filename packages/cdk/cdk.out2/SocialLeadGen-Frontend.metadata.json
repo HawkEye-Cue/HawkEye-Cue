@@ -1,0 +1,366 @@
+{
+  "/SocialLeadGen-Frontend": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/WebAcl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebAcl"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:25:19)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/Custom::S3AutoDeleteObjectsCustomResourceProvider": [
+    {
+      "type": "aws:cdk:is-custom-resource-handler-customResourceProvider",
+      "data": true
+    }
+  ],
+  "/SocialLeadGen-Frontend/AWSCloudFrontPartitionHostedZoneIdMap": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AWSCloudFrontPartitionHostedZoneIdMap"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ARecord2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:246:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/WebAclArn": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebAclArn"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:263:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/DistributionDomainName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DistributionDomainName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:269:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/DistributionId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DistributionId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:275:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/SiteBucketName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteBucketName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:281:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/Certificate/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Certificate4E7ABB08"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Certificate2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:157:25)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/SiteBucket/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteBucket397A1860"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:165:23)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketAutoDeleteObjects"
+      }
+    }
+  ],
+  "/SocialLeadGen-Frontend/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/OAI/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "OAIE1EFC67F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new OriginAccessIdentity2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:173:34)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/SecurityHeaders/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SecurityHeadersE66B69D3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ResponseHeadersPolicy2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:186:35)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/DefaultCachePolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DefaultCachePolicyDDFA5BDC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new CachePolicy2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:220:22)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/Distribution/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Distribution830FAC52"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Distribution2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:212:25)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/ApexARecord/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApexARecord821D42AD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ARecord2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:246:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/WwwARecord/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WwwARecord21A54661"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ARecord2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:254:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/Exports/Output{\"Fn::GetAtt\":[\"Distribution830FAC52\",\"DomainName\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttDistribution830FAC52DomainNameBEB09E30"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/Exports/Output{\"Ref\":\"Distribution830FAC52\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefDistribution830FAC524DF81588"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/Exports/Output{\"Ref\":\"SiteBucket397A1860\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefSiteBucket397A1860ADBF1315"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Frontend/SiteBucket/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteBucketPolicy3AC1D0F8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new FrontendStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\frontend-stack.ts:165:23)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:29:23)",
+        "...node internals..."
+      ]
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketPolicyStatements"
+      }
+    }
+  ],
+  "/SocialLeadGen-Frontend/SiteBucket/AutoDeleteObjectsCustomResource/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteBucketAutoDeleteObjectsCustomResource9585E968"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ]
+}

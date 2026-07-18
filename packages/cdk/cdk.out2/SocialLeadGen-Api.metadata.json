@@ -1,0 +1,4030 @@
+{
+  "/SocialLeadGen-Api": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/ApiUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiUrl"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1101:5)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiF5A9A8A7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new HttpApi2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:29:20)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/AuthPostConfirmationFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AuthPostConfirmationFn15D232C2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:75:35)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/TradeHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TradeHandlerFn3C8943A5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:106:28)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/ContentHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ContentHandlerFn339B6047"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:137:30)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/PostsHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PostsHandlerFnD8AB56BB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:161:28)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/PostPublisherFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PostPublisherFn4C881CD5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:172:29)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/KeywordsHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "KeywordsHandlerFnD10E07D8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:194:31)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/OpportunitiesHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "OpportunitiesHandlerFnA3C30FE6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:205:36)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/SubscriptionHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SubscriptionHandlerFn600C252E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:216:35)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/StripeWebhookFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "StripeWebhookFn6F43F7B0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:244:29)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/DailyCuesHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DailyCuesHandlerFn996F40A1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:266:32)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/AppreciationsHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AppreciationsHandlerFnBC187DE9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:277:36)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/SocialAccountsHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SocialAccountsHandlerFnE00AAE6F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:311:37)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/DevicesHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DevicesHandlerFnE44207FD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:333:30)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/NotificationSenderFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "NotificationSenderFnDE7351F3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:353:34)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/LeadScannerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LeadScannerFn40BB0560"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:373:27)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/LeadScannerSchedule/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LeadScannerSchedule7A36E16F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Rule2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:397:25)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/LeadScannerSchedule/AllowEventRuleSocialLeadGenApiLeadScannerFnA1D4D8B2": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LeadScannerScheduleAllowEventRuleSocialLeadGenApiLeadScannerFnA1D4D8B2A5A2C4E6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:402:17)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/EventBridgeSchedulerRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EventBridgeSchedulerRole9C1F9676"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Role2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:407:27)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/SalesHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SalesHandlerFn38C3722B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:783:28)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/FolioRecapFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "FolioRecapFn7A70A39A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:886:26)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/FolioRecapSchedule/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "FolioRecapScheduleEF424FD8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Rule2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:918:28)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/FolioRecapSchedule/AllowEventRuleSocialLeadGenApiFolioRecapFn60F9106E": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "FolioRecapScheduleAllowEventRuleSocialLeadGenApiFolioRecapFn60F9106E87E464BE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:923:20)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/TeamHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TeamHandlerFnD3B099B7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:928:27)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/CalendarHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CalendarHandlerFn6628D14C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1001:31)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/NetworkHandlerFn/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "NetworkHandlerFnD3B17AB2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1048:30)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/Exports/Output{\"Fn::GetAtt\":[\"HttpApiF5A9A8A7\",\"ApiEndpoint\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttHttpApiF5A9A8A7ApiEndpoint082134F8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DefaultStage/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDefaultStage3EEB07D6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new HttpApi2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:29:20)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--trade--list/TradeIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETtradelistTradeIntegrationPermissionFC476022"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:480:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--trade--list/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETtradelist9EAC4673"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:480:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/CognitoAuthorizer/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiCognitoAuthorizer935FA0F6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:480:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--trade--select/TradeIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTtradeselectTradeIntegrationPermissionEECA44EF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:486:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--trade--select/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTtradeselect5B6C29DC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:486:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--profile/TradeIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETprofileTradeIntegrationPermission60507EDD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:494:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--profile/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETprofileEFE5CE8B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:494:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--profile--preferences/TradeIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETprofilepreferencesTradeIntegrationPermissionEEA207F7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:500:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--profile--preferences/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETprofilepreferences3792F553"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:500:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--profile--preferences/TradeIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTprofilepreferencesTradeIntegrationPermission032D5A2C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:500:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--profile--preferences/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTprofilepreferences70D9B637"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:500:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--profile--engagement/TradeIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETprofileengagementTradeIntegrationPermissionAE30C11E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:506:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--profile--engagement/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETprofileengagement6E0B1386"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:506:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--profile--mfa/TradeIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTprofilemfaTradeIntegrationPermission3AE81F2F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:512:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--profile--mfa/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTprofilemfa7A1BDDEF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:512:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--profile--delete/TradeIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEprofiledeleteTradeIntegrationPermission3786735D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:518:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--profile--delete/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEprofiledeleteB7467523"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:518:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--content--generate/ContentIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTcontentgenerateContentIntegrationPermission587A71BF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:530:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--content--generate/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTcontentgenerate6E22AE42"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:530:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--content--history/ContentIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETcontenthistoryContentIntegrationPermission9C48FB25"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:536:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--content--history/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETcontenthistory8413E212"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:536:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--content--upload-url/ContentIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTcontentuploadurlContentIntegrationPermissionC5548086"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:542:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--content--upload-url/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTcontentuploadurl4C2A4F79"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:542:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--content--{id}/ContentIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEcontentidContentIntegrationPermission5DC38936"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:548:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--content--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEcontentid1573038C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:548:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--posts--schedule/PostsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTpostsschedulePostsIntegrationPermission7C446562"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:560:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--posts--schedule/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTpostsschedule45DB54E2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:560:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--posts/PostsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETpostsPostsIntegrationPermission10F16AED"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:566:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--posts/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETposts04075412"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:566:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--posts--{id}/PostsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTpostsidPostsIntegrationPermission10CC9967"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:572:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--posts--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTpostsidB68C417C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:572:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--posts--{id}/PostsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEpostsidPostsIntegrationPermission5F2C9284"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:572:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--posts--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEpostsidC1C43B26"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:572:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--posts--{id}--publish/PostsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTpostsidpublishPostsIntegrationPermission73F19261"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:578:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--posts--{id}--publish/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTpostsidpublish01CBD000"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:578:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--keywords/KeywordsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETkeywordsKeywordsIntegrationPermission4E56378D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:590:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--keywords/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETkeywordsA94B0915"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:590:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--keywords/KeywordsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTkeywordsKeywordsIntegrationPermissionCF65E201"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:590:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--keywords/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTkeywords1A2575F6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:590:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--keywords--{id}/KeywordsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTkeywordsidKeywordsIntegrationPermission751E62BD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:596:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--keywords--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTkeywordsidEB977735"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:596:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--keywords--{id}/KeywordsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEkeywordsidKeywordsIntegrationPermission9E1726A4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:596:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--keywords--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEkeywordsidC8E31EB2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:596:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--keywords--defaults/KeywordsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETkeywordsdefaultsKeywordsIntegrationPermission365C7C57"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:602:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--keywords--defaults/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETkeywordsdefaults85A42869"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:602:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--opportunities/OpportunitiesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETopportunitiesOpportunitiesIntegrationPermissionAEB5CF8D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:614:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--opportunities/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETopportunitiesC581CA5E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:614:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--opportunities/OpportunitiesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTopportunitiesOpportunitiesIntegrationPermission4948E0E9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:614:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--opportunities/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTopportunitiesC972474C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:614:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--opportunities--{id}--status/OpportunitiesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTopportunitiesidstatusOpportunitiesIntegrationPermissionA3701EBF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:620:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--opportunities--{id}--status/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTopportunitiesidstatus98AE1AFD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:620:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--opportunities--{id}/OpportunitiesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEopportunitiesidOpportunitiesIntegrationPermission9F205CED"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:626:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--opportunities--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEopportunitiesidEABFAF53"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:626:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--opportunities--stats/OpportunitiesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETopportunitiesstatsOpportunitiesIntegrationPermission54ACC977"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:632:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--opportunities--stats/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETopportunitiesstats54246168"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:632:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--subscription/SubscriptionIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsubscriptionSubscriptionIntegrationPermission8FBE7847"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:644:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--subscription/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsubscription149D187E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:644:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--subscription--checkout/SubscriptionIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsubscriptioncheckoutSubscriptionIntegrationPermissionF5AD83F0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:650:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--subscription--checkout/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsubscriptioncheckout7BA8AD6F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:650:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--subscription--cancel/SubscriptionIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsubscriptioncancelSubscriptionIntegrationPermission39633C83"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:656:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--subscription--cancel/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsubscriptioncancelCB9A074D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:656:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--subscription--webhook/StripeWebhookIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsubscriptionwebhookStripeWebhookIntegrationPermissionF4AABBC5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:668:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--subscription--webhook/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsubscriptionwebhook908EB9A4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:668:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--cues/CuesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETcuesCuesIntegrationPermission77609E41"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:679:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--cues/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETcues9FD541BA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:679:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--cues--{id}--complete/CuesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTcuesidcompleteCuesIntegrationPermissionD8327EB5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:685:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--cues--{id}--complete/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTcuesidcomplete7F02F707"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:685:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--devices--register/DevicesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTdevicesregisterDevicesIntegrationPermission403BF1A9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:697:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--devices--register/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTdevicesregister7B0474B3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:697:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--devices--{deviceId}/DevicesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEdevicesdeviceIdDevicesIntegrationPermission041B217A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:703:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--devices--{deviceId}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEdevicesdeviceId9BCEAFF4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:703:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--devices--{deviceId}/DevicesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTdevicesdeviceIdDevicesIntegrationPermission56780410"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:703:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--devices--{deviceId}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTdevicesdeviceId7217C245"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:703:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--devices/DevicesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETdevicesDevicesIntegrationPermissionB5030EBD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:709:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--devices/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETdevicesA49755E1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:709:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--devices--{deviceId}--preferences/DevicesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTdevicesdeviceIdpreferencesDevicesIntegrationPermissionB808F94F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:715:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--devices--{deviceId}--preferences/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTdevicesdeviceIdpreferences41298A96"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:715:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--appreciations/AppreciationsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETappreciationsAppreciationsIntegrationPermissionED5F629D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:727:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--appreciations/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETappreciationsDC857015"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:727:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--appreciations/AppreciationsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTappreciationsAppreciationsIntegrationPermission68D8C0C3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:727:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--appreciations/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTappreciations73964B55"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:727:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--appreciations--settings/AppreciationsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETappreciationssettingsAppreciationsIntegrationPermissionB99613E4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:733:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--appreciations--settings/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETappreciationssettings292DF711"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:733:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--appreciations--settings/AppreciationsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTappreciationssettingsAppreciationsIntegrationPermission7A0FE943"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:733:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--appreciations--settings/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTappreciationssettings6ADD4F5F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:733:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--appreciations--{id}--thank/AppreciationsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTappreciationsidthankAppreciationsIntegrationPermission1CBCDFEE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:739:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--appreciations--{id}--thank/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTappreciationsidthank0F36A64B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:739:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--appreciations--{id}/AppreciationsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEappreciationsidAppreciationsIntegrationPermissionFAB9036A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:745:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--appreciations--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEappreciationsidFA869F81"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:745:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--appreciations--generate-reply/AppreciationsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTappreciationsgeneratereplyAppreciationsIntegrationPermissionEDEE1C50"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:751:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--appreciations--generate-reply/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTappreciationsgeneratereply8B73B913"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:751:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--social--accounts/SocialAccountsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsocialaccountsSocialAccountsIntegrationPermissionB7E1771C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:763:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--social--accounts/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsocialaccounts80A5FFD3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:763:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--social--connect/SocialAccountsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsocialconnectSocialAccountsIntegrationPermission5C3C7DD3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:769:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--social--connect/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsocialconnect10833E10"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:769:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--social--accounts--{id}/SocialAccountsIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEsocialaccountsidSocialAccountsIntegrationPermission9405448C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:775:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--social--accounts--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEsocialaccountsidBA3C4BC8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:775:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--deals/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsalesdealsSalesIntegrationPermission6DFF55E9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:818:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--deals/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsalesdeals86A2DCCD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:818:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--sales--deals/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsalesdealsSalesIntegrationPermissionEAF3949F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:818:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--sales--deals/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsalesdeals075B53B6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:818:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--sales--deals--{id}/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTsalesdealsidSalesIntegrationPermission561CF632"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:824:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--sales--deals--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTsalesdealsid86DF381B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:824:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--sales--deals--{id}/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEsalesdealsidSalesIntegrationPermissionF78C07DE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:824:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--sales--deals--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEsalesdealsid1FA53364"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:824:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--stats/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsalesstatsSalesIntegrationPermissionB89BFB2A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:830:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--stats/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsalesstats6CBD7047"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:830:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--sales--notify/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsalesnotifySalesIntegrationPermission1317F5AC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:836:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--sales--notify/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsalesnotifyA77039B5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:836:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--team-emails/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsalesteamemailsSalesIntegrationPermissionF8E7AFD3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:842:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--team-emails/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsalesteamemails8281F7C1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:842:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--sales--team-emails/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTsalesteamemailsSalesIntegrationPermissionF3393A90"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:842:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--sales--team-emails/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTsalesteamemails6317C05C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:842:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--folio-config/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsalesfolioconfigSalesIntegrationPermissionD754A8C0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:848:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--folio-config/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsalesfolioconfigD079ABA5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:848:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--sales--folio-config/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTsalesfolioconfigSalesIntegrationPermissionBA68D1F7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:848:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--sales--folio-config/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTsalesfolioconfigEBDE41E3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:848:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--linked/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsaleslinkedSalesIntegrationPermission13C4320F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:854:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--linked/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsaleslinkedD6A04194"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:854:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--sales--linked--invite/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsaleslinkedinviteSalesIntegrationPermission88EC1BE5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:860:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--sales--linked--invite/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsaleslinkedinvite10B9AFD7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:860:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--sales--linked--accept/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsaleslinkedacceptSalesIntegrationPermissionDA0EE03F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:866:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--sales--linked--accept/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsaleslinkedacceptEDF4B5D9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:866:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--sales--linked--{id}/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEsaleslinkedidSalesIntegrationPermissionB40AA580"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:872:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--sales--linked--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEsaleslinkedid4C2A4C9C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:872:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--linked--deals/SalesIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsaleslinkeddealsSalesIntegrationPermission6AEBBEB1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:878:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--linked--deals/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsaleslinkeddealsF89A9EB1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:878:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--team/TeamIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETteamTeamIntegrationPermissionCE7DFAAF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:963:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--team/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETteam3DA4758B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:963:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--team/TeamIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTteamTeamIntegrationPermissionF612F469"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:963:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--team/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTteam64222537"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:963:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--team--invite/TeamIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTteaminviteTeamIntegrationPermissionD45F7E98"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:969:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--team--invite/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTteaminvite746233AB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:969:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--team--accept/TeamIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTteamacceptTeamIntegrationPermission84ABD845"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:975:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--team--accept/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTteamaccept15CC2F8C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:975:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--team--members--{memberId}/TeamIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEteammembersmemberIdTeamIntegrationPermission676FEEFD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:981:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--team--members--{memberId}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEteammembersmemberId1A82ED6F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:981:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--team--name/TeamIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTteamnameTeamIntegrationPermission6E8EC6CD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:987:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--team--name/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTteamname84F7CD8A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:987:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--team--stats/TeamIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETteamstatsTeamIntegrationPermission18BAD158"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:993:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--team--stats/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETteamstats0E27074C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:993:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--calendar--events/CalendarIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETcalendareventsCalendarIntegrationPermission0F19BE2A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1016:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--calendar--events/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETcalendarevents3E7D2646"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1016:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--calendar--events/CalendarIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTcalendareventsCalendarIntegrationPermission6648CE49"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1016:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--calendar--events/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTcalendareventsE282FE0F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1016:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--calendar--events--{id}--toggle/CalendarIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTcalendareventsidtoggleCalendarIntegrationPermissionDC35BC2E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1022:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--calendar--events--{id}--toggle/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTcalendareventsidtoggle6997DDAB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1022:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--calendar--events--{id}--notes/CalendarIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTcalendareventsidnotesCalendarIntegrationPermission9322C903"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1028:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--calendar--events--{id}--notes/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTcalendareventsidnotes1D33EE4F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1028:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--calendar--events--{id}/CalendarIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEcalendareventsidCalendarIntegrationPermission5BB98138"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1034:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--calendar--events--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEcalendareventsid382B0995"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1034:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--calendar--events--bulk/CalendarIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEcalendareventsbulkCalendarIntegrationPermissionCDA84785"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1040:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--calendar--events--bulk/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEcalendareventsbulk9C291D32"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1040:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--network--posts/NetworkIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETnetworkpostsNetworkIntegrationPermissionCCAB9A14"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1063:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--network--posts/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETnetworkpostsBCBEC396"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1063:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--network--posts/NetworkIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTnetworkpostsNetworkIntegrationPermissionF8AAB174"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1063:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--network--posts/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTnetworkposts6C138CA5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1063:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--network--posts--{id}/NetworkIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEnetworkpostsidNetworkIntegrationPermission2F1C08D5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1069:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--network--posts--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEnetworkpostsidE92F5C34"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1069:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--network--posts--{id}--reply/NetworkIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTnetworkpostsidreplyNetworkIntegrationPermission94477AD2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1075:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--network--posts--{id}--reply/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTnetworkpostsidreply1F438260"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1075:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--network--contacts/NetworkIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETnetworkcontactsNetworkIntegrationPermissionFC6DAB8F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1081:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--network--contacts/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETnetworkcontacts495186F0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1081:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--network--contacts/NetworkIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTnetworkcontactsNetworkIntegrationPermission77B6AAA5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1081:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--network--contacts/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTnetworkcontactsE7FB8FE9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1081:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--network--contacts--{id}/NetworkIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEnetworkcontactsidNetworkIntegrationPermissionB23CA68F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1087:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/DELETE--network--contacts--{id}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiDELETEnetworkcontactsid14832EDD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1087:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--network--region/NetworkIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETnetworkregionNetworkIntegrationPermissionC6D32488"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1093:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--network--region/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETnetworkregionFC7B6642"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1093:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--network--region/NetworkIntegration-Permission": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTnetworkregionNetworkIntegrationPermissionDF70998E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1093:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/PUT--network--region/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPUTnetworkregion80B82AB8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1093:18)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/AuthPostConfirmationFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AuthPostConfirmationFnServiceRole28B37FEE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:75:35)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/TradeHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TradeHandlerFnServiceRole56BEA133"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:106:28)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/ContentHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ContentHandlerFnServiceRole645354CD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:137:30)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/PostsHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PostsHandlerFnServiceRole314ED5E3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:161:28)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/PostPublisherFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PostPublisherFnServiceRoleDA77FC19"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:172:29)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/KeywordsHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "KeywordsHandlerFnServiceRole28B0BBC4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:194:31)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/OpportunitiesHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "OpportunitiesHandlerFnServiceRoleD1186DED"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:205:36)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/SubscriptionHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SubscriptionHandlerFnServiceRole6FE9E96D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:216:35)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/StripeWebhookFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "StripeWebhookFnServiceRole2C4C1F06"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:244:29)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/DailyCuesHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DailyCuesHandlerFnServiceRoleA07EDE10"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:266:32)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/AppreciationsHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AppreciationsHandlerFnServiceRole08E3A954"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:277:36)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/SocialAccountsHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SocialAccountsHandlerFnServiceRoleA8761989"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:311:37)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/DevicesHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DevicesHandlerFnServiceRole1C7AEDF4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:333:30)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/NotificationSenderFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "NotificationSenderFnServiceRoleC52C0793"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:353:34)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/NotificationSenderFn/DynamoDBEventSource:SocialLeadGenDatabaseSocialLeadGenTableF04238B3/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "NotificationSenderFnDynamoDBEventSourceSocialLeadGenDatabaseSocialLeadGenTableF04238B37EE50435"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.addEventSource in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:448:26)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/LeadScannerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LeadScannerFnServiceRoleB87AB73B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:373:27)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/EventBridgeSchedulerRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EventBridgeSchedulerRoleDefaultPolicy3B63703F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.grantInvoke in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:414:21)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/SalesHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SalesHandlerFnServiceRoleE5D67CED"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:783:28)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/FolioRecapFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "FolioRecapFnServiceRoleCBE253A0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:886:26)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/TeamHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TeamHandlerFnServiceRole125D07FE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:928:27)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/CalendarHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CalendarHandlerFnServiceRole2E2A686C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1001:31)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/NetworkHandlerFn/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "NetworkHandlerFnServiceRole3E8DA412"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Function2 in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1048:30)",
+        "<anonymous> (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\bin\\app.ts:21:18)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--trade--list/TradeIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETtradelistTradeIntegration74133640"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:480:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--content--generate/ContentIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTcontentgenerateContentIntegration51F35719"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:530:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--posts--schedule/PostsIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTpostsschedulePostsIntegration0807485B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:560:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--keywords/KeywordsIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETkeywordsKeywordsIntegrationA4D9E2A6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:590:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--opportunities/OpportunitiesIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETopportunitiesOpportunitiesIntegration11AEBE33"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:614:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--subscription/SubscriptionIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsubscriptionSubscriptionIntegrationB1DB28C2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:644:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--subscription--webhook/StripeWebhookIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTsubscriptionwebhookStripeWebhookIntegration24A74918"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:668:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--cues/CuesIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETcuesCuesIntegration5F687D99"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:679:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/POST--devices--register/DevicesIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiPOSTdevicesregisterDevicesIntegration5F599D5E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:697:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--appreciations/AppreciationsIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETappreciationsAppreciationsIntegration8C3826A1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:727:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--social--accounts/SocialAccountsIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsocialaccountsSocialAccountsIntegrationA61C4939"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:763:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--sales--deals/SalesIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETsalesdealsSalesIntegration3C11D05C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:818:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--team/TeamIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETteamTeamIntegration6159883B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:963:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--calendar--events/CalendarIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETcalendareventsCalendarIntegration535C9A64"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1016:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/HttpApi/GET--network--posts/NetworkIntegration/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HttpApiGETnetworkpostsNetworkIntegrationF7347087"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\node_modules\\aws-cdk-lib\\aws-apigatewayv2\\lib\\http\\api.js:1:96 in aws-cdk-lib...",
+        "Array.map (:)",
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ApiStack (C:\\Users\\rmfra\\Desktop\\Geek Squad Backup 6-18-26\\OneDrive\\HawkEye-Cue\\packages\\cdk\\lib\\api-stack.ts:1063:18)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/AuthPostConfirmationFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AuthPostConfirmationFnServiceRoleDefaultPolicy361539DC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/TradeHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TradeHandlerFnServiceRoleDefaultPolicyD733ABF3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/ContentHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ContentHandlerFnServiceRoleDefaultPolicy12F965F0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/PostsHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PostsHandlerFnServiceRoleDefaultPolicyF360DE5C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/PostPublisherFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PostPublisherFnServiceRoleDefaultPolicy59BD0A8F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/KeywordsHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "KeywordsHandlerFnServiceRoleDefaultPolicyFB1145AD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/OpportunitiesHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "OpportunitiesHandlerFnServiceRoleDefaultPolicy67DC8FCB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/SubscriptionHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SubscriptionHandlerFnServiceRoleDefaultPolicyF9C561BD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/StripeWebhookFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "StripeWebhookFnServiceRoleDefaultPolicyA2DCDA5D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/DailyCuesHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DailyCuesHandlerFnServiceRoleDefaultPolicy04D5A0B8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/AppreciationsHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AppreciationsHandlerFnServiceRoleDefaultPolicy284CF5CF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/SocialAccountsHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SocialAccountsHandlerFnServiceRoleDefaultPolicy91AED9B8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/DevicesHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DevicesHandlerFnServiceRoleDefaultPolicy44B4786F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/NotificationSenderFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "NotificationSenderFnServiceRoleDefaultPolicyC8944C63"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/LeadScannerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LeadScannerFnServiceRoleDefaultPolicy7AD69B37"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/SalesHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SalesHandlerFnServiceRoleDefaultPolicyA532FC61"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/FolioRecapFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "FolioRecapFnServiceRoleDefaultPolicyF7CDFAE1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/TeamHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TeamHandlerFnServiceRoleDefaultPolicyB1312822"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/CalendarHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CalendarHandlerFnServiceRoleDefaultPolicy6800E74F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SocialLeadGen-Api/NetworkHandlerFn/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "NetworkHandlerFnServiceRoleDefaultPolicy81F18500"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ]
+}

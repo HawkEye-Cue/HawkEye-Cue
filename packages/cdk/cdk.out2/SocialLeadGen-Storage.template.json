@@ -1,0 +1,192 @@
+{
+ "Resources": {
+  "MediaUploadsBucketBCE0CF0B": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "CorsConfiguration": {
+     "CorsRules": [
+      {
+       "AllowedHeaders": [
+        "*"
+       ],
+       "AllowedMethods": [
+        "GET",
+        "PUT",
+        "POST"
+       ],
+       "AllowedOrigins": [
+        "https://hawkeyecue.com",
+        "https://www.hawkeyecue.com",
+        "http://localhost:5173"
+       ],
+       "MaxAge": 3600
+      }
+     ]
+    },
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+       },
+       "Status": "Enabled"
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Storage/MediaUploadsBucket/Resource"
+   }
+  },
+  "MediaUploadsBucketPolicyBEAF392C": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "MediaUploadsBucketBCE0CF0B"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:*",
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "MediaUploadsBucketBCE0CF0B",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "MediaUploadsBucketBCE0CF0B",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Storage/MediaUploadsBucket/Policy/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSMzK10DNQTCwv1k1OydbNyUzSqw4uSUzO1kksL44vNtardipNzk4t0XFOy4OyIFRAfk5mciVCGMKvBQn4l5YUlJbU6uTlp6TqZRXrlxmZ6Bma6xkoZhVnZuoWleaVZOam6gVBaABZQmRiggAAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Storage/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "MediaBucketName": {
+   "Value": {
+    "Ref": "MediaUploadsBucketBCE0CF0B"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-MediaBucketName"
+   }
+  },
+  "MediaBucketArn": {
+   "Value": {
+    "Fn::GetAtt": [
+     "MediaUploadsBucketBCE0CF0B",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "SocialLeadGen-MediaBucketArn"
+   }
+  },
+  "ExportsOutputRefMediaUploadsBucketBCE0CF0BB67C5D38": {
+   "Value": {
+    "Ref": "MediaUploadsBucketBCE0CF0B"
+   },
+   "Export": {
+    "Name": "SocialLeadGen-Storage:ExportsOutputRefMediaUploadsBucketBCE0CF0BB67C5D38"
+   }
+  },
+  "ExportsOutputFnGetAttMediaUploadsBucketBCE0CF0BArn11B3DE90": {
+   "Value": {
+    "Fn::GetAtt": [
+     "MediaUploadsBucketBCE0CF0B",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "SocialLeadGen-Storage:ExportsOutputFnGetAttMediaUploadsBucketBCE0CF0BArn11B3DE90"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

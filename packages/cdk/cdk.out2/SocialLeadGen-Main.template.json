@@ -1,0 +1,91 @@
+{
+ "Outputs": {
+  "TableName": {
+   "Description": "DynamoDB table name",
+   "Value": {
+    "Fn::ImportValue": "SocialLeadGen-Database:ExportsOutputRefSocialLeadGenTable4893752EE77C2928"
+   }
+  },
+  "MediaBucketName": {
+   "Description": "S3 media uploads bucket name",
+   "Value": {
+    "Fn::ImportValue": "SocialLeadGen-Storage:ExportsOutputRefMediaUploadsBucketBCE0CF0BB67C5D38"
+   }
+  },
+  "UserPoolId": {
+   "Description": "Cognito User Pool ID",
+   "Value": {
+    "Fn::ImportValue": "SocialLeadGen-Auth:ExportsOutputRefSocialLeadGenUserPoolE18CCB6C93142E64"
+   }
+  },
+  "ApiUrl": {
+   "Description": "API Gateway endpoint URL",
+   "Value": {
+    "Fn::ImportValue": "SocialLeadGen-Api:ExportsOutputFnGetAttHttpApiF5A9A8A7ApiEndpoint082134F8"
+   }
+  },
+  "CloudFrontDomainName": {
+   "Description": "CloudFront distribution domain name",
+   "Value": {
+    "Fn::ImportValue": "SocialLeadGen-Frontend:ExportsOutputFnGetAttDistribution830FAC52DomainNameBEB09E30"
+   }
+  },
+  "CloudFrontDistributionId": {
+   "Description": "CloudFront distribution ID",
+   "Value": {
+    "Fn::ImportValue": "SocialLeadGen-Frontend:ExportsOutputRefDistribution830FAC524DF81588"
+   }
+  },
+  "SiteBucketName": {
+   "Description": "S3 site bucket name for frontend deployment",
+   "Value": {
+    "Fn::ImportValue": "SocialLeadGen-Frontend:ExportsOutputRefSiteBucket397A1860ADBF1315"
+   }
+  }
+ },
+ "Resources": {
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSMzK10DNQTCwv1k1OydbNyUzSqw4uSUzO1nFOy/MvLSkoLanVyctPSdXLKtYvMzLRMzTXM1DMKs7M1C0qzSvJzE3VC4LQAEfF+olLAAAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "SocialLeadGen-Main/CDKMetadata/Default"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

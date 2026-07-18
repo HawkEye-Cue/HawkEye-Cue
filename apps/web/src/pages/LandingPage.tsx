@@ -58,7 +58,7 @@ export default function LandingPage() {
           <div className="text-center glass-card hover:-translate-y-1 transition-transform duration-300">
             <div className="text-4xl mb-4">1️⃣</div>
             <h4 className="font-bold text-lg mb-2">Select Your Trade</h4>
-            <p className="text-sm text-slate-400">Choose from 56 trades — roofing, HVAC, real estate, insurance, and more. Everything gets tailored to your industry.</p>
+            <p className="text-sm text-slate-400">Choose from 57 trades — roofing, HVAC, real estate, insurance, travel agents, and more. Everything gets tailored to your industry.</p>
           </div>
           <div className="text-center glass-card hover:-translate-y-1 transition-transform duration-300">
             <div className="text-4xl mb-4">2️⃣</div>
@@ -240,7 +240,7 @@ export default function LandingPage() {
               What trades does HawkEye-Cue support?
               <span className="text-slate-500 group-open:rotate-45 transition-transform duration-200 text-xl">+</span>
             </summary>
-            <p className="text-sm text-slate-400 mt-3">We support 56 trades including Roofing, General Contractor, Insurance Agent, Real Estate Agent, HVAC, Electrician, Plumber, Landscaper, Pool Service, Auto Repair, Painter, Fence Company, Pressure Washer, Handyman, and many more. Select your trade in Settings to see the full list.</p>
+            <p className="text-sm text-slate-400 mt-3">We support 57 trades including Roofing, General Contractor, Insurance Agent, Real Estate Agent, HVAC, Electrician, Plumber, Landscaper, Pool Service, Auto Repair, Painter, Travel Agent, Fence Company, Pressure Washer, Handyman, and many more. Select your trade in Settings to see the full list.</p>
           </details>
           <details className="glass-card group cursor-pointer">
             <summary className="font-semibold text-white flex items-center justify-between">

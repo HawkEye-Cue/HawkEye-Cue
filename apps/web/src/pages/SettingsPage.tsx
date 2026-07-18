@@ -625,6 +625,35 @@ export default function SettingsPage() {
         )}
       </div>
 
+      {/* Suggestion Box */}
+      <details className="glass-card">
+        <summary className="font-semibold text-white cursor-pointer flex items-center gap-2">
+          💡 Have a Suggestion?
+        </summary>
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-slate-400">We'd love to hear your ideas, tips, or feature requests. Tell us how we can make HawkEye-Cue better for you.</p>
+          <textarea
+            id="suggestion-input"
+            placeholder="Your suggestion or idea..."
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-24 focus:border-blue-500/50 focus:outline-none"
+          />
+          <button
+            onClick={() => {
+              const textarea = document.getElementById('suggestion-input') as HTMLTextAreaElement;
+              const text = textarea?.value?.trim();
+              if (!text) return;
+              const subject = encodeURIComponent(`💡 Suggestion from ${user?.email || 'a user'}`);
+              const body = encodeURIComponent(text);
+              window.open(`mailto:briannafrashier@hawkeyecue.com?subject=${subject}&body=${body}`, '_self');
+              textarea.value = '';
+            }}
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-sm font-medium transition-all"
+          >
+            Send Suggestion
+          </button>
+        </div>
+      </details>
+
       {/* Contact Us */}
       <div className="text-center py-4">
         <p className="text-xs text-slate-500">Need help or have feedback?</p>

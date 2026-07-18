@@ -29,7 +29,7 @@ export default function ContentCreatorPage() {
   const [personalOnlyCues, setPersonalOnlyCues] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem('hawkeye_personal_cues') || '[]')); } catch { return new Set(); }
   });
-  const [createMode, setCreateMode] = useState<'ai' | 'own'>('ai');
+  const [createMode, setCreateMode] = useState<'ai' | 'own'>('own');
   const [ownContent, setOwnContent] = useState('');
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postLength, setPostLength] = useState<'short' | 'medium' | 'long'>('medium');
@@ -45,6 +45,15 @@ export default function ContentCreatorPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoName, setVideoName] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean | string>(false);
+
+  const EMOJI_LIST = [
+    '🔥', '💯', '🙌', '👏', '💪', '🎉', '🚀', '⭐', '✨', '💡',
+    '📣', '📢', '🏆', '🎯', '💰', '🤝', '👋', '❤️', '💙', '💚',
+    '😍', '🥳', '😎', '🤩', '👀', '📸', '🎬', '🏠', '🔑', '📱',
+    '💼', '📊', '📈', '✅', '🛡️', '⚡', '🌟', '🦅', '👇', '👆',
+    '📍', '🗓️', '☎️', '📧', '🔗', '💬', '🙏', '🎁', '🆓', '⏰',
+  ];
 
   const togglePlatform = (p: SocialPlatform) => {
     setPlatforms((prev) =>
@@ -77,6 +86,8 @@ export default function ContentCreatorPage() {
       if (result.platformContent) {
         setPlatformContent(result.platformContent as Record<string, string>);
         localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
+        setShowHawkSwoop(true);
+        setTimeout(() => setShowHawkSwoop(false), 1400);
         showToast('✓ Content generated');
       } else if (result.content) {
         // Fallback for old format
@@ -86,6 +97,8 @@ export default function ContentCreatorPage() {
         }
         setPlatformContent(fallback);
         localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
+        setShowHawkSwoop(true);
+        setTimeout(() => setShowHawkSwoop(false), 1400);
         showToast('✓ Content generated');
       }
     } catch (e) {
@@ -159,195 +172,23 @@ export default function ContentCreatorPage() {
         </div>
       )}
 
-      {/* Today's Items - collapsible */}
-      <details className="glass-card" open>
-        <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
-          <span>Today's Cues</span>
-          <span className="text-xs text-slate-400">
-            {todayCalendarEvents.filter((e) => e.completed).length}/{todayCalendarEvents.length} done
-          </span>
-        </summary>
-        {/* Copy & Open All Groups button */}
-        {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && platformContent && (
-          <div className="mt-3 space-y-2">
-            <button
-              onClick={() => {
-                const content = Object.values(platformContent)[0] || '';
-                navigator.clipboard.writeText(content);
-                showToast('✓ Post copied to clipboard!');
-              }}
-              className="w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
-            >
-              📋 Copy Post to Clipboard
-            </button>
-            <p className="text-xs text-slate-400 text-center">Post copied → tap each group below → paste (Ctrl+V) → post</p>
-            <div className="space-y-1.5">
-              {todayCalendarEvents.filter((e) => e.link && !e.completed).map((e) => (
-                <a
-                  key={e.id}
-                  href={e.link!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => {
-                    toggleComplete(e.id);
-                    showToast('✓ Done — opening group');
-                  }}
-                  className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
-                >
-                  <span className="text-blue-400">🔗</span>
-                  <span className="text-sm text-blue-300 truncate flex-1">{e.title}</span>
-                  <span className="text-xs text-slate-500 shrink-0">Open →</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-        {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && !platformContent && (
-          <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
-            <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy Post to Clipboard"</strong> to paste it into each group</p>
-          </div>
-        )}
-        <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">
-          {[...todayCalendarEvents].sort((a, b) => {
-            const aPersonal = personalOnlyCues.has(a.id) ? 1 : 0;
-            const bPersonal = personalOnlyCues.has(b.id) ? 1 : 0;
-            return aPersonal - bPersonal;
-          }).map((e, idx, sortedArr) => {
-            const isPersonalOnly = personalOnlyCues.has(e.id);
-            const firstPersonalIdx = sortedArr.findIndex((ev) => personalOnlyCues.has(ev.id));
-            return (
-            <details
-              key={e.id}
-              id={`cue-${e.id}`}
-              className={`rounded-lg transition-all duration-300 ${
-                e.completed
-                  ? 'bg-green-900/20 border border-green-500/20'
-                  : isPersonalOnly
-                    ? 'bg-purple-500/10 border border-purple-500/30'
-                    : idx === sortedArr.findIndex((ev) => !ev.completed && !personalOnlyCues.has(ev.id))
-                      ? 'bg-amber-500/10 border border-amber-500/30 shadow-sm shadow-amber-500/10'
-                      : 'bg-white/5 border border-transparent'
-              }`}
-            >
-              <summary className="flex items-center justify-between p-2.5 cursor-pointer">
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  {e.completed ? (
-                    <span className="text-green-400 text-lg shrink-0">✓</span>
-                  ) : (
-                    <span className={`w-2.5 h-2.5 shrink-0 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
-                  )}
-                  <span className={`text-sm truncate ${e.completed ? 'line-through text-slate-500' : isPersonalOnly ? 'text-purple-300' : 'text-slate-200'}`}>{e.title}</span>
-                  {isPersonalOnly && <span className="text-[10px] bg-purple-600/30 text-purple-300 px-1.5 py-0.5 rounded-full shrink-0">👤</span>}
-                  {e.link && (
-                    <a
-                      href={e.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(ev) => ev.stopPropagation()}
-                      className="text-blue-400 hover:text-blue-300 shrink-0"
-                      title={e.link}
-                    >
-                      🔗
-                    </a>
-                  )}
-                </div>
-                {!e.completed ? (
-                  <button
-                    onClick={(ev) => {
-                      ev.preventDefault();
-                      ev.stopPropagation();
-                      toggleComplete(e.id);
-                      setShowHawkSwoop(true);
-                      setTimeout(() => setShowHawkSwoop(false), 1400);
-                      setTimeout(() => {
-                        const nextUncompleted = todayCalendarEvents.find((ev2) => ev2.id !== e.id && !ev2.completed);
-                        if (nextUncompleted) {
-                          document.getElementById(`cue-${nextUncompleted.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                      }, 500);
-                    }}
-                    className="shrink-0 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg transition-all active:scale-90"
-                  >
-                    Done ✓
-                  </button>
-                ) : (
-                  <span className="text-xs text-green-400 font-medium shrink-0">Complete</span>
-                )}
-              </summary>
-              <div className="px-3 pb-3 pt-1 border-t border-white/5">
-                {/* Personal Only toggle */}
-                <button
-                  onClick={() => {
-                    const updated = new Set(personalOnlyCues);
-                    if (updated.has(e.id)) { updated.delete(e.id); } else { updated.add(e.id); }
-                    setPersonalOnlyCues(updated);
-                    localStorage.setItem('hawkeye_personal_cues', JSON.stringify([...updated]));
-                    showToast(updated.has(e.id) ? '👤 Marked as personal-only group' : '🏢 Marked as business page OK');
-                  }}
-                  className={`mb-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    isPersonalOnly
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  {isPersonalOnly ? '👤 Personal Only' : '👤 Mark as Personal Only'}
-                </button>
-                <label className="text-xs text-slate-500 block mb-1">Notes</label>
-                <textarea
-                  defaultValue={e.notes || ''}
-                  id={`cue-notes-${e.id}`}
-                  placeholder="Add notes, reminders, or anything you want to remember..."
-                  className="w-full px-2.5 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20 focus:border-blue-500/50 focus:outline-none"
-                />
-                {e.notesSavedAt && (
-                  <p className="text-[10px] text-slate-500 mt-1">Last saved: {new Date(e.notesSavedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(e.notesSavedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
-                )}
-                <button
-                  onClick={async () => {
-                    const textarea = document.getElementById(`cue-notes-${e.id}`) as HTMLTextAreaElement;
-                    const val = textarea?.value?.trim() || '';
-                    await updateNotes(e.id, val);
-                    showToast('✓ Notes saved');
-                  }}
-                  className="mt-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all active:scale-95"
-                >
-                  💾 Save Notes
-                </button>
-              </div>
-            </details>
-          );
-          })}
-          {todayPosts.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-              <div className="min-w-0">
-                <p className="text-sm text-slate-300 truncate">📤 {(p.content || 'Scheduled post').slice(0, 40)}</p>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded ${p.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{p.status}</span>
-            </div>
-          ))}
-          {todayCalendarEvents.length === 0 && todayPosts.length === 0 && (
-            <p className="text-sm text-slate-500">No cues scheduled for today</p>
-          )}
-        </div>
-      </details>
-
       {/* Mode Toggle */}
-      <div className="flex gap-2 bg-black border-2 border-amber-500 rounded-xl p-2 shadow-xl shadow-amber-500/10">
-        <button
-          onClick={() => setCreateMode('ai')}
-          className={`flex-1 px-4 py-3.5 rounded-lg text-base font-bold transition-all duration-200 ${
-            createMode === 'ai' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 scale-[1.02]' : 'text-white bg-slate-500 hover:bg-slate-400 border-2 border-slate-300'
-          }`}
-        >
-          ✨ AI Generate
-        </button>
+      <div className="flex gap-2 bg-slate-700/60 border-2 border-amber-500 rounded-xl p-2 shadow-xl shadow-amber-500/10">
         <button
           onClick={() => setCreateMode('own')}
           className={`flex-1 px-4 py-3.5 rounded-lg text-base font-bold transition-all duration-200 ${
-            createMode === 'own' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/40 scale-[1.02]' : 'text-white bg-slate-500 hover:bg-slate-400 border-2 border-slate-300'
+            createMode === 'own' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/40 scale-[1.02]' : 'text-white bg-slate-500/90 hover:bg-slate-400 border border-white/30'
           }`}
         >
           ✍️ Write My Own
+        </button>
+        <button
+          onClick={() => setCreateMode('ai')}
+          className={`flex-1 px-4 py-3.5 rounded-lg text-base font-bold transition-all duration-200 ${
+            createMode === 'ai' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 scale-[1.02]' : 'text-white bg-slate-500/90 hover:bg-slate-400 border border-white/30'
+          }`}
+        >
+          ✨ AI Generate
         </button>
       </div>
 
@@ -527,41 +368,66 @@ export default function ContentCreatorPage() {
 
       {createMode === 'own' && (
       <>
-      {/* Platforms for own post */}
-      <div className="glass-card">
-        <label className="block text-sm font-medium text-slate-300 mb-2">Platforms</label>
-        <div className="flex flex-wrap gap-2">
-          {SOCIAL_PLATFORMS.map((p) => (
-            <button
-              key={p}
-              onClick={() => togglePlatform(p)}
-              className={`px-4 py-2 rounded-full text-sm capitalize transition-all duration-200 ${
-                platforms.includes(p)
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              {PLATFORM_ICONS[p] || ''} {p}
-            </button>
-          ))}
+      {/* Write your own - all in one card */}
+      <div className="glass-card space-y-4">
+        <label className="block text-sm font-medium text-white">✍️ Write Your Post</label>
+        <div className="relative">
+          <textarea
+            id="own-post-textarea"
+            value={ownContent}
+            onChange={(e) => setOwnContent(e.target.value)}
+            placeholder="Write your post here exactly as you want it to appear..."
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 resize-none h-36 focus:border-blue-500/50 focus:outline-none transition-colors"
+          />
+          <button
+            onClick={() => setShowEmojiPicker(showEmojiPicker === 'own' ? false : 'own')}
+            className="absolute top-2 right-2 text-lg hover:scale-125 transition-transform"
+            title="Add emoji"
+          >
+            😀
+          </button>
+          {showEmojiPicker === 'own' && (
+            <div className="absolute top-10 right-0 z-50 bg-slate-800 border border-white/20 rounded-xl p-3 shadow-xl w-72 max-h-48 overflow-y-auto">
+              <div className="flex flex-wrap gap-1.5">
+                {EMOJI_LIST.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      setOwnContent((prev) => prev + emoji);
+                      setShowEmojiPicker(false);
+                    }}
+                    className="text-xl hover:scale-125 hover:bg-white/10 rounded p-1 transition-all"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+        <p className="text-xs text-slate-500">{ownContent.length} characters</p>
 
-      {/* Write your own post */}
-      <div className="glass-card">
-        <label className="block text-sm font-medium text-slate-300 mb-2">Your Post</label>
-        <textarea
-          value={ownContent}
-          onChange={(e) => setOwnContent(e.target.value)}
-          placeholder="Write your post here exactly as you want it to appear..."
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 resize-none h-36 focus:border-blue-500/50 focus:outline-none transition-colors"
-        />
-        <p className="text-xs text-slate-500 mt-1">{ownContent.length} characters</p>
-      </div>
+        {/* Platforms */}
+        <div>
+          <label className="block text-xs font-medium text-slate-400 mb-2">Post to:</label>
+          <div className="flex flex-wrap gap-2">
+            {SOCIAL_PLATFORMS.map((p) => (
+              <button
+                key={p}
+                onClick={() => togglePlatform(p)}
+                className={`px-4 py-2 rounded-full text-sm capitalize transition-all duration-200 ${
+                  platforms.includes(p)
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                    : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {PLATFORM_ICONS[p] || ''} {p}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      {/* Media Upload for own post */}
-      <div className="glass-card">
-        <label className="block text-sm font-medium text-slate-300 mb-2">Media (optional)</label>
+        {/* Media */}
         <div className="flex items-center gap-3 flex-wrap">
           <label className="cursor-pointer px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors">
             + Add Image
@@ -616,26 +482,207 @@ export default function ContentCreatorPage() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Use Own Content button — sets platformContent so the rest of the page works */}
-      <button
-        onClick={() => {
-          if (!ownContent.trim() || platforms.length === 0) return;
-          const content: Record<string, string> = {};
-          for (const p of platforms) {
-            content[p] = ownContent.trim();
-          }
-          setPlatformContent(content);
-          showToast('✓ Ready to post');
-        }}
-        disabled={!ownContent.trim() || platforms.length === 0}
-        className="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl text-base font-medium disabled:opacity-50 transition-all duration-200"
-      >
-        ✍️ Use This Post
-      </button>
+        {/* Use Post button */}
+        <button
+          onClick={() => {
+            if (!ownContent.trim() || platforms.length === 0) return;
+            const content: Record<string, string> = {};
+            for (const p of platforms) {
+              content[p] = ownContent.trim();
+            }
+            setPlatformContent(content);
+            setShowHawkSwoop(true);
+            setTimeout(() => setShowHawkSwoop(false), 1400);
+            showToast('✓ Ready to post');
+          }}
+          disabled={!ownContent.trim() || platforms.length === 0}
+          className="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl text-base font-bold disabled:opacity-50 transition-all duration-200"
+        >
+          ✍️ Use This Post
+        </button>
+      </div>
       </>
       )}
+
+      {/* Today's Items - collapsible */}
+      <details className="glass-card" open>
+        <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
+          <span>Today's Cues</span>
+          <span className="text-xs text-slate-400">
+            {todayCalendarEvents.filter((e) => e.completed).length}/{todayCalendarEvents.length} done
+          </span>
+        </summary>
+        {/* Copy & Open Next Group button */}
+        {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && platformContent && (
+          <div className="mt-3 space-y-2">
+            {(() => {
+              const remaining = todayCalendarEvents.filter((e) => e.link && !e.completed);
+              const next = remaining[0];
+              return (
+                <>
+                  <button
+                    onClick={() => {
+                      const content = Object.values(platformContent)[0] || '';
+                      navigator.clipboard.writeText(content);
+                      if (next) {
+                        toggleComplete(next.id);
+                        setShowHawkSwoop(true);
+                        setTimeout(() => setShowHawkSwoop(false), 1400);
+                        window.open(next.link!, '_blank');
+                        showToast(`✓ Copied & opened — ${remaining.length - 1} group${remaining.length - 1 !== 1 ? 's' : ''} left`);
+                      }
+                    }}
+                    className="w-full px-4 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-lg shadow-amber-500/20"
+                  >
+                    <span className="text-base">📋 Copy & Open Next Group</span>
+                    <span className="text-xs font-normal opacity-80 truncate max-w-full">{next?.title || 'Next group'}</span>
+                  </button>
+                  <p className="text-xs text-slate-400 text-center">{remaining.length} group{remaining.length !== 1 ? 's' : ''} remaining — tap button, paste in group, come back, repeat</p>
+                  <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: Photos don't copy to clipboard. Add your image manually in each group for best engagement.</p>
+                </>
+              );
+            })()}
+          </div>
+        )}
+        {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && !platformContent && (
+          <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
+            <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy & Open Next Group"</strong> to paste it into each group</p>
+          </div>
+        )}
+        <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">
+          {[...todayCalendarEvents].sort((a, b) => {
+            const aPersonal = personalOnlyCues.has(a.id) ? 1 : 0;
+            const bPersonal = personalOnlyCues.has(b.id) ? 1 : 0;
+            return aPersonal - bPersonal;
+          }).map((e, idx, sortedArr) => {
+            const isPersonalOnly = personalOnlyCues.has(e.id);
+            const firstPersonalIdx = sortedArr.findIndex((ev) => personalOnlyCues.has(ev.id));
+            return (
+            <details
+              key={e.id}
+              id={`cue-${e.id}`}
+              className={`rounded-lg transition-all duration-300 ${
+                e.completed
+                  ? 'bg-green-900/20 border border-green-500/20'
+                  : isPersonalOnly
+                    ? 'bg-purple-500/10 border border-purple-500/30'
+                    : idx === sortedArr.findIndex((ev) => !ev.completed && !personalOnlyCues.has(ev.id))
+                      ? 'bg-amber-500/10 border border-amber-500/30 shadow-sm shadow-amber-500/10'
+                      : 'bg-white/5 border border-transparent'
+              }`}
+            >
+              <summary className="flex items-center justify-between p-2.5 cursor-pointer">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {e.completed ? (
+                    <span className="text-green-400 text-lg shrink-0">✓</span>
+                  ) : (
+                    <span className={`w-2.5 h-2.5 shrink-0 rounded-full ${e.type === 'post' ? 'bg-blue-500' : e.type === 'task' ? 'bg-amber-500' : 'bg-green-500'}`} />
+                  )}
+                  <span className={`text-sm truncate ${e.completed ? 'line-through text-slate-500' : isPersonalOnly ? 'text-purple-300' : 'text-slate-200'}`}>{e.title}</span>
+                  {isPersonalOnly && <span className="text-[10px] bg-purple-600/30 text-purple-300 px-1.5 py-0.5 rounded-full shrink-0">👤</span>}
+                  {e.link && (
+                    <a
+                      href={e.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(ev) => ev.stopPropagation()}
+                      className="text-blue-400 hover:text-blue-300 shrink-0"
+                      title={e.link}
+                    >
+                      🔗
+                    </a>
+                  )}
+                </div>
+                {!e.completed ? (
+                  <button
+                    onClick={(ev) => {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      toggleComplete(e.id);
+                      setShowHawkSwoop(true);
+                      setTimeout(() => setShowHawkSwoop(false), 1400);
+                      setTimeout(() => {
+                        const nextUncompleted = todayCalendarEvents.find((ev2) => ev2.id !== e.id && !ev2.completed);
+                        if (nextUncompleted) {
+                          document.getElementById(`cue-${nextUncompleted.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 500);
+                    }}
+                    className="shrink-0 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg transition-all active:scale-90"
+                  >
+                    Done ✓
+                  </button>
+                ) : (
+                  <span className="text-xs text-green-400 font-medium shrink-0">Complete</span>
+                )}
+              </summary>
+              <div className="px-3 pb-3 pt-1 border-t border-white/5">
+                <button
+                  onClick={() => {
+                    const updated = new Set(personalOnlyCues);
+                    if (updated.has(e.id)) { updated.delete(e.id); } else { updated.add(e.id); }
+                    setPersonalOnlyCues(updated);
+                    localStorage.setItem('hawkeye_personal_cues', JSON.stringify([...updated]));
+                    showToast(updated.has(e.id) ? '👤 Marked as personal-only group' : '🏢 Marked as business page OK');
+                  }}
+                  className={`mb-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    isPersonalOnly
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {isPersonalOnly ? '👤 Personal Only' : '👤 Mark as Personal Only'}
+                </button>
+                <label className="text-xs text-slate-500 block mb-1">Notes</label>
+                <textarea
+                  defaultValue={e.notes || ''}
+                  id={`cue-notes-${e.id}`}
+                  placeholder="Add notes, reminders, or anything you want to remember..."
+                  className="w-full px-2.5 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20 focus:border-blue-500/50 focus:outline-none"
+                />
+                {e.notesSavedAt && (
+                  <p className="text-[10px] text-slate-500 mt-1">Last saved: {new Date(e.notesSavedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(e.notesSavedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
+                )}
+                <button
+                  onClick={async () => {
+                    const textarea = document.getElementById(`cue-notes-${e.id}`) as HTMLTextAreaElement;
+                    const val = textarea?.value?.trim() || '';
+                    await updateNotes(e.id, val);
+                    showToast('✓ Notes saved');
+                  }}
+                  className="mt-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all active:scale-95"
+                >
+                  💾 Save Notes
+                </button>
+              </div>
+            </details>
+          );
+          })}
+          {todayPosts.map((p) => (
+            <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
+              <div className="min-w-0">
+                <p className="text-sm text-slate-300 truncate">📤 {(p.content || 'Scheduled post').slice(0, 40)}</p>
+              </div>
+              <span className={`text-xs px-2 py-0.5 rounded ${p.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{p.status}</span>
+            </div>
+          ))}
+          {todayCalendarEvents.length === 0 && todayPosts.length === 0 && (
+            <p className="text-sm text-slate-500">No cues scheduled for today</p>
+          )}
+          {todayCalendarEvents.length > 0 && todayCalendarEvents.every((e) => e.completed) && (
+            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-green-500/20 border border-amber-500/30 text-center relative overflow-hidden">
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute animate-[hawkSwoop_3s_ease-in-out_infinite] text-4xl" style={{ top: '20%', left: '-60px' }}>🦅</div>
+              </div>
+              <div className="text-3xl mb-2">🎉</div>
+              <p className="text-lg font-bold text-amber-300">Today's cues are done!</p>
+              <p className="text-sm text-slate-300 mt-1">Let's watch them take flight 🦅</p>
+              <p className="text-xs text-slate-500 mt-2">Your posts are out in the world working for you. Time to soar.</p>
+            </div>
+          )}
+        </div>
+      </details>
 
       {platformContent && (
         <div className="space-y-4 animate-scale-in">
@@ -647,15 +694,43 @@ export default function ContentCreatorPage() {
                 <span className="text-lg">{PLATFORM_ICONS[platform] || '📱'}</span>
                 <h4 className="font-medium text-white capitalize">{platform}</h4>
               </div>
-              <textarea
-                value={content}
-                onChange={(e) =>
-                  setPlatformContent((prev) =>
-                    prev ? { ...prev, [platform]: e.target.value } : prev
-                  )
-                }
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white resize-none h-32 focus:border-blue-500/50 focus:outline-none transition-colors text-sm"
-              />
+              <div className="relative">
+                <textarea
+                  id={`platform-textarea-${platform}`}
+                  value={content}
+                  onChange={(e) =>
+                    setPlatformContent((prev) =>
+                      prev ? { ...prev, [platform]: e.target.value } : prev
+                    )
+                  }
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white resize-none h-32 focus:border-blue-500/50 focus:outline-none transition-colors text-sm"
+                />
+                <button
+                  onClick={() => setShowEmojiPicker(showEmojiPicker === platform ? false : platform as any)}
+                  className="absolute top-2 right-2 text-lg hover:scale-125 transition-transform"
+                  title="Add emoji"
+                >
+                  😀
+                </button>
+                {showEmojiPicker === platform && (
+                  <div className="absolute top-10 right-0 z-50 bg-slate-800 border border-white/20 rounded-xl p-3 shadow-xl w-72 max-h-48 overflow-y-auto">
+                    <div className="flex flex-wrap gap-1.5">
+                      {EMOJI_LIST.map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => {
+                            setPlatformContent((prev) => prev ? { ...prev, [platform]: prev[platform] + emoji } : prev);
+                            setShowEmojiPicker(false);
+                          }}
+                          className="text-xl hover:scale-125 hover:bg-white/10 rounded p-1 transition-all"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-xs text-slate-500">
                   {content.length} characters
@@ -759,6 +834,8 @@ export default function ContentCreatorPage() {
                       mediaUrls,
                     });
                     setSuccess('✓ Posted! It will go live in about 2 minutes.');
+                    setShowHawkSwoop(true);
+                    setTimeout(() => setShowHawkSwoop(false), 1400);
                     setScheduling(false);
                   } catch (e) {
                     const msg = e instanceof Error ? e.message : 'Failed to post';
@@ -831,6 +908,8 @@ export default function ContentCreatorPage() {
                       mediaUrls: schedMediaUrls,
                     });
                     setSuccess('✓ Scheduled! Check the Calendar tab.');
+                    setShowHawkSwoop(true);
+                    setTimeout(() => setShowHawkSwoop(false), 1400);
                     setScheduling(false);
                   } catch (e) {
                     const msg = e instanceof Error ? e.message : 'Failed to schedule';

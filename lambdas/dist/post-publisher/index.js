@@ -126,6 +126,7 @@ exports.handler = async (event) => {
     }
 
     // Build per-platform data payload
+    let uploadIds = null;
     const data = {};
     for (const platform of platforms) {
       const platformData = { text: post.content };
@@ -134,8 +135,35 @@ exports.handler = async (event) => {
       if (post.bundleUploadIds && post.bundleUploadIds.length > 0) {
         platformData.uploadIds = post.bundleUploadIds;
       } else if (post.mediaUrls && post.mediaUrls.length > 0) {
-        // Fall back to S3 media URLs
-        platformData.mediaUrls = post.mediaUrls;
+        // Upload media to Bundle.social first, then use uploadIds
+        if (!uploadIds) {
+          uploadIds = [];
+          for (const mediaUrl of post.mediaUrls) {
+            try {
+              console.log(`Uploading media to Bundle.social: ${mediaUrl}`);
+              const uploadResp = await fetch('https://api.bundle.social/api/v1/upload/from-url', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-api-key': BUNDLE_SOCIAL_API_KEY,
+                },
+                body: JSON.stringify({ teamId, url: mediaUrl }),
+              });
+              const uploadResult = await uploadResp.json();
+              if (uploadResp.ok && uploadResult.id) {
+                uploadIds.push(uploadResult.id);
+                console.log(`Upload success: ${uploadResult.id}`);
+              } else {
+                console.warn(`Upload failed for ${mediaUrl}:`, uploadResult);
+              }
+            } catch (uploadErr) {
+              console.warn(`Failed to upload media ${mediaUrl}:`, uploadErr.message);
+            }
+          }
+        }
+        if (uploadIds.length > 0) {
+          platformData.uploadIds = uploadIds;
+        }
       }
 
       data[platform] = platformData;

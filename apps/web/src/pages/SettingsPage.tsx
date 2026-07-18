@@ -553,6 +553,13 @@ export default function SettingsPage() {
           🔍 How does lead detection work? (Extension vs Connected Accounts)
         </button>
 
+        <button
+          onClick={() => setShowExtensionTour(true)}
+          className="w-full mb-3 px-4 py-3 bg-blue-600/20 border-2 border-blue-500/40 rounded-xl text-sm text-blue-300 font-bold hover:bg-blue-600/30 transition-colors flex items-center justify-center gap-2"
+        >
+          📖 Step-by-Step Setup Guide — Tap Here
+        </button>
+
         <div className="flex flex-wrap gap-2 mb-3">
           {/* Desktop: show Chrome Web Store link */}
           <a
@@ -563,12 +570,6 @@ export default function SettingsPage() {
           >
             ⬇ Install from Chrome Web Store
           </a>
-          <button
-            onClick={() => setShowExtensionTour(true)}
-            className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
-          >
-            📖 How to Install
-          </button>
         </div>
 
         <p className="text-xs text-slate-500">💡 Chrome may show a safety warning — this is normal for new extensions. Click "Continue to install" to proceed.</p>

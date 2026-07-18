@@ -33,6 +33,7 @@ export default function ContentCreatorPage() {
   const [ownContent, setOwnContent] = useState('');
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postLength, setPostLength] = useState<'short' | 'medium' | 'long'>('medium');
+  const [userTier, setUserTier] = useState<string>('free');
   const [postType, setPostType] = useState('');
   const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
   const [baseText, setBaseText] = useState('');
@@ -123,6 +124,11 @@ export default function ContentCreatorPage() {
         const result = await client.getPosts({ startDate: today, endDate: today });
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
         setTodayPosts(posts);
+        // Fetch tier
+        try {
+          const sub = await client.request<{ tier: string }>('GET', '/subscription');
+          setUserTier(sub.tier || 'free');
+        } catch { /* default free */ }
       } catch { /* ignore */ }
     }
     fetchTodayPosts();
@@ -516,7 +522,14 @@ export default function ContentCreatorPage() {
         {/* Copy & Open Next Group button */}
         {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && platformContent && (
           <div className="mt-3 space-y-2">
-            {(() => {
+            {['free', 'nest'].includes(userTier) ? (
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
+                <p className="text-sm font-bold text-amber-300 mb-1">🔒 Copy & Open Next Group</p>
+                <p className="text-xs text-slate-400 mb-3">This one-tap workflow copies your post and opens each group for you. Available on the Flight plan.</p>
+                <a href="/settings" className="inline-block bg-gradient-to-r from-blue-600 to-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold hover:opacity-90">Upgrade to Flight — $19.99/mo</a>
+              </div>
+            ) : (
+            (() => {
               const remaining = todayCalendarEvents.filter((e) => e.link && !e.completed);
               const next = remaining[0];
               return (
@@ -542,7 +555,8 @@ export default function ContentCreatorPage() {
                   <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: Photos don't copy to clipboard. Add your image manually in each group for best engagement.</p>
                 </>
               );
-            })()}
+            })()
+            )}
           </div>
         )}
         {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && !platformContent && (

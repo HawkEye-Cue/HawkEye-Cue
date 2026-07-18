@@ -22,14 +22,14 @@ const STEPS = [
   },
   {
     icon: '🧩',
-    title: 'Step 2: Pin It',
-    description: 'Click the puzzle piece icon (🧩) in Chrome\'s top-right corner. Find "HawkEye-Cue" and click the pin icon to keep the hawk visible in your toolbar.',
+    title: 'Step 2: Pin It to Your Toolbar',
+    description: 'Look at the top-right of Chrome. Click the puzzle piece icon (🧩). A dropdown appears — find "HawkEye-Cue" and click the PIN icon (📌) next to it. Now the hawk will always be visible in your toolbar.',
     image: null,
   },
   {
     icon: '🔑',
-    title: 'Step 3: Sign In',
-    description: 'Click the hawk icon (🦅) in your toolbar. Sign in with the same email and password you use on hawkeyecue.com.',
+    title: 'Step 3: Sign In to the Extension',
+    description: 'Click the hawk icon (🦅) that now appears in your toolbar. A small popup opens — enter the SAME email and password you use on hawkeyecue.com and click Sign In.',
     image: null,
   },
   {

@@ -159,7 +159,7 @@ async function handleGenerate(userId, body) {
   );
   const profile = (profileResult.Items || [])[0] || {};
   const tier = profile.subscriptionTier || 'free';
-  const LIMITS = { free: 5, base: 50, growth: 200, soar: 300, pro: Infinity, team: 500 };
+  const LIMITS = { free: 2, base: 50, growth: 200, soar: 300, pro: Infinity, team: 500 };
   const limit = LIMITS[tier] ?? 5;
   const used = profile.aiGenerationsUsed || 0;
 

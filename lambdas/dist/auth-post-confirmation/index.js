@@ -8,7 +8,7 @@ const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const secretsClient = new SecretsManagerClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
 const FROM_EMAIL = 'HawkEye-Cue <notifications@hawkeyecue.com>';
-const NOTIFY_TO = 'briannafrashier@gmail.com';
+const NOTIFY_TO = ['briannafrashier@gmail.com', 'rmfrashier888@gmail.com'];
 
 // ─── Resend Email Helper ──────────────────────────────────────────────────────
 let resendApiKey = null;

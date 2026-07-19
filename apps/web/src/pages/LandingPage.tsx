@@ -153,45 +153,29 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* Flight */}
-          <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
-            <h4 className="text-xl font-bold text-white">🦅 Flight</h4>
-            <div className="mt-2 mb-4">
-              <span className="text-3xl font-extrabold text-white">$19.99</span>
-              <span className="text-slate-400 text-sm">/mo</span>
-            </div>
-            <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ Everything in Nest</li>
-              <li>🦅 Keyword tracking while scrolling</li>
-              <li>🦅 Hawk icon alerts on matches</li>
-              <li>🦅 Appreciations tracking</li>
-              <li>🦅 Browser extension</li>
-              <li>🦅 Lead detection</li>
-            </ul>
-            <Link to="/register" className="block text-center bg-gradient-to-r from-blue-600 to-blue-500 text-white py-2.5 rounded-lg font-medium hover:shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
-              Start Flying
-            </Link>
-          </div>
-
           {/* Soar */}
           <div className="glass-card-strong gradient-border relative hover:-translate-y-2 transition-transform duration-300">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-amber-500/20">MOST POPULAR</div>
             <h4 className="text-xl font-bold text-white mt-2">🚀 Soar</h4>
             <div className="mt-2 mb-4">
-              <span className="text-3xl font-extrabold text-white">$29.99</span>
+              <span className="text-3xl font-extrabold text-white">$24.99</span>
               <span className="text-slate-400 text-sm">/mo</span>
             </div>
+            <p className="text-xs text-amber-300 mb-3 font-medium">🎁 7-day free trial included</p>
             <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ Everything in Flight</li>
+              <li>✓ Everything in Nest</li>
+              <li>🦅 Keyword tracking & alerts</li>
+              <li>🦅 Browser extension & lead detection</li>
+              <li>🙏 Appreciations tracking</li>
               <li>💰 Sales Tracker & Pipeline</li>
-              <li>💰 Lead source attribution</li>
-              <li>💰 Folio recaps & analytics</li>
-              <li>🤝 <strong>Wingman</strong> — relationship builder</li>
-              <li>🤝 Wingman keywords for shoutouts</li>
+              <li>💰 Lead source attribution & folio recaps</li>
+              <li>🤝 Wingman — relationship builder</li>
               <li>📊 Hawk Insights analytics</li>
+              <li>🔗 Linked accounts</li>
+              <li>📋 Copy & Open workflow</li>
             </ul>
             <Link to="/register" className="block text-center bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2.5 rounded-lg font-bold hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
-              Start Soaring
+              Start 7-Day Free Trial
             </Link>
           </div>
 
@@ -200,7 +184,7 @@ export default function LandingPage() {
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-purple-500/20">FOR TEAMS</div>
             <h4 className="text-xl font-bold text-white mt-2">🏔️ Summit</h4>
             <div className="mt-2 mb-4">
-              <span className="text-3xl font-extrabold text-white">$119.99</span>
+              <span className="text-3xl font-extrabold text-white">$99.99</span>
               <span className="text-slate-400 text-sm">/mo</span>
             </div>
             <ul className="text-sm text-slate-300 space-y-2 mb-6">

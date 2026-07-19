@@ -525,8 +525,8 @@ export default function ContentCreatorPage() {
             {['free', 'nest'].includes(userTier) ? (
               <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
                 <p className="text-sm font-bold text-amber-300 mb-1">🔒 Copy & Open Next Group</p>
-                <p className="text-xs text-slate-400 mb-3">This one-tap workflow copies your post and opens each group for you. Available on the Flight plan.</p>
-                <a href="/settings" className="inline-block bg-gradient-to-r from-blue-600 to-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold hover:opacity-90">Upgrade to Flight — $19.99/mo</a>
+                <p className="text-xs text-slate-400 mb-3">This one-tap workflow copies your post and opens each group for you. Available on the Soar plan.</p>
+                <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-6 py-2 rounded-lg text-sm font-bold hover:opacity-90">Upgrade to Soar — $24.99/mo</a>
               </div>
             ) : (
             (() => {

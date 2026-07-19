@@ -143,7 +143,7 @@ export default function HawkInsightsPage() {
             <li>📈 Weekly and monthly trend reports</li>
           </ul>
         </div>
-        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Soar — $29.99/mo</a>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Soar — $24.99/mo</a>
       </div>
     );
   }

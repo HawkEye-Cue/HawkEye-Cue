@@ -166,7 +166,7 @@ export default function SettingsPage() {
   const currentTier = subscription?.tier ?? 'free';
 
   function tierLabel(tier: string) {
-    const labels: Record<string, string> = { free: 'Nest (Free)', nest: 'Nest (Free)', base: 'Flight', flight: 'Flight', growth: 'Flight', soar: 'Soar', team: 'Summit', summit: 'Summit' };
+    const labels: Record<string, string> = { free: 'Nest (Free)', nest: 'Nest (Free)', base: 'Soar', flight: 'Soar', growth: 'Soar', soar: 'Soar', team: 'Summit', summit: 'Summit' };
     return labels[tier] ?? tier;
   }
 
@@ -368,43 +368,27 @@ export default function SettingsPage() {
 
         {/* Pricing Tiers */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Flight */}
-          <div className={`border rounded-xl p-4 ${['growth', 'flight'].includes(currentTier) ? 'border-green-500/50 bg-green-950/20' : 'border-blue-500/50 bg-blue-950/20'}`}>
-            <div className="mb-2">
-              <span className="text-lg font-bold text-white">🦅 Flight</span>
-              <p className="text-sm text-blue-400">$19.99/mo</p>
-            </div>
-            {['growth', 'flight'].includes(currentTier) && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
-            <ul className="text-xs text-slate-300 space-y-1 mb-3">
-              <li>✓ Everything in Nest</li>
-              <li>🦅 Keyword tracking</li>
-              <li>🦅 Hawk alerts & extension</li>
-              <li>🦅 Appreciations</li>
-              <li>🦅 Lead detection</li>
-            </ul>
-            {!['growth', 'flight', 'soar', 'team', 'summit'].includes(currentTier) && (
-              <button onClick={() => handleUpgrade('growth')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50">
-                {loadingTier === 'growth' ? 'Loading…' : 'Upgrade'}
-              </button>
-            )}
-          </div>
-
           {/* Soar */}
-          <div className={`border rounded-xl p-4 ${(currentTier as string) === 'soar' ? 'border-green-500/50 bg-green-950/20' : 'border-amber-500/50 bg-amber-950/20'}`}>
+          <div className={`border rounded-xl p-4 ${['growth', 'flight', 'base', 'soar'].includes(currentTier) ? 'border-green-500/50 bg-green-950/20' : 'border-amber-500/50 bg-amber-950/20'}`}>
             <div className="mb-2">
               <span className="text-lg font-bold text-white">🚀 Soar</span>
               <span className="ml-1 bg-amber-500 text-black px-1.5 py-0.5 rounded text-xs font-bold">Popular</span>
-              <p className="text-sm text-amber-400">$29.99/mo</p>
+              <p className="text-sm text-amber-400">$24.99/mo</p>
             </div>
-            {(currentTier as string) === 'soar' && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
+            {['growth', 'flight', 'base', 'soar'].includes(currentTier) && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
             <ul className="text-xs text-slate-300 space-y-1 mb-3">
-              <li>✓ Everything in Flight</li>
+              <li>✓ Everything in Nest</li>
+              <li>🦅 Keyword tracking & alerts</li>
+              <li>🦅 Browser extension & lead detection</li>
+              <li>🙏 Appreciations</li>
               <li>💰 Sales Tracker & Pipeline</li>
               <li>🤝 Wingman relationships</li>
               <li>📊 Hawk Insights</li>
               <li>💰 Folio recaps</li>
+              <li>🔗 Linked accounts</li>
+              <li>📋 Copy & Open workflow</li>
             </ul>
-            {!['soar', 'team', 'summit'].includes(currentTier as string) && (
+            {!['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(currentTier) && (
               <button onClick={() => handleUpgrade('soar')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
                 {loadingTier === 'soar' ? 'Loading…' : 'Upgrade'}
               </button>
@@ -412,10 +396,10 @@ export default function SettingsPage() {
           </div>
 
           {/* Summit */}
-          <div className={`border rounded-xl p-4 sm:col-span-2 ${['team', 'summit'].includes(currentTier) ? 'border-green-500/50 bg-green-950/20' : 'border-purple-500/50 bg-purple-950/20'}`}>
+          <div className={`border rounded-xl p-4 ${['team', 'summit'].includes(currentTier) ? 'border-green-500/50 bg-green-950/20' : 'border-purple-500/50 bg-purple-950/20'}`}>
             <div className="mb-2">
               <span className="text-lg font-bold text-white">🏔️ Summit</span>
-              <p className="text-sm text-purple-400">$119.99/mo</p>
+              <p className="text-sm text-purple-400">$99.99/mo</p>
             </div>
             {['team', 'summit'].includes(currentTier) && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
             <ul className="text-xs text-slate-300 space-y-1 mb-3">

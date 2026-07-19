@@ -21,9 +21,9 @@ const TIER_PRICE_ENV = {
 };
 
 const AI_GENERATION_LIMITS = {
-  free: 5,
-  base: 50,
-  growth: 200,
+  free: 2,
+  base: 300,
+  growth: 300,
   soar: 300,
   team: 500,
 };
@@ -104,12 +104,28 @@ async function handleGetSubscription(userId) {
   const user = await getUser(userId);
   if (!user) return err(404, 'USER_NOT_FOUND', 'User not found');
 
-  const tier = user.subscriptionTier ?? 'free';
+  let tier = user.subscriptionTier ?? 'free';
+
+  // Check if trial has expired
+  if (user.subscriptionStatus === 'trial' && user.trialEndsAt) {
+    if (new Date(user.trialEndsAt).getTime() < Date.now()) {
+      // Trial expired — downgrade to free
+      tier = 'free';
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+        UpdateExpression: 'SET subscriptionTier = :tier, subscriptionStatus = :status',
+        ExpressionAttributeValues: { ':tier': 'free', ':status': 'expired' },
+      }));
+    }
+  }
 
   return ok({
     tier,
+    status: user.subscriptionStatus ?? 'none',
+    trialEndsAt: user.trialEndsAt ?? null,
     aiGenerationsUsed: user.aiGenerationsUsed ?? 0,
-    aiGenerationsLimit: AI_GENERATION_LIMITS[tier] ?? 5,
+    aiGenerationsLimit: AI_GENERATION_LIMITS[tier] ?? 2,
     currentPeriodEnd: user.subscriptionCurrentPeriodEnd ?? null,
     stripeCustomerId: user.stripeCustomerId ?? null,
   });

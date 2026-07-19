@@ -61,8 +61,9 @@ exports.handler = async (event) => {
           userId: sub,
           email,
           createdAt: now,
-          subscriptionTier: 'free',
-          subscriptionStatus: 'none',
+          subscriptionTier: 'soar',
+          subscriptionStatus: 'trial',
+          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           aiGenerationsUsed: 0,
           selectedTradeId: null,
         },
@@ -70,7 +71,7 @@ exports.handler = async (event) => {
       })
     );
 
-    console.log(`Created user profile for ${email} (${sub})`);
+    console.log(`Created user profile for ${email} (${sub}) with 7-day Soar trial`);
 
     // Send notification email to admin
     try {

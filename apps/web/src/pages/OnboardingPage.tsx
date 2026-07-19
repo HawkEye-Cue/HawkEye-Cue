@@ -29,13 +29,13 @@ const STEPS = [
     icon: '🎯',
     title: 'Step 4: Track Your Leads',
     description: 'The Leads tab (🎯) shows everyone who might need your services. Leads come from the browser extension scanning social media, or you can add them manually.',
-    tip: 'Available on the Flight plan ($19.99/mo). Start free, upgrade when you\'re ready.',
+    tip: 'Available on the Soar plan ($24.99/mo). Start free, upgrade when you\'re ready.',
   },
   {
     icon: '💰',
     title: 'Step 5: Track Your Sales',
     description: 'The Sales tab (💰) is your pipeline. Add deals, track where each lead came from, set your folio dates, and watch your numbers grow. When you close a deal, mark it "Won" and your linked partners get notified!',
-    tip: 'Available on the Soar plan ($29.99/mo). Upgrade from Settings when you need it.',
+    tip: 'Available on the Soar plan ($24.99/mo). Upgrade from Settings when you need it.',
   },
   {
     icon: '🤝',

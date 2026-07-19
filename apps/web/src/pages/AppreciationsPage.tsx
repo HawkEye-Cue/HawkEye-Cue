@@ -53,7 +53,7 @@ export default function AppreciationsPage() {
     buildClient().then((client) => client.request<{ tier: string }>('GET', '/subscription')).then((res) => setTier(res.tier || 'free')).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasAccess = ['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(tier);
+  const hasAccess = ['soar', 'team', 'summit'].includes(tier);
 
   // Filters
   const [platformFilter, setPlatformFilter] = useState<string>('all');
@@ -231,7 +231,7 @@ export default function AppreciationsPage() {
       <div className="space-y-6 text-center py-12">
         <div className="text-5xl">🙏</div>
         <h2 className="text-2xl font-bold text-white">Appreciations</h2>
-        <p className="text-slate-400 max-w-sm mx-auto">Track mentions, shoutouts, and recommendations from your network. Available on the Flight plan.</p>
+        <p className="text-slate-400 max-w-sm mx-auto">Track mentions, shoutouts, and recommendations from your network. Available on the Soar plan.</p>
         <div className="max-w-sm mx-auto text-left mt-4 space-y-2">
           <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">What you'll get:</p>
           <ul className="text-sm text-slate-300 space-y-1.5">
@@ -241,7 +241,7 @@ export default function AppreciationsPage() {
             <li>🙌 Send quick thank-you replies to keep relationships strong</li>
           </ul>
         </div>
-        <a href="/settings" className="inline-block bg-gradient-to-r from-blue-600 to-blue-500 text-white px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Flight — $19.99/mo</a>
+        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Soar — $24.99/mo</a>
       </div>
     );
   }

@@ -20,6 +20,8 @@ export default function DashboardPage() {
   const [pendingLinkInvites, setPendingLinkInvites] = useState<{ id: string; partnerEmail: string; partnerName: string }[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentTier, setCurrentTier] = useState<string>('free');
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [subStatus, setSubStatus] = useState<string>('none');
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => !localStorage.getItem('hawkeye_welcome_dismissed'));
 
   // Refetch when page becomes visible (user navigates back)
@@ -50,8 +52,10 @@ export default function DashboardPage() {
 
         // Fetch subscription tier
         try {
-          const sub = await client.request<{ tier: string }>('GET', '/subscription');
+          const sub = await client.request<{ tier: string; trialEndsAt?: string; status?: string }>('GET', '/subscription');
           setCurrentTier(sub.tier || 'free');
+          if (sub.trialEndsAt) setTrialEndsAt(sub.trialEndsAt);
+          if (sub.status) setSubStatus(sub.status);
         } catch { /* default to free */ }
 
         // Fetch lead stats
@@ -204,6 +208,38 @@ export default function DashboardPage() {
               Do not show again
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Trial Expiry Banner */}
+      {subStatus === 'trial' && trialEndsAt && (() => {
+        const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+        if (daysLeft <= 2) {
+          return (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 border-2 border-amber-500/40">
+              <p className="text-sm font-bold text-amber-300">⏰ Your free Soar trial {daysLeft === 0 ? 'ends today' : `ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`}!</p>
+              <p className="text-xs text-slate-300 mt-1">After the trial, you'll move to the Nest (free) plan. Upgrade now to keep all your Soar features.</p>
+              <button onClick={() => navigate('/settings')} className="mt-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-lg hover:opacity-90 transition-all active:scale-95">
+                Upgrade to Soar — $24.99/mo
+              </button>
+            </div>
+          );
+        }
+        return (
+          <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+            <p className="text-xs text-blue-300">🚀 <strong>Free Soar trial</strong> — {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining. Enjoy full access!</p>
+          </div>
+        );
+      })()}
+
+      {/* Trial Expired Banner */}
+      {subStatus === 'expired' && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/10 to-slate-800 border border-red-500/30">
+          <p className="text-sm font-bold text-red-300">Your Soar trial has ended</p>
+          <p className="text-xs text-slate-400 mt-1">You're now on the Nest (free) plan. Upgrade to get back keyword tracking, leads, sales tracker, and more.</p>
+          <button onClick={() => navigate('/settings')} className="mt-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-lg hover:opacity-90 transition-all active:scale-95">
+            Upgrade to Soar — $24.99/mo
+          </button>
         </div>
       )}
 
@@ -393,39 +429,27 @@ export default function DashboardPage() {
           <p className="text-sm text-slate-400 mb-4">You're on the Nest (Free) plan. Upgrade to get tools that grow your business faster.</p>
           
           <div className="space-y-3">
-            {/* Flight Tier Features */}
-            <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/15">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-blue-400">🦅 Flight — $19.99/mo</span>
-                <button onClick={() => navigate('/settings')} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-lg font-medium transition-colors">Upgrade</button>
-              </div>
-              <ul className="text-xs text-slate-300 space-y-1.5">
-                <li className="flex items-start gap-2"><span className="text-blue-400">•</span>Keyword tracking — get alerted when someone posts about your services</li>
-                <li className="flex items-start gap-2"><span className="text-blue-400">•</span>Browser extension — detects leads while you scroll social media</li>
-                <li className="flex items-start gap-2"><span className="text-blue-400">•</span>Appreciations — track mentions and shoutouts from your network</li>
-                <li className="flex items-start gap-2"><span className="text-blue-400">•</span>Lead detection — automatically find potential customers</li>
-              </ul>
-            </div>
-
             {/* Soar Tier Features */}
             <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-amber-400">🚀 Soar — $29.99/mo</span>
+                <span className="text-sm font-bold text-amber-400">🚀 Soar — $24.99/mo</span>
                 <button onClick={() => navigate('/settings')} className="text-xs bg-amber-500 hover:bg-amber-400 text-black px-3 py-1 rounded-lg font-bold transition-colors">Upgrade</button>
               </div>
               <ul className="text-xs text-slate-300 space-y-1.5">
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Keyword tracking — get alerted when someone posts about your services</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Browser extension — detects leads while you scroll social media</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Lead detection & Appreciations — find customers automatically</li>
                 <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Sales Tracker — full pipeline from prospect to closed deal</li>
-                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Wingman relationships — track referral partners and commissions</li>
-                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Hawk Insights — see where your leads come from, peak times, top platforms</li>
-                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Folio recaps — monthly reports emailed to you</li>
-                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Linked accounts — share deals with partners automatically</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Hawk Insights — see where leads come from, peak times, top platforms</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Copy & Open workflow — one-tap posting to all your groups</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Wingman, linked accounts, folio recaps & more</li>
               </ul>
             </div>
 
             {/* Summit Tier Features */}
             <div className="p-3 rounded-xl bg-purple-500/5 border border-purple-500/15">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-purple-400">🏔️ Summit — $119.99/mo</span>
+                <span className="text-sm font-bold text-purple-400">🏔️ Summit — $99.99/mo</span>
                 <button onClick={() => navigate('/settings')} className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded-lg font-medium transition-colors">Upgrade</button>
               </div>
               <ul className="text-xs text-slate-300 space-y-1.5">

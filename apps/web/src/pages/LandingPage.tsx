@@ -133,9 +133,18 @@ export default function LandingPage() {
       {/* Pricing */}
       <section id="pricing" className="px-6 py-20 max-w-5xl mx-auto">
         <h3 className="text-2xl font-bold text-center mb-4 reveal">Pricing</h3>
-        <p className="text-center text-slate-400 mb-12 reveal">Simple plans that grow with your business</p>
+        <p className="text-center text-slate-400 mb-6 reveal">Simple plans that grow with your business</p>
 
-        <div className="grid md:grid-cols-4 gap-4 stagger-children items-start">
+        {/* 7-Day Trial Banner */}
+        <div className="text-center mb-10 reveal">
+          <div className="inline-block bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-2 border-amber-500/40 rounded-2xl px-8 py-5">
+            <p className="text-xl font-bold text-amber-300 mb-1">🎁 7-Day Free Soar Trial</p>
+            <p className="text-sm text-white mb-2">Every new user gets full Soar access free for 7 days</p>
+            <p className="text-xs text-slate-400">After your trial, you return to Nest (free) automatically. No charge unless you choose to upgrade.</p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 stagger-children items-start max-w-4xl mx-auto">
           {/* Nest (Free) */}
           <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
             <h4 className="text-xl font-bold text-white">🪺 Nest</h4>

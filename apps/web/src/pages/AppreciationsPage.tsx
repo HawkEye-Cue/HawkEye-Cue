@@ -292,14 +292,14 @@ export default function AppreciationsPage() {
       <div className="space-y-6 text-center py-12">
         <div className="text-5xl">🙏</div>
         <h2 className="text-2xl font-bold text-white">Appreciations</h2>
-        <p className="text-slate-400 max-w-sm mx-auto">Track mentions, shoutouts, and recommendations from your network. Available on the Soar plan.</p>
+        <p className="text-slate-400 max-w-sm mx-auto">Keep a record of every recommendation, shoutout, and referral from your network. Available on the Soar plan.</p>
         <div className="max-w-sm mx-auto text-left mt-4 space-y-2">
           <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">What you'll get:</p>
           <ul className="text-sm text-slate-300 space-y-1.5">
-            <li>🙏 See every time someone recommends or shouts you out</li>
-            <li>💬 Track mentions across Facebook, Instagram, and LinkedIn</li>
+            <li>🙏 Log every time someone recommends or shouts you out</li>
             <li>📈 Build a record of your social proof over time</li>
-            <li>🙌 Send quick thank-you replies to keep relationships strong</li>
+            <li>⭐ Track your top advocates and how often they mention you</li>
+            <li>🙌 Generate AI thank-you replies to keep relationships strong</li>
           </ul>
         </div>
         <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Soar — $24.99/mo</a>
@@ -310,7 +310,7 @@ export default function AppreciationsPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-white">Appreciations</h2>
-      <p className="text-sm text-slate-400">Track every time someone recommends you on social media</p>
+      <p className="text-sm text-slate-400">Your social proof journal — track every recommendation and shoutout</p>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2">
@@ -434,8 +434,7 @@ export default function AppreciationsPage() {
               <p className="text-2xl mb-2">🦅</p>
               <p className="text-slate-300 font-medium">No appreciations yet</p>
               <p className="text-sm text-slate-500 mt-1">
-                When people tag or recommend you on social media, they'll appear here.
-                You can also add them manually above.
+                When someone recommends or shouts you out on social media, log it here to keep a record of your social proof. Tap "+ Cue a Mention Manually" above to add your first one.
               </p>
             </div>
           )}

@@ -36,6 +36,12 @@ export default function OpportunitiesPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [tier, setTier] = useState('free');
+  const [showAddLead, setShowAddLead] = useState(false);
+  const [newLeadName, setNewLeadName] = useState('');
+  const [newLeadSource, setNewLeadSource] = useState('facebook-group');
+  const [newLeadGroup, setNewLeadGroup] = useState('');
+  const [newLeadNote, setNewLeadNote] = useState('');
+  const [userGroups, setUserGroups] = useState<string[]>([]);
 
   async function buildClient() {
     const token = await getToken();
@@ -48,6 +54,15 @@ export default function OpportunitiesPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasAccess = ['soar', 'team', 'summit'].includes(tier);
+
+  // Load user's groups from calendar events (post type cues = groups)
+  useEffect(() => {
+    buildClient().then((client) => client.request<{ events: any[] }>('GET', '/calendar/events')).then((res) => {
+      const posts = (res.events || []).filter((e: any) => e.type === 'post');
+      const groupNames = [...new Set(posts.map((e: any) => e.title).filter(Boolean))].sort();
+      setUserGroups(groupNames);
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchData() {
     try {
@@ -179,7 +194,119 @@ export default function OpportunitiesPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-white">Lead Cues</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-white">Lead Cues</h2>
+        <button onClick={() => setShowAddLead(true)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors">
+          + Add Lead
+        </button>
+      </div>
+
+      {/* Add Lead Modal */}
+      {showAddLead && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-white">+ Add Lead</h3>
+              <button onClick={() => setShowAddLead(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Lead Name / Contact</label>
+                <input type="text" value={newLeadName} onChange={(e) => setNewLeadName(e.target.value)} placeholder="e.g. John Smith" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Source / Pipeline</label>
+                <select value={newLeadSource} onChange={(e) => setNewLeadSource(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <option value="facebook-group">Facebook Group</option>
+                  <option value="facebook-post">Facebook Post</option>
+                  <option value="instagram-post">Instagram</option>
+                  <option value="linkedin">LinkedIn</option>
+                  <option value="referral">Referral</option>
+                  <option value="cold-call">Cold Call</option>
+                  <option value="warm-call">Warm Call</option>
+                  <option value="walk-in">Walk-In</option>
+                  <option value="website">Website</option>
+                  <option value="google-ad">Google Ad</option>
+                  <option value="facebook-ad">Facebook Ad</option>
+                  <option value="door-knock">Door Knock</option>
+                  <option value="internet-lead">Internet Lead</option>
+                  <option value="repeat-client">Repeat Client</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              {newLeadSource === 'facebook-group' && (
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Which Group?</label>
+                  <select value={newLeadGroup} onChange={(e) => setNewLeadGroup(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                    <option value="">Select a group...</option>
+                    {userGroups.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {newLeadSource === 'internet-lead' && (
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Lead Vendor</label>
+                  <select value={newLeadGroup} onChange={(e) => setNewLeadGroup(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                    <option value="">Select vendor...</option>
+                    <option value="QuoteWizard">QuoteWizard</option>
+                    <option value="EverQuote">EverQuote</option>
+                    <option value="Datalot">Datalot</option>
+                    <option value="Hometown Quotes">Hometown Quotes</option>
+                    <option value="SmartFinancial">SmartFinancial</option>
+                    <option value="InsuranceLeads.com">InsuranceLeads.com</option>
+                    <option value="NextGen Leads">NextGen Leads</option>
+                    <option value="MediaAlpha">MediaAlpha</option>
+                    <option value="Precise Leads">Precise Leads</option>
+                    <option value="QuoteStorm">QuoteStorm</option>
+                    <option value="Zillow">Zillow</option>
+                    <option value="Realtor.com">Realtor.com</option>
+                    <option value="Angi">Angi</option>
+                    <option value="HomeAdvisor">HomeAdvisor</option>
+                    <option value="Thumbtack">Thumbtack</option>
+                    <option value="Yelp">Yelp</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Note (optional)</label>
+                <input type="text" value={newLeadNote} onChange={(e) => setNewLeadNote(e.target.value)} placeholder="e.g. Asked about pricing" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+              </div>
+              <button
+                onClick={async () => {
+                  if (!newLeadName.trim()) return;
+                  try {
+                    const client = await buildClient();
+                    await client.request('POST', '/opportunities', {
+                      keywordId: 'manual-entry',
+                      sourceContent: newLeadNote || `Lead from ${newLeadSource}${newLeadGroup ? ': ' + newLeadGroup : ''}`,
+                      sourcePlatform: newLeadSource.includes('facebook') ? 'facebook' : newLeadSource.includes('instagram') ? 'instagram' : newLeadSource.includes('linkedin') ? 'linkedin' : 'other',
+                      sourceUrl: '',
+                      sourceAuthor: newLeadName.trim(),
+                      leadSource: newLeadSource,
+                      leadSourceGroup: newLeadGroup || undefined,
+                    });
+                    showToast('🎯 Lead added!');
+                    setShowAddLead(false);
+                    setNewLeadName('');
+                    setNewLeadNote('');
+                    setNewLeadGroup('');
+                    fetchData();
+                  } catch {
+                    showToast('❌ Failed to add lead');
+                  }
+                }}
+                disabled={!newLeadName.trim()}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+              >
+                Add Lead
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

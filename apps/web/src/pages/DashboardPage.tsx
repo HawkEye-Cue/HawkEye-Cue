@@ -11,7 +11,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
   const { getToken, user } = useAuth();
-  const { events, toggleComplete } = useCalendar();
+  const { events, toggleComplete, removeEvent } = useCalendar();
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
@@ -298,9 +298,9 @@ export default function DashboardPage() {
                     {/* Posts Tile */}
                     <details className="rounded-xl border border-blue-500/30 bg-blue-500/10 overflow-hidden">
                       <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
-                        <span className="text-2xl">📤</span>
+                        <span className="text-xl">📤</span>
+                        <span className="text-xs font-bold text-blue-400 mt-0.5">Posts</span>
                         <span className="text-lg font-bold text-blue-400">{posts.length}</span>
-                        <span className="text-[10px] text-slate-400">{posts.filter((e) => e.completed).length}/{posts.length} done</span>
                       </summary>
                       {posts.length > 0 && (
                         <div className="px-2 pb-2 space-y-1 border-t border-blue-500/20 pt-2">
@@ -318,20 +318,26 @@ export default function DashboardPage() {
                     {/* Meetings Tile */}
                     <details className="rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
                       <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
-                        <span className="text-2xl">🤝</span>
+                        <span className="text-xl">🤝</span>
+                        <span className="text-xs font-bold text-amber-400 mt-0.5">Meetings</span>
                         <span className="text-lg font-bold text-amber-400">{meetings.length}</span>
-                        <span className="text-[10px] text-slate-400">{meetings.filter((e) => e.completed).length}/{meetings.length} done</span>
                       </summary>
                       {meetings.length > 0 && (
-                        <div className="px-2 pb-2 space-y-1 border-t border-amber-500/20 pt-2">
+                        <div className="px-2 pb-2 space-y-1.5 border-t border-amber-500/20 pt-2">
                           {meetings.map((event) => (
-                            <label key={event.id} className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-amber-500/10">
-                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-amber-500" />
-                              <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
-                              {event.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full shrink-0">✓</span>}
-                              {event.inviteStatus === 'pending' && <span className="text-[8px] bg-amber-600/30 text-amber-300 px-1 py-0.5 rounded-full shrink-0">⏳</span>}
-                              {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 shrink-0 text-xs">🔗</a>}
-                            </label>
+                            <div key={event.id} className="p-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                              <div className="flex items-center gap-2">
+                                <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-amber-500" />
+                                <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
+                                {event.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full shrink-0">✓</span>}
+                                {event.inviteStatus === 'pending' && <span className="text-[8px] bg-amber-600/30 text-amber-300 px-1 py-0.5 rounded-full shrink-0">⏳</span>}
+                              </div>
+                              <div className="flex items-center gap-1 mt-1 ml-5">
+                                {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-[10px] text-blue-400 hover:text-blue-300">🔗 Link</a>}
+                                <button onClick={() => navigate('/create')} className="text-[10px] text-slate-400 hover:text-white">✏️ Edit</button>
+                                <button onClick={() => removeEvent(event.id)} className="text-[10px] text-red-400 hover:text-red-300">🗑️ Delete</button>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}
@@ -340,9 +346,9 @@ export default function DashboardPage() {
                     {/* Reminders Tile */}
                     <details className="rounded-xl border border-green-500/30 bg-green-500/10 overflow-hidden">
                       <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
-                        <span className="text-2xl">🔔</span>
+                        <span className="text-xl">🔔</span>
+                        <span className="text-xs font-bold text-green-400 mt-0.5">Reminders</span>
                         <span className="text-lg font-bold text-green-400">{reminders.length}</span>
-                        <span className="text-[10px] text-slate-400">{reminders.filter((e) => e.completed).length}/{reminders.length} done</span>
                       </summary>
                       {reminders.length > 0 && (
                         <div className="px-2 pb-2 space-y-1 border-t border-green-500/20 pt-2">

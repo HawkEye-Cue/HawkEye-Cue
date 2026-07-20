@@ -410,6 +410,52 @@ exports.handler = async (event) => {
       return handleDeleteEvent(userId, eventId);
     }
 
+    // POST /calendar/engagement — log engagement from a group
+    if (method === 'POST' && path === '/calendar/engagement') {
+      let body = {};
+      try {
+        const rawBody = event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString() : event.body;
+        body = rawBody ? JSON.parse(rawBody) : {};
+      } catch { body = {}; }
+      const { groupName, engagementType, note, date } = body;
+      if (!groupName || !engagementType) return err(400, 'INVALID_INPUT', 'groupName and engagementType are required');
+
+      const id = randomUUID();
+      const now = new Date().toISOString();
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${userId}`,
+          SK: `ENGAGEMENT#${now}#${id}`,
+          engagementId: id,
+          groupName,
+          engagementType,
+          note: note || '',
+          engagementDate: date || now.split('T')[0],
+          createdAt: now,
+        },
+      }));
+      return ok({ id, groupName, engagementType, date: date || now.split('T')[0] });
+    }
+
+    // GET /calendar/engagement — get all engagement logs
+    if (method === 'GET' && path === '/calendar/engagement') {
+      const result = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'ENGAGEMENT#' },
+      }));
+      const items = (result.Items || []).map((item) => ({
+        id: item.engagementId,
+        groupName: item.groupName,
+        engagementType: item.engagementType,
+        note: item.note || '',
+        date: item.engagementDate,
+        createdAt: item.createdAt,
+      }));
+      return ok({ engagements: items });
+    }
+
     console.log(`[CalendarHandler] No route: ${method} ${path}`);
     return err(404, 'NOT_FOUND', `No route for ${method} ${path}`);
   } catch (e) {

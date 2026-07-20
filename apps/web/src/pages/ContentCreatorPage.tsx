@@ -47,6 +47,9 @@ export default function ContentCreatorPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoName, setVideoName] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean | string>(false);
+  const [engagementCue, setEngagementCue] = useState<string | null>(null);
+  const [engagementType, setEngagementType] = useState<'comment' | 'dm' | 'call' | 'lead'>('comment');
+  const [engagementNote, setEngagementNote] = useState('');
 
   const EMOJI_LIST = [
     '🔥', '💯', '🙌', '👏', '💪', '🎉', '🚀', '⭐', '✨', '💡',
@@ -632,22 +635,30 @@ export default function ContentCreatorPage() {
                 )}
               </summary>
               <div className="px-3 pb-3 pt-1 border-t border-white/5">
-                <button
-                  onClick={() => {
-                    const updated = new Set(personalOnlyCues);
-                    if (updated.has(e.id)) { updated.delete(e.id); } else { updated.add(e.id); }
-                    setPersonalOnlyCues(updated);
-                    localStorage.setItem('hawkeye_personal_cues', JSON.stringify([...updated]));
-                    showToast(updated.has(e.id) ? '👤 Marked as personal-only group' : '🏢 Marked as business page OK');
-                  }}
-                  className={`mb-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    isPersonalOnly
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
-                  }`}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button
+                    onClick={() => { setEngagementCue(e.title); setEngagementNote(''); }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-600/20 border border-purple-500/30 text-purple-300 hover:bg-purple-600/30"
+                  >
+                    📊 Log Engagement
+                  </button>
+                  <button
+                    onClick={() => {
+                      const updated = new Set(personalOnlyCues);
+                      if (updated.has(e.id)) { updated.delete(e.id); } else { updated.add(e.id); }
+                      setPersonalOnlyCues(updated);
+                      localStorage.setItem('hawkeye_personal_cues', JSON.stringify([...updated]));
+                      showToast(updated.has(e.id) ? '👤 Marked as personal-only group' : '🏢 Marked as business page OK');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      isPersonalOnly
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
                 >
                   {isPersonalOnly ? '👤 Personal Only' : '👤 Mark as Personal Only'}
-                </button>
+                  </button>
+                </div>
                 <label className="text-xs text-slate-500 block mb-1">Notes</label>
                 <textarea
                   defaultValue={e.notes || ''}
@@ -947,6 +958,67 @@ export default function ContentCreatorPage() {
                 {success}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Engagement Log Modal */}
+      {engagementCue && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-white text-sm">📊 Log Engagement</h3>
+              <button onClick={() => setEngagementCue(null)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <p className="text-xs text-slate-400 mb-3">From: <span className="text-white">{engagementCue}</span></p>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Type</label>
+                <div className="grid grid-cols-4 gap-1">
+                  {([['comment', '💬'], ['dm', '📩'], ['call', '📞'], ['lead', '🎯']] as const).map(([type, icon]) => (
+                    <button
+                      key={type}
+                      onClick={() => setEngagementType(type as any)}
+                      className={`py-2 rounded-lg text-xs font-medium capitalize ${engagementType === type ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-300 border border-white/10'}`}
+                    >
+                      {icon} {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Note (optional)</label>
+                <input
+                  type="text"
+                  value={engagementNote}
+                  onChange={(e) => setEngagementNote(e.target.value)}
+                  placeholder="e.g. Asked about coverage options"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                />
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const token = await getToken();
+                    const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                    await client.request('POST', '/calendar/engagement', {
+                      groupName: engagementCue,
+                      engagementType,
+                      note: engagementNote,
+                      date: new Date().toISOString().split('T')[0],
+                    });
+                    showToast('📊 Engagement logged!');
+                    setEngagementCue(null);
+                  } catch {
+                    showToast('❌ Failed to log');
+                  }
+                }}
+                className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Save Engagement
+              </button>
+            </div>
           </div>
         </div>
       )}

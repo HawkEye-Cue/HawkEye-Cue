@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { ScheduledPost } from '@social-lead-gen/shared';
 import type { CalendarEvent } from '../contexts/CalendarContext';
@@ -14,12 +15,16 @@ export default function CalendarPage() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const { events, addEvent, removeEvent, removeAllByTitle } = useCalendar();
   const { getToken, user } = useAuth();
+  const { showToast } = useToast();
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState('');
-  const [newEventType, setNewEventType] = useState<'post' | 'task' | 'reminder'>('task');
+  const [newEventType, setNewEventType] = useState<'post' | 'meeting' | 'reminder'>('meeting');
   const [newEventLink, setNewEventLink] = useState('');
+  const [newEventLocation, setNewEventLocation] = useState('');
+  const [newEventNotes, setNewEventNotes] = useState('');
+  const [newEventInviteEmail, setNewEventInviteEmail] = useState('');
   const [repeatOption, setRepeatOption] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly'>('none');
 
   // Folio dates for calendar highlighting
@@ -99,7 +104,7 @@ export default function CalendarPage() {
     setShowModal(true);
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     if (!newEventTitle.trim() || selectedDay === null) return;
 
     const baseDate = new Date(currentYear, currentMonth, selectedDay);
@@ -128,12 +133,45 @@ export default function CalendarPage() {
     }
 
     for (const date of dates) {
-      addEvent({ date, title: newEventTitle.trim(), type: newEventType, link: newEventLink.trim() || undefined });
+      let title = newEventTitle.trim();
+      if (newEventType === 'meeting' && newEventLocation.trim()) {
+        title += ` — 📍 ${newEventLocation.trim()}`;
+      }
+      if (newEventType === 'meeting' && newEventNotes.trim()) {
+        title += ` | ${newEventNotes.trim()}`;
+      }
+      const link = newEventLink.trim() || (newEventType === 'meeting' && newEventLocation.trim() ? `https://maps.google.com/maps?q=${encodeURIComponent(newEventLocation.trim())}` : undefined);
+      const eventId = await addEvent({ date, title, type: newEventType, link });
+
+      // Send meeting invite if email provided
+      if (newEventType === 'meeting' && newEventInviteEmail.trim()) {
+        try {
+          const token = await getToken();
+          const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+          await client.request('POST', '/calendar/invite', {
+            eventId: eventId || undefined,
+            email: newEventInviteEmail.trim(),
+            meetingTitle: newEventTitle.trim(),
+            meetingDate: date,
+            location: newEventLocation.trim() || undefined,
+            zoomLink: newEventLink.trim() || undefined,
+            notes: newEventNotes.trim() || undefined,
+          });
+          showToast('✉️ Meeting invite sent!');
+        } catch (e) {
+          console.error('Failed to send invite:', e);
+          const msg = e instanceof Error ? e.message : String(e);
+          showToast(`❌ Invite failed: ${msg}`);
+        }
+      }
     }
 
     localStorage.setItem(`hawkeye_first_event_${user?.sub}`, 'true');
     setNewEventTitle('');
     setNewEventLink('');
+    setNewEventLocation('');
+    setNewEventNotes('');
+    setNewEventInviteEmail('');
     setRepeatOption('none');
   };
 
@@ -158,6 +196,7 @@ export default function CalendarPage() {
 
   const typeColors: Record<string, string> = {
     post: 'bg-blue-500',
+    meeting: 'bg-amber-500',
     task: 'bg-amber-500',
     reminder: 'bg-green-500',
   };
@@ -236,10 +275,19 @@ export default function CalendarPage() {
                 {isFolioStart && <span className="text-[8px] text-green-400 leading-tight">START</span>}
                 {isFolioEnd && <span className="text-[8px] text-red-400 leading-tight">END</span>}
                 {dayEvents.length > 0 && (
-                  <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
-                    {dayEvents.slice(0, 3).map((e) => (
-                      <span key={e.id} className={`w-1.5 h-1.5 rounded-full ${typeColors[e.type]}`} />
-                    ))}
+                  <div className="flex flex-col items-center gap-0 mt-0.5">
+                    {(() => {
+                      const posts = dayEvents.filter((e) => e.type === 'post');
+                      const meetings = dayEvents.filter((e) => e.type === 'meeting' || e.type === 'task');
+                      const reminders = dayEvents.filter((e) => e.type === 'reminder');
+                      return (
+                        <>
+                          {posts.length > 0 && <span className="text-[10px] leading-tight">📤{posts.length > 1 ? posts.length : ''}</span>}
+                          {meetings.length > 0 && <span className="text-[10px] leading-tight">🤝{meetings.length > 1 ? meetings.length : ''}</span>}
+                          {reminders.length > 0 && <span className="text-[10px] leading-tight">🔔{reminders.length > 1 ? reminders.length : ''}</span>}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
                 {/* + button on hover for future days */}
@@ -253,9 +301,9 @@ export default function CalendarPage() {
 
         {/* Legend */}
         <div className="flex gap-3 mt-3 text-xs text-slate-400">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span> Post</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span> Task</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Reminder</span>
+          <span className="flex items-center gap-1">📤 Post</span>
+          <span className="flex items-center gap-1">🤝 Meeting</span>
+          <span className="flex items-center gap-1">🔔 Reminder</span>
         </div>
       </div>
 
@@ -277,7 +325,7 @@ export default function CalendarPage() {
               {thisWeekEvents.map((e) => (
                 <div key={e.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${typeColors[e.type]}`}></span>
+                    <span>{e.type === 'post' ? '📤' : e.type === 'meeting' || e.type === 'task' ? '🤝' : '🔔'}</span>
                     <span className="text-white">{e.title}</span>
                   </div>
                   <span className="text-slate-400 text-xs">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
@@ -305,7 +353,7 @@ export default function CalendarPage() {
                     {dayEvents.map((evt) => (
                       <div key={evt.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white/5">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-2 h-2 shrink-0 rounded-full ${typeColors[evt.type] || 'bg-blue-500'}`} />
+                          <span className="shrink-0 text-sm">{evt.type === 'post' ? '📤' : evt.type === 'meeting' || evt.type === 'task' ? '🤝' : '🔔'}</span>
                           <span className={`text-sm truncate ${evt.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
                             {evt.title}
                           </span>
@@ -360,17 +408,21 @@ export default function CalendarPage() {
                     autoFocus
                   />
                   <div className="flex gap-2">
-                    {(['post', 'task', 'reminder'] as const).map((t) => (
+                    {(['post', 'meeting', 'reminder'] as const).map((t) => {
+                      const colors = { post: 'bg-blue-600 text-white', meeting: 'bg-amber-500 text-black', reminder: 'bg-green-600 text-white' };
+                      const dimColors = { post: 'bg-blue-600/30 text-blue-300 border border-blue-500/40', meeting: 'bg-amber-500/30 text-amber-300 border border-amber-500/40', reminder: 'bg-green-600/30 text-green-300 border border-green-500/40' };
+                      return (
                       <button
                         key={t}
                         onClick={() => setNewEventType(t)}
-                        className={`flex-1 py-1.5 rounded-lg text-sm capitalize ${
-                          newEventType === t ? `${typeColors[t]} text-white font-medium` : 'bg-slate-700 text-slate-300'
+                        className={`flex-1 py-1.5 rounded-lg text-sm font-medium ${
+                          newEventType === t ? colors[t] : dimColors[t]
                         }`}
                       >
-                        {t}
+                        {t === 'post' ? '📤 Post' : t === 'meeting' ? '🤝 Meeting' : '🔔 Reminder'}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div>
                     <label className="block text-xs text-slate-400 mb-1">Repeat</label>
@@ -387,6 +439,7 @@ export default function CalendarPage() {
                       <option value="yearly">Yearly</option>
                     </select>
                   </div>
+                  {newEventType !== 'meeting' && (
                   <div>
                     <label className="block text-xs text-slate-400 mb-1">Link (optional)</label>
                     <input
@@ -397,6 +450,62 @@ export default function CalendarPage() {
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
                     />
                   </div>
+                  )}
+                  {/* Meeting-specific fields */}
+                  {newEventType === 'meeting' && (
+                    <>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">📍 Location (optional)</label>
+                        <input
+                          type="text"
+                          value={newEventLocation}
+                          onChange={(e) => setNewEventLocation(e.target.value)}
+                          placeholder="e.g. 123 Main St, Denver CO"
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                        />
+                        {newEventLocation.trim() && (
+                          <a
+                            href={`https://maps.google.com/maps?q=${encodeURIComponent(newEventLocation.trim())}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block"
+                          >
+                            🗺️ Open in Maps →
+                          </a>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">🔗 Zoom / Video Link (optional)</label>
+                        <input
+                          type="url"
+                          value={newEventLink}
+                          onChange={(e) => setNewEventLink(e.target.value)}
+                          placeholder="https://zoom.us/j/..."
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">📝 Notes (optional)</label>
+                        <textarea
+                          value={newEventNotes}
+                          onChange={(e) => setNewEventNotes(e.target.value)}
+                          placeholder="Meeting notes, agenda, who to meet..."
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm resize-none h-16"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">✉️ Send Invite To (optional)</label>
+                        <input
+                          type="email"
+                          value={newEventInviteEmail}
+                          onChange={(e) => setNewEventInviteEmail(e.target.value)}
+                          placeholder="client@email.com"
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1">They'll receive an email to confirm the meeting</p>
+                      </div>
+                    </>
+                  )}
                   <div className="flex gap-2">
                     <button
                       onClick={() => { handleAddEvent(); }}

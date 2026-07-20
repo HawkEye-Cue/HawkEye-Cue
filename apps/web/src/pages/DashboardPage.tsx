@@ -145,12 +145,14 @@ export default function DashboardPage() {
 
   const typeColors: Record<string, string> = {
     post: 'text-blue-400',
+    meeting: 'text-amber-400',
     task: 'text-amber-400',
     reminder: 'text-green-400',
   };
   const typeIcons: Record<string, string> = {
     post: '📤',
-    task: '✅',
+    meeting: '🤝',
+    task: '🤝',
     reminder: '🔔',
   };
 
@@ -274,57 +276,71 @@ export default function DashboardPage() {
       {/* Daily Cues */}
       <details className="glass-card" open>
         <summary className="font-semibold text-white cursor-pointer">Today's Cues</summary>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-3">
         {(todayEvents.length > 0 || todayPosts.length > 0 || followUpDeals.length > 0) ? (
           <>
             {(() => {
-              const clientEvents: Record<string, typeof todayEvents> = {};
-              const generalEvents: typeof todayEvents = [];
-              for (const event of todayEvents) {
-                const match = event.title.match(/^.{1,4}\s+(.+?)\s+—\s+/);
-                if (match) {
-                  const name = match[1];
-                  if (!clientEvents[name]) clientEvents[name] = [];
-                  clientEvents[name].push(event);
-                } else {
-                  generalEvents.push(event);
-                }
-              }
+              const posts = todayEvents.filter((e) => e.type === 'post');
+              const meetings = todayEvents.filter((e) => e.type === 'meeting' || e.type === 'task');
+              const reminders = todayEvents.filter((e) => e.type === 'reminder');
+
               return (
                 <>
-                  {/* Per-client dropdowns */}
-                  {Object.entries(clientEvents).map(([name, evts]) => {
-                    const done = evts.filter((e) => e.completed).length;
-                    return (
-                      <details key={name} className={`rounded-lg border ${done === evts.length ? 'border-green-500/20 bg-green-500/5' : 'border-orange-500/15 bg-orange-500/5'}`}>
-                        <summary className="flex items-center justify-between px-3 py-2 cursor-pointer">
-                          <span className={`text-sm font-medium ${done === evts.length ? 'text-green-400' : 'text-white'}`}>{done === evts.length ? '✅' : '⚡'} {name}</span>
-                          <span className="text-xs text-slate-500">{done}/{evts.length}</span>
-                        </summary>
-                        <div className="px-3 pb-2 space-y-1">
-                          {evts.map((ev) => (
-                            <label key={ev.id} className="flex items-start gap-2 py-1 cursor-pointer">
-                              <input type="checkbox" checked={ev.completed} onChange={() => toggleComplete(ev.id)} className="w-3.5 h-3.5 rounded mt-0.5 shrink-0" />
-                              <span className={`text-xs ${ev.completed ? 'line-through text-slate-600' : 'text-slate-300'}`}>{ev.title.replace(/^.{1,4}\s+.+?\s+—\s+/, '')}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </details>
-                    );
-                  })}
-                  {/* General tasks */}
-                  {generalEvents.map((event) => (
-                    <label key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
-                      <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded" />
-                      <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-300'}`}>{event.title}</span>
-                    </label>
-                  ))}
+                  {/* Posts - Blue */}
+                  {posts.length > 0 && (
+                    <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 p-3">
+                      <p className="text-xs font-bold text-blue-400 mb-2 uppercase tracking-wide">📤 Posts ({posts.filter((e) => e.completed).length}/{posts.length})</p>
+                      <div className="space-y-1.5">
+                        {posts.map((event) => (
+                          <label key={event.id} className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-blue-500/10 cursor-pointer">
+                            <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded shrink-0 accent-blue-500" />
+                            <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
+                            {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:text-blue-300 shrink-0">🔗</a>}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Meetings - Amber */}
+                  {meetings.length > 0 && (
+                    <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
+                      <p className="text-xs font-bold text-amber-400 mb-2 uppercase tracking-wide">🤝 Meetings ({meetings.filter((e) => e.completed).length}/{meetings.length})</p>
+                      <div className="space-y-1.5">
+                        {meetings.map((event) => (
+                          <label key={event.id} className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-amber-500/10 cursor-pointer">
+                            <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded shrink-0 accent-amber-500" />
+                            <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
+                            {event.inviteStatus === 'confirmed' && <span className="text-[10px] bg-green-600/30 text-green-300 px-1.5 py-0.5 rounded-full shrink-0">✓ Confirmed</span>}
+                            {event.inviteStatus === 'pending' && <span className="text-[10px] bg-amber-600/30 text-amber-300 px-1.5 py-0.5 rounded-full shrink-0">⏳ Pending</span>}
+                            {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:text-blue-300 shrink-0">🔗</a>}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reminders - Green */}
+                  {reminders.length > 0 && (
+                    <div className="rounded-xl border border-green-500/25 bg-green-500/5 p-3">
+                      <p className="text-xs font-bold text-green-400 mb-2 uppercase tracking-wide">🔔 Reminders ({reminders.filter((e) => e.completed).length}/{reminders.length})</p>
+                      <div className="space-y-1.5">
+                        {reminders.map((event) => (
+                          <label key={event.id} className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-green-500/10 cursor-pointer">
+                            <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded shrink-0 accent-green-500" />
+                            <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
+                            {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:text-blue-300 shrink-0">🔗</a>}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               );
             })()}
             {/* Scheduled posts */}
             {todayPosts.map((post) => (
-              <div key={post.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+              <div key={post.id} className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
                 <span className="text-sm">📤</span>
                 <span className="text-sm text-slate-300 truncate flex-1">{(post.content || 'Scheduled post').slice(0, 50)}</span>
                 <span className={`text-xs px-1.5 py-0.5 rounded ${post.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{post.status}</span>

@@ -8,16 +8,18 @@ export interface CalendarEvent {
   id: string;
   date: string; // YYYY-MM-DD
   title: string;
-  type: 'post' | 'task' | 'reminder';
+  type: 'post' | 'task' | 'meeting' | 'reminder';
   completed: boolean;
   link?: string;
   notes?: string;
   notesSavedAt?: string | null;
+  inviteStatus?: 'pending' | 'confirmed' | null;
+  inviteEmail?: string;
 }
 
 interface CalendarState {
   events: CalendarEvent[];
-  addEvent: (event: Omit<CalendarEvent, 'id' | 'completed'>) => void;
+  addEvent: (event: Omit<CalendarEvent, 'id' | 'completed'>) => Promise<string>;
   toggleComplete: (id: string) => void;
   removeEvent: (id: string) => void;
   removeAllByTitle: (title: string) => void;
@@ -65,7 +67,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     fetchEvents();
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id' | 'completed'>) => {
+  const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id' | 'completed'>): Promise<string> => {
     // Optimistic: add locally first
     const tempId = (Date.now() + Math.random()).toString();
     const newEvent: CalendarEvent = { ...event, id: tempId, completed: false };
@@ -83,8 +85,10 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       // Replace temp ID with server ID
       setEvents((prev) => prev.map((e) => e.id === tempId ? { ...result } : e));
       showToast('✓ Saved');
+      return result.id || tempId;
     } catch {
       // Keep the local version — it'll sync next time
+      return tempId;
     }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 

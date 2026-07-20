@@ -10,7 +10,65 @@ const secretsClient = new SecretsManagerClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
 const FROM_EMAIL = 'HawkEye-Cue <notifications@hawkeyecue.com>';
 
-// Resend email helper
+// Generate .ics calendar file content
+function generateICS({ title, date, time, location, zoomLink, notes, organizerEmail, attendeeEmail }) {
+  const uid = randomUUID() + '@hawkeyecue.com';
+  const now = new Date();
+  const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+  // Parse date and time into start/end
+  let dtStart, dtEnd;
+  if (time) {
+    const [h, m] = time.split(':');
+    dtStart = `${date.replace(/-/g, '')}T${h.padStart(2, '0')}${m.padStart(2, '0')}00`;
+    // Default 1 hour meeting
+    const endHour = (parseInt(h) + 1) % 24;
+    dtEnd = `${date.replace(/-/g, '')}T${String(endHour).padStart(2, '0')}${m.padStart(2, '0')}00`;
+  } else {
+    // All-day event
+    dtStart = date.replace(/-/g, '');
+    const nextDay = new Date(date + 'T12:00:00');
+    nextDay.setDate(nextDay.getDate() + 1);
+    dtEnd = `${nextDay.getFullYear()}${String(nextDay.getMonth() + 1).padStart(2, '0')}${String(nextDay.getDate()).padStart(2, '0')}`;
+  }
+
+  let description = '';
+  if (zoomLink) description += `Join: ${zoomLink}\\n`;
+  if (notes) description += `Notes: ${notes}\\n`;
+  description += 'Sent via HawkEye-Cue';
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//HawkEye-Cue//Meeting Invite//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:REQUEST',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${stamp}`,
+    time ? `DTSTART:${dtStart}` : `DTSTART;VALUE=DATE:${dtStart}`,
+    time ? `DTEND:${dtEnd}` : `DTEND;VALUE=DATE:${dtEnd}`,
+    `SUMMARY:${(title || 'Meeting').replace(/,/g, '\\,')}`,
+    location ? `LOCATION:${location.replace(/,/g, '\\,')}` : null,
+    zoomLink ? `URL:${zoomLink}` : null,
+    `DESCRIPTION:${description}`,
+    organizerEmail ? `ORGANIZER;CN=HawkEye-Cue User:mailto:${organizerEmail}` : null,
+    attendeeEmail ? `ATTENDEE;RSVP=TRUE;CN=${attendeeEmail}:mailto:${attendeeEmail}` : null,
+    'STATUS:CONFIRMED',
+    'SEQUENCE:0',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT15M',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Meeting in 15 minutes',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean);
+
+  return lines.join('\r\n');
+}
+
+// Resend email helper (with optional .ics attachment)
 let resendApiKey = null;
 async function getResendKey() {
   if (resendApiKey) return resendApiKey;
@@ -20,12 +78,16 @@ async function getResendKey() {
   return resendApiKey;
 }
 
-async function sendEmail(to, subject, html) {
+async function sendEmail(to, subject, html, attachments) {
   const apiKey = await getResendKey();
+  const payload = { from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject, html };
+  if (attachments && attachments.length > 0) {
+    payload.attachments = attachments;
+  }
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject, html }),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const err = await response.text();
@@ -323,7 +385,11 @@ async function handleSendInvite(userId, eventId, body) {
     </div>
   `;
 
-  await sendEmail(email, `🤝 Meeting Invite: ${meetingTitle || 'Meeting'} — ${dateFormatted}`, html);
+  await sendEmail(email, `🤝 Meeting Invite: ${meetingTitle || 'Meeting'} — ${dateFormatted}`, html, [{
+    filename: 'meeting-invite.ics',
+    content: Buffer.from(generateICS({ title: meetingTitle || 'Meeting', date: meetingDate, time: null, location: location || null, zoomLink: zoomLink || null, notes: notes || null, organizerEmail: senderEmail, attendeeEmail: email })).toString('base64'),
+    type: 'text/calendar',
+  }]);
 
   return ok({ sent: true, inviteStatus: 'pending' });
 }
@@ -501,9 +567,38 @@ exports.handler = async (event) => {
         timeFormatted = `${hour12}:${m} ${ampm}`;
       }
 
-      const html = `<div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:20px;"><h2 style="color:#1e293b;">🤝 Meeting Invitation</h2><p style="color:#475569;"><strong>${senderEmail}</strong> has invited you to a meeting.</p><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0;"><p style="margin:4px 0;color:#1e293b;"><strong>📋 ${meetingTitle || 'Meeting'}</strong></p><p style="margin:4px 0;color:#475569;">📅 ${dateFormatted}${timeFormatted ? ' at ' + timeFormatted : ''}</p>${location ? `<p style="margin:4px 0;color:#475569;">📍 ${location}</p>` : ''}${zoomLink ? `<p style="margin:4px 0;"><a href="${zoomLink}" style="color:#2563eb;">🔗 Join Video Call</a></p>` : ''}${notes ? `<p style="margin:8px 0;color:#64748b;font-size:14px;">📝 ${notes}</p>` : ''}</div><a href="${confirmUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px;">✓ Confirm Meeting</a><p style="color:#94a3b8;font-size:12px;margin-top:16px;">Powered by HawkEye-Cue</p></div>`;
+      // Build Google Calendar link as fallback
+      let gcalStart = meetingDate ? meetingDate.replace(/-/g, '') : '';
+      let gcalEnd = gcalStart;
+      if (meetingTime && gcalStart) {
+        gcalStart += 'T' + meetingTime.replace(':', '') + '00';
+        const [eh, em] = meetingTime.split(':');
+        const endH = (parseInt(eh) + 1) % 24;
+        gcalEnd += 'T' + String(endH).padStart(2, '0') + em + '00';
+      }
+      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(meetingTitle || 'Meeting')}&dates=${gcalStart}/${gcalEnd}${location ? '&location=' + encodeURIComponent(location) : ''}${notes || zoomLink ? '&details=' + encodeURIComponent((zoomLink ? 'Join: ' + zoomLink + '\n' : '') + (notes || '')) : ''}`;
 
-      await sendEmail(email, `🤝 Meeting Invite: ${meetingTitle || 'Meeting'} — ${dateFormatted}${timeFormatted ? ' at ' + timeFormatted : ''}`, html);
+      const html = `<div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:20px;"><h2 style="color:#1e293b;">🤝 Meeting Invitation</h2><p style="color:#475569;"><strong>${senderEmail}</strong> has invited you to a meeting.</p><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0;"><p style="margin:4px 0;color:#1e293b;"><strong>📋 ${meetingTitle || 'Meeting'}</strong></p><p style="margin:4px 0;color:#475569;">📅 ${dateFormatted}${timeFormatted ? ' at ' + timeFormatted : ''}</p>${location ? `<p style="margin:4px 0;color:#475569;">📍 ${location}</p>` : ''}${zoomLink ? `<p style="margin:4px 0;"><a href="${zoomLink}" style="color:#2563eb;">🔗 Join Video Call</a></p>` : ''}${notes ? `<p style="margin:8px 0;color:#64748b;font-size:14px;">📝 ${notes}</p>` : ''}</div><a href="${confirmUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px;">✓ Confirm Meeting</a><br/><a href="${gcalUrl}" style="display:inline-block;background:#4285f4;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:10px;font-size:14px;">📅 Add to Google Calendar</a><p style="color:#64748b;font-size:11px;margin-top:8px;">Or open the attached .ics file to add to Outlook, Apple Calendar, or any calendar app.</p><p style="color:#94a3b8;font-size:12px;margin-top:16px;">Powered by HawkEye-Cue</p></div>`;
+
+      // Generate .ics calendar file for recipient to add to Google/Outlook/Apple Calendar
+      const icsContent = generateICS({
+        title: meetingTitle || 'Meeting',
+        date: meetingDate,
+        time: meetingTime || null,
+        location: location || null,
+        zoomLink: zoomLink || null,
+        notes: notes || null,
+        organizerEmail: senderEmail,
+        attendeeEmail: email,
+      });
+      const icsBase64 = Buffer.from(icsContent).toString('base64');
+      const attachments = [{
+        filename: 'meeting-invite.ics',
+        content: icsBase64,
+        type: 'text/calendar',
+      }];
+
+      await sendEmail(email, `🤝 Meeting Invite: ${meetingTitle || 'Meeting'} — ${dateFormatted}${timeFormatted ? ' at ' + timeFormatted : ''}`, html, attachments);
 
       // Store invite token for confirmation (include eventId and time for status tracking)
       await dynamo.send(new PutCommand({

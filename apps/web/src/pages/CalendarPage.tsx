@@ -384,83 +384,81 @@ export default function CalendarPage() {
 
                   return (
                     <div>
-                      {/* Untimed cues - tile dropdowns */}
-                      {untimedEvents.length > 0 && (
-                        <div className="mb-4">
-                          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Cues</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            {(() => {
-                              const uPosts = untimedEvents.filter((e) => e.type === 'post');
-                              const uMeetings = untimedEvents.filter((e) => e.type === 'meeting' || e.type === 'task');
-                              const uReminders = untimedEvents.filter((e) => e.type === 'reminder');
-                              return (
-                                <>
-                                  <details className="rounded-xl border border-blue-500/30 bg-blue-500/10 overflow-hidden">
-                                    <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
-                                      <span className="text-2xl">📤</span>
-                                      <span className="text-lg font-bold text-blue-400">{uPosts.length}</span>
-                                      <span className="text-[10px] text-slate-400">Posts</span>
-                                    </summary>
-                                    {uPosts.length > 0 && (
-                                      <div className="px-2 pb-2 space-y-1.5 border-t border-blue-500/20 pt-2 max-h-40 overflow-y-auto">
-                                        {uPosts.map((evt) => (
-                                          <div key={evt.id} className="flex items-center gap-1.5">
-                                            {(evt as any).link ? (
-                                              <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className={`text-xs flex-1 hover:text-blue-300 ${evt.completed ? 'line-through text-slate-600' : 'text-blue-400 underline'}`}>{evt.title}</a>
-                                            ) : (
-                                              <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </details>
+                      {/* Cues tiles - show ALL events for the day (timed + untimed) */}
+                      <div className="mb-4">
+                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Cues</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(() => {
+                            const allPosts = dayEvents.filter((e) => e.type === 'post');
+                            const allMeetings = dayEvents.filter((e) => e.type === 'meeting' || e.type === 'task');
+                            const allReminders = dayEvents.filter((e) => e.type === 'reminder');
+                            return (
+                              <>
+                                <details className="rounded-xl border border-blue-500/30 bg-blue-500/10 overflow-hidden">
+                                  <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                                    <span className="text-2xl">📤</span>
+                                    <span className="text-lg font-bold text-blue-400">{allPosts.length}</span>
+                                    <span className="text-[10px] text-slate-400">Posts</span>
+                                  </summary>
+                                  {allPosts.length > 0 && (
+                                    <div className="px-2 pb-2 space-y-1.5 border-t border-blue-500/20 pt-2 max-h-40 overflow-y-auto">
+                                      {allPosts.map((evt) => (
+                                        <div key={evt.id} className="flex items-center gap-1.5">
+                                          {(evt as any).link ? (
+                                            <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className={`text-xs flex-1 hover:text-blue-300 ${evt.completed ? 'line-through text-slate-600' : 'text-blue-400 underline'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</a>
+                                          ) : (
+                                            <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </details>
 
-                                  <details className="rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
-                                    <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
-                                      <span className="text-2xl">🤝</span>
-                                      <span className="text-lg font-bold text-amber-400">{uMeetings.length}</span>
-                                      <span className="text-[10px] text-slate-400">Meetings</span>
-                                    </summary>
-                                    {uMeetings.length > 0 && (
-                                      <div className="px-2 pb-2 space-y-1.5 border-t border-amber-500/20 pt-2 max-h-40 overflow-y-auto">
-                                        {uMeetings.map((evt) => (
-                                          <div key={evt.id} className="p-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                                            <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
-                                            {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs">🔗</a>}
-                                            <div className="flex gap-1 mt-1">
-                                              <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="text-[10px] text-slate-400 hover:text-white">✏️</button>
-                                              <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="text-[10px] text-red-400 hover:text-red-300">🗑️</button>
-                                            </div>
+                                <details className="rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
+                                  <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                                    <span className="text-2xl">🤝</span>
+                                    <span className="text-lg font-bold text-amber-400">{allMeetings.length}</span>
+                                    <span className="text-[10px] text-slate-400">Meetings</span>
+                                  </summary>
+                                  {allMeetings.length > 0 && (
+                                    <div className="px-2 pb-2 space-y-1.5 border-t border-amber-500/20 pt-2 max-h-40 overflow-y-auto">
+                                      {allMeetings.map((evt) => (
+                                        <div key={evt.id} className="p-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                                          <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                                          {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs">🔗</a>}
+                                          <div className="flex gap-1 mt-1">
+                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="text-[10px] text-slate-400 hover:text-white">✏️</button>
+                                            <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="text-[10px] text-red-400 hover:text-red-300">🗑️</button>
                                           </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </details>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </details>
 
-                                  <details className="rounded-xl border border-green-500/30 bg-green-500/10 overflow-hidden">
-                                    <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
-                                      <span className="text-2xl">🔔</span>
-                                      <span className="text-lg font-bold text-green-400">{uReminders.length}</span>
-                                      <span className="text-[10px] text-slate-400">Reminders</span>
-                                    </summary>
-                                    {uReminders.length > 0 && (
-                                      <div className="px-2 pb-2 space-y-1.5 border-t border-green-500/20 pt-2 max-h-40 overflow-y-auto">
-                                        {uReminders.map((evt) => (
-                                          <div key={evt.id} className="flex items-center gap-1.5">
-                                            <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
-                                            {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs shrink-0">🔗</a>}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </details>
-                                </>
-                              );
-                            })()}
-                          </div>
+                                <details className="rounded-xl border border-green-500/30 bg-green-500/10 overflow-hidden">
+                                  <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                                    <span className="text-2xl">🔔</span>
+                                    <span className="text-lg font-bold text-green-400">{allReminders.length}</span>
+                                    <span className="text-[10px] text-slate-400">Reminders</span>
+                                  </summary>
+                                  {allReminders.length > 0 && (
+                                    <div className="px-2 pb-2 space-y-1.5 border-t border-green-500/20 pt-2 max-h-40 overflow-y-auto">
+                                      {allReminders.map((evt) => (
+                                        <div key={evt.id} className="flex items-center gap-1.5">
+                                          <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                                          {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs shrink-0">🔗</a>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </details>
+                              </>
+                            );
+                          })()}
                         </div>
-                      )}
+                      </div>
 
                       {/* Time Schedule - always visible */}
                       <div>
@@ -494,7 +492,7 @@ export default function CalendarPage() {
                         </div>
                       </div>
 
-                      {dayEvents.length === 0 && untimedEvents.length === 0 && <p className="text-xs text-slate-500 text-center pt-2">No cues — click + to add</p>}
+                      {dayEvents.length === 0 && <p className="text-xs text-slate-500 text-center pt-2">No cues — click + to add</p>}
                     </div>
                   );
                 })()}

@@ -25,6 +25,7 @@ interface CalendarState {
   removeEvent: (id: string) => void;
   removeAllByTitle: (title: string) => void;
   updateNotes: (id: string, notes: string) => Promise<void>;
+  refreshEvents: () => Promise<void>;
   loading: boolean;
 }
 
@@ -67,6 +68,14 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
 
     fetchEvents();
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const refreshEvents = useCallback(async () => {
+    try {
+      const client = await buildClient();
+      const result = await client.request<{ events: CalendarEvent[] }>('GET', '/calendar/events');
+      setEvents(result.events || []);
+    } catch { /* ignore */ }
+  }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id' | 'completed'>): Promise<string> => {
     // Optimistic: add locally first
@@ -147,7 +156,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <CalendarContext.Provider value={{ events, addEvent, updateEvent, toggleComplete, removeEvent, removeAllByTitle, updateNotes, loading }}>
+    <CalendarContext.Provider value={{ events, addEvent, updateEvent, toggleComplete, removeEvent, removeAllByTitle, updateNotes, refreshEvents, loading }}>
       {children}
     </CalendarContext.Provider>
   );

@@ -13,7 +13,7 @@ export default function CalendarPage() {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const { events, addEvent, removeEvent, removeAllByTitle, updateEvent } = useCalendar();
+  const { events, addEvent, removeEvent, removeAllByTitle, updateEvent, refreshEvents } = useCalendar();
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
@@ -32,6 +32,8 @@ export default function CalendarPage() {
 
   // Auto-open day from URL query param (e.g. ?day=2026-07-21)
   useEffect(() => {
+    // Refresh events from server when calendar page loads
+    refreshEvents();
     const params = new URLSearchParams(window.location.search);
     const dayParam = params.get('day');
     if (dayParam) {

@@ -11,7 +11,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
   const { getToken, user } = useAuth();
-  const { events, toggleComplete, removeEvent, updateEvent } = useCalendar();
+  const { events, toggleComplete, removeEvent, updateEvent, refreshEvents } = useCalendar();
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
@@ -32,10 +32,10 @@ export default function DashboardPage() {
 
   // Refetch when page becomes visible (user navigates back)
   useEffect(() => {
-    const handleFocus = () => setRefreshKey((k) => k + 1);
+    const handleFocus = () => { setRefreshKey((k) => k + 1); refreshEvents(); };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+  }, [refreshEvents]);
 
   // Redirect new users to onboarding
   useEffect(() => {

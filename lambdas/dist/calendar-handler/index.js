@@ -84,16 +84,20 @@ async function sendEmail(to, subject, html, attachments) {
   if (attachments && attachments.length > 0) {
     payload.attachments = attachments;
   }
+  console.log(`[sendEmail] Sending to: ${JSON.stringify(payload.to)}, subject: ${subject}, hasAttachments: ${!!(attachments && attachments.length)}`);
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Resend error (${response.status}): ${err}`);
+    const errText = await response.text();
+    console.error(`[sendEmail] Resend error (${response.status}): ${errText}`);
+    throw new Error(`Resend error (${response.status}): ${errText}`);
   }
-  return response.json();
+  const result = await response.json();
+  console.log(`[sendEmail] Success: ${JSON.stringify(result)}`);
+  return result;
 }
 
 function ok(body) {
@@ -388,7 +392,6 @@ async function handleSendInvite(userId, eventId, body) {
   await sendEmail(email, `🤝 Meeting Invite: ${meetingTitle || 'Meeting'} — ${dateFormatted}`, html, [{
     filename: 'meeting-invite.ics',
     content: Buffer.from(generateICS({ title: meetingTitle || 'Meeting', date: meetingDate, time: null, location: location || null, zoomLink: zoomLink || null, notes: notes || null, organizerEmail: senderEmail, attendeeEmail: email })).toString('base64'),
-    type: 'text/calendar',
   }]);
 
   return ok({ sent: true, inviteStatus: 'pending' });
@@ -578,7 +581,18 @@ exports.handler = async (event) => {
       }
       const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(meetingTitle || 'Meeting')}&dates=${gcalStart}/${gcalEnd}${location ? '&location=' + encodeURIComponent(location) : ''}${notes || zoomLink ? '&details=' + encodeURIComponent((zoomLink ? 'Join: ' + zoomLink + '\n' : '') + (notes || '')) : ''}`;
 
-      const html = `<div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:20px;"><h2 style="color:#1e293b;">🤝 Meeting Invitation</h2><p style="color:#475569;"><strong>${senderEmail}</strong> has invited you to a meeting.</p><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0;"><p style="margin:4px 0;color:#1e293b;"><strong>📋 ${meetingTitle || 'Meeting'}</strong></p><p style="margin:4px 0;color:#475569;">📅 ${dateFormatted}${timeFormatted ? ' at ' + timeFormatted : ''}</p>${location ? `<p style="margin:4px 0;color:#475569;">📍 ${location}</p>` : ''}${zoomLink ? `<p style="margin:4px 0;"><a href="${zoomLink}" style="color:#2563eb;">🔗 Join Video Call</a></p>` : ''}${notes ? `<p style="margin:8px 0;color:#64748b;font-size:14px;">📝 ${notes}</p>` : ''}</div><a href="${confirmUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px;">✓ Confirm Meeting</a><br/><a href="${gcalUrl}" style="display:inline-block;background:#4285f4;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:10px;font-size:14px;">📅 Add to Google Calendar</a><p style="color:#64748b;font-size:11px;margin-top:8px;">Or open the attached .ics file to add to Outlook, Apple Calendar, or any calendar app.</p><p style="color:#94a3b8;font-size:12px;margin-top:16px;">Powered by HawkEye-Cue</p></div>`;
+      // Build Outlook Calendar link
+      let outlookStartDt = meetingDate || '';
+      let outlookEndDt = meetingDate || '';
+      if (meetingTime && meetingDate) {
+        outlookStartDt = `${meetingDate}T${meetingTime}:00`;
+        const [oh, om] = meetingTime.split(':');
+        const oEndH = (parseInt(oh) + 1) % 24;
+        outlookEndDt = `${meetingDate}T${String(oEndH).padStart(2, '0')}:${om}:00`;
+      }
+      const outlookUrl = `https://outlook.live.com/calendar/0/action/compose?subject=${encodeURIComponent(meetingTitle || 'Meeting')}&startdt=${outlookStartDt}&enddt=${outlookEndDt}${location ? '&location=' + encodeURIComponent(location) : ''}${notes || zoomLink ? '&body=' + encodeURIComponent((zoomLink ? 'Join: ' + zoomLink + '\n' : '') + (notes || '')) : ''}`;
+
+      const html = `<div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:20px;"><h2 style="color:#1e293b;">🤝 Meeting Invitation</h2><p style="color:#475569;"><strong>${senderEmail}</strong> has invited you to a meeting.</p><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0;"><p style="margin:4px 0;color:#1e293b;"><strong>📋 ${meetingTitle || 'Meeting'}</strong></p><p style="margin:4px 0;color:#475569;">📅 ${dateFormatted}${timeFormatted ? ' at ' + timeFormatted : ''}</p>${location ? `<p style="margin:4px 0;color:#475569;">📍 ${location}</p>` : ''}${zoomLink ? `<p style="margin:4px 0;"><a href="${zoomLink}" style="color:#2563eb;">🔗 Join Video Call</a></p>` : ''}${notes ? `<p style="margin:8px 0;color:#64748b;font-size:14px;">📝 ${notes}</p>` : ''}</div><a href="${confirmUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px;">✓ Confirm Meeting</a><div style="margin-top:14px;"><a href="${gcalUrl}" style="display:inline-block;background:#4285f4;color:white;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;margin-right:8px;">📅 Add to Google Calendar</a><a href="${outlookUrl}" style="display:inline-block;background:#0078d4;color:white;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">📅 Add to Outlook Calendar</a></div><p style="color:#64748b;font-size:11px;margin-top:10px;">Or open the attached .ics file to add to Apple Calendar or any other calendar app.</p><p style="color:#94a3b8;font-size:12px;margin-top:16px;">Powered by HawkEye-Cue</p></div>`;
 
       // Generate .ics calendar file for recipient to add to Google/Outlook/Apple Calendar
       const icsContent = generateICS({
@@ -595,7 +609,6 @@ exports.handler = async (event) => {
       const attachments = [{
         filename: 'meeting-invite.ics',
         content: icsBase64,
-        type: 'text/calendar',
       }];
 
       await sendEmail(email, `🤝 Meeting Invite: ${meetingTitle || 'Meeting'} — ${dateFormatted}${timeFormatted ? ' at ' + timeFormatted : ''}`, html, attachments);

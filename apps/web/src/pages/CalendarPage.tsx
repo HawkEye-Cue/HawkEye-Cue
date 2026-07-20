@@ -13,7 +13,7 @@ export default function CalendarPage() {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const { events, addEvent, removeEvent, removeAllByTitle } = useCalendar();
+  const { events, addEvent, removeEvent, removeAllByTitle, updateEvent } = useCalendar();
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
@@ -23,6 +23,30 @@ export default function CalendarPage() {
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventType, setNewEventType] = useState<'post' | 'meeting' | 'reminder'>('meeting');
   const [newEventLink, setNewEventLink] = useState('');
+  const [editingCalEvent, setEditingCalEvent] = useState<CalendarEvent | null>(null);
+  const [editCalTitle, setEditCalTitle] = useState('');
+  const [editCalTime, setEditCalTime] = useState('');
+  const [editCalLocation, setEditCalLocation] = useState('');
+  const [editCalLink, setEditCalLink] = useState('');
+  const [editCalDate, setEditCalDate] = useState('');
+
+  // Auto-open day from URL query param (e.g. ?day=2026-07-21)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dayParam = params.get('day');
+    if (dayParam) {
+      const d = new Date(dayParam + 'T12:00:00');
+      if (!isNaN(d.getTime())) {
+        setCurrentMonth(d.getMonth());
+        setCurrentYear(d.getFullYear());
+        setSelectedDay(d.getDate());
+        setShowModal(true);
+        setShowAddForm(false);
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, []);
   const [newEventLocation, setNewEventLocation] = useState('');
   const [newEventNotes, setNewEventNotes] = useState('');
   const [newEventInviteEmail, setNewEventInviteEmail] = useState('');
@@ -165,6 +189,7 @@ export default function CalendarPage() {
             email: newEventInviteEmail.trim(),
             meetingTitle: newEventTitle.trim(),
             meetingDate: date,
+            meetingTime: newEventTime || undefined,
             location: newEventLocation.trim() || undefined,
             zoomLink: newEventLink.trim() || undefined,
             notes: newEventNotes.trim() || undefined,
@@ -398,9 +423,13 @@ export default function CalendarPage() {
                                     {uMeetings.length > 0 && (
                                       <div className="px-2 pb-2 space-y-1.5 border-t border-amber-500/20 pt-2 max-h-40 overflow-y-auto">
                                         {uMeetings.map((evt) => (
-                                          <div key={evt.id} className="flex items-center gap-1.5">
-                                            <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
-                                            {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs shrink-0">🔗</a>}
+                                          <div key={evt.id} className="p-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                                            <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
+                                            {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs">🔗</a>}
+                                            <div className="flex gap-1 mt-1">
+                                              <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="text-[10px] text-slate-400 hover:text-white">✏️</button>
+                                              <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="text-[10px] text-red-400 hover:text-red-300">🗑️</button>
+                                            </div>
                                           </div>
                                         ))}
                                       </div>
@@ -449,6 +478,8 @@ export default function CalendarPage() {
                                         <span className="text-sm shrink-0">{evt.type === 'post' ? '📤' : (evt.type === 'meeting' || evt.type === 'task') ? '🤝' : '🔔'}</span>
                                         <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-white'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
                                         {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 shrink-0 text-xs">🔗</a>}
+                                        <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="text-[10px] text-slate-400 hover:text-white shrink-0">✏️</button>
+                                        <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="text-[10px] text-red-400 hover:text-red-300 shrink-0">🗑️</button>
                                       </div>
                                     );
                                   }) : (
@@ -480,16 +511,44 @@ export default function CalendarPage() {
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
                     autoFocus
                   />
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="block text-xs text-slate-400 mb-1">⏰ Time (optional)</label>
-                      <input
-                        type="time"
-                        value={newEventTime}
-                        onChange={(e) => setNewEventTime(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">⏰ Time (optional)</label>
+                    <input
+                      type="time"
+                      value={newEventTime}
+                      onChange={(e) => setNewEventTime(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                    />
+                    {newEventTime && (
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const hour = parseInt(newEventTime.split(':')[0]);
+                            if (hour >= 12) {
+                              const newHour = hour === 12 ? 0 : hour - 12;
+                              setNewEventTime(`${String(newHour).padStart(2, '0')}:${newEventTime.split(':')[1]}`);
+                            }
+                          }}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(newEventTime.split(':')[0]) < 12 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}
+                        >
+                          ☀️ AM
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const hour = parseInt(newEventTime.split(':')[0]);
+                            if (hour < 12) {
+                              const newHour = hour === 0 ? 12 : hour + 12;
+                              setNewEventTime(`${String(newHour).padStart(2, '0')}:${newEventTime.split(':')[1]}`);
+                            }
+                          }}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(newEventTime.split(':')[0]) >= 12 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}
+                        >
+                          🌙 PM
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     {(['post', 'meeting', 'reminder'] as const).map((t) => {
@@ -616,6 +675,68 @@ export default function CalendarPage() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Event Modal */}
+      {editingCalEvent && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] px-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-2xl p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-white text-lg">✏️ Edit Event</h3>
+              <button onClick={() => setEditingCalEvent(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Title</label>
+                <input type="text" value={editCalTitle} onChange={(e) => setEditCalTitle(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">📅 Date</label>
+                <input type="date" value={editCalDate} onChange={(e) => setEditCalDate(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">⏰ Time</label>
+                <input type="time" value={editCalTime} onChange={(e) => setEditCalTime(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                {editCalTime && (
+                  <div className="flex gap-2 mt-2">
+                    <button type="button" onClick={() => { const hour = parseInt(editCalTime.split(':')[0]); if (hour >= 12) { const nh = hour === 12 ? 0 : hour - 12; setEditCalTime(`${String(nh).padStart(2, '0')}:${editCalTime.split(':')[1]}`); } }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(editCalTime.split(':')[0]) < 12 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}>☀️ AM</button>
+                    <button type="button" onClick={() => { const hour = parseInt(editCalTime.split(':')[0]); if (hour < 12) { const nh = hour === 0 ? 12 : hour + 12; setEditCalTime(`${String(nh).padStart(2, '0')}:${editCalTime.split(':')[1]}`); } }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(editCalTime.split(':')[0]) >= 12 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}>🌙 PM</button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">📍 Location</label>
+                <input type="text" value={editCalLocation} onChange={(e) => setEditCalLocation(e.target.value)} placeholder="e.g. 123 Main St" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">🔗 Link</label>
+                <input type="url" value={editCalLink} onChange={(e) => setEditCalLink(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={async () => {
+                    let newTitle = editCalTitle.trim();
+                    if (editCalTime) newTitle = `[${editCalTime}] ${newTitle}`;
+                    if (editCalLocation.trim()) newTitle += ` — 📍 ${editCalLocation.trim()}`;
+                    const link = editCalLink.trim() || (editCalLocation.trim() ? `https://maps.google.com/maps?q=${encodeURIComponent(editCalLocation.trim())}` : '');
+                    await updateEvent(editingCalEvent.id, { title: newTitle, date: editCalDate, link: link || undefined });
+                    setEditingCalEvent(null);
+                  }}
+                  className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg text-sm transition-all active:scale-95"
+                >
+                  ✓ Save
+                </button>
+                <button
+                  onClick={() => { if (confirm('Delete this event?')) { removeEvent(editingCalEvent.id); setEditingCalEvent(null); } }}
+                  className="px-4 py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 font-bold rounded-lg text-sm transition-all active:scale-95 border border-red-500/30"
+                >
+                  🗑️
+                </button>
+              </div>
+              <button onClick={() => setEditingCalEvent(null)} className="w-full py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 text-sm">Cancel</button>
+            </div>
           </div>
         </div>
       )}

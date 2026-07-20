@@ -1050,7 +1050,7 @@ export class ApiStack extends cdk.Stack {
     });
     this.httpApi.addRoutes({
       path: '/calendar/events/{id}',
-      methods: [apigatewayv2.HttpMethod.DELETE],
+      methods: [apigatewayv2.HttpMethod.DELETE, apigatewayv2.HttpMethod.PUT],
       integration: calendarIntegration,
       authorizer,
     });

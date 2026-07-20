@@ -11,7 +11,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
   const { getToken, user } = useAuth();
-  const { events, toggleComplete, removeEvent } = useCalendar();
+  const { events, toggleComplete, removeEvent, updateEvent } = useCalendar();
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
@@ -23,6 +23,12 @@ export default function DashboardPage() {
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string>('none');
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => !localStorage.getItem('hawkeye_welcome_dismissed'));
+  const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editLink, setEditLink] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editDate, setEditDate] = useState('');
 
   // Refetch when page becomes visible (user navigates back)
   useEffect(() => {
@@ -334,7 +340,23 @@ export default function DashboardPage() {
                               </div>
                               <div className="flex items-center gap-1 mt-1 ml-5">
                                 {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-[10px] text-blue-400 hover:text-blue-300">🔗 Link</a>}
-                                <button onClick={() => navigate('/create')} className="text-[10px] text-slate-400 hover:text-white">✏️ Edit</button>
+                                <button onClick={() => {
+                                  setEditingEvent(event);
+                                  // Parse time from title if present (format: [HH:MM] Title — 📍 Location)
+                                  const timeMatch = event.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
+                                  const locationMatch = event.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/);
+                                  let cleanTitle = event.title;
+                                  if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], '');
+                                  if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, '');
+                                  // Also strip notes from title
+                                  const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/);
+                                  if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], '');
+                                  setEditTitle(cleanTitle.trim());
+                                  setEditTime(timeMatch ? timeMatch[1] : '');
+                                  setEditLocation(locationMatch ? locationMatch[1].trim() : '');
+                                  setEditLink(event.link || '');
+                                  setEditDate(event.date);
+                                }} className="text-[10px] text-slate-400 hover:text-white">✏️ Edit</button>
                                 <button onClick={() => removeEvent(event.id)} className="text-[10px] text-red-400 hover:text-red-300">🗑️ Delete</button>
                               </div>
                             </div>
@@ -473,7 +495,7 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={day}
-                      onClick={(e) => { e.stopPropagation(); navigate('/create'); }}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/create?day=${dateStr}`); }}
                       className={`text-center py-1 rounded cursor-pointer ${
                         isFolioStart ? 'bg-green-600/40 border border-green-500/60 font-bold'
                         : isFolioEnd ? 'bg-red-600/40 border border-red-500/60 font-bold'
@@ -624,6 +646,130 @@ export default function DashboardPage() {
             ))}
           </div>
         </details>
+      )}
+
+      {/* Edit Meeting Modal */}
+      {editingEvent && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-2xl p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-white text-lg">✏️ Edit Meeting</h3>
+              <button onClick={() => setEditingEvent(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">📅 Date</label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">⏰ Time</label>
+                <input
+                  type="time"
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                />
+                {editTime && (
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const hour = parseInt(editTime.split(':')[0]);
+                        if (hour >= 12) {
+                          const newHour = hour === 12 ? 0 : hour - 12;
+                          setEditTime(`${String(newHour).padStart(2, '0')}:${editTime.split(':')[1]}`);
+                        }
+                      }}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(editTime.split(':')[0]) < 12 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}
+                    >
+                      ☀️ AM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const hour = parseInt(editTime.split(':')[0]);
+                        if (hour < 12) {
+                          const newHour = hour === 0 ? 12 : hour + 12;
+                          setEditTime(`${String(newHour).padStart(2, '0')}:${editTime.split(':')[1]}`);
+                        }
+                      }}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(editTime.split(':')[0]) >= 12 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}
+                    >
+                      🌙 PM
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">📍 Location</label>
+                <input
+                  type="text"
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  placeholder="e.g. 123 Main St, Denver CO"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">🔗 Zoom / Video Link</label>
+                <input
+                  type="url"
+                  value={editLink}
+                  onChange={(e) => setEditLink(e.target.value)}
+                  placeholder="https://zoom.us/j/..."
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={async () => {
+                    // Rebuild title with time and location
+                    let newTitle = editTitle.trim();
+                    if (editTime) newTitle = `[${editTime}] ${newTitle}`;
+                    if (editLocation.trim()) newTitle += ` — 📍 ${editLocation.trim()}`;
+                    const link = editLink.trim() || (editLocation.trim() ? `https://maps.google.com/maps?q=${encodeURIComponent(editLocation.trim())}` : '');
+                    await updateEvent(editingEvent.id, { title: newTitle, date: editDate, link: link || undefined });
+                    setEditingEvent(null);
+                  }}
+                  className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg text-sm transition-all active:scale-95"
+                >
+                  ✓ Save Changes
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('Delete this meeting?')) {
+                      removeEvent(editingEvent.id);
+                      setEditingEvent(null);
+                    }
+                  }}
+                  className="px-4 py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 font-bold rounded-lg text-sm transition-all active:scale-95 border border-red-500/30"
+                >
+                  🗑️
+                </button>
+              </div>
+              <button
+                onClick={() => setEditingEvent(null)}
+                className="w-full py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

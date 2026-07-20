@@ -1,7 +1,7 @@
 'use strict';
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, QueryCommand, PutCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, QueryCommand, PutCommand, UpdateCommand, DeleteCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const { randomUUID } = require('crypto');
 
@@ -117,6 +117,72 @@ async function handleToggle(userId, eventId) {
   }));
 
   return ok({ id: eventId, completed: newCompleted });
+}
+
+// PUT /calendar/events/{id} — update event details
+async function handleUpdateEvent(userId, eventId, body) {
+  const { title, date, type, link, time, location, notes } = body || {};
+
+  const queryResult = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    FilterExpression: 'eventId = :eid',
+    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'CAL#', ':eid': eventId },
+  }));
+
+  const item = (queryResult.Items || [])[0];
+  if (!item) return err(404, 'NOT_FOUND', 'Event not found');
+
+  // Build the new title incorporating time/location if provided
+  let newTitle = title !== undefined ? title.trim() : item.title;
+  // If date changed, we need to delete old item and create new one (SK contains date)
+  const newDate = date || item.eventDate;
+  const needsRekey = newDate !== item.eventDate;
+
+  if (needsRekey) {
+    // Delete old item and insert new one
+    await dynamo.send(new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: item.PK, SK: item.SK },
+    }));
+    await dynamo.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: `USER#${userId}`,
+        SK: `CAL#${newDate}#${eventId}`,
+        eventId,
+        eventDate: newDate,
+        title: newTitle,
+        eventType: type || item.eventType,
+        completed: item.completed || false,
+        link: link !== undefined ? (link || null) : (item.link || null),
+        notes: notes !== undefined ? (notes || '') : (item.notes || ''),
+        notesSavedAt: item.notesSavedAt || null,
+        inviteStatus: item.inviteStatus || null,
+        inviteEmail: item.inviteEmail || null,
+        createdAt: item.createdAt,
+        updatedAt: new Date().toISOString(),
+      },
+    }));
+  } else {
+    // Update in place
+    const setParts = ['updatedAt = :now'];
+    const exprValues = { ':now': new Date().toISOString() };
+
+    if (title !== undefined) { setParts.push('title = :t'); exprValues[':t'] = newTitle; }
+    if (type !== undefined) { setParts.push('eventType = :ty'); exprValues[':ty'] = type; }
+    if (link !== undefined) { setParts.push('link = :l'); exprValues[':l'] = link || null; }
+    if (notes !== undefined) { setParts.push('notes = :n'); exprValues[':n'] = notes || ''; }
+
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: item.PK, SK: item.SK },
+      UpdateExpression: 'SET ' + setParts.join(', '),
+      ExpressionAttributeValues: exprValues,
+    }));
+  }
+
+  return ok({ id: eventId, date: newDate, title: newTitle, type: type || item.eventType, completed: item.completed || false, link: link !== undefined ? (link || null) : (item.link || null) });
 }
 
 // DELETE /calendar/events/{id}
@@ -285,7 +351,7 @@ async function handleConfirmInvite(token) {
     ExpressionAttributeValues: { ':s': 'confirmed', ':t': new Date().toISOString() },
   }));
 
-  // Update the calendar event (if eventId exists)
+  // Update the sender's calendar event (if eventId exists)
   if (invite.eventId) {
     try {
       const eventQuery = await dynamo.send(new QueryCommand({
@@ -305,6 +371,56 @@ async function handleConfirmInvite(token) {
         }));
       }
     } catch { /* skip if event lookup fails */ }
+  }
+
+  // Add meeting to recipient's calendar if they have an account
+  if (invite.recipientEmail) {
+    try {
+      // Find recipient user by scanning for their email in profiles (paginated)
+      let recipientProfile = null;
+      let lastKey = undefined;
+      do {
+        const scanResult = await dynamo.send(new ScanCommand({
+          TableName: TABLE_NAME,
+          FilterExpression: 'SK = :sk AND email = :email',
+          ExpressionAttributeValues: { ':sk': 'PROFILE', ':email': invite.recipientEmail },
+          ProjectionExpression: 'PK, userId',
+          ExclusiveStartKey: lastKey,
+        }));
+        if (scanResult.Items && scanResult.Items.length > 0) {
+          recipientProfile = scanResult.Items[0];
+          break;
+        }
+        lastKey = scanResult.LastEvaluatedKey;
+      } while (lastKey);
+
+      console.log(`[ConfirmInvite] Recipient scan for ${invite.recipientEmail}: ${recipientProfile ? 'FOUND' : 'NOT FOUND'}`);
+
+      if (recipientProfile) {
+        const recipientUserId = recipientProfile.userId || recipientProfile.PK.replace('USER#', '');
+        const meetingDate = invite.meetingDate || new Date().toISOString().split('T')[0];
+        const eventId = randomUUID();
+        const timePrefix = invite.meetingTime ? `[${invite.meetingTime}] ` : '';
+        await dynamo.send(new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            PK: `USER#${recipientUserId}`,
+            SK: `CAL#${meetingDate}#${eventId}`,
+            eventId,
+            eventDate: meetingDate,
+            title: `${timePrefix}🤝 ${invite.meetingTitle || 'Meeting'} (confirmed)`,
+            eventType: 'meeting',
+            completed: false,
+            link: invite.zoomLink || null,
+            inviteStatus: 'confirmed',
+            createdAt: new Date().toISOString(),
+          },
+        }));
+        console.log(`[ConfirmInvite] Created calendar event for recipient ${recipientUserId}`);
+      }
+    } catch (e) {
+      console.error('[ConfirmInvite] Failed to add to recipient calendar:', e.message);
+    }
   }
 
   return ok({ confirmed: true, meetingTitle: invite.meetingTitle, meetingDate: invite.meetingDate });
@@ -340,6 +456,15 @@ exports.handler = async (event) => {
       const body = event.body ? JSON.parse(event.body) : {};
       return handleUpdateNotes(userId, eventId, body);
     }
+    if (method === 'PUT' && path.match(/^\/calendar\/events\/[^/]+$/) && !path.includes('/toggle') && !path.includes('/notes')) {
+      const eventId = path.split('/calendar/events/')[1];
+      let body = {};
+      try {
+        const rawBody = event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString() : event.body;
+        body = rawBody ? JSON.parse(rawBody) : {};
+      } catch { body = {}; }
+      return handleUpdateEvent(userId, eventId, body);
+    }
     if (method === 'POST' && path.match(/^\/calendar\/events\/[^/]+\/invite$/)) {
       const eventId = path.split('/calendar/events/')[1].split('/invite')[0];
       const body = event.body ? JSON.parse(event.body) : {};
@@ -352,7 +477,7 @@ exports.handler = async (event) => {
         const rawBody = event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString() : event.body;
         body = rawBody ? JSON.parse(rawBody) : {};
       } catch { body = {}; }
-      const { email, meetingTitle, meetingDate, location, zoomLink, notes, eventId } = body;
+      const { email, meetingTitle, meetingDate, location, zoomLink, notes, eventId, meetingTime } = body;
       if (!email) return err(400, 'INVALID_INPUT', 'email is required');
 
       // Get sender info
@@ -366,15 +491,24 @@ exports.handler = async (event) => {
       const confirmToken = randomUUID();
       const confirmUrl = `https://hawkeyecue.com/confirm-meeting?token=${confirmToken}`;
       const dateFormatted = meetingDate ? new Date(meetingDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'TBD';
+      // Convert 24h time to 12h format
+      let timeFormatted = '';
+      if (meetingTime) {
+        const [h, m] = meetingTime.split(':');
+        const hour = parseInt(h);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        timeFormatted = `${hour12}:${m} ${ampm}`;
+      }
 
-      const html = `<div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:20px;"><h2 style="color:#1e293b;">🤝 Meeting Invitation</h2><p style="color:#475569;"><strong>${senderEmail}</strong> has invited you to a meeting.</p><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0;"><p style="margin:4px 0;color:#1e293b;"><strong>📋 ${meetingTitle || 'Meeting'}</strong></p><p style="margin:4px 0;color:#475569;">📅 ${dateFormatted}</p>${location ? `<p style="margin:4px 0;color:#475569;">📍 ${location}</p>` : ''}${zoomLink ? `<p style="margin:4px 0;"><a href="${zoomLink}" style="color:#2563eb;">🔗 Join Video Call</a></p>` : ''}${notes ? `<p style="margin:8px 0;color:#64748b;font-size:14px;">📝 ${notes}</p>` : ''}</div><a href="${confirmUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px;">✓ Confirm Meeting</a><p style="color:#94a3b8;font-size:12px;margin-top:16px;">Powered by HawkEye-Cue</p></div>`;
+      const html = `<div style="font-family:-apple-system,sans-serif;max-width:500px;margin:0 auto;padding:20px;"><h2 style="color:#1e293b;">🤝 Meeting Invitation</h2><p style="color:#475569;"><strong>${senderEmail}</strong> has invited you to a meeting.</p><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:16px 0;"><p style="margin:4px 0;color:#1e293b;"><strong>📋 ${meetingTitle || 'Meeting'}</strong></p><p style="margin:4px 0;color:#475569;">📅 ${dateFormatted}${timeFormatted ? ' at ' + timeFormatted : ''}</p>${location ? `<p style="margin:4px 0;color:#475569;">📍 ${location}</p>` : ''}${zoomLink ? `<p style="margin:4px 0;"><a href="${zoomLink}" style="color:#2563eb;">🔗 Join Video Call</a></p>` : ''}${notes ? `<p style="margin:8px 0;color:#64748b;font-size:14px;">📝 ${notes}</p>` : ''}</div><a href="${confirmUrl}" style="display:inline-block;background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px;">✓ Confirm Meeting</a><p style="color:#94a3b8;font-size:12px;margin-top:16px;">Powered by HawkEye-Cue</p></div>`;
 
-      await sendEmail(email, `🤝 Meeting Invite: ${meetingTitle || 'Meeting'} — ${dateFormatted}`, html);
+      await sendEmail(email, `🤝 Meeting Invite: ${meetingTitle || 'Meeting'} — ${dateFormatted}${timeFormatted ? ' at ' + timeFormatted : ''}`, html);
 
-      // Store invite token for confirmation (include eventId for status tracking)
+      // Store invite token for confirmation (include eventId and time for status tracking)
       await dynamo.send(new PutCommand({
         TableName: TABLE_NAME,
-        Item: { PK: `INVITE#${confirmToken}`, SK: 'MEETING', userId, eventId: eventId || null, recipientEmail: email, meetingTitle: meetingTitle || 'Meeting', meetingDate, status: 'pending', createdAt: new Date().toISOString() },
+        Item: { PK: `INVITE#${confirmToken}`, SK: 'MEETING', userId, eventId: eventId || null, recipientEmail: email, recipientUserId: null, meetingTitle: meetingTitle || 'Meeting', meetingDate, meetingTime: meetingTime || null, zoomLink: zoomLink || null, status: 'pending', createdAt: new Date().toISOString() },
       }));
 
       // Update the calendar event with pending status

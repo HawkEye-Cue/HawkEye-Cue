@@ -20,6 +20,7 @@ export interface CalendarEvent {
 interface CalendarState {
   events: CalendarEvent[];
   addEvent: (event: Omit<CalendarEvent, 'id' | 'completed'>) => Promise<string>;
+  updateEvent: (id: string, updates: Partial<Pick<CalendarEvent, 'title' | 'date' | 'type' | 'link'>>) => Promise<void>;
   toggleComplete: (id: string) => void;
   removeEvent: (id: string) => void;
   removeAllByTitle: (title: string) => void;
@@ -92,6 +93,20 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const updateEvent = useCallback(async (id: string, updates: Partial<Pick<CalendarEvent, 'title' | 'date' | 'type' | 'link'>>) => {
+    // Optimistic update
+    setEvents((prev) => prev.map((e) => e.id === id ? { ...e, ...updates } : e));
+
+    try {
+      const client = await buildClient();
+      await client.request('PUT', `/calendar/events/${id}`, updates);
+      showToast('✓ Updated');
+    } catch {
+      // Revert on failure — refetch
+      showToast('❌ Failed to update');
+    }
+  }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleComplete = useCallback(async (id: string) => {
     // Optimistic update
     setEvents((prev) => prev.map((e) => e.id === id ? { ...e, completed: !e.completed } : e));
@@ -132,7 +147,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <CalendarContext.Provider value={{ events, addEvent, toggleComplete, removeEvent, removeAllByTitle, updateNotes, loading }}>
+    <CalendarContext.Provider value={{ events, addEvent, updateEvent, toggleComplete, removeEvent, removeAllByTitle, updateNotes, loading }}>
       {children}
     </CalendarContext.Provider>
   );

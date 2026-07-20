@@ -10,6 +10,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import OnboardingPage from './pages/OnboardingPage';
 import DashboardPage from './pages/DashboardPage';
 import ContentCreatorPage from './pages/ContentCreatorPage';
+import CreatePage from './pages/CreatePage';
 import CalendarPage from './pages/CalendarPage';
 import OpportunitiesPage from './pages/OpportunitiesPage';
 import SalesPage from './pages/SalesPage';
@@ -73,8 +74,8 @@ export default function App() {
             <AppShell>
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
-                <Route path="/create" element={<ContentCreatorPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/create" element={<CreatePage />} />
+                <Route path="/calendar" element={<CreatePage />} />
                 <Route path="/opportunities" element={<OpportunitiesPage />} />
                 <Route path="/sales" element={<SalesPage />} />
                 <Route path="/team" element={<TeamPage />} />

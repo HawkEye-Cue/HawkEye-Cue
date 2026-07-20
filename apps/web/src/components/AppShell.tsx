@@ -8,7 +8,6 @@ import SetupWizard from './SetupWizard';
 
 const navItems = [
   { path: '/', label: 'Home', icon: '🏠', tour: 'home' },
-  { path: '/calendar', label: 'Calendar', icon: '📅', tour: 'calendar' },
   { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
   { path: '/opportunities', label: 'Leads', icon: '🎯', tour: 'leads' },
   { path: '/sales', label: 'Sales', icon: '💰', tour: 'sales' },

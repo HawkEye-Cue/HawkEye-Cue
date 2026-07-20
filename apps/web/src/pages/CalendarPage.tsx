@@ -19,12 +19,14 @@ export default function CalendarPage() {
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventType, setNewEventType] = useState<'post' | 'meeting' | 'reminder'>('meeting');
   const [newEventLink, setNewEventLink] = useState('');
   const [newEventLocation, setNewEventLocation] = useState('');
   const [newEventNotes, setNewEventNotes] = useState('');
   const [newEventInviteEmail, setNewEventInviteEmail] = useState('');
+  const [newEventTime, setNewEventTime] = useState('');
   const [repeatOption, setRepeatOption] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly'>('none');
 
   // Folio dates for calendar highlighting
@@ -97,10 +99,17 @@ export default function CalendarPage() {
   };
 
   const handleDayClick = (day: number) => {
-    // Only open modal if day has events or is in the future
     const dayEvents = getEventsForDay(day);
-    if (!isFuture(day) && dayEvents.length === 0) return;
+    if (dayEvents.length === 0 && !isFuture(day)) return;
     setSelectedDay(day);
+    setShowAddForm(false);
+    setShowModal(true);
+  };
+
+  const handleAddClick = (day: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedDay(day);
+    setShowAddForm(true);
     setShowModal(true);
   };
 
@@ -134,6 +143,9 @@ export default function CalendarPage() {
 
     for (const date of dates) {
       let title = newEventTitle.trim();
+      if (newEventTime) {
+        title = `[${newEventTime}] ${title}`;
+      }
       if (newEventType === 'meeting' && newEventLocation.trim()) {
         title += ` — 📍 ${newEventLocation.trim()}`;
       }
@@ -172,6 +184,7 @@ export default function CalendarPage() {
     setNewEventLocation('');
     setNewEventNotes('');
     setNewEventInviteEmail('');
+    setNewEventTime('');
     setRepeatOption('none');
   };
 
@@ -290,9 +303,14 @@ export default function CalendarPage() {
                     })()}
                   </div>
                 )}
-                {/* + button on hover for future days */}
-                {future && !isToday && (
-                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[10px] text-blue-400 font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-500 pointer-events-none">+ to calendar</span>
+                {/* + button for future days */}
+                {future && (
+                  <button
+                    onClick={(e) => handleAddClick(day, e)}
+                    className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[10px] bg-blue-600/80 text-white px-1.5 py-0.5 rounded font-bold hover:bg-blue-500 transition-colors"
+                  >
+                    +
+                  </button>
                 )}
               </div>
             );
@@ -307,96 +325,151 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* This week's upcoming events */}
-      {events.length > 0 && (() => {
-        const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const endOfWeek = new Date(todayDate);
-        endOfWeek.setDate(endOfWeek.getDate() + 7);
-        const endStr = `${endOfWeek.getFullYear()}-${String(endOfWeek.getMonth() + 1).padStart(2, '0')}-${String(endOfWeek.getDate()).padStart(2, '0')}`;
-        const thisWeekEvents = events
-          .filter((e) => e.date >= todayStr && e.date <= endStr)
-          .sort((a, b) => a.date.localeCompare(b.date));
-
-        if (thisWeekEvents.length === 0) return null;
-        return (
-          <details className="glass-card" open>
-            <summary className="font-semibold text-white cursor-pointer">This Week's Cues</summary>
-            <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
-              {thisWeekEvents.map((e) => (
-                <div key={e.id} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <span>{e.type === 'post' ? '📤' : e.type === 'meeting' || e.type === 'task' ? '🤝' : '🔔'}</span>
-                    <span className="text-white">{e.title}</span>
-                  </div>
-                  <span className="text-slate-400 text-xs">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                </div>
-              ))}
-            </div>
-          </details>
-        );
-      })()}
-
       {/* Day Detail Modal */}
       {showModal && selectedDay !== null && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="glass-card-strong w-full max-w-sm animate-scale-in max-h-[80vh] overflow-y-auto">
-            <h3 className="font-bold text-white mb-1">
-              {new Date(currentYear, currentMonth, selectedDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </h3>
+          <div className="glass-card-strong w-full max-w-md animate-scale-in max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-white text-lg">
+                {new Date(currentYear, currentMonth, selectedDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </h3>
+              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
 
-            {/* Existing events for this day */}
-            {(() => {
-              const dayEvents = getEventsForDay(selectedDay);
-              if (dayEvents.length > 0) {
-                return (
-                  <div className="space-y-2 mb-4 mt-3">
-                    {dayEvents.map((evt) => (
-                      <div key={evt.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white/5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="shrink-0 text-sm">{evt.type === 'post' ? '📤' : evt.type === 'meeting' || evt.type === 'task' ? '🤝' : '🔔'}</span>
-                          <span className={`text-sm truncate ${evt.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
-                            {evt.title}
-                          </span>
-                          {(evt as any).link && (
-                            <a
-                              href={(evt as any).link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs text-blue-400 hover:text-blue-300 shrink-0"
-                            >
-                              🔗
-                            </a>
-                          )}
+            {!showAddForm ? (
+              <>
+                {/* Day Overview */}
+                {(() => {
+                  const dayEvents = getEventsForDay(selectedDay);
+                  const timedEvents: Record<number, typeof dayEvents> = {};
+                  const untimedEvents: typeof dayEvents = [];
+                  for (const evt of dayEvents) {
+                    const timeMatch = evt.title.match(/^\[(\d{1,2}):(\d{2})\]/);
+                    if (timeMatch) {
+                      const hour = parseInt(timeMatch[1]);
+                      if (!timedEvents[hour]) timedEvents[hour] = [];
+                      timedEvents[hour].push(evt);
+                    } else {
+                      untimedEvents.push(evt);
+                    }
+                  }
+                  const hours = Array.from({ length: 15 }, (_, i) => i + 6);
+
+                  return (
+                    <div>
+                      {/* Untimed cues - tile dropdowns */}
+                      {untimedEvents.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Cues</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {(() => {
+                              const uPosts = untimedEvents.filter((e) => e.type === 'post');
+                              const uMeetings = untimedEvents.filter((e) => e.type === 'meeting' || e.type === 'task');
+                              const uReminders = untimedEvents.filter((e) => e.type === 'reminder');
+                              return (
+                                <>
+                                  <details className="rounded-xl border border-blue-500/30 bg-blue-500/10 overflow-hidden">
+                                    <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                                      <span className="text-2xl">📤</span>
+                                      <span className="text-lg font-bold text-blue-400">{uPosts.length}</span>
+                                      <span className="text-[10px] text-slate-400">Posts</span>
+                                    </summary>
+                                    {uPosts.length > 0 && (
+                                      <div className="px-2 pb-2 space-y-1.5 border-t border-blue-500/20 pt-2 max-h-40 overflow-y-auto">
+                                        {uPosts.map((evt) => (
+                                          <div key={evt.id} className="flex items-center gap-1.5">
+                                            {(evt as any).link ? (
+                                              <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className={`text-xs flex-1 hover:text-blue-300 ${evt.completed ? 'line-through text-slate-600' : 'text-blue-400 underline'}`}>{evt.title}</a>
+                                            ) : (
+                                              <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </details>
+
+                                  <details className="rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
+                                    <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                                      <span className="text-2xl">🤝</span>
+                                      <span className="text-lg font-bold text-amber-400">{uMeetings.length}</span>
+                                      <span className="text-[10px] text-slate-400">Meetings</span>
+                                    </summary>
+                                    {uMeetings.length > 0 && (
+                                      <div className="px-2 pb-2 space-y-1.5 border-t border-amber-500/20 pt-2 max-h-40 overflow-y-auto">
+                                        {uMeetings.map((evt) => (
+                                          <div key={evt.id} className="flex items-center gap-1.5">
+                                            <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
+                                            {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs shrink-0">🔗</a>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </details>
+
+                                  <details className="rounded-xl border border-green-500/30 bg-green-500/10 overflow-hidden">
+                                    <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                                      <span className="text-2xl">🔔</span>
+                                      <span className="text-lg font-bold text-green-400">{uReminders.length}</span>
+                                      <span className="text-[10px] text-slate-400">Reminders</span>
+                                    </summary>
+                                    {uReminders.length > 0 && (
+                                      <div className="px-2 pb-2 space-y-1.5 border-t border-green-500/20 pt-2 max-h-40 overflow-y-auto">
+                                        {uReminders.map((evt) => (
+                                          <div key={evt.id} className="flex items-center gap-1.5">
+                                            <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
+                                            {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs shrink-0">🔗</a>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </details>
+                                </>
+                              );
+                            })()}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => removeEvent(evt.id)}
-                            className="text-xs text-red-400 hover:text-red-300 px-1"
-                            title="Delete this one"
-                          >
-                            ✕
-                          </button>
-                          <button
-                            onClick={() => removeAllByTitle(evt.title)}
-                            className="text-xs text-red-400 hover:text-red-300 px-1"
-                            title="Delete all with this name"
-                          >
-                            ✕ All
-                          </button>
+                      )}
+
+                      {/* Time Schedule - always visible */}
+                      <div>
+                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Schedule</p>
+                        <div className="space-y-0 max-h-[300px] overflow-y-auto">
+                          {hours.map((hour) => {
+                            const evts = timedEvents[hour] || [];
+                            const timeLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+                            return (
+                              <div key={hour} className={`flex gap-3 py-1.5 border-b border-white/5 ${evts.length > 0 ? '' : ''}`}>
+                                <span className={`text-[11px] w-14 shrink-0 pt-0.5 ${evts.length > 0 ? 'text-white font-medium' : 'text-slate-600'}`}>{timeLabel}</span>
+                                <div className="flex-1">
+                                  {evts.length > 0 ? evts.map((evt) => {
+                                    const color = evt.type === 'post' ? 'border-blue-500/30 bg-blue-500/5' : (evt.type === 'meeting' || evt.type === 'task') ? 'border-amber-500/30 bg-amber-500/5' : 'border-green-500/30 bg-green-500/5';
+                                    return (
+                                      <div key={evt.id} className={`flex items-center gap-2 p-1.5 rounded-lg border ${color} mb-0.5`}>
+                                        <span className="text-sm shrink-0">{evt.type === 'post' ? '📤' : (evt.type === 'meeting' || evt.type === 'task') ? '🤝' : '🔔'}</span>
+                                        <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-white'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                                        {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 shrink-0 text-xs">🔗</a>}
+                                      </div>
+                                    );
+                                  }) : (
+                                    <div className="h-4"></div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                );
-              }
-              return <p className="text-sm text-slate-500 mt-2 mb-4">Nothing scheduled for this day.</p>;
-            })()}
 
-            {/* Add new event form (only for future dates) */}
-            {isFuture(selectedDay) && (
-              <div className="border-t border-white/10 pt-3 mt-3">
-                <p className="text-xs text-slate-400 mb-2">Add to this day:</p>
+                      {dayEvents.length === 0 && untimedEvents.length === 0 && <p className="text-xs text-slate-500 text-center pt-2">No cues — click + to add</p>}
+                    </div>
+                  );
+                })()}
+              </>
+            ) : (
+              <>
+                {/* Add Event Form */}
+                <button onClick={() => setShowAddForm(false)} className="text-xs text-blue-400 hover:text-blue-300 mb-2 mt-2">← Back to schedule</button>
                 <div className="space-y-3">
                   <input
                     type="text"
@@ -407,6 +480,17 @@ export default function CalendarPage() {
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
                     autoFocus
                   />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs text-slate-400 mb-1">⏰ Time (optional)</label>
+                      <input
+                        type="time"
+                        value={newEventTime}
+                        onChange={(e) => setNewEventTime(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                      />
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     {(['post', 'meeting', 'reminder'] as const).map((t) => {
                       const colors = { post: 'bg-blue-600 text-white', meeting: 'bg-amber-500 text-black', reminder: 'bg-green-600 text-white' };
@@ -515,7 +599,7 @@ export default function CalendarPage() {
                       + Add Another
                     </button>
                     <button
-                      onClick={() => { handleAddEvent(); setShowModal(false); }}
+                      onClick={() => { handleAddEvent(); setShowModal(false); setShowAddForm(false); }}
                       disabled={!newEventTitle.trim()}
                       className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
                     >
@@ -523,11 +607,11 @@ export default function CalendarPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
             <button
-              onClick={() => setShowModal(false)}
+              onClick={() => { setShowModal(false); setShowAddForm(false); }}
               className="w-full mt-3 bg-slate-700 text-slate-300 py-2 rounded-lg hover:bg-slate-600 text-sm"
             >
               Close

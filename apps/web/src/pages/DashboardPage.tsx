@@ -10,7 +10,7 @@ import TradeSelector from '../components/TradeSelector';
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const { events, toggleComplete } = useCalendar();
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
@@ -92,6 +92,13 @@ export default function DashboardPage() {
           const linksResult = await client.request<{ links: any[] }>('GET', '/sales/linked');
           const incoming = (linksResult.links || []).filter((l: any) => l.status === 'incoming' || (l.status === 'pending' && l.direction === 'incoming'));
           setPendingLinkInvites(incoming);
+        } catch { /* ignore */ }
+        // Sync notepad from server
+        try {
+          const prefs = await client.request<any>('GET', '/profile/preferences');
+          if (prefs.notepad && !localStorage.getItem(`hawkeye_notepad_${user?.sub}`)) {
+            localStorage.setItem(`hawkeye_notepad_${user?.sub}`, prefs.notepad);
+          }
         } catch { /* ignore */ }
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
         // Auto-clean: only show posts from today that haven't been published before today
@@ -286,55 +293,70 @@ export default function DashboardPage() {
 
               return (
                 <>
-                  {/* Posts - Blue */}
-                  {posts.length > 0 && (
-                    <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 p-3">
-                      <p className="text-xs font-bold text-blue-400 mb-2 uppercase tracking-wide">📤 Posts ({posts.filter((e) => e.completed).length}/{posts.length})</p>
-                      <div className="space-y-1.5">
-                        {posts.map((event) => (
-                          <label key={event.id} className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-blue-500/10 cursor-pointer">
-                            <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded shrink-0 accent-blue-500" />
-                            <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
-                            {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:text-blue-300 shrink-0">🔗</a>}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Tiles row */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Posts Tile */}
+                    <details className="rounded-xl border border-blue-500/30 bg-blue-500/10 overflow-hidden">
+                      <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                        <span className="text-2xl">📤</span>
+                        <span className="text-lg font-bold text-blue-400">{posts.length}</span>
+                        <span className="text-[10px] text-slate-400">{posts.filter((e) => e.completed).length}/{posts.length} done</span>
+                      </summary>
+                      {posts.length > 0 && (
+                        <div className="px-2 pb-2 space-y-1 border-t border-blue-500/20 pt-2">
+                          {posts.map((event) => (
+                            <label key={event.id} className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-blue-500/10">
+                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-blue-500" />
+                              <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
+                              {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 shrink-0 text-xs">🔗</a>}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </details>
 
-                  {/* Meetings - Amber */}
-                  {meetings.length > 0 && (
-                    <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
-                      <p className="text-xs font-bold text-amber-400 mb-2 uppercase tracking-wide">🤝 Meetings ({meetings.filter((e) => e.completed).length}/{meetings.length})</p>
-                      <div className="space-y-1.5">
-                        {meetings.map((event) => (
-                          <label key={event.id} className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-amber-500/10 cursor-pointer">
-                            <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded shrink-0 accent-amber-500" />
-                            <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
-                            {event.inviteStatus === 'confirmed' && <span className="text-[10px] bg-green-600/30 text-green-300 px-1.5 py-0.5 rounded-full shrink-0">✓ Confirmed</span>}
-                            {event.inviteStatus === 'pending' && <span className="text-[10px] bg-amber-600/30 text-amber-300 px-1.5 py-0.5 rounded-full shrink-0">⏳ Pending</span>}
-                            {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:text-blue-300 shrink-0">🔗</a>}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                    {/* Meetings Tile */}
+                    <details className="rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
+                      <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                        <span className="text-2xl">🤝</span>
+                        <span className="text-lg font-bold text-amber-400">{meetings.length}</span>
+                        <span className="text-[10px] text-slate-400">{meetings.filter((e) => e.completed).length}/{meetings.length} done</span>
+                      </summary>
+                      {meetings.length > 0 && (
+                        <div className="px-2 pb-2 space-y-1 border-t border-amber-500/20 pt-2">
+                          {meetings.map((event) => (
+                            <label key={event.id} className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-amber-500/10">
+                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-amber-500" />
+                              <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
+                              {event.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full shrink-0">✓</span>}
+                              {event.inviteStatus === 'pending' && <span className="text-[8px] bg-amber-600/30 text-amber-300 px-1 py-0.5 rounded-full shrink-0">⏳</span>}
+                              {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 shrink-0 text-xs">🔗</a>}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </details>
 
-                  {/* Reminders - Green */}
-                  {reminders.length > 0 && (
-                    <div className="rounded-xl border border-green-500/25 bg-green-500/5 p-3">
-                      <p className="text-xs font-bold text-green-400 mb-2 uppercase tracking-wide">🔔 Reminders ({reminders.filter((e) => e.completed).length}/{reminders.length})</p>
-                      <div className="space-y-1.5">
-                        {reminders.map((event) => (
-                          <label key={event.id} className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-green-500/10 cursor-pointer">
-                            <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded shrink-0 accent-green-500" />
-                            <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
-                            {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:text-blue-300 shrink-0">🔗</a>}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                    {/* Reminders Tile */}
+                    <details className="rounded-xl border border-green-500/30 bg-green-500/10 overflow-hidden">
+                      <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                        <span className="text-2xl">🔔</span>
+                        <span className="text-lg font-bold text-green-400">{reminders.length}</span>
+                        <span className="text-[10px] text-slate-400">{reminders.filter((e) => e.completed).length}/{reminders.length} done</span>
+                      </summary>
+                      {reminders.length > 0 && (
+                        <div className="px-2 pb-2 space-y-1 border-t border-green-500/20 pt-2">
+                          {reminders.map((event) => (
+                            <label key={event.id} className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-green-500/10">
+                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-green-500" />
+                              <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
+                              {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 shrink-0 text-xs">🔗</a>}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </details>
+                  </div>
                 </>
               );
             })()}
@@ -404,6 +426,91 @@ export default function DashboardPage() {
             <div className="text-xs text-slate-400">Converted</div>
           </div>
         </div>
+      </div>
+
+      {/* Full Month Calendar */}
+      <div className="glass-card">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-white text-sm">📅 Calendar</h3>
+          <button onClick={() => navigate('/create')} className="text-xs text-blue-400 hover:text-blue-300">Open Create →</button>
+        </div>
+        {(() => {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = now.getMonth();
+          const today = now.getDate();
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          const firstDayOfWeek = new Date(year, month, 1).getDay();
+          const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+          const folioStart = localStorage.getItem('hawkeye_folio_start') || '';
+          const folioEnd = localStorage.getItem('hawkeye_folio_end') || '';
+
+          return (
+            <div>
+              <p className="text-xs text-slate-400 text-center mb-2">{monthName}</p>
+              <div className="grid grid-cols-7 gap-0.5">
+                {dayLabels.map((d, i) => (
+                  <div key={i} className="text-center text-[9px] text-slate-500 font-medium py-0.5">{d}</div>
+                ))}
+                {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
+                {Array.from({ length: daysInMonth }, (_, i) => {
+                  const day = i + 1;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const dayEvents = events.filter((e) => e.date === dateStr);
+                  const isToday = day === today;
+                  const isFolioStart = dateStr === folioStart;
+                  const isFolioEnd = dateStr === folioEnd;
+                  const isInFolio = folioStart && folioEnd && dateStr >= folioStart && dateStr <= folioEnd;
+                  return (
+                    <div
+                      key={day}
+                      onClick={(e) => { e.stopPropagation(); navigate('/create'); }}
+                      className={`text-center py-1 rounded cursor-pointer ${
+                        isFolioStart ? 'bg-green-600/40 border border-green-500/60 font-bold'
+                        : isFolioEnd ? 'bg-red-600/40 border border-red-500/60 font-bold'
+                        : isToday ? 'bg-blue-600 text-white font-bold'
+                        : isInFolio ? 'bg-amber-500/10 border border-amber-500/20'
+                        : dayEvents.length > 0 ? 'bg-white/10 text-white'
+                        : 'text-slate-500'
+                      }`}
+                    >
+                      <span className={`text-[11px] ${isFolioStart ? 'text-green-300' : isFolioEnd ? 'text-red-300' : isToday ? 'text-white' : ''}`}>{day}</span>
+                      {dayEvents.length > 0 && (
+                        <div className="flex justify-center gap-0.5 mt-0.5">
+                          {dayEvents.some((e) => e.type === 'post') && <span className="w-1 h-1 rounded-full bg-blue-400"></span>}
+                          {dayEvents.some((e) => e.type === 'meeting' || e.type === 'task') && <span className="w-1 h-1 rounded-full bg-amber-400"></span>}
+                          {dayEvents.some((e) => e.type === 'reminder') && <span className="w-1 h-1 rounded-full bg-green-400"></span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Notes */}
+      <div className="glass-card">
+        <h3 className="font-semibold text-white text-sm mb-2">📝 Notes</h3>
+        <textarea
+          defaultValue={localStorage.getItem(`hawkeye_notepad_${user?.sub}`) || ''}
+          onBlur={(e) => {
+            const val = e.target.value;
+            localStorage.setItem(`hawkeye_notepad_${user?.sub}`, val);
+            getToken().then((token) => {
+              if (!token) return;
+              const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+              client.request('PUT', '/profile/preferences', { notepad: val }).catch(() => {});
+            });
+          }}
+          placeholder="Quick notes, ideas, reminders..."
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-24 focus:border-blue-500/50 focus:outline-none"
+        />
       </div>
 
       {/* Engagement Summary */}
@@ -477,83 +584,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
-      {/* Your Scheduled Cues */}
-      <details className="glass-card" open>
-        <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
-          <span>Your Scheduled Cues</span>
-          <span className="text-xs text-slate-400">{todayPosts.length + todayEvents.length} items</span>
-        </summary>
-        <div className="mt-3 space-y-2">
-          {(todayPosts.length > 0 || todayEvents.length > 0) ? (
-            <>
-              {/* Calendar events */}
-              {todayEvents.map((event) => (
-                <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
-                  <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-4 h-4 rounded shrink-0" />
-                  <span className={`text-sm flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-300'}`}>{event.title}</span>
-                  {event.link && (
-                    <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:text-blue-300 shrink-0" title={event.link}>🔗</a>
-                  )}
-                  <span className={`text-xs ${typeColors[event.type]}`}>{typeIcons[event.type]}</span>
-                </div>
-              ))}
-              {/* Scheduled posts */}
-              {todayPosts.map((post) => (
-              <details key={post.id} className="rounded-lg bg-white/5 overflow-hidden">
-                <summary className="flex items-center justify-between p-2 cursor-pointer hover:bg-white/5">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-white truncate">{(post.content || 'Scheduled post').slice(0, 50)}</p>
-                    <p className="text-xs text-slate-500">{post.platforms?.join(', ')} • {post.scheduledAt ? new Date(post.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-2">
-                    <span className={`text-xs px-2 py-0.5 rounded ${post.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>
-                      {post.status}
-                    </span>
-                  </div>
-                </summary>
-                <div className="p-3 border-t border-white/5 space-y-2">
-                  <textarea
-                    defaultValue={post.content || ''}
-                    onBlur={async (e) => {
-                      const newContent = e.target.value.trim();
-                      if (newContent && newContent !== post.content) {
-                        try {
-                          const token = await getToken();
-                          const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-                          await client.updatePost(post.id, { content: newContent });
-                          setTodayPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, content: newContent } : p));
-                        } catch { /* ignore */ }
-                      }
-                    }}
-                    rows={Math.max(6, (post.content || '').length / 40)}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm resize-y focus:border-blue-500 focus:outline-none"
-                  />
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-slate-500">{post.platforms?.join(', ')} • {post.scheduledAt ? new Date(post.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</p>
-                    <button
-                      onClick={async () => {
-                        try {
-                          const token = await getToken();
-                          const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-                          await client.deletePost(post.id);
-                          setTodayPosts((prev) => prev.filter((p) => p.id !== post.id));
-                        } catch { /* ignore */ }
-                      }}
-                      className="text-xs text-red-400 hover:text-red-300 px-2 py-1"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </details>
-            ))}
-            </>
-          ) : (
-            <p className="text-sm text-slate-400">No cues scheduled for today</p>
-          )}
-        </div>
-      </details>
 
       {/* Future Cues */}
       {futurePosts.length > 0 && (

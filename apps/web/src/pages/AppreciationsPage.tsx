@@ -76,6 +76,15 @@ export default function AppreciationsPage() {
   // Advocate detail
   const [selectedAdvocate, setSelectedAdvocate] = useState<string | null>(null);
 
+  // Edit state
+  const [editingMention, setEditingMention] = useState<Appreciation | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editTrade, setEditTrade] = useState('');
+  const [editPlatform, setEditPlatform] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+
   // Debounce person filter
   useEffect(() => {
     const timer = setTimeout(() => setPersonFilter(personFilterInput), 400);
@@ -145,6 +154,58 @@ export default function AppreciationsPage() {
     } finally {
       setAdding(false);
     }
+  }
+
+  async function handleEdit() {
+    if (!editingMention || !editName.trim() || !editContent.trim()) return;
+    setSaving(true);
+    try {
+      const client = await buildClient();
+      await client.request('PUT', `/appreciations/${editingMention.id}`, {
+        taggerName: editName.trim(),
+        taggerTrade: editTrade.trim() || null,
+        platform: editPlatform,
+        postContent: editContent.trim(),
+        postUrl: editUrl.trim() || null,
+      });
+      setMentions((prev) => prev.map((m) => m.id === editingMention.id ? {
+        ...m,
+        taggerName: editName.trim(),
+        taggerTrade: editTrade.trim() || null,
+        platform: editPlatform,
+        postContent: editContent.trim(),
+        postUrl: editUrl.trim() || null,
+      } : m));
+      setEditingMention(null);
+      showToast('✓ Updated');
+    } catch (e) {
+      console.error('Failed to edit:', e);
+      showToast('❌ Failed to update');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this appreciation?')) return;
+    try {
+      const client = await buildClient();
+      await client.request('DELETE', `/appreciations/${id}`);
+      setMentions((prev) => prev.filter((m) => m.id !== id));
+      showToast('✓ Deleted');
+      await fetchData();
+    } catch (e) {
+      console.error('Failed to delete:', e);
+    }
+  }
+
+  function openEdit(mention: Appreciation) {
+    setEditingMention(mention);
+    setEditName(mention.taggerName);
+    setEditTrade(mention.taggerTrade || '');
+    setEditPlatform(mention.platform);
+    setEditContent(mention.postContent);
+    setEditUrl(mention.postUrl || '');
   }
 
   const unthanked = mentions.filter((m) => !m.thanked);
@@ -431,6 +492,18 @@ export default function AppreciationsPage() {
                           ↗ View Post
                         </a>
                       )}
+                      <button
+                        onClick={() => openEdit(mention)}
+                        className="bg-slate-700 text-slate-300 px-3 py-2 min-h-[44px] rounded-lg text-sm hover:bg-slate-600"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDelete(mention.id)}
+                        className="bg-red-600/20 text-red-400 px-3 py-2 min-h-[44px] rounded-lg text-sm hover:bg-red-600/30 border border-red-500/30"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -462,7 +535,11 @@ export default function AppreciationsPage() {
                           <span className="text-xs text-slate-500 ml-2">{platformIcons[mention.platform]} {mention.platform}</span>
                         </div>
                       </div>
-                      <span className="text-xs text-green-400">✓</span>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => openEdit(mention)} className="text-xs text-slate-400 hover:text-white">✏️</button>
+                        <button onClick={() => handleDelete(mention.id)} className="text-xs text-red-400 hover:text-red-300">🗑️</button>
+                        <span className="text-xs text-green-400">✓</span>
+                      </div>
                     </div>
                     <p className="text-xs text-slate-400 italic">"{mention.postContent}"</p>
                     {mention.replyText && (
@@ -600,7 +677,11 @@ export default function AppreciationsPage() {
                   <span className={`text-xs px-2 py-0.5 rounded-full border ${platformColors[mention.platform] || 'bg-slate-500/10 border-slate-500/20 text-slate-400'}`}>
                     {platformIcons[mention.platform]} {mention.platform}
                   </span>
-                  <span className="text-xs text-slate-500">{new Date(mention.detectedAt).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">{new Date(mention.detectedAt).toLocaleDateString()}</span>
+                    <button onClick={() => openEdit(mention)} className="text-xs text-slate-400 hover:text-white">✏️</button>
+                    <button onClick={() => handleDelete(mention.id)} className="text-xs text-red-400 hover:text-red-300">🗑️</button>
+                  </div>
                 </div>
                 <p className="text-sm text-slate-300 italic bg-white/5 p-2 rounded-lg">"{mention.postContent}"</p>
                 <div className="flex items-center justify-between mt-2">
@@ -625,6 +706,75 @@ export default function AppreciationsPage() {
             ))}
           </div>
         </>
+      )}
+
+      {/* Edit Appreciation Modal */}
+      {editingMention && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-purple-500/30 rounded-2xl p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-white text-lg">✏️ Edit Appreciation</h3>
+              <button onClick={() => setEditingMention(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Who recommended you? *"
+                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                />
+                <select
+                  value={editPlatform}
+                  onChange={(e) => setEditPlatform(e.target.value)}
+                  className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                >
+                  <option value="facebook">📘 FB</option>
+                  <option value="instagram">📷 IG</option>
+                  <option value="linkedin">💼 LI</option>
+                  <option value="tiktok">🎵 TT</option>
+                </select>
+              </div>
+              <input
+                type="text"
+                value={editTrade}
+                onChange={(e) => setEditTrade(e.target.value)}
+                placeholder="Their trade (optional)"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+              />
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                placeholder="What they said... *"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20"
+              />
+              <input
+                type="url"
+                value={editUrl}
+                onChange={(e) => setEditUrl(e.target.value)}
+                placeholder="Link to the post (optional)"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+              />
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={handleEdit}
+                  disabled={saving || !editName.trim() || !editContent.trim()}
+                  className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg text-sm transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : '✓ Save Changes'}
+                </button>
+                <button
+                  onClick={() => { handleDelete(editingMention.id); setEditingMention(null); }}
+                  className="px-4 py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 font-bold rounded-lg text-sm transition-all active:scale-95 border border-red-500/30"
+                >
+                  🗑️
+                </button>
+              </div>
+              <button onClick={() => setEditingMention(null)} className="w-full py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 text-sm">Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

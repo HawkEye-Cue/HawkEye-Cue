@@ -761,7 +761,7 @@ export class ApiStack extends cdk.Stack {
     });
     this.httpApi.addRoutes({
       path: '/appreciations/{id}',
-      methods: [apigatewayv2.HttpMethod.DELETE],
+      methods: [apigatewayv2.HttpMethod.DELETE, apigatewayv2.HttpMethod.PUT],
       integration: appreciationsIntegration,
       authorizer,
     });

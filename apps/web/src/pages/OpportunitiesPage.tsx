@@ -220,7 +220,7 @@ export default function OpportunitiesPage() {
 
   function renderLeadCard(lead: Opportunity) {
     return (
-      <div key={lead.id} className="glass-card">
+      <div key={lead.id} className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-lg">{platformIcons[lead.sourcePlatform] || '📱'}</span>
@@ -526,7 +526,7 @@ export default function OpportunitiesPage() {
               {teamLeads.filter((l) => teamLeadFilter === 'all' || l.addedByEmail === teamLeadFilter).map((lead) => {
                 const colorIdx = getMemberColorIndex(lead.addedByEmail);
                 return (
-                  <div key={lead.id} className="glass-card flex items-center gap-3">
+                  <div key={lead.id} className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm flex items-center gap-3">
                     <div className={`w-1.5 h-10 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white truncate">{lead.name}</p>

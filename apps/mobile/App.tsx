@@ -41,6 +41,9 @@ function WebApp() {
       allowsBackForwardNavigationGestures={true}
       pullToRefreshEnabled={true}
       overScrollMode="content"
+      cacheEnabled={false}
+      incognito={false}
+      cacheMode="LOAD_NO_CACHE"
     />
   );
 }

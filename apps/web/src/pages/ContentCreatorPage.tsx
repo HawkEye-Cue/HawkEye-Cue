@@ -535,7 +535,7 @@ export default function ContentCreatorPage() {
       {/* Today's Items - collapsible */}
       <details className="glass-card" open>
         <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
-          <span>Today's Posts</span>
+          <span>Today's Flocks</span>
           <span className="text-xs text-slate-400">
             {todayCalendarEvents.filter((e) => e.type === 'post' && e.completed).length}/{todayCalendarEvents.filter((e) => e.type === 'post').length} done
           </span>
@@ -587,7 +587,7 @@ export default function ContentCreatorPage() {
                     <span className="text-xs font-normal opacity-80 truncate max-w-full">{next?.title || 'Next flock'}</span>
                   </button>
                   <p className="text-xs text-slate-400 text-center">{remaining.length} flock{remaining.length !== 1 ? 's' : ''} remaining{isNestTier ? ` • ${nestLimit - nestUsedToday} free uses left today` : ''}</p>
-                  <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: Photos don't copy to clipboard. Add your image manually in each flock for best engagement.</p>
+                  <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: Photos don't copy — add your image manually in each group for best engagement.</p>
                 </>
               );
             })()}
@@ -595,7 +595,7 @@ export default function ContentCreatorPage() {
         )}
         {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && !platformContent && (
           <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
-            <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy & Open Next Flock"</strong> to paste it into each flock</p>
+            <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy & Open Next Flock"</strong> to fly through your groups</p>
           </div>
         )}
         <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">
@@ -724,7 +724,7 @@ export default function ContentCreatorPage() {
             </div>
           ))}
           {todayCalendarEvents.filter((e) => e.type === 'post').length === 0 && todayPosts.length === 0 && (
-            <p className="text-sm text-slate-500">No posts scheduled for today</p>
+            <p className="text-sm text-slate-500">No flocks scheduled for today</p>
           )}
           {todayCalendarEvents.filter((e) => e.type === 'post').length > 0 && todayCalendarEvents.filter((e) => e.type === 'post').every((e) => e.completed) && (
             <div className="mt-4 space-y-3">
@@ -733,7 +733,7 @@ export default function ContentCreatorPage() {
                   <div className="absolute animate-[hawkSwoop_3s_ease-in-out_infinite] text-4xl" style={{ top: '20%', left: '-60px' }}>🦅</div>
                 </div>
                 <div className="text-3xl mb-2">🎉</div>
-                <p className="text-lg font-bold text-amber-300">Today's posts are done!</p>
+                <p className="text-lg font-bold text-amber-300">Today's flocks are done!</p>
                 <p className="text-sm text-slate-300 mt-1">Now engage — check for comments, reply, and build relationships.</p>
               </div>
               {/* Engage Flocks Flow */}
@@ -745,7 +745,7 @@ export default function ContentCreatorPage() {
                 return (
                   <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
                     <p className="text-sm font-bold text-blue-300 mb-2">💬 Engage Your Flocks</p>
-                    <p className="text-xs text-slate-400 mb-3">Go back into each flock to like, comment, and connect. This boosts your visibility.</p>
+                    <p className="text-xs text-slate-400 mb-3">Fly back into each group to like, comment, and connect. This boosts your visibility.</p>
                     {!allEngaged ? (
                       <>
                         <button

@@ -683,6 +683,28 @@ export default function CalendarPage() {
             >
               Close
             </button>
+
+            {/* Day Notes */}
+            {selectedDay !== null && (
+              <div className="mt-3 border-t border-white/10 pt-3">
+                <p className="text-xs text-slate-400 font-semibold mb-1.5">📝 Notes</p>
+                <textarea
+                  defaultValue={localStorage.getItem(`hawkeye_notepad_${user?.sub}_${getDateStr(selectedDay)}`) || ''}
+                  onBlur={(e) => {
+                    const val = e.target.value;
+                    const dateKey = getDateStr(selectedDay!);
+                    localStorage.setItem(`hawkeye_notepad_${user?.sub}_${dateKey}`, val);
+                    getToken().then((token) => {
+                      if (!token) return;
+                      const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                      client.request('PUT', '/profile/preferences', { [`notepad_${dateKey}`]: val }).catch(() => {});
+                    });
+                  }}
+                  placeholder="Notes for this day..."
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20 focus:border-blue-500/50 focus:outline-none"
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -543,16 +543,25 @@ export default function ContentCreatorPage() {
         {/* Copy & Open Next Group button */}
         {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && platformContent && (
           <div className="mt-3 space-y-2">
-            {['free', 'nest'].includes(userTier) ? (
-              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
-                <p className="text-sm font-bold text-amber-300 mb-1">🔒 Copy & Open Next Group</p>
-                <p className="text-xs text-slate-400 mb-3">This one-tap workflow copies your post and opens each group for you. Available on the Soar plan.</p>
-                <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-6 py-2 rounded-lg text-sm font-bold hover:opacity-90">Upgrade to Soar — $24.99/mo</a>
-              </div>
-            ) : (
-            (() => {
+            {(() => {
               const remaining = todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed);
               const next = remaining[0];
+              const isNestTier = ['free', 'nest'].includes(userTier);
+              const nestLimit = 3;
+              const nestUsedKey = `hawkeye_copyopen_used_${new Date().toISOString().split('T')[0]}`;
+              const nestUsedToday = isNestTier ? parseInt(localStorage.getItem(nestUsedKey) || '0') : 0;
+              const nestLimitReached = isNestTier && nestUsedToday >= nestLimit;
+
+              if (nestLimitReached) {
+                return (
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
+                    <p className="text-sm font-bold text-amber-300 mb-1">🔒 Daily Limit Reached (3/3)</p>
+                    <p className="text-xs text-slate-400 mb-3">Nest users get 3 Copy & Open per day. Upgrade to Soar for unlimited.</p>
+                    <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-6 py-2 rounded-lg text-sm font-bold hover:opacity-90">Upgrade to Soar — $24.99/mo</a>
+                  </div>
+                );
+              }
+
               return (
                 <>
                   <button
@@ -564,6 +573,11 @@ export default function ContentCreatorPage() {
                         setShowHawkSwoop(true);
                         setTimeout(() => setShowHawkSwoop(false), 1400);
                         window.open(next.link!, '_blank');
+                        // Track usage for Nest users
+                        if (isNestTier) {
+                          const used = parseInt(localStorage.getItem(nestUsedKey) || '0') + 1;
+                          localStorage.setItem(nestUsedKey, String(used));
+                        }
                         showToast(`✓ Copied & opened — ${remaining.length - 1} group${remaining.length - 1 !== 1 ? 's' : ''} left`);
                       }
                     }}
@@ -572,12 +586,11 @@ export default function ContentCreatorPage() {
                     <span className="text-base">📋 Copy & Open Next Group</span>
                     <span className="text-xs font-normal opacity-80 truncate max-w-full">{next?.title || 'Next group'}</span>
                   </button>
-                  <p className="text-xs text-slate-400 text-center">{remaining.length} group{remaining.length !== 1 ? 's' : ''} remaining — tap button, paste in group, come back, repeat</p>
+                  <p className="text-xs text-slate-400 text-center">{remaining.length} group{remaining.length !== 1 ? 's' : ''} remaining{isNestTier ? ` • ${nestLimit - nestUsedToday} free uses left today` : ''}</p>
                   <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: Photos don't copy to clipboard. Add your image manually in each group for best engagement.</p>
                 </>
               );
-            })()
-            )}
+            })()}
           </div>
         )}
         {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && !platformContent && (

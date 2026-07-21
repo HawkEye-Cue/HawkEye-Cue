@@ -11,7 +11,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
   const { getToken, user } = useAuth();
-  const { events, toggleComplete, removeEvent, updateEvent, refreshEvents } = useCalendar();
+  const { events, toggleComplete, removeEvent, updateEvent, refreshEvents, addEvent } = useCalendar();
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
@@ -29,6 +29,12 @@ export default function DashboardPage() {
   const [editTime, setEditTime] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editDate, setEditDate] = useState('');
+  const [dashCalDay, setDashCalDay] = useState<string | null>(null);
+  const [dashCalAdd, setDashCalAdd] = useState(false);
+  const [dashCalTitle, setDashCalTitle] = useState('');
+  const [dashCalType, setDashCalType] = useState<'post' | 'meeting' | 'reminder'>('post');
+  const [dashCalTime, setDashCalTime] = useState('');
+  const [dashCalLink, setDashCalLink] = useState('');
 
   // Refetch when page becomes visible (user navigates back)
   useEffect(() => {
@@ -449,7 +455,6 @@ export default function DashboardPage() {
       <div className="glass-card">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-white text-sm">📅 Calendar</h3>
-          <button onClick={() => navigate('/create')} className="text-xs text-blue-400 hover:text-blue-300">Open Create →</button>
         </div>
         {(() => {
           const now = new Date();
@@ -484,14 +489,14 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={day}
-                      onClick={(e) => { e.stopPropagation(); navigate(`/create?day=${dateStr}`); }}
-                      className={`text-center py-1 rounded cursor-pointer ${
+                      onClick={() => { setDashCalDay(dateStr); setDashCalAdd(false); }}
+                      className={`text-center py-1 rounded cursor-pointer relative ${
                         isFolioStart ? 'bg-green-600/40 border border-green-500/60 font-bold'
                         : isFolioEnd ? 'bg-red-600/40 border border-red-500/60 font-bold'
                         : isToday ? 'bg-blue-600 text-white font-bold'
                         : isInFolio ? 'bg-amber-500/10 border border-amber-500/20'
                         : dayEvents.length > 0 ? 'bg-white/10 text-white'
-                        : 'text-slate-500'
+                        : 'text-slate-500 hover:bg-white/5'
                       }`}
                     >
                       <span className={`text-[11px] ${isFolioStart ? 'text-green-300' : isFolioEnd ? 'text-red-300' : isToday ? 'text-white' : ''}`}>{day}</span>
@@ -510,6 +515,97 @@ export default function DashboardPage() {
           );
         })()}
       </div>
+
+      {/* Dashboard Calendar Day Modal */}
+      {dashCalDay && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-5 shadow-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-white text-lg">
+                {new Date(dashCalDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </h3>
+              <button onClick={() => setDashCalDay(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            {!dashCalAdd ? (
+              <>
+                {/* Day events list */}
+                {(() => {
+                  const dayEvts = events.filter((e) => e.date === dashCalDay);
+                  if (dayEvts.length === 0) return <p className="text-xs text-slate-500 text-center py-4">No events — tap + to add</p>;
+                  return (
+                    <div className="space-y-2 mb-3">
+                      {dayEvts.map((evt) => (
+                        <div key={evt.id} className={`p-2.5 rounded-lg border ${evt.type === 'post' ? 'border-blue-500/20 bg-blue-500/5' : evt.type === 'meeting' || evt.type === 'task' ? 'border-amber-500/20 bg-amber-500/5' : 'border-green-500/20 bg-green-500/5'}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">{evt.type === 'post' ? '📤' : evt.type === 'meeting' || evt.type === 'task' ? '🤝' : '🔔'}</span>
+                            <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                            {evt.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full">✓</span>}
+                          </div>
+                          <div className="flex gap-1 mt-1.5 ml-6">
+                            {evt.link && <a href={evt.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300">🔗</a>}
+                            <button onClick={() => {
+                              const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
+                              const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/);
+                              let cleanTitle = evt.title;
+                              if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], '');
+                              if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, '');
+                              const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/);
+                              if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], '');
+                              setEditingEvent(evt);
+                              setEditTitle(cleanTitle.trim());
+                              setEditTime(timeMatch ? timeMatch[1] : '');
+                              setEditLocation(locationMatch ? locationMatch[1].trim() : '');
+                              setEditLink(evt.link || '');
+                              setEditDate(evt.date);
+                            }} className="text-[10px] text-slate-400 hover:text-white">✏️</button>
+                            <button onClick={() => removeEvent(evt.id)} className="text-[10px] text-red-400 hover:text-red-300">🗑️</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+                <button onClick={() => setDashCalAdd(true)} className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95">
+                  + Add to this day
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Add event form */}
+                <button onClick={() => setDashCalAdd(false)} className="text-xs text-blue-400 hover:text-blue-300 mb-2">← Back</button>
+                <div className="space-y-3">
+                  <input type="text" value={dashCalTitle} onChange={(e) => setDashCalTitle(e.target.value)} placeholder="What's happening?" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" autoFocus />
+                  <input type="time" value={dashCalTime} onChange={(e) => setDashCalTime(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                  <div className="flex gap-2">
+                    {(['post', 'meeting', 'reminder'] as const).map((t) => (
+                      <button key={t} onClick={() => setDashCalType(t)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dashCalType === t ? (t === 'post' ? 'bg-blue-600 text-white' : t === 'meeting' ? 'bg-amber-500 text-black' : 'bg-green-600 text-white') : 'bg-slate-700 text-slate-400'}`}>
+                        {t === 'post' ? '📤 Post' : t === 'meeting' ? '🤝 Meeting' : '🔔 Reminder'}
+                      </button>
+                    ))}
+                  </div>
+                  <input type="url" value={dashCalLink} onChange={(e) => setDashCalLink(e.target.value)} placeholder="Link (optional)" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                  <button
+                    onClick={async () => {
+                      if (!dashCalTitle.trim()) return;
+                      let title = dashCalTitle.trim();
+                      if (dashCalTime) title = `[${dashCalTime}] ${title}`;
+                      await addEvent({ date: dashCalDay!, title, type: dashCalType, link: dashCalLink.trim() || undefined });
+                      setDashCalTitle(''); setDashCalTime(''); setDashCalLink('');
+                      setDashCalAdd(false);
+                    }}
+                    disabled={!dashCalTitle.trim()}
+                    className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 transition-all active:scale-95"
+                  >
+                    ✓ Add
+                  </button>
+                </div>
+              </>
+            )}
+            <button onClick={() => setDashCalDay(null)} className="w-full mt-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 text-sm">Close</button>
+          </div>
+        </div>
+      )}
 
       {/* Notes */}
       <div className="glass-card">

@@ -486,11 +486,12 @@ export default function DashboardPage() {
                   const isFolioStart = dateStr === folioStart;
                   const isFolioEnd = dateStr === folioEnd;
                   const isInFolio = folioStart && folioEnd && dateStr >= folioStart && dateStr <= folioEnd;
+                  const isFuture = new Date(year, month, day) >= new Date(year, month, today);
                   return (
                     <div
                       key={day}
                       onClick={() => { setDashCalDay(dateStr); setDashCalAdd(false); }}
-                      className={`text-center py-1 rounded cursor-pointer relative ${
+                      className={`text-center py-1 rounded cursor-pointer relative group ${
                         isFolioStart ? 'bg-green-600/40 border border-green-500/60 font-bold'
                         : isFolioEnd ? 'bg-red-600/40 border border-red-500/60 font-bold'
                         : isToday ? 'bg-blue-600 text-white font-bold'
@@ -506,6 +507,14 @@ export default function DashboardPage() {
                           {dayEvents.some((e) => e.type === 'meeting' || e.type === 'task') && <span className="w-1 h-1 rounded-full bg-amber-400"></span>}
                           {dayEvents.some((e) => e.type === 'reminder') && <span className="w-1 h-1 rounded-full bg-green-400"></span>}
                         </div>
+                      )}
+                      {isFuture && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDashCalDay(dateStr); setDashCalAdd(true); }}
+                          className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] bg-blue-600/80 text-white px-1 py-0 rounded font-bold hover:bg-blue-500 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          +
+                        </button>
                       )}
                     </div>
                   );

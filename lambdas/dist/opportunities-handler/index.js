@@ -117,6 +117,48 @@ async function handleCreateOpportunity(userId, body) {
     })
   );
 
+  // Auto-create follow-up protocol from user's saved template
+  try {
+    const templateResult = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND SK = :sk',
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'LEAD_PROTOCOL_TEMPLATE' },
+    }));
+    const template = (templateResult.Items || [])[0];
+    if (template && template.steps && template.steps.length > 0) {
+      const startDate = new Date(now);
+      const steps = template.steps.map((s, i) => {
+        const eventDate = new Date(startDate);
+        eventDate.setDate(eventDate.getDate() + (s.day || 0));
+        const scheduledDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
+        return {
+          idx: i,
+          day: s.day || 0,
+          type: s.type || 'call',
+          task: s.task || '',
+          completed: false,
+          completedAt: null,
+          scheduledDate,
+        };
+      });
+
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${userId}`,
+          SK: `LEAD_PROTOCOL#${opportunityId}`,
+          opportunityId,
+          leadName: body.sourceAuthor,
+          steps,
+          createdAt: now,
+          updatedAt: now,
+        },
+      }));
+    }
+  } catch (e) {
+    console.error('Failed to auto-create protocol:', e);
+  }
+
   return respond(201, { id: opportunityId, status: 'new', createdAt: now });
 }
 
@@ -251,6 +293,112 @@ exports.handler = async (event) => {
     if (method === 'POST' && path === '/opportunities') {
       const body = event.body ? JSON.parse(event.body) : null;
       return handleCreateOpportunity(userId, body);
+    }
+
+    // GET /opportunities/{id}/followups — get follow-up protocol for a lead
+    const followupsGetMatch = path.match(/^\/opportunities\/([^/]+)\/followups$/);
+    if (method === 'GET' && followupsGetMatch) {
+      const oppId = followupsGetMatch[1];
+      const result = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': `LEAD_PROTOCOL#${oppId}` },
+      }));
+      const item = (result.Items || [])[0];
+      return respond(200, { steps: item?.steps || [] });
+    }
+
+    // PUT /opportunities/{id}/followups/{stepIdx} — mark step complete/incomplete
+    const followupStepMatch = path.match(/^\/opportunities\/([^/]+)\/followups\/(\d+)$/);
+    if (method === 'PUT' && followupStepMatch) {
+      const oppId = followupStepMatch[1];
+      const stepIdx = parseInt(followupStepMatch[2]);
+      const body = event.body ? JSON.parse(event.body) : {};
+
+      // Get existing protocol
+      const result = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': `LEAD_PROTOCOL#${oppId}` },
+      }));
+      const item = (result.Items || [])[0];
+      if (!item) return respond(404, { error: { code: 'NOT_FOUND', message: 'Protocol not found for this lead' } });
+
+      const steps = item.steps || [];
+      if (stepIdx < 0 || stepIdx >= steps.length) return respond(400, { error: { code: 'INVALID_INDEX', message: 'Invalid step index' } });
+
+      steps[stepIdx] = { ...steps[stepIdx], completed: body.completed !== false, completedAt: body.completed !== false ? new Date().toISOString() : null };
+
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: `LEAD_PROTOCOL#${oppId}` },
+        UpdateExpression: 'SET steps = :s',
+        ExpressionAttributeValues: { ':s': steps },
+      }));
+
+      return respond(200, { steps });
+    }
+
+    // PUT /opportunities/{id}/protocol — save/update full protocol for a lead
+    const protocolMatch = path.match(/^\/opportunities\/([^/]+)\/protocol$/);
+    if (method === 'PUT' && protocolMatch) {
+      const oppId = protocolMatch[1];
+      const body = event.body ? JSON.parse(event.body) : {};
+      const steps = (body.steps || []).map((s, i) => ({
+        idx: i,
+        day: s.day || 0,
+        type: s.type || 'call',
+        task: s.task || '',
+        completed: s.completed || false,
+        completedAt: s.completedAt || null,
+        scheduledDate: s.scheduledDate || null,
+      }));
+
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${userId}`,
+          SK: `LEAD_PROTOCOL#${oppId}`,
+          opportunityId: oppId,
+          steps,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+
+      return respond(200, { steps });
+    }
+
+    // GET /opportunities/protocol-template — get user's saved default protocol
+    if (method === 'GET' && path === '/opportunities/protocol-template') {
+      const result = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'LEAD_PROTOCOL_TEMPLATE' },
+      }));
+      const item = (result.Items || [])[0];
+      return respond(200, { steps: item?.steps || [] });
+    }
+
+    // PUT /opportunities/protocol-template — save user's default protocol template
+    if (method === 'PUT' && path === '/opportunities/protocol-template') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const steps = (body.steps || []).map((s) => ({
+        day: s.day || 0,
+        type: s.type || 'call',
+        task: s.task || '',
+      }));
+
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${userId}`,
+          SK: 'LEAD_PROTOCOL_TEMPLATE',
+          steps,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+
+      return respond(200, { steps });
     }
 
     // PUT /opportunities/{id}/status

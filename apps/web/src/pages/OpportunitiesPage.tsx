@@ -64,14 +64,49 @@ export default function OpportunitiesPage() {
   const [teamLeadFilter, setTeamLeadFilter] = useState('all');
   const [showProtocolEditor, setShowProtocolEditor] = useState(false);
 
-  // Lead follow-up protocol (customizable, persisted in localStorage)
+  // Lead follow-up protocol (customizable, persisted on server)
   const protocolKey = `hawkeye_lead_protocol_${user?.sub || 'default'}`;
   const [leadProtocol, setLeadProtocol] = useState<{ day: number; type: string; task: string }[]>(() => {
     const saved = localStorage.getItem(protocolKey);
     if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     return DEFAULT_LEAD_PROTOCOL;
   });
+  const [leadFollowups, setLeadFollowups] = useState<Record<string, { steps: any[] }>>({});
   const hasSetProtocol = localStorage.getItem(`hawkeye_protocol_set_${user?.sub}`) === 'true';
+
+  // Load protocol template from server
+  useEffect(() => {
+    async function loadTemplate() {
+      try {
+        const client = await buildClient();
+        const result = await client.request<{ steps: any[] }>('GET', '/opportunities/protocol-template');
+        if (result.steps && result.steps.length > 0) {
+          setLeadProtocol(result.steps);
+          localStorage.setItem(protocolKey, JSON.stringify(result.steps));
+        }
+      } catch { /* use local fallback */ }
+    }
+    loadTemplate();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load follow-ups for all visible leads
+  useEffect(() => {
+    async function loadFollowups() {
+      if (leads.length === 0) return;
+      try {
+        const client = await buildClient();
+        const results: Record<string, { steps: any[] }> = {};
+        for (const lead of leads.slice(0, 20)) {
+          try {
+            const r = await client.request<{ steps: any[] }>('GET', `/opportunities/${lead.id}/followups`);
+            if (r.steps && r.steps.length > 0) results[lead.id] = { steps: r.steps };
+          } catch { /* ignore individual failures */ }
+        }
+        setLeadFollowups(results);
+      } catch { /* ignore */ }
+    }
+    loadFollowups();
+  }, [leads.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Team data integration
   const { isInTeam, teamMembers, teamLeads, leadsNextCursor, fetchLeads, getMemberColorIndex } = useTeamData();
@@ -241,6 +276,13 @@ export default function OpportunitiesPage() {
   }
 
   function renderLeadCard(lead: Opportunity) {
+    const followup = leadFollowups[lead.id];
+    const steps = followup?.steps || [];
+    const completedSteps = steps.filter((s: any) => s.completed).length;
+    const totalSteps = steps.length;
+    const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+    const nextStep = steps.find((s: any) => !s.completed);
+
     return (
       <div key={lead.id} className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">
         <div className="flex items-start justify-between gap-2 mb-2">
@@ -261,6 +303,40 @@ export default function OpportunitiesPage() {
             <button onClick={() => handleDelete(lead.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
           </div>
         </div>
+
+        {/* Protocol Progress Bar */}
+        {totalSteps > 0 && (
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-slate-400">{completedSteps}/{totalSteps} steps</span>
+              <span className="text-[10px] text-slate-400">{progress}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+            </div>
+            {nextStep && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <span className="text-xs">{nextStep.type === 'call' ? '📞' : nextStep.type === 'sms' ? '💬' : '✉️'}</span>
+                <span className="text-xs text-blue-300">Next: {nextStep.task}</span>
+                <span className="text-[10px] text-slate-500">Day {nextStep.day}</span>
+                <button
+                  onClick={async () => {
+                    try {
+                      const client = await buildClient();
+                      const result = await client.request<{ steps: any[] }>('PUT', `/opportunities/${lead.id}/followups/${nextStep.idx}`, { completed: true });
+                      setLeadFollowups((prev) => ({ ...prev, [lead.id]: { steps: result.steps } }));
+                      showToast('✓ Step completed');
+                    } catch { showToast('❌ Failed'); }
+                  }}
+                  className="ml-auto text-[10px] text-green-400 hover:text-green-300 bg-green-600/20 px-1.5 py-0.5 rounded font-medium"
+                >
+                  Done ✓
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <p className="text-sm text-slate-300 italic bg-white/5 p-2 rounded-lg mb-3">&quot;{(lead.sourceContent || '').slice(0, 150)}{(lead.sourceContent || '').length > 150 ? '...' : ''}&quot;</p>
         <div className="flex flex-wrap items-center gap-2">
           {lead.status === 'new' && (
@@ -285,14 +361,12 @@ export default function OpportunitiesPage() {
             onChange={async (e) => {
               const val = e.target.value;
               const newAssignee = val || null;
-              // Optimistic update
               setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, assignedTo: val } as any : l));
               try {
                 const client = await buildClient();
                 await client.request<any>('PUT', `/opportunities/${lead.id}/status`, { status: lead.status, assignedTo: newAssignee });
                 showToast('✓ Assigned');
               } catch (err) {
-                // Revert on failure
                 setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, assignedTo: (lead as any).assignedTo } as any : l));
                 showToast('❌ Failed to assign');
               }
@@ -473,7 +547,7 @@ export default function OpportunitiesPage() {
                     setNewLeadAssignee('');
                     fetchData();
 
-                    // Auto-schedule follow-up protocol on calendar
+                    // Auto-schedule follow-up protocol on calendar (linked to lead)
                     if (leadProtocol.length > 0) {
                       const startDate = new Date();
                       for (const step of leadProtocol) {
@@ -485,6 +559,7 @@ export default function OpportunitiesPage() {
                           date: dateStr,
                           title: `${icon} ${newLeadName.trim()} — ${step.task.slice(0, 60)}`,
                           type: 'task',
+                          link: `/opportunities`,
                         });
                       }
                     }
@@ -586,7 +661,16 @@ export default function OpportunitiesPage() {
             </div>
             <div className="flex gap-2">
               <button onClick={() => setLeadProtocol([...leadProtocol, { day: (leadProtocol[leadProtocol.length - 1]?.day || 0) + 3, type: 'call', task: '' }])} className="px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-300 rounded text-xs hover:bg-blue-600/30">+ Add Step</button>
-              <button onClick={() => { localStorage.setItem(protocolKey, JSON.stringify(leadProtocol)); localStorage.setItem(`hawkeye_protocol_set_${user?.sub}`, 'true'); setShowProtocolEditor(false); showToast('✓ Protocol saved'); }} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded text-xs hover:bg-green-600/30">Save Protocol</button>
+              <button onClick={async () => { 
+                localStorage.setItem(protocolKey, JSON.stringify(leadProtocol)); 
+                localStorage.setItem(`hawkeye_protocol_set_${user?.sub}`, 'true'); 
+                try {
+                  const client = await buildClient();
+                  await client.request('PUT', '/opportunities/protocol-template', { steps: leadProtocol });
+                } catch { /* fallback to localStorage only */ }
+                setShowProtocolEditor(false); 
+                showToast('✓ Protocol saved'); 
+              }} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded text-xs hover:bg-green-600/30">Save Protocol</button>
               <button onClick={() => { setLeadProtocol(DEFAULT_LEAD_PROTOCOL); }} className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-400 rounded text-xs hover:text-white">Reset Default</button>
             </div>
           </div>

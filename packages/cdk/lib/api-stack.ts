@@ -652,6 +652,30 @@ export class ApiStack extends cdk.Stack {
       integration: opportunitiesIntegration,
       authorizer,
     });
+    this.httpApi.addRoutes({
+      path: '/opportunities/{id}/followups',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: opportunitiesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/opportunities/{id}/followups/{stepIdx}',
+      methods: [apigatewayv2.HttpMethod.PUT],
+      integration: opportunitiesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/opportunities/{id}/protocol',
+      methods: [apigatewayv2.HttpMethod.PUT],
+      integration: opportunitiesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/opportunities/protocol-template',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
+      integration: opportunitiesIntegration,
+      authorizer,
+    });
 
     // Subscription routes
     const subscriptionIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(

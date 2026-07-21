@@ -136,7 +136,8 @@ export default function ContentCreatorPage() {
       try {
         const token = await getToken();
         const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-        const today = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const result = await client.getPosts({ startDate: today, endDate: today });
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
         setTodayPosts(posts);
@@ -150,7 +151,10 @@ export default function ContentCreatorPage() {
     fetchTodayPosts();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  })();
   const todayCalendarEvents = events.filter((e) => e.date === todayStr);
 
   // Use activeTrade for content creation, default to first selected

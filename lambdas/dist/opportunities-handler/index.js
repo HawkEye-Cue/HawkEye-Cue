@@ -76,6 +76,7 @@ async function handleGetOpportunities(userId) {
     sourceAuthor: item.sourceAuthor,
     leadSource: item.leadSource || null,
     leadSourceGroup: item.leadSourceGroup || null,
+    policyType: item.policyType || null,
     status: item.status,
     createdAt: item.createdAt,
   }));
@@ -107,6 +108,7 @@ async function handleCreateOpportunity(userId, body) {
         sourceAuthor: body.sourceAuthor,
         leadSource: body.leadSource || null,
         leadSourceGroup: body.leadSourceGroup || null,
+        policyType: body.policyType || null,
         status: 'new',
         createdAt: now,
       },

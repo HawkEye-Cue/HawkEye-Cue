@@ -166,6 +166,7 @@ async function inviteMember(teamId, adminUserId, inviteEmail) {
 
   const inviteId = randomUUID();
   const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // Create invite record
   await dynamo.send(new PutCommand({
@@ -178,6 +179,7 @@ async function inviteMember(teamId, adminUserId, inviteEmail) {
       status: 'pending',
       invitedBy: adminUserId,
       createdAt: now,
+      expiresAt,
     },
   }));
 
@@ -229,6 +231,11 @@ async function acceptInvite(userId, inviteId) {
   } while (lastKey);
 
   if (!invite) return err(404, 'INVITE_NOT_FOUND', 'Invite not found or already accepted');
+
+  // Check invite expiration (7-day TTL)
+  if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+    return err(410, 'INVITE_EXPIRED', 'This invite has expired. Ask your team admin for a new one.');
+  }
 
   // Verify email matches (case-insensitive)
   if (invite.email.toLowerCase() !== userEmail.toLowerCase()) {
@@ -437,7 +444,12 @@ exports.handler = async (event) => {
       }
 
       const body = event.body ? JSON.parse(event.body) : {};
-      const result = await createTeam(userId, body.teamName);
+      const trimmedName = (body.teamName || '').trim();
+      if (!trimmedName || trimmedName.length < 3 || trimmedName.length > 50) {
+        return err(400, 'INVALID_TEAM_NAME', 'Team name must be between 3 and 50 characters');
+      }
+
+      const result = await createTeam(userId, trimmedName);
       return ok({ team: result });
     }
 
@@ -475,9 +487,12 @@ exports.handler = async (event) => {
       if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can rename');
 
       const body = event.body ? JSON.parse(event.body) : {};
-      if (!body.teamName) return err(400, 'INVALID_INPUT', 'teamName is required');
+      const trimmedName = (body.teamName || '').trim();
+      if (!trimmedName || trimmedName.length < 3 || trimmedName.length > 50) {
+        return err(400, 'INVALID_TEAM_NAME', 'Team name must be between 3 and 50 characters');
+      }
 
-      return updateTeamName(teamRecord.teamId, userId, body.teamName.trim());
+      return updateTeamName(teamRecord.teamId, userId, trimmedName);
     }
 
     // GET /team/stats — team performance dashboard (admin only)
@@ -614,6 +629,9 @@ exports.handler = async (event) => {
       if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
 
       const members = await getTeamMembers(teamRecord.teamId);
+      const params = event.queryStringParameters || {};
+      const limit = Math.min(parseInt(params.limit) || 25, 25);
+      const cursor = params.cursor ? JSON.parse(Buffer.from(params.cursor, 'base64').toString()) : null;
       const allLeads = [];
 
       for (const member of members) {
@@ -624,12 +642,13 @@ exports.handler = async (event) => {
         }));
         const memberLeads = (result.Items || []).map((l) => ({
           id: l.SK.replace('OPPORTUNITY#', ''),
-          name: l.name || l.authorName || 'Unknown Lead',
+          name: l.name || l.authorName || l.sourceAuthor || 'Unknown Lead',
           sourcePlatform: l.sourcePlatform || l.platform || 'unknown',
           status: l.status || 'new',
           createdAt: l.createdAt || l.detectedAt || '',
           addedBy: member.email.split('@')[0],
           addedByEmail: member.email,
+          policyType: l.policyType || null,
         }));
         allLeads.push(...memberLeads);
       }
@@ -637,7 +656,19 @@ exports.handler = async (event) => {
       // Sort by createdAt descending
       allLeads.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
-      return ok({ leads: allLeads });
+      // Apply cursor-based pagination
+      let startIndex = 0;
+      if (cursor && cursor.createdAt && cursor.id) {
+        startIndex = allLeads.findIndex((l) => l.createdAt === cursor.createdAt && l.id === cursor.id);
+        if (startIndex === -1) startIndex = 0;
+        else startIndex += 1; // Start after the cursor
+      }
+
+      const page = allLeads.slice(startIndex, startIndex + limit);
+      const hasMore = startIndex + limit < allLeads.length;
+      const nextCursor = hasMore ? Buffer.from(JSON.stringify({ createdAt: page[page.length - 1].createdAt, id: page[page.length - 1].id })).toString('base64') : undefined;
+
+      return ok({ leads: page, nextCursor });
     }
 
     // GET /team/analytics — merged team analytics

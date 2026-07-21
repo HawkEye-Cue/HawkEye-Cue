@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useTrade } from '../contexts/TradeContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
 
@@ -29,6 +30,7 @@ const statusColors: Record<string, string> = {
 export default function OpportunitiesPage() {
   const { getToken } = useAuth();
   const { showToast } = useToast();
+  const { selectedTrade } = useTrade();
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
   const [groupBy, setGroupBy] = useState<'none' | 'platform' | 'keyword'>('none');
   const [leads, setLeads] = useState<Opportunity[]>([]);
@@ -41,7 +43,22 @@ export default function OpportunitiesPage() {
   const [newLeadSource, setNewLeadSource] = useState('facebook-group');
   const [newLeadGroup, setNewLeadGroup] = useState('');
   const [newLeadNote, setNewLeadNote] = useState('');
+  const [newLeadPolicyType, setNewLeadPolicyType] = useState('');
   const [userGroups, setUserGroups] = useState<string[]>([]);
+
+  // Load policy types from localStorage (same as SalesPage)
+  const dealTypesKey = `hawkeye_deal_types_${selectedTrade?.id || 'default'}`;
+  const [policyTypes, setPolicyTypes] = useState<string[]>(() => {
+    const saved = localStorage.getItem(dealTypesKey);
+    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+    return [];
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem(dealTypesKey);
+    if (saved) { try { setPolicyTypes(JSON.parse(saved)); return; } catch { /* ignore */ } }
+    setPolicyTypes([]);
+  }, [dealTypesKey]);
 
   async function buildClient() {
     const token = await getToken();
@@ -145,6 +162,9 @@ export default function OpportunitiesPage() {
             <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>
               {lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? 'Converted' : 'New'}
             </span>
+            {(lead as any).policyType && (
+              <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">{(lead as any).policyType}</span>
+            )}
             <button onClick={() => handleDelete(lead.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
           </div>
         </div>
@@ -274,6 +294,15 @@ export default function OpportunitiesPage() {
                 <label className="block text-xs text-slate-400 mb-1">Note (optional)</label>
                 <input type="text" value={newLeadNote} onChange={(e) => setNewLeadNote(e.target.value)} placeholder="e.g. Asked about pricing" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
               </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Policy Type (optional)</label>
+                <select value={newLeadPolicyType} onChange={(e) => setNewLeadPolicyType(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <option value="">Select policy type...</option>
+                  {policyTypes.map((pt) => (
+                    <option key={pt} value={pt}>{pt}</option>
+                  ))}
+                </select>
+              </div>
               <button
                 onClick={async () => {
                   if (!newLeadName.trim()) return;
@@ -287,12 +316,14 @@ export default function OpportunitiesPage() {
                       sourceAuthor: newLeadName.trim(),
                       leadSource: newLeadSource,
                       leadSourceGroup: newLeadGroup || undefined,
+                      policyType: newLeadPolicyType || undefined,
                     });
                     showToast('🎯 Lead added!');
                     setShowAddLead(false);
                     setNewLeadName('');
                     setNewLeadNote('');
                     setNewLeadGroup('');
+                    setNewLeadPolicyType('');
                     fetchData();
                   } catch {
                     showToast('❌ Failed to add lead');

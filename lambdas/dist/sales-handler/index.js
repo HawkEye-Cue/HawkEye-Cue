@@ -110,6 +110,54 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
   }
 }
 
+// ─── Remove Team Deal Notifications on Stage Revert ───────────────────────────
+async function removeTeamDealNotifications(userId, dealName) {
+  // Find user's team
+  let teamId = null;
+  const adminResult = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND SK = :sk',
+    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_ADMIN' },
+  }));
+  if ((adminResult.Items || [])[0]) teamId = (adminResult.Items || [])[0].teamId;
+
+  if (!teamId) {
+    const memberResult = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND SK = :sk',
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_MEMBER' },
+    }));
+    if ((memberResult.Items || [])[0]) teamId = (memberResult.Items || [])[0].teamId;
+  }
+
+  if (!teamId) return;
+
+  // Get teammates
+  const membersResult = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: { ':pk': `TEAM#${teamId}`, ':sk': 'MEMBER#' },
+  }));
+  const teammates = (membersResult.Items || []).filter((m) => m.userId !== userId);
+
+  // For each teammate, find and delete undismissed notifications matching this deal
+  for (const mate of teammates) {
+    const notifs = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      ExpressionAttributeValues: { ':pk': `USER#${mate.userId}`, ':sk': 'TEAM_NOTIF#' },
+    }));
+    for (const notif of (notifs.Items || [])) {
+      if (notif.dealName === dealName && !notif.dismissed) {
+        await dynamo.send(new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: `USER#${mate.userId}`, SK: notif.SK },
+        }));
+      }
+    }
+  }
+}
+
 // GET /sales/deals
 async function handleGetDeals(userId) {
   const result = await dynamo.send(new QueryCommand({
@@ -228,6 +276,15 @@ async function handleUpdateDeal(userId, dealId, body) {
       await notifyTeamDealWon(userId, body.name || item.dealName, body.value !== undefined ? body.value : item.dealValue);
     } catch (e) {
       console.error('Failed to send team deal notification:', e.message);
+    }
+  }
+
+  // If deal was reverted FROM 'won' to another stage, remove undismissed notifications
+  if (previousStage === 'won' && body.stage && body.stage !== 'won') {
+    try {
+      await removeTeamDealNotifications(userId, item.dealName);
+    } catch (e) {
+      console.error('Failed to remove team deal notifications:', e.message);
     }
   }
 

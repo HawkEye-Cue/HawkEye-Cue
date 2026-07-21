@@ -735,6 +735,14 @@ export default function ContentCreatorPage() {
                 <div className="text-3xl mb-2">🎉</div>
                 <p className="text-lg font-bold text-amber-300">Today's flocks are done!</p>
                 <p className="text-sm text-slate-300 mt-1">Now engage — check for comments, reply, and build relationships.</p>
+                <button
+                  onClick={() => {
+                    todayCalendarEvents.filter((e) => e.type === 'post' && e.completed).forEach((e) => toggleComplete(e.id));
+                  }}
+                  className="mt-3 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  ↺ Reset all flocks for today
+                </button>
               </div>
               {/* Engage Flocks Flow */}
               {(() => {

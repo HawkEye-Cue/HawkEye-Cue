@@ -509,119 +509,6 @@ export default function OpportunitiesPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="rounded-xl border border-white/20 p-4 bg-slate-800/90 text-center">
-          <div className="text-lg font-bold text-white">{stats.total}</div>
-          <div className="text-xs text-slate-400">Total</div>
-        </div>
-        <div className="rounded-xl border border-blue-500/30 p-4 bg-slate-800/90 text-center">
-          <div className="text-lg font-bold text-blue-400">{stats.new}</div>
-          <div className="text-xs text-slate-400">New</div>
-        </div>
-        <div className="rounded-xl border border-yellow-500/30 p-4 bg-slate-800/90 text-center">
-          <div className="text-lg font-bold text-yellow-400">{stats.followedUp}</div>
-          <div className="text-xs text-slate-400">Followed Up</div>
-        </div>
-        <div className="rounded-xl border border-green-500/30 p-4 bg-slate-800/90 text-center">
-          <div className="text-lg font-bold text-green-400">{stats.converted}</div>
-          <div className="text-xs text-slate-400">Converted</div>
-        </div>
-      </div>
-
-      {/* Team / Personal Toggle */}
-      {isInTeam && (
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowTeamLeads(false)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${!showTeamLeads ? 'bg-blue-600 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white'}`}
-          >
-            My Leads
-          </button>
-          <button
-            onClick={() => setShowTeamLeads(true)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${showTeamLeads ? 'bg-purple-600 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white'}`}
-          >
-            👥 Team Pool
-          </button>
-        </div>
-      )}
-
-      {/* Team Leads View */}
-      {showTeamLeads && isInTeam ? (
-        <div className="space-y-3">
-          {/* Team member filter */}
-          <div className="flex flex-wrap gap-1.5">
-            <button onClick={() => setTeamLeadFilter('all')} className={`px-2.5 py-1 rounded-lg text-xs ${teamLeadFilter === 'all' ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30' : 'text-slate-400 bg-white/5'}`}>All</button>
-            {teamMembers.map((m, i) => (
-              <button key={m.userId} onClick={() => setTeamLeadFilter(m.email)} className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 ${teamLeadFilter === m.email ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30' : 'text-slate-400 bg-white/5'}`}>
-                <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
-                {m.email.split('@')[0]}
-              </button>
-            ))}
-          </div>
-          {/* Team leads list */}
-          {teamLeads.length === 0 ? (
-            <div className="glass-card text-center py-8">
-              <p className="text-2xl mb-2">👥</p>
-              <p className="text-sm text-slate-400">No team leads yet</p>
-            </div>
-          ) : (
-            <>
-              {teamLeads.filter((l) => teamLeadFilter === 'all' || l.addedByEmail === teamLeadFilter).map((lead) => {
-                const colorIdx = getMemberColorIndex(lead.addedByEmail);
-                return (
-                  <div key={lead.id} className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm flex items-center gap-3">
-                    <div className={`w-1.5 h-10 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{lead.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-slate-500">{lead.sourcePlatform}</span>
-                        <span className={`text-xs ${MEMBER_TEXT_COLORS[colorIdx]}`}>{lead.addedBy}</span>
-                        {lead.policyType && <span className="text-xs text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">{lead.policyType}</span>}
-                      </div>
-                    </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${lead.status === 'new' ? 'bg-blue-900/40 text-blue-400' : lead.status === 'followed_up' ? 'bg-yellow-900/40 text-yellow-400' : 'bg-green-900/40 text-green-400'}`}>{lead.status.replace('_', ' ')}</span>
-                  </div>
-                );
-              })}
-              {leadsNextCursor && (
-                <button onClick={() => fetchLeads(leadsNextCursor)} className="w-full py-2 text-sm text-blue-400 hover:text-blue-300 bg-white/5 rounded-lg">Load More</button>
-              )}
-            </>
-          )}
-        </div>
-      ) : (
-      <>
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={`px-4 py-2 min-h-[44px] rounded-full text-sm transition-all duration-200 ${
-              filter === f.value
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Group By */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-slate-500">Group by:</span>
-        {([['none', 'None'], ['platform', 'Platform'], ['keyword', 'Keyword']] as const).map(([val, label]) => (
-          <button
-            key={val}
-            onClick={() => setGroupBy(val)}
-            className={`px-3 py-1 rounded-full text-xs ${groupBy === val ? 'bg-blue-600 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
 
       {/* Leads List */}
       {loading ? (
@@ -636,42 +523,11 @@ export default function OpportunitiesPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {groupBy !== 'none' ? (
-            // Grouped view
-            (() => {
-              const groups: Record<string, Opportunity[]> = {};
-              for (const lead of leads) {
-                const key = groupBy === 'platform'
-                  ? (lead.sourcePlatform || 'unknown')
-                  : ((lead as any).keywordText || (lead as any).keywordId || 'Unknown keyword');
-                if (!groups[key]) groups[key] = [];
-                groups[key].push(lead);
-              }
-              return Object.entries(groups).sort((a, b) => b[1].length - a[1].length).map(([groupName, groupLeads]) => (
-                <details key={groupName} className="glass-card" open>
-                  <summary className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm font-medium text-white">
-                      {groupBy === 'platform' && <span className="mr-1">{platformIcons[groupName] || '📱'}</span>}
-                      {groupBy === 'platform' ? groupName.charAt(0).toUpperCase() + groupName.slice(1) : groupName}
-                    </span>
-                    <span className="text-xs text-slate-500">{groupLeads.length} leads</span>
-                  </summary>
-                  <div className="mt-3 space-y-2">
-                    {groupLeads.map((lead) => renderLeadCard(lead))}
-                  </div>
-                </details>
-              ));
-            })()
-          ) : (
-            // Flat view
-            leads.map((lead) => renderLeadCard(lead))
-          )}
+          {leads.map((lead) => renderLeadCard(lead))}
         </div>
       )}
-      </>
-      )}
 
-      {/* Lead Follow-Up Protocol & Mini Calendar */}
+      {/* Lead Follow-Up Protocol — Visual Timeline */}
       <div className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-white">📋 Follow-Up Protocol</h3>
@@ -680,17 +536,33 @@ export default function OpportunitiesPage() {
           </button>
         </div>
 
-        {/* Protocol steps preview */}
+        {/* Visual timeline */}
         {!showProtocolEditor && (
-          <div className="space-y-1">
-            {leadProtocol.map((step, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs">
-                <span className="text-slate-500 w-10">Day {step.day}</span>
-                <span>{step.type === 'call' ? '📞' : step.type === 'sms' ? '💬' : '✉️'}</span>
-                <span className="text-slate-300 truncate">{step.task}</span>
-              </div>
-            ))}
-            {leadProtocol.length === 0 && <p className="text-xs text-slate-500">No protocol set. Click Edit to create one.</p>}
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-4 top-3 bottom-3 w-0.5 bg-gradient-to-b from-blue-500 via-amber-500 to-green-500 rounded-full" />
+            <div className="space-y-3 pl-10">
+              {leadProtocol.map((step, i) => {
+                const colors = step.type === 'call' ? 'bg-blue-500 border-blue-400' : step.type === 'sms' ? 'bg-amber-500 border-amber-400' : 'bg-green-500 border-green-400';
+                const icon = step.type === 'call' ? '📞' : step.type === 'sms' ? '💬' : '✉️';
+                return (
+                  <div key={i} className="relative">
+                    {/* Node */}
+                    <div className={`absolute -left-[26px] top-1 w-4 h-4 rounded-full ${colors} border-2 flex items-center justify-center`}>
+                      <span className="text-[8px]">{icon}</span>
+                    </div>
+                    {/* Content */}
+                    <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-white bg-slate-600 px-1.5 py-0.5 rounded">Day {step.day}</span>
+                        <span className="text-xs text-slate-300">{step.task}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {leadProtocol.length === 0 && <p className="text-xs text-slate-500 pl-10">No protocol set. Click Edit to create one.</p>}
           </div>
         )}
 

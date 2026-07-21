@@ -80,7 +80,7 @@ export default function App() {
                 <Route path="/team" element={<TeamPage />} />
                 <Route path="/hawk-insights" element={<HawkInsightsPage />} />
                 <Route path="/network" element={<NetworkPage />} />
-                <Route path="/appreciations" element={<AppreciationsPage />} />
+                <Route path="/appreciations" element={<NetworkPage />} />
                 <Route path="/keywords" element={<KeywordsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />

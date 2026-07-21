@@ -4,6 +4,7 @@ import { useTrade } from '../contexts/TradeContext';
 import { useToast } from '../contexts/ToastContext';
 import { TRADES, ApiClient } from '@social-lead-gen/shared';
 import type { NetworkPost, NetworkContact } from '@social-lead-gen/shared';
+import AppreciationsPage from './AppreciationsPage';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
@@ -98,7 +99,7 @@ export default function NetworkPage() {
   const [addingContact, setAddingContact] = useState(false);
 
   // --- Tab ---
-  const [activeTab, setActiveTab] = useState<'board' | 'contacts'>('board');
+  const [activeTab, setActiveTab] = useState<'board' | 'contacts' | 'appreciations'>('board');
 
   async function buildClient() {
     const token = await getToken();
@@ -248,7 +249,7 @@ export default function NetworkPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Collaborate</h2>
+        <h2 className="text-xl font-bold text-white">Network</h2>
         {userRegions.length > 0 && (
           <button
             onClick={() => { setPendingRegions(userRegions); setShowRegionPicker(true); }}
@@ -425,10 +426,16 @@ export default function NetworkPage() {
               💬 Board
             </button>
             <button
+              onClick={() => setActiveTab('appreciations')}
+              className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'appreciations' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-white'}`}
+            >
+              🙏 Appreciations
+            </button>
+            <button
               onClick={() => setActiveTab('contacts')}
               className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'contacts' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-white'}`}
             >
-              📇 My Contacts
+              📇 Contacts
             </button>
           </div>
 
@@ -687,6 +694,10 @@ export default function NetworkPage() {
                 </div>
               )}
             </>
+          )}
+
+          {activeTab === 'appreciations' && (
+            <AppreciationsPage />
           )}
         </>
       )}

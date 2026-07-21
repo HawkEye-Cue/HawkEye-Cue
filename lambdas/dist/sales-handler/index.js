@@ -40,6 +40,76 @@ function getUserId(event) { return event.requestContext?.authorizer?.jwt?.claims
 
 const STAGES = ['prospect', 'contacted', 'quoted', 'closing', 'won', 'lost'];
 
+// ─── Team Deal Won Notification ───────────────────────────────────────────────
+async function notifyTeamDealWon(userId, dealName, dealValue) {
+  // Check if user belongs to a team
+  const { GetCommand } = require('@aws-sdk/lib-dynamodb');
+
+  let teamId = null;
+  let userEmail = '';
+
+  // Check admin record
+  const adminResult = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND SK = :sk',
+    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_ADMIN' },
+  }));
+  if ((adminResult.Items || [])[0]) {
+    teamId = (adminResult.Items || [])[0].teamId;
+  }
+
+  // Check member record if no admin
+  if (!teamId) {
+    const memberResult = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND SK = :sk',
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_MEMBER' },
+    }));
+    if ((memberResult.Items || [])[0]) {
+      teamId = (memberResult.Items || [])[0].teamId;
+    }
+  }
+
+  if (!teamId) return; // Not in a team
+
+  // Get user's email
+  const profileResult = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND SK = :sk',
+    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'PROFILE' },
+  }));
+  userEmail = (profileResult.Items || [])[0]?.email || '';
+
+  // Get all team members
+  const membersResult = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: { ':pk': `TEAM#${teamId}`, ':sk': 'MEMBER#' },
+  }));
+  const teammates = (membersResult.Items || []).filter((m) => m.userId !== userId);
+
+  const now = new Date().toISOString();
+  const notifId = randomUUID();
+
+  // Create a notification for each teammate
+  for (const mate of teammates) {
+    await dynamo.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: `USER#${mate.userId}`,
+        SK: `TEAM_NOTIF#${notifId}`,
+        notifId,
+        memberEmail: userEmail,
+        memberName: userEmail.split('@')[0],
+        dealName: dealName || 'Deal',
+        dealValue: dealValue || 0,
+        dismissed: false,
+        createdAt: now,
+      },
+    }));
+  }
+}
+
 // GET /sales/deals
 async function handleGetDeals(userId) {
   const result = await dynamo.send(new QueryCommand({
@@ -125,6 +195,7 @@ async function handleUpdateDeal(userId, dealId, body) {
   const item = (queryResult.Items || [])[0];
   if (!item) return err(404, 'NOT_FOUND', 'Deal not found');
 
+  const previousStage = item.stage;
   const updates = {};
   if (body.name) updates.dealName = body.name;
   if (body.value !== undefined) updates.dealValue = body.value;
@@ -150,6 +221,15 @@ async function handleUpdateDeal(userId, dealId, body) {
     ExpressionAttributeNames: names,
     ExpressionAttributeValues: values,
   }));
+
+  // If deal was just moved to 'won', notify team members
+  if (body.stage === 'won' && previousStage !== 'won') {
+    try {
+      await notifyTeamDealWon(userId, body.name || item.dealName, body.value !== undefined ? body.value : item.dealValue);
+    } catch (e) {
+      console.error('Failed to send team deal notification:', e.message);
+    }
+  }
 
   return ok({ id: dealId, ...updates });
 }

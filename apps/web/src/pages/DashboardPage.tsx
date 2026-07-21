@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const [dashCalType, setDashCalType] = useState<'post' | 'meeting' | 'reminder'>('post');
   const [dashCalTime, setDashCalTime] = useState('');
   const [dashCalLink, setDashCalLink] = useState('');
+  const [teamWins, setTeamWins] = useState<{ id: string; memberName: string; dealName: string; dealValue: number; closedAt: string }[]>([]);
 
   // Refetch when page becomes visible (user navigates back)
   useEffect(() => {
@@ -109,6 +110,18 @@ export default function DashboardPage() {
           const incoming = (linksResult.links || []).filter((l: any) => l.status === 'incoming' || (l.status === 'pending' && l.direction === 'incoming'));
           setPendingLinkInvites(incoming);
         } catch { /* ignore */ }
+        // Fetch team deal win notifications (Summit tier)
+        try {
+          const notifResult = await client.request<{ notifications: any[] }>('GET', '/team/notifications');
+          const wins = (notifResult.notifications || []).slice(0, 5).map((n: any) => ({
+            id: n.id,
+            memberName: n.memberName || 'Teammate',
+            dealName: n.dealName || 'Deal',
+            dealValue: n.dealValue || 0,
+            closedAt: n.closedAt || '',
+          }));
+          setTeamWins(wins);
+        } catch { /* ignore - user may not be in a team */ }
         // Sync notepad from server
         try {
           const prefs = await client.request<any>('GET', '/profile/preferences');
@@ -284,6 +297,32 @@ export default function DashboardPage() {
           </div>
         </div>
       ))}
+
+      {/* Team Deal Win Notifications */}
+      {teamWins.length > 0 && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-green-500/15 to-emerald-500/15 border-2 border-green-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xl">🏆</span>
+            <p className="text-sm font-bold text-green-300">Team Wins!</p>
+          </div>
+          <div className="space-y-1.5">
+            {teamWins.map((win) => (
+              <div key={win.id} className="flex items-center justify-between bg-black/20 rounded-lg px-3 py-2">
+                <div>
+                  <p className="text-xs text-slate-200"><strong>{win.memberName}</strong> closed <strong>{win.dealName}</strong></p>
+                </div>
+                <span className="text-sm font-bold text-green-400">${win.dealValue.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => navigate('/team')}
+            className="mt-2 text-xs text-green-400 hover:text-green-300"
+          >
+            View all team activity →
+          </button>
+        </div>
+      )}
 
       {/* Meeting Alert Banner */}
       {(() => {

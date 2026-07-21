@@ -1013,6 +1013,42 @@ export class ApiStack extends cdk.Stack {
       integration: teamIntegration,
       authorizer,
     });
+    this.httpApi.addRoutes({
+      path: '/team/leave',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/calendar',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/leads',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/analytics',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/notifications',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/notifications/{notifId}/dismiss',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: teamIntegration,
+      authorizer,
+    });
 
     // ─── Calendar Handler ─────────────────────────────────────────────────
     const calendarHandlerFn = new lambda.Function(this, 'CalendarHandlerFn', {

@@ -488,6 +488,261 @@ exports.handler = async (event) => {
       return getTeamStats(teamRecord.teamId, userId);
     }
 
+    // POST /team/leave — leave the current team
+    if (method === 'POST' && path === '/team/leave') {
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(400, 'NO_TEAM', 'You are not in a team');
+
+      const members = await getTeamMembers(teamRecord.teamId);
+
+      // Remove the member from the team
+      await dynamo.send(new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `TEAM#${teamRecord.teamId}`, SK: `MEMBER#${userId}` },
+      }));
+
+      // Remove team record from user
+      const skToDelete = teamRecord.role === 'admin' ? 'TEAM_ADMIN' : 'TEAM_MEMBER';
+      await dynamo.send(new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: skToDelete },
+      }));
+
+      // Downgrade subscription
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+        UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s',
+        ExpressionAttributeValues: { ':t': 'free', ':s': 'none' },
+      }));
+
+      // If admin left and others remain, transfer admin role
+      if (teamRecord.role === 'admin' && members.length > 1) {
+        const remaining = members.filter((m) => m.userId !== userId).sort((a, b) => (a.joinedAt || '').localeCompare(b.joinedAt || '') || (a.email || '').localeCompare(b.email || ''));
+        const newAdmin = remaining[0];
+        if (newAdmin) {
+          // Update team info
+          await dynamo.send(new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { PK: `TEAM#${teamRecord.teamId}`, SK: 'INFO' },
+            UpdateExpression: 'SET adminUserId = :u, adminEmail = :e',
+            ExpressionAttributeValues: { ':u': newAdmin.userId, ':e': newAdmin.email },
+          }));
+          // Update member record to admin
+          await dynamo.send(new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { PK: `TEAM#${teamRecord.teamId}`, SK: `MEMBER#${newAdmin.userId}` },
+            UpdateExpression: 'SET #role = :r',
+            ExpressionAttributeNames: { '#role': 'role' },
+            ExpressionAttributeValues: { ':r': 'admin' },
+          }));
+          // Move user record from TEAM_MEMBER to TEAM_ADMIN
+          await dynamo.send(new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { PK: `USER#${newAdmin.userId}`, SK: 'TEAM_MEMBER' },
+          }));
+          const teamInfo = await dynamo.send(new GetCommand({
+            TableName: TABLE_NAME,
+            Key: { PK: `TEAM#${teamRecord.teamId}`, SK: 'INFO' },
+          }));
+          await dynamo.send(new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              PK: `USER#${newAdmin.userId}`,
+              SK: 'TEAM_ADMIN',
+              teamId: teamRecord.teamId,
+              teamName: teamInfo.Item?.teamName || 'Team',
+              role: 'admin',
+              createdAt: new Date().toISOString(),
+            },
+          }));
+        }
+      }
+
+      // If last member, delete the team
+      if (members.length <= 1) {
+        await dynamo.send(new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: `TEAM#${teamRecord.teamId}`, SK: 'INFO' },
+        }));
+      }
+
+      return ok({ left: true });
+    }
+
+    // GET /team/calendar — shared team calendar events
+    if (method === 'GET' && path === '/team/calendar') {
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      const members = await getTeamMembers(teamRecord.teamId);
+      const params = event.queryStringParameters || {};
+      const start = params.start || new Date().toISOString().split('T')[0];
+      const end = params.end || (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })();
+
+      const allEvents = [];
+      for (const member of members) {
+        const result = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'CALENDAR#' },
+        }));
+        const memberEvents = (result.Items || [])
+          .filter((e) => e.date >= start && e.date <= end)
+          .map((e) => ({
+            id: e.SK.replace('CALENDAR#', ''),
+            title: e.title || 'Untitled',
+            date: e.date,
+            type: e.type || 'post',
+            memberEmail: member.email,
+            memberName: member.email.split('@')[0],
+            startTime: e.startTime || null,
+            endTime: e.endTime || null,
+          }));
+        allEvents.push(...memberEvents);
+      }
+
+      // Sort by date then time
+      allEvents.sort((a, b) => a.date.localeCompare(b.date) || (a.startTime || '').localeCompare(b.startTime || ''));
+
+      return ok({ events: allEvents });
+    }
+
+    // GET /team/leads — combined lead pool from all team members
+    if (method === 'GET' && path === '/team/leads') {
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      const members = await getTeamMembers(teamRecord.teamId);
+      const allLeads = [];
+
+      for (const member of members) {
+        const result = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'OPPORTUNITY#' },
+        }));
+        const memberLeads = (result.Items || []).map((l) => ({
+          id: l.SK.replace('OPPORTUNITY#', ''),
+          name: l.name || l.authorName || 'Unknown Lead',
+          sourcePlatform: l.sourcePlatform || l.platform || 'unknown',
+          status: l.status || 'new',
+          createdAt: l.createdAt || l.detectedAt || '',
+          addedBy: member.email.split('@')[0],
+          addedByEmail: member.email,
+        }));
+        allLeads.push(...memberLeads);
+      }
+
+      // Sort by createdAt descending
+      allLeads.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+      return ok({ leads: allLeads });
+    }
+
+    // GET /team/analytics — merged team analytics
+    if (method === 'GET' && path === '/team/analytics') {
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      const members = await getTeamMembers(teamRecord.teamId);
+      const memberAnalytics = [];
+      let totalDeals = 0, wonDeals = 0, totalRevenue = 0;
+      let totalFlockScheduled = 0, totalFlockCompleted = 0;
+
+      for (const member of members) {
+        // Get deals
+        const dealsResult = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'DEAL#' },
+        }));
+        const deals = dealsResult.Items || [];
+        const won = deals.filter((d) => d.stage === 'won');
+        const memberRevenue = won.reduce((sum, d) => sum + (d.dealValue || 0), 0);
+
+        totalDeals += deals.length;
+        wonDeals += won.length;
+        totalRevenue += memberRevenue;
+
+        // Get flock/calendar posts for completion rate
+        const calResult = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'CALENDAR#' },
+        }));
+        const calEvents = (calResult.Items || []).filter((e) => e.type === 'post');
+        const today = new Date().toISOString().split('T')[0];
+        const pastPosts = calEvents.filter((e) => e.date < today);
+        const completedPosts = pastPosts.filter((e) => e.completed);
+
+        totalFlockScheduled += pastPosts.length;
+        totalFlockCompleted += completedPosts.length;
+
+        const memberFlockRate = pastPosts.length > 0 ? Math.round((completedPosts.length / pastPosts.length) * 100) : 0;
+
+        memberAnalytics.push({
+          email: member.email,
+          deals: deals.length,
+          wonDeals: won.length,
+          revenue: memberRevenue,
+          flockRate: memberFlockRate,
+        });
+      }
+
+      const flockCompletionRate = totalFlockScheduled > 0 ? Math.round((totalFlockCompleted / totalFlockScheduled) * 100) : 0;
+
+      return ok({
+        totalDeals,
+        wonDeals,
+        totalRevenue,
+        flockCompletionRate,
+        members: memberAnalytics,
+      });
+    }
+
+    // GET /team/notifications — deal close notifications from teammates
+    if (method === 'GET' && path === '/team/notifications') {
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      // Get notifications for this user
+      const result = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_NOTIF#' },
+      }));
+
+      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      const notifications = (result.Items || [])
+        .filter((n) => n.createdAt >= cutoff && !n.dismissed)
+        .map((n) => ({
+          id: n.notifId || n.SK.replace('TEAM_NOTIF#', ''),
+          memberEmail: n.memberEmail,
+          memberName: n.memberName || n.memberEmail?.split('@')[0] || 'Teammate',
+          dealName: n.dealName || 'Deal',
+          dealValue: n.dealValue || 0,
+          closedAt: n.createdAt,
+          dismissed: n.dismissed || false,
+        }))
+        .sort((a, b) => (b.closedAt || '').localeCompare(a.closedAt || ''));
+
+      return ok({ notifications });
+    }
+
+    // POST /team/notifications/{id}/dismiss — dismiss a notification
+    const dismissMatch = path.match(/^\/team\/notifications\/([^/]+)\/dismiss$/);
+    if (method === 'POST' && dismissMatch) {
+      const notifId = dismissMatch[1];
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: `TEAM_NOTIF#${notifId}` },
+        UpdateExpression: 'SET dismissed = :d',
+        ExpressionAttributeValues: { ':d': true },
+      }));
+      return ok({ dismissed: true });
+    }
+
     return err(404, 'NOT_FOUND', `No route for ${method} ${path}`);
   } catch (e) {
     console.error('team-handler error:', e);

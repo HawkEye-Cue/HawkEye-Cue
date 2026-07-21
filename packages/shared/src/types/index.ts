@@ -16,7 +16,7 @@ export interface User {
   id: string; // Cognito sub
   email: string;
   tradeId: string | null;
-  subscriptionTier: 'free' | 'base' | 'growth' | 'team';
+  subscriptionTier: 'free' | 'nest' | 'soar' | 'summit' | 'team';
   createdAt: string;
 }
 
@@ -69,7 +69,7 @@ export interface Opportunity {
   keywordId: string;
   keywordText: string;
   sourceContent: string;
-  sourcePlatform: SocialPlatform;
+  sourcePlatform: SocialPlatform | 'other';
   sourceUrl: string;
   sourceAuthor: string;
   status: OpportunityStatus;
@@ -94,7 +94,7 @@ export interface DailyCue {
 }
 
 export interface Subscription {
-  tier: 'free' | 'base' | 'growth' | 'team';
+  tier: 'free' | 'nest' | 'soar' | 'summit' | 'team';
   aiGenerationsUsed: number;
   aiGenerationsLimit: number;
   currentPeriodEnd: string;

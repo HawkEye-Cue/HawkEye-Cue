@@ -11,7 +11,6 @@ import OnboardingPage from './pages/OnboardingPage';
 import DashboardPage from './pages/DashboardPage';
 import ContentCreatorPage from './pages/ContentCreatorPage';
 import CreatePage from './pages/CreatePage';
-import CalendarPage from './pages/CalendarPage';
 import OpportunitiesPage from './pages/OpportunitiesPage';
 import SalesPage from './pages/SalesPage';
 import TeamPage from './pages/TeamPage';

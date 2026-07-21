@@ -143,6 +143,7 @@ export const notificationPreferencesSchema = z.object({
 export const schedulePostRequestSchema = z.object({
   contentId: z.string().min(1, 'Content ID is required'),
   content: z.string().min(1, 'Post content is required'),
+  platformContent: z.record(z.string(), z.string()).optional(),
   platforms: z
     .array(socialPlatformSchema)
     .min(1, 'At least one platform must be selected'),

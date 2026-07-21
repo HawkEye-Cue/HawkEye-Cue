@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const [currentTier, setCurrentTier] = useState<string>('free');
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string>('none');
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => !localStorage.getItem('hawkeye_welcome_dismissed'));
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => !localStorage.getItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`));
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editLink, setEditLink] = useState('');
@@ -119,7 +119,7 @@ export default function DashboardPage() {
         });
         setTodayPosts(filtered);
 
-        // Auto-delete published posts from previous days in the background (max 10 per load to avoid overload)
+        // Fetch all posts for upcoming display (no auto-deletion of history)
         const allResult = await client.getPosts();
         const allPosts = Array.isArray(allResult) ? allResult : (allResult as any)?.posts || [];
 
@@ -130,17 +130,6 @@ export default function DashboardPage() {
           .filter((p: ScheduledPost) => p.status === 'scheduled' && p.scheduledAt && p.scheduledAt.split('T')[0] > todayLocal)
           .sort((a: ScheduledPost, b: ScheduledPost) => (a.scheduledAt || '').localeCompare(b.scheduledAt || ''));
         setFuturePosts(upcoming);
-
-        let deleteCount = 0;
-        for (const post of allPosts) {
-          if (deleteCount >= 10) break;
-          if (post.status === 'published' && post.scheduledAt) {
-            const scheduledDate = post.scheduledAt.split('T')[0];
-            if (scheduledDate < today) {
-              try { await client.deletePost(post.id); deleteCount++; } catch { /* ignore */ }
-            }
-          }
-        }
       } catch {
         // ignore
       }
@@ -217,7 +206,7 @@ export default function DashboardPage() {
               Got it — Let's Go! 🚀
             </button>
             <button
-              onClick={() => { setShowWelcomeBanner(false); localStorage.setItem('hawkeye_welcome_dismissed', 'true'); }}
+              onClick={() => { setShowWelcomeBanner(false); localStorage.setItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`, 'true'); }}
               className="w-full mt-2 py-2 text-slate-500 hover:text-slate-300 text-xs transition-colors"
             >
               Do not show again
@@ -409,7 +398,7 @@ export default function DashboardPage() {
           <div className="space-y-2">
             <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 rounded" />
-              <span className="text-sm text-slate-300">Post a {selectedTrade.postTypes[0]} on social media</span>
+              <span className="text-sm text-slate-300">Post a {selectedTrade.postTypes?.[0] || 'post'} on social media</span>
             </label>
             <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 rounded" />

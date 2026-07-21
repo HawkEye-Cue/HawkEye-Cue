@@ -51,6 +51,11 @@ export default function ContentCreatorPage() {
   const [engagementType, setEngagementType] = useState<'comment' | 'dm' | 'call' | 'lead'>('comment');
   const [engagementNote, setEngagementNote] = useState('');
 
+  // Cleanup image preview URL on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => { if (imagePreview) URL.revokeObjectURL(imagePreview); };
+  }, [imagePreview]);
+
   const EMOJI_LIST = [
     '🔥', '💯', '🙌', '👏', '💪', '🎉', '🚀', '⭐', '✨', '💡',
     '📣', '📢', '🏆', '🎯', '💰', '🤝', '👋', '❤️', '💙', '💚',
@@ -854,6 +859,7 @@ export default function ContentCreatorPage() {
                     await client.schedulePosts({
                       contentId: 'generated-' + Date.now(),
                       content,
+                      platformContent,
                       platforms,
                       scheduledAt,
                       mediaUrls,
@@ -928,6 +934,7 @@ export default function ContentCreatorPage() {
                     await client.schedulePosts({
                       contentId: 'generated-' + Date.now(),
                       content,
+                      platformContent,
                       platforms,
                       scheduledAt,
                       mediaUrls: schedMediaUrls,

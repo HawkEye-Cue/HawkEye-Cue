@@ -72,7 +72,7 @@ export default function KeywordsPage() {
 
   const addSuggested = async (kw: string, tradeId?: string) => {
     const tid = tradeId || selectedTrade?.id;
-    if (!tid || keywords.some((k) => k.keyword === kw.toLowerCase())) return;
+    if (!tid || keywords.some((k) => k.keyword.toLowerCase() === kw.toLowerCase())) return;
     setError('');
     try {
       const client = await buildClient();
@@ -200,7 +200,7 @@ export default function KeywordsPage() {
               {selectedTrades.length > 1 && <p className="text-xs text-slate-500 mb-1.5 font-medium">{trade.name}</p>}
               <div className="flex flex-wrap gap-2">
                 {trade.defaultKeywords.map((kw) => {
-                  const alreadyAdded = keywords.some((k) => k.keyword === kw.toLowerCase());
+                  const alreadyAdded = keywords.some((k) => k.keyword.toLowerCase() === kw.toLowerCase());
                   return (
                     <button
                       key={`${trade.id}-${kw}`}

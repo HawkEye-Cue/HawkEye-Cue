@@ -43,17 +43,17 @@ describe('TRADES', () => {
 describe('TIER_LIMITS', () => {
   it('free tier has correct limits', () => {
     expect(TIER_LIMITS.free).toEqual({
-      aiGenerations: 5,
+      aiGenerations: 2,
       keywords: 5,
       scheduledPosts: 10,
     });
   });
 
-  it('growth tier has correct limits', () => {
-    expect(TIER_LIMITS.growth).toEqual({
-      aiGenerations: 200,
-      keywords: 50,
-      scheduledPosts: Infinity,
+  it('nest tier has correct limits', () => {
+    expect(TIER_LIMITS.nest).toEqual({
+      aiGenerations: 2,
+      keywords: 5,
+      scheduledPosts: 10,
     });
   });
 

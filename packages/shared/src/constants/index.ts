@@ -355,10 +355,11 @@ export interface TierLimits {
   scheduledPosts: number;
 }
 
-export const TIER_LIMITS: Record<'free' | 'growth' | 'soar' | 'team', TierLimits> = {
-  free: { aiGenerations: 5, keywords: 5, scheduledPosts: 10 },
-  growth: { aiGenerations: 200, keywords: 50, scheduledPosts: Infinity },
+export const TIER_LIMITS: Record<'free' | 'nest' | 'soar' | 'summit' | 'team', TierLimits> = {
+  free: { aiGenerations: 2, keywords: 5, scheduledPosts: 10 },
+  nest: { aiGenerations: 2, keywords: 5, scheduledPosts: 10 },
   soar: { aiGenerations: 300, keywords: Infinity, scheduledPosts: Infinity },
+  summit: { aiGenerations: 500, keywords: Infinity, scheduledPosts: Infinity },
   team: { aiGenerations: 500, keywords: Infinity, scheduledPosts: Infinity },
 };
 

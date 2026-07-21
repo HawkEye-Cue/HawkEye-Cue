@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
 
 interface Deal {
@@ -21,6 +22,7 @@ interface Opportunity {
 
 export default function HawkInsightsPage() {
   const { getToken } = useAuth();
+  const { events } = useCalendar();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -247,6 +249,115 @@ export default function HawkInsightsPage() {
           </div>
         </div>
       )}
+
+      {/* Flock Analytics */}
+      <div className="glass-card">
+        <h3 className="font-semibold text-white mb-3">🦅 Flock Analytics</h3>
+        {(() => {
+          const now = new Date();
+          const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const postEvents = events.filter((e) => e.type === 'post');
+          const pastPosts = postEvents.filter((e) => e.date < todayLocal);
+          const completedPosts = pastPosts.filter((e) => e.completed);
+          const missedPosts = pastPosts.filter((e) => !e.completed);
+          const completionRate = pastPosts.length > 0 ? Math.round((completedPosts.length / pastPosts.length) * 100) : 0;
+
+          // Group performance - which groups get completed most/least
+          const groupStats: Record<string, { total: number; completed: number; missed: number }> = {};
+          for (const post of pastPosts) {
+            // Strip time prefix and clean title for grouping
+            const cleanTitle = post.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').trim();
+            if (!groupStats[cleanTitle]) groupStats[cleanTitle] = { total: 0, completed: 0, missed: 0 };
+            groupStats[cleanTitle].total++;
+            if (post.completed) groupStats[cleanTitle].completed++;
+            else groupStats[cleanTitle].missed++;
+          }
+          const sortedGroups = Object.entries(groupStats)
+            .map(([name, stats]) => ({ name, ...stats, rate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0 }))
+            .sort((a, b) => b.total - a.total);
+
+          // Weekly trend (last 4 weeks)
+          const weeklyData: { week: string; total: number; completed: number }[] = [];
+          for (let i = 3; i >= 0; i--) {
+            const weekStart = new Date(now);
+            weekStart.setDate(weekStart.getDate() - (i * 7) - weekStart.getDay());
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            const ws = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+            const we = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
+            const weekPosts = pastPosts.filter((e) => e.date >= ws && e.date <= we);
+            const weekCompleted = weekPosts.filter((e) => e.completed);
+            weeklyData.push({
+              week: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              total: weekPosts.length,
+              completed: weekCompleted.length,
+            });
+          }
+
+          if (pastPosts.length === 0) {
+            return <p className="text-xs text-slate-500">Post in your flocks for a few days to see analytics here</p>;
+          }
+
+          return (
+            <div className="space-y-4">
+              {/* Completion Stats */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center p-3 rounded-lg bg-green-500/5 border border-green-500/10">
+                  <div className="text-xl font-bold text-green-400">{completionRate}%</div>
+                  <div className="text-xs text-slate-400">Completion</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
+                  <div className="text-xl font-bold text-blue-400">{completedPosts.length}</div>
+                  <div className="text-xs text-slate-400">Posted</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-red-500/5 border border-red-500/10">
+                  <div className="text-xl font-bold text-red-400">{missedPosts.length}</div>
+                  <div className="text-xs text-slate-400">Missed</div>
+                </div>
+              </div>
+
+              {/* Weekly Trend */}
+              <div>
+                <p className="text-xs text-slate-400 font-semibold mb-2">Weekly Trend</p>
+                <div className="flex items-end gap-2 h-16">
+                  {weeklyData.map((w) => {
+                    const maxTotal = Math.max(...weeklyData.map((d) => d.total)) || 1;
+                    const height = w.total > 0 ? Math.max(20, (w.completed / maxTotal) * 100) : 5;
+                    return (
+                      <div key={w.week} className="flex-1 flex flex-col items-center gap-1">
+                        <div className="w-full rounded-t" style={{ height: `${height}%`, background: w.total > 0 ? `linear-gradient(to top, rgba(34,197,94,0.6), rgba(34,197,94,0.2))` : 'rgba(100,116,139,0.2)' }} />
+                        <span className="text-[9px] text-slate-500">{w.week}</span>
+                        <span className="text-[9px] text-slate-400">{w.total > 0 ? `${Math.round((w.completed / w.total) * 100)}%` : '-'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Top Groups */}
+              {sortedGroups.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold mb-2">Flock Performance</p>
+                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                    {sortedGroups.slice(0, 10).map((g) => (
+                      <div key={g.name} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-slate-200 truncate">{g.name}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[10px] text-green-400">{g.completed}✓</span>
+                          {g.missed > 0 && <span className="text-[10px] text-red-400">{g.missed}✕</span>}
+                          <span className={`text-xs font-bold ${g.rate >= 80 ? 'text-green-400' : g.rate >= 50 ? 'text-amber-400' : 'text-red-400'}`}>{g.rate}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
 
       {/* Summary */}
       <div className="glass-card border-blue-500/20 text-center">

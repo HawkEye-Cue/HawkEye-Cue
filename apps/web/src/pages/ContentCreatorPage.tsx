@@ -522,13 +522,13 @@ export default function ContentCreatorPage() {
       {/* Today's Items - collapsible */}
       <details className="glass-card" open>
         <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
-          <span>Today's Cues</span>
+          <span>Today's Posts</span>
           <span className="text-xs text-slate-400">
-            {todayCalendarEvents.filter((e) => e.completed).length}/{todayCalendarEvents.length} done
+            {todayCalendarEvents.filter((e) => e.type === 'post' && e.completed).length}/{todayCalendarEvents.filter((e) => e.type === 'post').length} done
           </span>
         </summary>
         {/* Copy & Open Next Group button */}
-        {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && platformContent && (
+        {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && platformContent && (
           <div className="mt-3 space-y-2">
             {['free', 'nest'].includes(userTier) ? (
               <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
@@ -538,7 +538,7 @@ export default function ContentCreatorPage() {
               </div>
             ) : (
             (() => {
-              const remaining = todayCalendarEvents.filter((e) => e.link && !e.completed);
+              const remaining = todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed);
               const next = remaining[0];
               return (
                 <>
@@ -567,13 +567,13 @@ export default function ContentCreatorPage() {
             )}
           </div>
         )}
-        {todayCalendarEvents.filter((e) => e.link && !e.completed).length > 0 && !platformContent && (
+        {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && !platformContent && (
           <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
             <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy & Open Next Group"</strong> to paste it into each group</p>
           </div>
         )}
         <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">
-          {[...todayCalendarEvents].sort((a, b) => {
+          {[...todayCalendarEvents].filter((e) => e.type === 'post').sort((a, b) => {
             const aPersonal = personalOnlyCues.has(a.id) ? 1 : 0;
             const bPersonal = personalOnlyCues.has(b.id) ? 1 : 0;
             return aPersonal - bPersonal;
@@ -697,16 +697,16 @@ export default function ContentCreatorPage() {
               <span className={`text-xs px-2 py-0.5 rounded ${p.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{p.status}</span>
             </div>
           ))}
-          {todayCalendarEvents.length === 0 && todayPosts.length === 0 && (
-            <p className="text-sm text-slate-500">No cues scheduled for today</p>
+          {todayCalendarEvents.filter((e) => e.type === 'post').length === 0 && todayPosts.length === 0 && (
+            <p className="text-sm text-slate-500">No posts scheduled for today</p>
           )}
-          {todayCalendarEvents.length > 0 && todayCalendarEvents.every((e) => e.completed) && (
+          {todayCalendarEvents.filter((e) => e.type === 'post').length > 0 && todayCalendarEvents.filter((e) => e.type === 'post').every((e) => e.completed) && (
             <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-green-500/20 border border-amber-500/30 text-center relative overflow-hidden">
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute animate-[hawkSwoop_3s_ease-in-out_infinite] text-4xl" style={{ top: '20%', left: '-60px' }}>🦅</div>
               </div>
               <div className="text-3xl mb-2">🎉</div>
-              <p className="text-lg font-bold text-amber-300">Today's cues are done!</p>
+              <p className="text-lg font-bold text-amber-300">Today's posts are done!</p>
               <p className="text-sm text-slate-300 mt-1">Let's watch them take flight 🦅</p>
               <p className="text-xs text-slate-500 mt-2">Your posts are out in the world working for you. Time to soar.</p>
             </div>

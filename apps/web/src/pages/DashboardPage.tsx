@@ -549,7 +549,7 @@ export default function DashboardPage() {
                   const renderEvt = (evt: any) => (
                     <div key={evt.id} className="p-2 rounded-lg bg-white/5">
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                        <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '')}</span>
                         {evt.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full">✓</span>}
                       </div>
                       <div className="flex justify-between mt-2">
@@ -574,6 +574,62 @@ export default function DashboardPage() {
                     </div>
                   );
 
+                  const renderMeeting = (evt: any) => {
+                    const notesInTitle = evt.title.match(/\|\s*(.+)$/)?.[1] || '';
+                    const savedNotes = evt.notes || '';
+                    const displayNotes = savedNotes || notesInTitle;
+                    return (
+                      <details key={evt.id} className="p-2 rounded-lg bg-white/5">
+                        <summary className="flex items-center gap-2 cursor-pointer">
+                          <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '')}</span>
+                          {evt.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full">✓</span>}
+                          {displayNotes && <span className="text-[9px] text-amber-400">📝</span>}
+                        </summary>
+                        <div className="mt-2 space-y-2">
+                          {displayNotes && <p className="text-[11px] text-slate-400 italic bg-amber-500/5 border border-amber-500/10 rounded p-2">📝 {displayNotes}</p>}
+                          <textarea
+                            defaultValue={savedNotes}
+                            onBlur={(e) => {
+                              const val = e.target.value;
+                              if (val !== savedNotes) {
+                                updateEvent(evt.id, { title: evt.title });
+                                // Save notes via updateNotes endpoint
+                                getToken().then((token) => {
+                                  if (!token) return;
+                                  const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                                  client.request('PUT', `/calendar/events/${evt.id}/notes`, { notes: val }).catch(() => {});
+                                });
+                                // Update local state
+                                evt.notes = val;
+                              }
+                            }}
+                            placeholder="Add meeting notes..."
+                            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-[11px] text-white placeholder-slate-600 resize-none h-14 focus:border-amber-500/50 focus:outline-none"
+                          />
+                          <div className="flex justify-between">
+                            {evt.link ? <a href={evt.link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                            <button onClick={() => {
+                              const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
+                              const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/);
+                              let cleanTitle = evt.title;
+                              if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], '');
+                              if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, '');
+                              const nm = cleanTitle.match(/\s*\|\s*(.+)$/);
+                              if (nm) cleanTitle = cleanTitle.replace(nm[0], '');
+                              setEditingEvent(evt);
+                              setEditTitle(cleanTitle.trim());
+                              setEditTime(timeMatch ? timeMatch[1] : '');
+                              setEditLocation(locationMatch ? locationMatch[1].trim() : '');
+                              setEditLink(evt.link || '');
+                              setEditDate(evt.date);
+                            }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                            <button onClick={() => removeEvent(evt.id)} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
+                          </div>
+                        </div>
+                      </details>
+                    );
+                  };
+
                   return (
                     <div className="space-y-2 mb-3">
                       {posts.length > 0 && (
@@ -591,7 +647,7 @@ export default function DashboardPage() {
                             <span className="text-xs font-bold text-amber-400">🤝 Meetings</span>
                             <span className="text-xs text-slate-500">{meetings.length}</span>
                           </summary>
-                          <div className="px-2.5 pb-2.5 space-y-1.5">{meetings.map(renderEvt)}</div>
+                          <div className="px-2.5 pb-2.5 space-y-1.5">{meetings.map(renderMeeting)}</div>
                         </details>
                       )}
                       {reminders.length > 0 && (

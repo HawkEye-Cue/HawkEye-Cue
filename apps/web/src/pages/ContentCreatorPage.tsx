@@ -51,6 +51,7 @@ export default function ContentCreatorPage() {
   const [engagementType, setEngagementType] = useState<'comment' | 'dm' | 'call' | 'lead'>('comment');
   const [engagementNote, setEngagementNote] = useState('');
   const [engageIndex, setEngageIndex] = useState(0);
+  const [flocksTab, setFlocksTab] = useState<'today' | 'missed'>('today');
 
   // Cleanup image preview URL on unmount to prevent memory leaks
   useEffect(() => {
@@ -532,17 +533,34 @@ export default function ContentCreatorPage() {
       </>
       )}
 
-      {/* Today's Items - collapsible */}
-      <details className="glass-card" open>
-        <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
-          <span>Today's Flocks</span>
+      {/* Flocks Tabs */}
+      <div className="glass-card">
+        <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1 mb-3">
+          <button
+            onClick={() => setFlocksTab('today')}
+            className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-all ${flocksTab === 'today' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'}`}
+          >
+            🦅 Today's Flocks
+          </button>
+          <button
+            onClick={() => setFlocksTab('missed')}
+            className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-all ${flocksTab === 'missed' ? 'bg-red-500 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            ⚠️ Missed {(() => { const now = new Date(); const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; const missed = events.filter((e) => e.type === 'post' && e.date < todayLocal && !e.completed); return missed.length > 0 ? `(${missed.length})` : ''; })()}
+          </button>
+        </div>
+
+        {flocksTab === 'today' && (
+        <>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-white">Today's Flocks</span>
           <span className="text-xs text-slate-400">
             {todayCalendarEvents.filter((e) => e.type === 'post' && e.completed).length}/{todayCalendarEvents.filter((e) => e.type === 'post').length} done
           </span>
-        </summary>
+        </div>
         {/* Copy & Open Next Flock button */}
         {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && platformContent && (
-          <div className="mt-3 space-y-2">
+          <div className="space-y-2">
             {(() => {
               const remaining = todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed);
               const next = remaining[0];
@@ -775,7 +793,93 @@ export default function ContentCreatorPage() {
             </div>
           )}
         </div>
-      </details>
+        </>
+        )}
+
+        {flocksTab === 'missed' && (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-white">⚠️ Missed Flocks</span>
+            <span className="text-xs text-slate-400">Uncompleted posts from previous days</span>
+          </div>
+          {(() => {
+            const now = new Date();
+            const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const missedPosts = events.filter((e) => e.type === 'post' && e.date < todayLocal && !e.completed);
+            
+            if (missedPosts.length === 0) {
+              return (
+                <div className="text-center py-6">
+                  <p className="text-2xl mb-2">✅</p>
+                  <p className="text-sm text-green-300 font-medium">No missed flocks!</p>
+                  <p className="text-xs text-slate-500 mt-1">You're all caught up.</p>
+                </div>
+              );
+            }
+
+            // Group missed posts by date
+            const byDate: Record<string, typeof missedPosts> = {};
+            for (const post of missedPosts) {
+              if (!byDate[post.date]) byDate[post.date] = [];
+              byDate[post.date].push(post);
+            }
+            const sortedDates = Object.keys(byDate).sort().reverse();
+
+            return (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {sortedDates.map((date) => {
+                  const posts = byDate[date];
+                  const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  return (
+                    <details key={date} className="rounded-lg bg-red-500/5 border border-red-500/20" open={sortedDates.indexOf(date) === 0}>
+                      <summary className="flex items-center justify-between p-2.5 cursor-pointer">
+                        <span className="text-xs font-medium text-red-300">{dateLabel}</span>
+                        <span className="text-xs text-slate-500">{posts.length} missed</span>
+                      </summary>
+                      <div className="px-2.5 pb-2.5 space-y-1.5">
+                        {posts.map((post) => (
+                          <div key={post.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                            <span className="text-xs text-slate-300 flex-1 truncate">{post.title}</span>
+                            <div className="flex gap-1 shrink-0">
+                              {post.link && (
+                                <button
+                                  onClick={() => {
+                                    if (platformContent) {
+                                      navigator.clipboard.writeText(Object.values(platformContent)[0] || '');
+                                      showToast('📋 Copied!');
+                                    }
+                                    window.open(post.link!, '_blank');
+                                  }}
+                                  className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-1 rounded font-medium hover:bg-amber-500/30"
+                                >
+                                  {platformContent ? '📋 Post Now' : '🔗 Open'}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => { toggleComplete(post.id); showToast('✓ Marked done'); }}
+                                className="text-[10px] bg-green-500/20 text-green-300 px-2 py-1 rounded font-medium hover:bg-green-500/30"
+                              >
+                                ✓ Done
+                              </button>
+                              <button
+                                onClick={() => removeEvent(post.id)}
+                                className="text-[10px] bg-red-500/20 text-red-300 px-2 py-1 rounded font-medium hover:bg-red-500/30"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </>
+        )}
+      </div>
 
       {platformContent && (
         <div className="space-y-4 animate-scale-in">

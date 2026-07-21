@@ -27,7 +27,7 @@ function getUserId(event) {
   return event.requestContext?.authorizer?.jwt?.claims?.sub ?? null;
 }
 
-const VALID_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'tiktok', 'nextdoor'];
+const VALID_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'tiktok', 'nextdoor', 'other'];
 const VALID_STATUSES = ['new', 'followed_up', 'converted', 'dismissed'];
 
 function validateOpportunity(body) {
@@ -40,11 +40,8 @@ function validateOpportunity(body) {
   if (typeof body.sourceContent === 'string' && body.sourceContent.length > 5000) {
     errors.push('sourceContent must be at most 5000 characters');
   }
-  if (!VALID_PLATFORMS.includes(body.sourcePlatform)) {
+  if (body.sourcePlatform && !VALID_PLATFORMS.includes(body.sourcePlatform)) {
     errors.push(`sourcePlatform must be one of: ${VALID_PLATFORMS.join(', ')}`);
-  }
-  if (typeof body.sourceUrl !== 'string' || body.sourceUrl.length < 1) {
-    errors.push('sourceUrl is required');
   }
   if (typeof body.sourceAuthor !== 'string' || body.sourceAuthor.length < 1) {
     errors.push('sourceAuthor is required');
@@ -72,10 +69,13 @@ async function handleGetOpportunities(userId) {
   const opportunities = (result.Items || []).map((item) => ({
     id: item.opportunityId,
     keywordId: item.keywordId,
+    keywordText: item.keywordId === 'manual-entry' ? (item.leadSource || 'Manual') : item.keywordId,
     sourceContent: item.sourceContent,
     sourcePlatform: item.sourcePlatform,
-    sourceUrl: item.sourceUrl,
+    sourceUrl: item.sourceUrl || '',
     sourceAuthor: item.sourceAuthor,
+    leadSource: item.leadSource || null,
+    leadSourceGroup: item.leadSourceGroup || null,
     status: item.status,
     createdAt: item.createdAt,
   }));
@@ -100,11 +100,13 @@ async function handleCreateOpportunity(userId, body) {
         PK: `USER#${userId}`,
         SK: `OPP#${now}#${opportunityId}`,
         opportunityId,
-        keywordId: body.keywordId,
+        keywordId: body.keywordId || 'manual-entry',
         sourceContent: body.sourceContent.substring(0, 5000),
-        sourcePlatform: body.sourcePlatform,
-        sourceUrl: body.sourceUrl,
+        sourcePlatform: body.sourcePlatform || 'other',
+        sourceUrl: body.sourceUrl || '',
         sourceAuthor: body.sourceAuthor,
+        leadSource: body.leadSource || null,
+        leadSourceGroup: body.leadSourceGroup || null,
         status: 'new',
         createdAt: now,
       },

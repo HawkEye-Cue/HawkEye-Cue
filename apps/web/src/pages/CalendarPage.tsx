@@ -409,9 +409,9 @@ export default function CalendarPage() {
                                           ) : (
                                             <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
                                           )}
-                                          <div className="flex gap-1 mt-1">
-                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="text-[10px] text-slate-400 hover:text-white">✏️</button>
-                                            <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="text-[10px] text-red-400 hover:text-red-300">🗑️</button>
+                                          <div className="flex justify-between mt-2">
+                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                            <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
                                           </div>
                                         </div>
                                       ))}
@@ -430,10 +430,10 @@ export default function CalendarPage() {
                                       {allMeetings.map((evt) => (
                                         <div key={evt.id} className="p-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
                                           <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
-                                          {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs">🔗</a>}
-                                          <div className="flex gap-1 mt-1">
-                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="text-[10px] text-slate-400 hover:text-white">✏️</button>
-                                            <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="text-[10px] text-red-400 hover:text-red-300">🗑️</button>
+                                          <div className="flex justify-between mt-2">
+                                            {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                            <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
                                           </div>
                                         </div>
                                       ))}
@@ -452,10 +452,10 @@ export default function CalendarPage() {
                                       {allReminders.map((evt) => (
                                         <div key={evt.id} className="p-1.5 rounded-lg bg-green-500/5 border border-green-500/10">
                                           <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
-                                          {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs">🔗</a>}
-                                          <div className="flex gap-1 mt-1">
-                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="text-[10px] text-slate-400 hover:text-white">✏️</button>
-                                            <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="text-[10px] text-red-400 hover:text-red-300">🗑️</button>
+                                          <div className="flex justify-between mt-2">
+                                            {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                            <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
                                           </div>
                                         </div>
                                       ))}
@@ -482,12 +482,16 @@ export default function CalendarPage() {
                                   {evts.length > 0 ? evts.map((evt) => {
                                     const color = evt.type === 'post' ? 'border-blue-500/30 bg-blue-500/5' : (evt.type === 'meeting' || evt.type === 'task') ? 'border-amber-500/30 bg-amber-500/5' : 'border-green-500/30 bg-green-500/5';
                                     return (
-                                      <div key={evt.id} className={`flex items-center gap-2 p-1.5 rounded-lg border ${color} mb-0.5`}>
-                                        <span className="text-sm shrink-0">{evt.type === 'post' ? '📤' : (evt.type === 'meeting' || evt.type === 'task') ? '🤝' : '🔔'}</span>
-                                        <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-white'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
-                                        {(evt as any).link && <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 shrink-0 text-xs">🔗</a>}
-                                        <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="text-[10px] text-slate-400 hover:text-white shrink-0">✏️</button>
-                                        <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="text-[10px] text-red-400 hover:text-red-300 shrink-0">🗑️</button>
+                                      <div key={evt.id} className={`p-2 rounded-lg border ${color} mb-1`}>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm shrink-0">{evt.type === 'post' ? '📤' : (evt.type === 'meeting' || evt.type === 'task') ? '🤝' : '🔔'}</span>
+                                          <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-white'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                                        </div>
+                                        <div className="flex justify-between mt-2 ml-6">
+                                          {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                                          <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                          <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
+                                        </div>
                                       </div>
                                     );
                                   }) : (

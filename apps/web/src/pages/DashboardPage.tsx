@@ -542,8 +542,8 @@ export default function DashboardPage() {
                             <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
                             {evt.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full">✓</span>}
                           </div>
-                          <div className="flex gap-1 mt-1.5 ml-6">
-                            {evt.link && <a href={evt.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300">🔗</a>}
+                          <div className="flex justify-between mt-2">
+                            {evt.link ? <a href={evt.link} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-medium hover:bg-blue-500/20 min-w-[44px] text-center">🔗 Link</a> : <span />}
                             <button onClick={() => {
                               const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
                               const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/);
@@ -558,8 +558,8 @@ export default function DashboardPage() {
                               setEditLocation(locationMatch ? locationMatch[1].trim() : '');
                               setEditLink(evt.link || '');
                               setEditDate(evt.date);
-                            }} className="text-[10px] text-slate-400 hover:text-white">✏️</button>
-                            <button onClick={() => removeEvent(evt.id)} className="text-[10px] text-red-400 hover:text-red-300">🗑️</button>
+                            }} className="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 min-w-[44px] text-center">✏️ Edit</button>
+                            <button onClick={() => removeEvent(evt.id)} className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 min-w-[44px] text-center">🗑️</button>
                           </div>
                         </div>
                       ))}

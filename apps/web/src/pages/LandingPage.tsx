@@ -62,13 +62,13 @@ export default function LandingPage() {
           </div>
           <div className="text-center glass-card hover:-translate-y-1 transition-transform duration-300">
             <div className="text-4xl mb-4">2️⃣</div>
-            <h4 className="font-bold text-lg mb-2">Create & Schedule</h4>
-            <p className="text-sm text-slate-400">AI generates posts in your tone for Facebook, Instagram, LinkedIn, and TikTok. Schedule them and forget about it.</p>
+            <h4 className="font-bold text-lg mb-2">Add Your Flocks</h4>
+            <p className="text-sm text-slate-400">Add your Facebook groups to the calendar. Set them to repeat daily or weekly. Each morning, your flocks are ready to go.</p>
           </div>
           <div className="text-center glass-card hover:-translate-y-1 transition-transform duration-300">
             <div className="text-4xl mb-4">3️⃣</div>
-            <h4 className="font-bold text-lg mb-2">Detect & Connect</h4>
-            <p className="text-sm text-slate-400">Our hawk watches for keywords and tags while you scroll. Get notified of leads and thank people who mention you.</p>
+            <h4 className="font-bold text-lg mb-2">Post, Engage, Track</h4>
+            <p className="text-sm text-slate-400">Write or generate a post, fly through your flocks with one tap each, then come back to engage. Track leads, meetings, and sales all in one place.</p>
           </div>
         </div>
       </section>
@@ -86,40 +86,45 @@ export default function LandingPage() {
           <h3 className="text-2xl font-bold text-center mb-12 reveal">Features</h3>
           <div className="grid md:grid-cols-2 gap-6 stagger-children">
             <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
+              <div className="text-2xl mb-3">🦅</div>
+              <h4 className="font-bold text-lg mb-2">Flocks — Group Posting Made Easy</h4>
+              <p className="text-sm text-slate-400">Add your Facebook groups to the calendar, then use "Copy & Open Next Flock" to fly through each one. One tap copies your post and opens the group. Done in minutes.</p>
+            </div>
+            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
               <div className="text-2xl mb-3">✨</div>
-              <h4 className="font-bold text-lg mb-2">Customizable Content Creation</h4>
-              <p className="text-sm text-slate-400">Create trade-specific posts your way — write your own, use templates, or let AI generate them for you if you choose. Adapted for each platform with the right tone.</p>
+              <h4 className="font-bold text-lg mb-2">AI Content Creation</h4>
+              <p className="text-sm text-slate-400">Write your own post or let AI generate trade-specific content for Facebook, Instagram, LinkedIn, and TikTok. Different versions for each platform, right tone for your industry.</p>
             </div>
             <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
               <div className="text-2xl mb-3">📅</div>
-              <h4 className="font-bold text-lg mb-2">Post Scheduling</h4>
-              <p className="text-sm text-slate-400">Schedule posts across all platforms from one calendar. Never miss a day of content again.</p>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">🦅</div>
-              <h4 className="font-bold text-lg mb-2">Keyword Tracking</h4>
-              <p className="text-sm text-slate-400">Our hawk icon appears when someone posts about needing your services. Detect leads while you scroll social media.</p>
-              <button onClick={() => setShowExplainer(true)} className="text-xs text-blue-400 hover:text-blue-300 mt-2">How does this work? →</button>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">🙏</div>
-              <h4 className="font-bold text-lg mb-2">Appreciations</h4>
-              <p className="text-sm text-slate-400">Track who tags you in posts. Thank them, collaborate, and build lasting referral partnerships.</p>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">🤝</div>
-              <h4 className="font-bold text-lg mb-2">Collaborate</h4>
-              <p className="text-sm text-slate-400">Network with other trades. Roofers meet insurance agents, realtors meet contractors. Referrals flow naturally.</p>
+              <h4 className="font-bold text-lg mb-2">Full Calendar & Scheduling</h4>
+              <p className="text-sm text-slate-400">Schedule posts, meetings, and reminders. Send meeting invites with calendar links (Google, Outlook, Apple). Daily notes save to each date automatically.</p>
             </div>
             <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
               <div className="text-2xl mb-3">🎯</div>
               <h4 className="font-bold text-lg mb-2">Lead Management</h4>
-              <p className="text-sm text-slate-400">Every opportunity tracked in one place. Follow up, convert, and see your stats grow.</p>
+              <p className="text-sm text-slate-400">Add leads from any source — Facebook groups, cold calls, referrals, internet lead vendors. Track them from prospect to converted. See what's working.</p>
             </div>
             <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
               <div className="text-2xl mb-3">💰</div>
-              <h4 className="font-bold text-lg mb-2">Sales Tracker</h4>
-              <p className="text-sm text-slate-400">Track your entire pipeline from lead to close. See where each sale came from, manage folios, and get monthly recap reports with top performers.</p>
+              <h4 className="font-bold text-lg mb-2">Sales Tracker & Analytics</h4>
+              <p className="text-sm text-slate-400">Full pipeline from prospect to close. Track lead sources, see which groups generate the most business, and get flock completion analytics.</p>
+            </div>
+            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
+              <div className="text-2xl mb-3">🤝</div>
+              <h4 className="font-bold text-lg mb-2">Network & Appreciations</h4>
+              <p className="text-sm text-slate-400">Connect with trades in your area. Post referrals, log appreciations from people who recommend you, build partnerships that generate business.</p>
+            </div>
+            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
+              <div className="text-2xl mb-3">📊</div>
+              <h4 className="font-bold text-lg mb-2">Hawk Insights</h4>
+              <p className="text-sm text-slate-400">See your flock completion rate, which groups you miss most, peak posting times, lead source breakdown, and deal attribution — all in one dashboard.</p>
+            </div>
+            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
+              <div className="text-2xl mb-3">🔑</div>
+              <h4 className="font-bold text-lg mb-2">Keyword Tracking</h4>
+              <p className="text-sm text-slate-400">Our browser extension scans social media while you scroll. When someone posts about needing your services, a hawk icon appears and you save them as a lead.</p>
+              <button onClick={() => setShowExplainer(true)} className="text-xs text-blue-400 hover:text-blue-300 mt-2">How does this work? →</button>
             </div>
           </div>
         </div>
@@ -152,10 +157,12 @@ export default function LandingPage() {
               <span className="text-3xl font-extrabold text-white">Free</span>
             </div>
             <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ AI-powered post creation</li>
-              <li>✓ Post scheduling & calendar</li>
-              <li>✓ Trade-specific suggestions</li>
-              <li>✓ Multi-platform support</li>
+              <li>✓ AI-powered post creation (2/month)</li>
+              <li>✓ Full calendar with scheduling</li>
+              <li>✓ Flocks — 3 Copy & Open per day</li>
+              <li>✓ Meeting invites with calendar links</li>
+              <li>✓ Daily notes & reminders</li>
+              <li>✓ Network board & contacts</li>
             </ul>
             <Link to="/register" className="block text-center btn-primary py-2.5 btn-shimmer">
               Get Started Free
@@ -173,15 +180,15 @@ export default function LandingPage() {
             <p className="text-xs text-amber-300 mb-3 font-medium">🎁 7-day free trial included</p>
             <ul className="text-sm text-slate-300 space-y-2 mb-6">
               <li>✓ Everything in Nest</li>
-              <li>🦅 Keyword tracking & alerts</li>
-              <li>🦅 Browser extension & lead detection</li>
-              <li>🙏 Appreciations tracking</li>
+              <li>🦅 Unlimited Flocks (Copy & Open)</li>
+              <li>🦅 Keyword tracking & browser extension</li>
+              <li>🎯 Lead detection & management</li>
               <li>💰 Sales Tracker & Pipeline</li>
-              <li>💰 Lead source attribution & folio recaps</li>
+              <li>📊 Hawk Insights & Flock Analytics</li>
+              <li>🙏 Appreciations & AI thank-you replies</li>
               <li>🤝 Wingman — relationship builder</li>
-              <li>📊 Hawk Insights analytics</li>
-              <li>🔗 Linked accounts</li>
-              <li>📋 Copy & Open workflow</li>
+              <li>🔗 Linked accounts & partner notifications</li>
+              <li>💰 Lead source attribution & folio recaps</li>
             </ul>
             <Link to="/register" className="block text-center bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2.5 rounded-lg font-bold hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
               Start 7-Day Free Trial

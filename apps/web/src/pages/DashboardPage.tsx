@@ -285,6 +285,41 @@ export default function DashboardPage() {
         </div>
       ))}
 
+      {/* Meeting Alert Banner */}
+      {(() => {
+        const todayMeetings = todayEvents.filter((e) => e.type === 'meeting' || e.type === 'task');
+        if (todayMeetings.length === 0) return null;
+        return (
+          <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border-2 border-amber-500/40">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">🤝</span>
+              <p className="text-sm font-bold text-amber-300">{todayMeetings.length} Meeting{todayMeetings.length !== 1 ? 's' : ''} Today</p>
+            </div>
+            <div className="space-y-1.5">
+              {todayMeetings.map((m) => {
+                const timeMatch = m.title.match(/^\[(\d{1,2}):(\d{2})\]/);
+                const cleanTitle = m.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '');
+                let timeStr = '';
+                if (timeMatch) {
+                  const h = parseInt(timeMatch[1]);
+                  const min = timeMatch[2];
+                  timeStr = `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${min} ${h >= 12 ? 'PM' : 'AM'}`;
+                }
+                return (
+                  <div key={m.id} className="flex items-center gap-2 bg-black/20 rounded-lg px-3 py-2">
+                    {timeStr && <span className="text-xs font-bold text-white bg-amber-600 px-2 py-0.5 rounded">{timeStr}</span>}
+                    <span className="text-xs text-slate-200 flex-1 truncate">{cleanTitle}</span>
+                    {m.inviteStatus === 'confirmed' && <span className="text-[9px] bg-green-600/40 text-green-300 px-1.5 py-0.5 rounded-full">✓ Confirmed</span>}
+                    {m.inviteStatus === 'pending' && <span className="text-[9px] bg-amber-600/40 text-amber-300 px-1.5 py-0.5 rounded-full">⏳ Pending</span>}
+                    {m.link && <a href={m.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 shrink-0">🔗</a>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Daily Cues */}
       <details className="glass-card" open>
         <summary className="font-semibold text-white cursor-pointer">Today's Cues</summary>

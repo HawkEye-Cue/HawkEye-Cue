@@ -306,7 +306,12 @@ export default function OpportunitiesPage() {
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-lg">{platformIcons[lead.sourcePlatform] || '📱'}</span>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white">{lead.sourceAuthor}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-white">{lead.sourceAuthor}</p>
+                {(lead as any).policyType && (
+                  <span className="text-xs font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">{(lead as any).policyType}</span>
+                )}
+              </div>
               <p className="text-xs text-slate-500">{(lead as any).keywordText || (lead as any).keywordId || 'Keyword match'} • {lead.sourcePlatform || ''} • {new Date(lead.detectedAt || (lead as any).createdAt).toLocaleDateString()}</p>
             </div>
           </div>
@@ -314,9 +319,6 @@ export default function OpportunitiesPage() {
             <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>
               {lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? 'Converted' : 'New'}
             </span>
-            {(lead as any).policyType && (
-              <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">{(lead as any).policyType}</span>
-            )}
             <button onClick={() => handleDelete(lead.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
           </div>
         </div>
@@ -563,7 +565,7 @@ export default function OpportunitiesPage() {
                         addEvent({
                           date: dateStr,
                           title: `${icon} ${newLeadName.trim()} — ${step.task.slice(0, 60)}`,
-                          type: 'task',
+                          type: 'reminder',
                           link: `/opportunities`,
                         });
                       }
@@ -681,10 +683,10 @@ export default function OpportunitiesPage() {
         </div>
       )}
 
-      {/* Lead Follow-Up Protocol — Visual Timeline */}
+      {/* Lead Flight Projection — Visual Timeline */}
       <div className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-white">📋 Follow-Up Protocol</h3>
+          <h3 className="text-sm font-semibold text-white">🦅 Flight Projection</h3>
           <button onClick={() => setShowProtocolEditor(!showProtocolEditor)} className="text-xs text-blue-400 hover:text-blue-300">
             {showProtocolEditor ? 'Close' : 'Edit'}
           </button>

@@ -396,30 +396,10 @@ export default function DashboardPage() {
 
               return (
                 <>
-                  {/* Tiles row */}
+                  {/* Tiles row — Meetings first, Reminders second, Posts third */}
                   <div className="grid grid-cols-3 gap-2">
-                    {/* Posts Tile */}
-                    <details className="rounded-xl border border-blue-500/40 bg-slate-800/90 overflow-hidden backdrop-blur-sm">
-                      <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
-                        <span className="text-xl">📤</span>
-                        <span className="text-xs font-bold text-blue-400 mt-0.5">Posts</span>
-                        <span className="text-lg font-bold text-blue-400">{posts.length}</span>
-                      </summary>
-                      {posts.length > 0 && (
-                        <div className="px-2 pb-2 space-y-1 border-t border-blue-500/20 pt-2">
-                          {posts.map((event) => (
-                            <label key={event.id} className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-blue-500/10">
-                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-blue-500" />
-                              <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
-                              {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 shrink-0 text-xs">🔗</a>}
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </details>
-
                     {/* Meetings Tile */}
-                    <details className="rounded-xl border border-amber-500/40 bg-slate-800/90 overflow-hidden backdrop-blur-sm">
+                    <details className="rounded-xl border border-amber-500/40 bg-slate-800/90 overflow-hidden backdrop-blur-sm" open>
                       <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
                         <span className="text-xl">🤝</span>
                         <span className="text-xs font-bold text-amber-400 mt-0.5">Meetings</span>
@@ -439,13 +419,11 @@ export default function DashboardPage() {
                                 {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-[10px] text-blue-400 hover:text-blue-300">🔗 Link</a>}
                                 <button onClick={() => {
                                   setEditingEvent(event);
-                                  // Parse time from title if present (format: [HH:MM] Title — 📍 Location)
                                   const timeMatch = event.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
                                   const locationMatch = event.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/);
                                   let cleanTitle = event.title;
                                   if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], '');
                                   if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, '');
-                                  // Also strip notes from title
                                   const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/);
                                   if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], '');
                                   setEditTitle(cleanTitle.trim());
@@ -463,7 +441,7 @@ export default function DashboardPage() {
                     </details>
 
                     {/* Reminders Tile */}
-                    <details className="rounded-xl border border-green-500/40 bg-slate-800/90 overflow-hidden backdrop-blur-sm">
+                    <details className="rounded-xl border border-green-500/40 bg-slate-800/90 overflow-hidden backdrop-blur-sm" open>
                       <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
                         <span className="text-xl">🔔</span>
                         <span className="text-xs font-bold text-green-400 mt-0.5">Reminders</span>
@@ -474,6 +452,26 @@ export default function DashboardPage() {
                           {reminders.map((event) => (
                             <label key={event.id} className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-green-500/10">
                               <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-green-500" />
+                              <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
+                              {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 shrink-0 text-xs">🔗</a>}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </details>
+
+                    {/* Posts Tile — collapsed by default */}
+                    <details className="rounded-xl border border-blue-500/40 bg-slate-800/90 overflow-hidden backdrop-blur-sm">
+                      <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                        <span className="text-xl">📤</span>
+                        <span className="text-xs font-bold text-blue-400 mt-0.5">Posts</span>
+                        <span className="text-lg font-bold text-blue-400">{posts.length}</span>
+                      </summary>
+                      {posts.length > 0 && (
+                        <div className="px-2 pb-2 space-y-1 border-t border-blue-500/20 pt-2">
+                          {posts.map((event) => (
+                            <label key={event.id} className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-blue-500/10">
+                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-blue-500" />
                               <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
                               {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 shrink-0 text-xs">🔗</a>}
                             </label>

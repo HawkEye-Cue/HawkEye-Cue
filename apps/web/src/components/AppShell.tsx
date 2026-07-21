@@ -45,8 +45,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         }} />
       )}
 
-      {/* Top Bar — glassmorphism */}
-      <header className="sticky top-0 z-40 border-b border-white/10 px-3 sm:px-4 py-3 flex flex-col items-center gap-1" style={{ background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+      {/* Top Bar — bright glassmorphism */}
+      <header className="sticky top-0 z-40 border-b border-white/20 px-3 sm:px-4 py-3 flex flex-col items-center gap-1" style={{ background: 'rgba(30, 41, 59, 0.95)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-wider uppercase gradient-text">HawkEye-Cue</h1>
         <div className="flex items-center gap-3">
           <Link to="/profile" className="text-sm text-slate-400 hover:text-blue-400 transition-colors">

@@ -16,7 +16,6 @@ import SalesPage from './pages/SalesPage';
 import TeamPage from './pages/TeamPage';
 import HawkInsightsPage from './pages/HawkInsightsPage';
 import NetworkPage from './pages/NetworkPage';
-import AppreciationsPage from './pages/AppreciationsPage';
 import KeywordsPage from './pages/KeywordsPage';
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
@@ -80,7 +79,7 @@ export default function App() {
                 <Route path="/team" element={<TeamPage />} />
                 <Route path="/hawk-insights" element={<HawkInsightsPage />} />
                 <Route path="/network" element={<NetworkPage />} />
-                <Route path="/appreciations" element={<NetworkPage />} />
+                <Route path="/appreciations" element={<Navigate to="/network" replace />} />
                 <Route path="/keywords" element={<KeywordsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />

@@ -29,7 +29,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function OpportunitiesPage() {
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const { selectedTrade } = useTrade();
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
@@ -264,19 +264,22 @@ export default function OpportunitiesPage() {
               const val = e.target.value;
               try {
                 const client = await buildClient();
-                await client.updateOpportunityStatus(lead.id, lead.status);
                 await client.request('PUT', `/opportunities/${lead.id}/status`, { assignedTo: val || null });
                 setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, assignedTo: val } as any : l));
+                showToast('✓ Assigned');
               } catch { /* ignore */ }
             }}
-            className="px-2 py-1 bg-slate-700/50 border border-slate-600/50 rounded text-xs text-slate-300 hover:border-slate-500 cursor-pointer"
+            className="px-2 py-1 bg-slate-700/80 border border-slate-600/50 rounded text-xs text-slate-300 hover:border-slate-500 cursor-pointer"
           >
             <option value="">Unassigned</option>
-            {isInTeam && teamMembers.map((m) => (
+            <option value={user?.email || ''}>Me ({user?.email?.split('@')[0] || 'me'})</option>
+            {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => (
               <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
             ))}
-            {!(lead as any).assignedTo && !isInTeam && <option value="">Type in notes...</option>}
           </select>
+          {(lead as any).assignedTo && (
+            <span className="text-xs text-blue-400">{(lead as any).assignedTo.split('@')[0]}</span>
+          )}
         </div>
         <details className="mt-3">
           <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">📝 Notes</summary>
@@ -409,16 +412,12 @@ export default function OpportunitiesPage() {
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Assigned To (optional)</label>
-                {isInTeam && teamMembers.length > 0 ? (
-                  <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
-                    <option value="">Me</option>
-                    {teamMembers.map((m) => (
-                      <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input type="text" value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} placeholder="e.g. team member name" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
-                )}
+                <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <option value="">Me ({user?.email?.split('@')[0] || 'current user'})</option>
+                  {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => (
+                    <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
+                  ))}
+                </select>
               </div>
               <button
                 onClick={async () => {
@@ -461,19 +460,19 @@ export default function OpportunitiesPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="glass-card text-center">
+        <div className="rounded-xl border border-white/20 p-4 bg-slate-800/90 text-center">
           <div className="text-lg font-bold text-white">{stats.total}</div>
           <div className="text-xs text-slate-400">Total</div>
         </div>
-        <div className="glass-card text-center border-blue-500/20">
+        <div className="rounded-xl border border-blue-500/30 p-4 bg-slate-800/90 text-center">
           <div className="text-lg font-bold text-blue-400">{stats.new}</div>
           <div className="text-xs text-slate-400">New</div>
         </div>
-        <div className="glass-card text-center border-yellow-500/20">
+        <div className="rounded-xl border border-yellow-500/30 p-4 bg-slate-800/90 text-center">
           <div className="text-lg font-bold text-yellow-400">{stats.followedUp}</div>
           <div className="text-xs text-slate-400">Followed Up</div>
         </div>
-        <div className="glass-card text-center border-green-500/20">
+        <div className="rounded-xl border border-green-500/30 p-4 bg-slate-800/90 text-center">
           <div className="text-lg font-bold text-green-400">{stats.converted}</div>
           <div className="text-xs text-slate-400">Converted</div>
         </div>

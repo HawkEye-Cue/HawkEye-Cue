@@ -78,6 +78,7 @@ async function handleGetOpportunities(userId) {
     leadSourceGroup: item.leadSourceGroup || null,
     policyType: item.policyType || null,
     assignedTo: item.assignedTo || null,
+    bucket: item.bucket || null,
     status: item.status,
     createdAt: item.createdAt,
   }));
@@ -111,6 +112,7 @@ async function handleCreateOpportunity(userId, body) {
         leadSourceGroup: body.leadSourceGroup || null,
         policyType: body.policyType || null,
         assignedTo: body.assignedTo || null,
+        bucket: body.bucket || null,
         status: 'new',
         createdAt: now,
       },

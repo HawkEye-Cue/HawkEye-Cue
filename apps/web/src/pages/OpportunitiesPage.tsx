@@ -59,10 +59,27 @@ export default function OpportunitiesPage() {
   const [newLeadPolicyType, setNewLeadPolicyType] = useState('');
   const [newLeadCustomType, setNewLeadCustomType] = useState('');
   const [newLeadAssignee, setNewLeadAssignee] = useState('');
+  const [newLeadBucket, setNewLeadBucket] = useState('');
   const [userGroups, setUserGroups] = useState<string[]>([]);
   const [showTeamLeads, setShowTeamLeads] = useState(false);
   const [teamLeadFilter, setTeamLeadFilter] = useState('all');
   const [showProtocolEditor, setShowProtocolEditor] = useState(false);
+  const [activeBucket, setActiveBucket] = useState<string | null>(null);
+  const [showBucketManager, setShowBucketManager] = useState(false);
+  const [newBucketName, setNewBucketName] = useState('');
+
+  // Buckets (persisted in localStorage)
+  const bucketsKey = `hawkeye_lead_buckets_${user?.sub || 'default'}`;
+  const [buckets, setBuckets] = useState<string[]>(() => {
+    const saved = localStorage.getItem(bucketsKey);
+    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+    return ['Cross Sell', 'Internet Lead', 'Social Media', 'Referral', 'Walk-In'];
+  });
+
+  function saveBuckets(b: string[]) {
+    setBuckets(b);
+    localStorage.setItem(bucketsKey, JSON.stringify(b));
+  }
 
   // Lead follow-up protocol (customizable, persisted on server)
   const protocolKey = `hawkeye_lead_protocol_${user?.sub || 'default'}`;
@@ -513,6 +530,15 @@ export default function OpportunitiesPage() {
                 )}
               </div>
               <div>
+                <label className="block text-xs text-slate-400 mb-1">Bucket / Category</label>
+                <select value={newLeadBucket} onChange={(e) => setNewLeadBucket(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <option value="">Select bucket...</option>
+                  {buckets.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs text-slate-400 mb-1">Assigned To (optional)</label>
                 <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
                   <option value="">Me ({user?.email?.split('@')[0] || 'current user'})</option>
@@ -536,6 +562,7 @@ export default function OpportunitiesPage() {
                       leadSourceGroup: newLeadGroup || undefined,
                       policyType: newLeadPolicyType === 'other' ? (newLeadCustomType.trim() || undefined) : (newLeadPolicyType || undefined),
                       assignedTo: newLeadAssignee || undefined,
+                      bucket: newLeadBucket || undefined,
                     });
                     showToast('🎯 Lead added!');
                     setShowAddLead(false);
@@ -545,6 +572,7 @@ export default function OpportunitiesPage() {
                     setNewLeadPolicyType('');
                     setNewLeadCustomType('');
                     setNewLeadAssignee('');
+                    setNewLeadBucket('');
                     fetchData();
 
                     // Auto-schedule follow-up protocol on calendar (linked to lead)
@@ -585,7 +613,69 @@ export default function OpportunitiesPage() {
 
       {/* Stats */}
 
-      {/* Leads List */}
+      {/* Hawk Nests — Lead Buckets */}
+      {!loading && leads.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-white">🪹 Lead Nests</h3>
+            <button onClick={() => setShowBucketManager(!showBucketManager)} className="text-xs text-blue-400 hover:text-blue-300">{showBucketManager ? 'Done' : 'Edit Nests'}</button>
+          </div>
+
+          {/* Bucket manager */}
+          {showBucketManager && (
+            <div className="rounded-xl border border-white/20 p-3 bg-slate-800/95 space-y-2">
+              <div className="flex gap-2">
+                <input type="text" value={newBucketName} onChange={(e) => setNewBucketName(e.target.value)} placeholder="New bucket name..." className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500" />
+                <button onClick={() => { if (newBucketName.trim() && !buckets.includes(newBucketName.trim())) { saveBuckets([...buckets, newBucketName.trim()]); setNewBucketName(''); } }} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs">Add</button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {buckets.map((b) => (
+                  <span key={b} className="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded-full text-xs text-slate-300">
+                    {b}
+                    <button onClick={() => saveBuckets(buckets.filter((x) => x !== b))} className="text-red-400 hover:text-red-300">✕</button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Nest grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {/* All leads nest */}
+            <button
+              onClick={() => setActiveBucket(null)}
+              className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${!activeBucket ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]' : 'border-white/15 bg-slate-800/90 hover:border-amber-500/30'}`}
+            >
+              <span className="text-3xl mb-1">🪹</span>
+              <span className="text-2xl absolute top-2 right-2">🦅</span>
+              <span className="text-lg font-bold text-white">{leads.length}</span>
+              <span className="text-[10px] text-slate-400 mt-0.5">All Leads</span>
+            </button>
+
+            {/* Per-bucket nests */}
+            {buckets.map((bucket) => {
+              const count = leads.filter((l) => (l as any).bucket === bucket || (l as any).leadSource === bucket.toLowerCase().replace(/ /g, '-')).length;
+              const isActive = activeBucket === bucket;
+              return (
+                <button
+                  key={bucket}
+                  onClick={() => setActiveBucket(isActive ? null : bucket)}
+                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${isActive ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]' : 'border-white/15 bg-slate-800/90 hover:border-amber-500/30'}`}
+                >
+                  <span className="text-3xl mb-1">🪹</span>
+                  <span className="text-2xl absolute top-2 right-2">🦅</span>
+                  <div className="absolute top-3 right-3 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-black">{count}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-300 mt-0.5 text-center leading-tight">{bucket}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Leads List — filtered by active bucket, sorted by priority */}
       {loading ? (
         <p className="text-sm text-slate-500">Loading leads...</p>
       ) : leads.length === 0 ? (
@@ -598,7 +688,19 @@ export default function OpportunitiesPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {leads.map((lead) => renderLeadCard(lead))}
+          {activeBucket && <p className="text-xs text-amber-400 font-medium">🪹 Showing: {activeBucket}</p>}
+          {leads
+            .filter((lead) => {
+              if (!activeBucket) return true;
+              return (lead as any).bucket === activeBucket || (lead as any).leadSource === activeBucket.toLowerCase().replace(/ /g, '-');
+            })
+            .sort((a, b) => {
+              // Priority: new first, then by date (newest first)
+              if (a.status === 'new' && b.status !== 'new') return -1;
+              if (b.status === 'new' && a.status !== 'new') return 1;
+              return ((b as any).createdAt || '').localeCompare((a as any).createdAt || '');
+            })
+            .map((lead) => renderLeadCard(lead))}
         </div>
       )}
 

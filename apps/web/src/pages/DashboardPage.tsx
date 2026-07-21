@@ -603,27 +603,47 @@ export default function DashboardPage() {
               </>
             )}
             <button onClick={() => setDashCalDay(null)} className="w-full mt-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 text-sm">Close</button>
+
+            {/* Day Notes */}
+            <div className="mt-3 border-t border-white/10 pt-3">
+              <p className="text-xs text-slate-400 font-semibold mb-1.5">📝 Notes for this day</p>
+              <textarea
+                defaultValue={localStorage.getItem(`hawkeye_notepad_${user?.sub}_${dashCalDay}`) || ''}
+                onBlur={(e) => {
+                  const val = e.target.value;
+                  localStorage.setItem(`hawkeye_notepad_${user?.sub}_${dashCalDay}`, val);
+                  getToken().then((token) => {
+                    if (!token) return;
+                    const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                    client.request('PUT', '/profile/preferences', { [`notepad_${dashCalDay}`]: val }).catch(() => {});
+                  });
+                }}
+                placeholder="Notes for this day..."
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20 focus:border-blue-500/50 focus:outline-none"
+              />
+            </div>
           </div>
         </div>
       )}
 
       {/* Notes */}
       <div className="glass-card">
-        <h3 className="font-semibold text-white text-sm mb-2">📝 Notes</h3>
+        <h3 className="font-semibold text-white text-sm mb-2">📝 Today's Notes</h3>
         <textarea
-          defaultValue={localStorage.getItem(`hawkeye_notepad_${user?.sub}`) || ''}
+          defaultValue={localStorage.getItem(`hawkeye_notepad_${user?.sub}_${todayStr}`) || ''}
           onBlur={(e) => {
             const val = e.target.value;
-            localStorage.setItem(`hawkeye_notepad_${user?.sub}`, val);
+            localStorage.setItem(`hawkeye_notepad_${user?.sub}_${todayStr}`, val);
             getToken().then((token) => {
               if (!token) return;
               const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-              client.request('PUT', '/profile/preferences', { notepad: val }).catch(() => {});
+              client.request('PUT', '/profile/preferences', { [`notepad_${todayStr}`]: val, notepadDate: todayStr }).catch(() => {});
             });
           }}
-          placeholder="Quick notes, ideas, reminders..."
+          placeholder="What's on your mind today?"
           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-24 focus:border-blue-500/50 focus:outline-none"
         />
+        <p className="text-[10px] text-slate-600 mt-1">Auto-saves when you tap away. Each day starts fresh.</p>
       </div>
 
       {/* Engagement Summary */}

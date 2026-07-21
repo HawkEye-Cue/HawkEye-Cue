@@ -44,21 +44,45 @@ export default function OpportunitiesPage() {
   const [newLeadGroup, setNewLeadGroup] = useState('');
   const [newLeadNote, setNewLeadNote] = useState('');
   const [newLeadPolicyType, setNewLeadPolicyType] = useState('');
+  const [newLeadCustomType, setNewLeadCustomType] = useState('');
   const [userGroups, setUserGroups] = useState<string[]>([]);
 
-  // Load policy types from localStorage (same as SalesPage)
+  // Trade-specific policy types (same as SalesPage)
+  const LEAD_POLICY_TYPES: Record<string, string[]> = {
+    'insurance-agent': ['Home', 'Auto', 'Life', 'Commercial', 'Motorcycle', 'Trailer', 'Boat', 'Umbrella', 'Renters', 'Condo', 'Flood', 'Bundle'],
+    'health-insurance-agent': ['Individual', 'Family', 'Medicare', 'Medicaid', 'Group/Employer', 'Dental', 'Vision', 'Supplemental', 'Short-Term'],
+    'insurance-producer': ['Home', 'Auto', 'Life', 'Commercial', 'Motorcycle', 'Trailer', 'Boat', 'Umbrella', 'Renters', 'Condo', 'Flood', 'Bundle'],
+    'real-estate-agent': ['Single Family', 'Condo/Townhome', 'Multi-Family', 'Luxury', 'Land/Lot', 'Commercial', 'Investment Property', 'New Construction'],
+    'mortgage-lender': ['Conventional', 'FHA', 'VA', 'USDA', 'Jumbo', 'Refinance', 'HELOC', 'Reverse Mortgage', 'Construction'],
+    'roofing': ['Shingle Replacement', 'Metal Roof', 'Flat Roof', 'Tile Roof', 'Roof Repair', 'Storm Damage', 'Inspection', 'Gutter Install'],
+    'general-contractor': ['Kitchen Remodel', 'Bathroom Remodel', 'Addition', 'Full Renovation', 'Basement Finish', 'Deck/Patio', 'Commercial Build-Out', 'New Construction'],
+    'hvac-technician': ['AC Install', 'Furnace Install', 'AC Repair', 'Heating Repair', 'Maintenance Plan', 'Ductwork', 'Mini-Split'],
+    'electrician': ['Panel Upgrade', 'Rewiring', 'Outlet/Switch Install', 'Lighting', 'Generator Install', 'EV Charger', 'Inspection'],
+    'plumber': ['Pipe Repair', 'Drain Cleaning', 'Water Heater', 'Sewer Line', 'Bathroom Remodel', 'Fixture Install', 'Gas Line'],
+    'landscaper': ['Design & Install', 'Lawn Maintenance', 'Tree Service', 'Irrigation', 'Hardscape', 'Seasonal Cleanup', 'Sod/Turf'],
+    'painter': ['Interior Full', 'Exterior Full', 'Single Room', 'Cabinet Painting', 'Deck Stain', 'Commercial', 'Touch-Up'],
+    'auto-repair-shop': ['Engine Repair', 'Brake Service', 'Transmission', 'AC/Heating', 'Electrical', 'Suspension', 'Oil/Maintenance'],
+    'flooring-installer': ['Hardwood', 'Laminate', 'Vinyl Plank', 'Tile', 'Carpet', 'Epoxy', 'Refinishing'],
+    'fence-company': ['Wood Privacy', 'Chain Link', 'Vinyl', 'Aluminum', 'Iron', 'Farm/Ranch', 'Gate Install'],
+    'pest-control': ['General Pest', 'Termite Treatment', 'Rodent Control', 'Bed Bugs', 'Mosquito Service', 'Wildlife Removal', 'Annual Plan'],
+    'pressure-washer': ['House Wash', 'Driveway/Sidewalk', 'Deck/Fence', 'Roof Wash', 'Commercial', 'Fleet Wash', 'Package Deal'],
+    'cosmetologist': ['Color', 'Cut & Style', 'Balayage/Highlights', 'Extensions', 'Keratin Treatment', 'Bridal', 'Package Deal'],
+    'esthetician': ['Facial', 'Chemical Peel', 'Microneedling', 'Laser Treatment', 'Waxing Package', 'Acne Program', 'Anti-Aging Package'],
+  };
+
+  // Get policy types: first check localStorage (user-customized), then fall back to trade defaults
   const dealTypesKey = `hawkeye_deal_types_${selectedTrade?.id || 'default'}`;
   const [policyTypes, setPolicyTypes] = useState<string[]>(() => {
     const saved = localStorage.getItem(dealTypesKey);
     if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
-    return [];
+    return selectedTrade ? (LEAD_POLICY_TYPES[selectedTrade.id] || ['Service', 'Project', 'Consultation', 'Contract', 'Custom']) : [];
   });
 
   useEffect(() => {
     const saved = localStorage.getItem(dealTypesKey);
     if (saved) { try { setPolicyTypes(JSON.parse(saved)); return; } catch { /* ignore */ } }
-    setPolicyTypes([]);
-  }, [dealTypesKey]);
+    setPolicyTypes(selectedTrade ? (LEAD_POLICY_TYPES[selectedTrade.id] || ['Service', 'Project', 'Consultation', 'Contract', 'Custom']) : []);
+  }, [dealTypesKey, selectedTrade]);
 
   async function buildClient() {
     const token = await getToken();
@@ -296,12 +320,22 @@ export default function OpportunitiesPage() {
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Policy Type (optional)</label>
-                <select value={newLeadPolicyType} onChange={(e) => setNewLeadPolicyType(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select value={newLeadPolicyType} onChange={(e) => { setNewLeadPolicyType(e.target.value); if (e.target.value !== 'other') setNewLeadCustomType(''); }} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
                   <option value="">Select policy type...</option>
                   {policyTypes.map((pt) => (
                     <option key={pt} value={pt}>{pt}</option>
                   ))}
+                  <option value="other">Other (type manually)</option>
                 </select>
+                {newLeadPolicyType === 'other' && (
+                  <input
+                    type="text"
+                    value={newLeadCustomType}
+                    onChange={(e) => setNewLeadCustomType(e.target.value)}
+                    placeholder="Enter policy/product type..."
+                    className="w-full mt-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                  />
+                )}
               </div>
               <button
                 onClick={async () => {
@@ -316,7 +350,7 @@ export default function OpportunitiesPage() {
                       sourceAuthor: newLeadName.trim(),
                       leadSource: newLeadSource,
                       leadSourceGroup: newLeadGroup || undefined,
-                      policyType: newLeadPolicyType || undefined,
+                      policyType: newLeadPolicyType === 'other' ? (newLeadCustomType.trim() || undefined) : (newLeadPolicyType || undefined),
                     });
                     showToast('🎯 Lead added!');
                     setShowAddLead(false);
@@ -324,6 +358,7 @@ export default function OpportunitiesPage() {
                     setNewLeadNote('');
                     setNewLeadGroup('');
                     setNewLeadPolicyType('');
+                    setNewLeadCustomType('');
                     fetchData();
                   } catch {
                     showToast('❌ Failed to add lead');

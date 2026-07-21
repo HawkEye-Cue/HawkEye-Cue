@@ -124,6 +124,7 @@ async function handleGetEvents(userId) {
     title: item.title,
     type: item.eventType,
     completed: item.completed || false,
+    completedAt: item.completedAt || null,
     link: item.link || null,
     notes: item.notes || '',
     notesSavedAt: item.notesSavedAt || null,
@@ -178,11 +179,11 @@ async function handleToggle(userId, eventId) {
   await dynamo.send(new UpdateCommand({
     TableName: TABLE_NAME,
     Key: { PK: item.PK, SK: item.SK },
-    UpdateExpression: 'SET completed = :c',
-    ExpressionAttributeValues: { ':c': newCompleted },
+    UpdateExpression: 'SET completed = :c, completedAt = :t',
+    ExpressionAttributeValues: { ':c': newCompleted, ':t': newCompleted ? new Date().toISOString() : null },
   }));
 
-  return ok({ id: eventId, completed: newCompleted });
+  return ok({ id: eventId, completed: newCompleted, completedAt: newCompleted ? new Date().toISOString() : null });
 }
 
 // PUT /calendar/events/{id} — update event details

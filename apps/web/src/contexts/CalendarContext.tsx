@@ -10,6 +10,7 @@ export interface CalendarEvent {
   title: string;
   type: 'post' | 'task' | 'meeting' | 'reminder';
   completed: boolean;
+  completedAt?: string | null;
   link?: string;
   notes?: string;
   notesSavedAt?: string | null;
@@ -54,9 +55,20 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       try {
         const client = await buildClient();
         const result = await client.request<{ events: CalendarEvent[] }>('GET', '/calendar/events');
-        setEvents(result.events || []);
+        // Auto-reset: treat events as not completed if they were completed on a different day
+        const now = new Date();
+        const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const processed = (result.events || []).map((e) => {
+          if (e.completed && e.completedAt) {
+            const completedDay = e.completedAt.split('T')[0];
+            if (completedDay !== todayLocal) {
+              return { ...e, completed: false, completedAt: null };
+            }
+          }
+          return e;
+        });
+        setEvents(processed);
       } catch {
-        // Fallback to localStorage if API fails
         try {
           const saved = localStorage.getItem('calendar_events');
           if (saved) setEvents(JSON.parse(saved));
@@ -73,7 +85,18 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     try {
       const client = await buildClient();
       const result = await client.request<{ events: CalendarEvent[] }>('GET', '/calendar/events');
-      setEvents(result.events || []);
+      const now = new Date();
+      const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const processed = (result.events || []).map((e) => {
+        if (e.completed && e.completedAt) {
+          const completedDay = e.completedAt.split('T')[0];
+          if (completedDay !== todayLocal) {
+            return { ...e, completed: false, completedAt: null };
+          }
+        }
+        return e;
+      });
+      setEvents(processed);
     } catch { /* ignore */ }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 

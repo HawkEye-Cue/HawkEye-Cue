@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTrade } from '../contexts/TradeContext';
+import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
@@ -28,10 +29,21 @@ const statusColors: Record<string, string> = {
   dismissed: 'bg-slate-900/40 text-slate-400 border-slate-500/20',
 };
 
+// Default lead follow-up protocol
+const DEFAULT_LEAD_PROTOCOL = [
+  { day: 0, type: 'call', task: 'Call the lead — introduce yourself, ask about their needs' },
+  { day: 1, type: 'sms', task: 'Send follow-up text if no answer yesterday' },
+  { day: 3, type: 'call', task: 'Call #2 — try a different time of day' },
+  { day: 5, type: 'email', task: 'Send a value email or quote if you have their info' },
+  { day: 7, type: 'call', task: 'Call #3 — one week check-in' },
+  { day: 14, type: 'sms', task: 'Two-week follow-up text: still here if you need help' },
+];
+
 export default function OpportunitiesPage() {
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const { selectedTrade } = useTrade();
+  const { events, addEvent } = useCalendar();
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
   const [groupBy, setGroupBy] = useState<'none' | 'platform' | 'keyword'>('none');
   const [leads, setLeads] = useState<Opportunity[]>([]);
@@ -50,6 +62,16 @@ export default function OpportunitiesPage() {
   const [userGroups, setUserGroups] = useState<string[]>([]);
   const [showTeamLeads, setShowTeamLeads] = useState(false);
   const [teamLeadFilter, setTeamLeadFilter] = useState('all');
+  const [showProtocolEditor, setShowProtocolEditor] = useState(false);
+
+  // Lead follow-up protocol (customizable, persisted in localStorage)
+  const protocolKey = `hawkeye_lead_protocol_${user?.sub || 'default'}`;
+  const [leadProtocol, setLeadProtocol] = useState<{ day: number; type: string; task: string }[]>(() => {
+    const saved = localStorage.getItem(protocolKey);
+    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+    return DEFAULT_LEAD_PROTOCOL;
+  });
+  const hasSetProtocol = localStorage.getItem(`hawkeye_protocol_set_${user?.sub}`) === 'true';
 
   // Team data integration
   const { isInTeam, teamMembers, teamLeads, leadsNextCursor, fetchLeads, getMemberColorIndex } = useTeamData();
@@ -450,6 +472,28 @@ export default function OpportunitiesPage() {
                     setNewLeadCustomType('');
                     setNewLeadAssignee('');
                     fetchData();
+
+                    // Auto-schedule follow-up protocol on calendar
+                    if (leadProtocol.length > 0) {
+                      const startDate = new Date();
+                      for (const step of leadProtocol) {
+                        const eventDate = new Date(startDate);
+                        eventDate.setDate(eventDate.getDate() + step.day);
+                        const dateStr = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
+                        const icon = step.type === 'call' ? '📞' : step.type === 'sms' ? '💬' : '✉️';
+                        addEvent({
+                          date: dateStr,
+                          title: `${icon} ${newLeadName.trim()} — ${step.task.slice(0, 60)}`,
+                          type: 'task',
+                        });
+                      }
+                    }
+
+                    // Show protocol editor first time
+                    if (!hasSetProtocol) {
+                      setShowProtocolEditor(true);
+                      localStorage.setItem(`hawkeye_protocol_set_${user?.sub}`, 'true');
+                    }
                   } catch {
                     showToast('❌ Failed to add lead');
                   }
@@ -625,6 +669,91 @@ export default function OpportunitiesPage() {
         </div>
       )}
       </>
+      )}
+
+      {/* Lead Follow-Up Protocol & Mini Calendar */}
+      <div className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-white">📋 Follow-Up Protocol</h3>
+          <button onClick={() => setShowProtocolEditor(!showProtocolEditor)} className="text-xs text-blue-400 hover:text-blue-300">
+            {showProtocolEditor ? 'Close' : 'Edit'}
+          </button>
+        </div>
+
+        {/* Protocol steps preview */}
+        {!showProtocolEditor && (
+          <div className="space-y-1">
+            {leadProtocol.map((step, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs">
+                <span className="text-slate-500 w-10">Day {step.day}</span>
+                <span>{step.type === 'call' ? '📞' : step.type === 'sms' ? '💬' : '✉️'}</span>
+                <span className="text-slate-300 truncate">{step.task}</span>
+              </div>
+            ))}
+            {leadProtocol.length === 0 && <p className="text-xs text-slate-500">No protocol set. Click Edit to create one.</p>}
+          </div>
+        )}
+
+        {/* Protocol Editor */}
+        {showProtocolEditor && (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-400">Customize your follow-up steps. These will auto-schedule on your calendar when you add a new lead.</p>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {leadProtocol.map((step, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input type="number" min="0" max="90" value={step.day} onChange={(e) => { const p = [...leadProtocol]; p[i] = { ...p[i], day: parseInt(e.target.value) || 0 }; setLeadProtocol(p); }} className="w-14 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-white text-center" />
+                  <select value={step.type} onChange={(e) => { const p = [...leadProtocol]; p[i] = { ...p[i], type: e.target.value }; setLeadProtocol(p); }} className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-white">
+                    <option value="call">📞 Call</option>
+                    <option value="sms">💬 Text</option>
+                    <option value="email">✉️ Email</option>
+                  </select>
+                  <input type="text" value={step.task} onChange={(e) => { const p = [...leadProtocol]; p[i] = { ...p[i], task: e.target.value }; setLeadProtocol(p); }} className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-white placeholder-slate-500" placeholder="Describe the step..." />
+                  <button onClick={() => { const p = [...leadProtocol]; p.splice(i, 1); setLeadProtocol(p); }} className="text-red-400 hover:text-red-300 text-xs px-1">✕</button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setLeadProtocol([...leadProtocol, { day: (leadProtocol[leadProtocol.length - 1]?.day || 0) + 3, type: 'call', task: '' }])} className="px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-300 rounded text-xs hover:bg-blue-600/30">+ Add Step</button>
+              <button onClick={() => { localStorage.setItem(protocolKey, JSON.stringify(leadProtocol)); localStorage.setItem(`hawkeye_protocol_set_${user?.sub}`, 'true'); setShowProtocolEditor(false); showToast('✓ Protocol saved'); }} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded text-xs hover:bg-green-600/30">Save Protocol</button>
+              <button onClick={() => { setLeadProtocol(DEFAULT_LEAD_PROTOCOL); }} className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-400 rounded text-xs hover:text-white">Reset Default</button>
+            </div>
+          </div>
+        )}
+
+        {/* Mini Calendar — upcoming follow-ups */}
+        {(() => {
+          const now = new Date();
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const next7 = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(now);
+            d.setDate(d.getDate() + i);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          });
+          const followUpEvents = events.filter((e) => e.type === 'task' && next7.includes(e.date) && (e.title.includes('📞') || e.title.includes('💬') || e.title.includes('✉️')));
+          if (followUpEvents.length === 0) return null;
+          return (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <p className="text-xs text-slate-400 font-semibold mb-2">📅 Upcoming Follow-Ups (7 days)</p>
+              <div className="space-y-1">
+                {followUpEvents.slice(0, 6).map((e) => (
+                  <div key={e.id} className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-500 w-16">{new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                    <span className={`flex-1 truncate ${e.completed ? 'line-through text-slate-600' : 'text-slate-300'}`}>{e.title}</span>
+                  </div>
+                ))}
+                {followUpEvents.length > 6 && <p className="text-xs text-slate-500">+{followUpEvents.length - 6} more</p>}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Protocol Setup Prompt (first time) */}
+      {showProtocolEditor && !hasSetProtocol && (
+        <div className="rounded-xl border-2 border-purple-500/40 p-4 bg-purple-500/10">
+          <p className="text-sm font-bold text-purple-300 mb-1">🎯 Set Up Your Lead Protocol</p>
+          <p className="text-xs text-slate-300">This is your follow-up sequence. Every time you add a lead, these steps will auto-schedule on your calendar so you never miss a touch.</p>
+        </div>
       )}
     </div>
   );

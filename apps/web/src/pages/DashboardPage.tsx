@@ -375,7 +375,7 @@ export default function DashboardPage() {
                   {/* Tiles row */}
                   <div className="grid grid-cols-3 gap-2">
                     {/* Posts Tile */}
-                    <details className="rounded-xl border border-blue-500/30 bg-blue-500/10 overflow-hidden">
+                    <details className="rounded-xl border border-blue-500/40 bg-slate-800/90 overflow-hidden backdrop-blur-sm">
                       <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
                         <span className="text-xl">📤</span>
                         <span className="text-xs font-bold text-blue-400 mt-0.5">Posts</span>
@@ -395,7 +395,7 @@ export default function DashboardPage() {
                     </details>
 
                     {/* Meetings Tile */}
-                    <details className="rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
+                    <details className="rounded-xl border border-amber-500/40 bg-slate-800/90 overflow-hidden backdrop-blur-sm">
                       <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
                         <span className="text-xl">🤝</span>
                         <span className="text-xs font-bold text-amber-400 mt-0.5">Meetings</span>
@@ -439,7 +439,7 @@ export default function DashboardPage() {
                     </details>
 
                     {/* Reminders Tile */}
-                    <details className="rounded-xl border border-green-500/30 bg-green-500/10 overflow-hidden">
+                    <details className="rounded-xl border border-green-500/40 bg-slate-800/90 overflow-hidden backdrop-blur-sm">
                       <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
                         <span className="text-xl">🔔</span>
                         <span className="text-xs font-bold text-green-400 mt-0.5">Reminders</span>
@@ -514,15 +514,15 @@ export default function DashboardPage() {
           <span className="text-xs text-blue-400">View all →</span>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="text-center p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
+          <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-blue-500/30">
             <div className="text-xl sm:text-2xl font-bold text-blue-400">{leadStats.new}</div>
             <div className="text-xs text-slate-400">New</div>
           </div>
-          <div className="text-center p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/10">
+          <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-yellow-500/30">
             <div className="text-xl sm:text-2xl font-bold text-yellow-400">{leadStats.followedUp}</div>
             <div className="text-xs text-slate-400">Followed Up</div>
           </div>
-          <div className="text-center p-3 rounded-lg bg-green-500/5 border border-green-500/10">
+          <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-green-500/30">
             <div className="text-xl sm:text-2xl font-bold text-green-400">{leadStats.converted}</div>
             <div className="text-xs text-slate-400">Converted</div>
           </div>
@@ -825,15 +825,15 @@ export default function DashboardPage() {
         <div className="glass-card">
           <h3 className="font-semibold text-white mb-3">📊 Post Engagement</h3>
           <div className="grid grid-cols-3 gap-2">
-            <div className="text-center p-3 rounded-lg bg-pink-500/5 border border-pink-500/10">
+            <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-pink-500/30">
               <div className="text-xl font-bold text-pink-400">{engagement.totalLikes}</div>
               <div className="text-xs text-slate-400">Likes</div>
             </div>
-            <div className="text-center p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
+            <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-blue-500/30">
               <div className="text-xl font-bold text-blue-400">{engagement.totalComments}</div>
               <div className="text-xs text-slate-400">Comments</div>
             </div>
-            <div className="text-center p-3 rounded-lg bg-green-500/5 border border-green-500/10">
+            <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-green-500/30">
               <div className="text-xl font-bold text-green-400">{engagement.totalShares}</div>
               <div className="text-xs text-slate-400">Shares</div>
             </div>

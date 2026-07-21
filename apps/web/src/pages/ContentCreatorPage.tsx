@@ -713,14 +713,39 @@ export default function ContentCreatorPage() {
             <p className="text-sm text-slate-500">No posts scheduled for today</p>
           )}
           {todayCalendarEvents.filter((e) => e.type === 'post').length > 0 && todayCalendarEvents.filter((e) => e.type === 'post').every((e) => e.completed) && (
-            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-green-500/20 border border-amber-500/30 text-center relative overflow-hidden">
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute animate-[hawkSwoop_3s_ease-in-out_infinite] text-4xl" style={{ top: '20%', left: '-60px' }}>🦅</div>
+            <div className="mt-4 space-y-3">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-green-500/20 border border-amber-500/30 text-center relative overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute animate-[hawkSwoop_3s_ease-in-out_infinite] text-4xl" style={{ top: '20%', left: '-60px' }}>🦅</div>
+                </div>
+                <div className="text-3xl mb-2">🎉</div>
+                <p className="text-lg font-bold text-amber-300">Today's posts are done!</p>
+                <p className="text-sm text-slate-300 mt-1">Now engage — check for comments, reply, and build relationships.</p>
               </div>
-              <div className="text-3xl mb-2">🎉</div>
-              <p className="text-lg font-bold text-amber-300">Today's posts are done!</p>
-              <p className="text-sm text-slate-300 mt-1">Let's watch them take flight 🦅</p>
-              <p className="text-xs text-slate-500 mt-2">Your posts are out in the world working for you. Time to soar.</p>
+              {/* Engage Groups Flow */}
+              {(() => {
+                const groupsWithLinks = todayCalendarEvents.filter((e) => e.type === 'post' && e.link);
+                if (groupsWithLinks.length === 0) return null;
+                return (
+                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                    <p className="text-sm font-bold text-blue-300 mb-2">💬 Engage Your Groups</p>
+                    <p className="text-xs text-slate-400 mb-3">Go back into each group to like, comment, and connect. This boosts your visibility.</p>
+                    <div className="space-y-2">
+                      {groupsWithLinks.map((g, idx) => (
+                        <button
+                          key={g.id}
+                          onClick={() => window.open(g.link!, '_blank')}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all text-left active:scale-[0.98]"
+                        >
+                          <span className="text-sm shrink-0">#{idx + 1}</span>
+                          <span className="text-xs text-slate-200 flex-1 truncate">{g.title}</span>
+                          <span className="text-xs text-blue-400 shrink-0">Open →</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

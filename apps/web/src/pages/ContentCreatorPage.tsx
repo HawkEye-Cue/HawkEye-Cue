@@ -21,7 +21,7 @@ export default function ContentCreatorPage() {
   const { getToken, user } = useAuth();
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
-  const { events, removeEvent, toggleComplete, updateNotes } = useCalendar();
+  const { events, removeEvent, toggleComplete, updateNotes, refreshEvents } = useCalendar();
   const { showToast } = useToast();
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
@@ -55,6 +55,14 @@ export default function ContentCreatorPage() {
   useEffect(() => {
     return () => { if (imagePreview) URL.revokeObjectURL(imagePreview); };
   }, [imagePreview]);
+
+  // Refresh calendar events when page loads or gets focus
+  useEffect(() => {
+    refreshEvents();
+    const handleFocus = () => refreshEvents();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [refreshEvents]);
 
   const EMOJI_LIST = [
     '🔥', '💯', '🙌', '👏', '💪', '🎉', '🚀', '⭐', '✨', '💡',

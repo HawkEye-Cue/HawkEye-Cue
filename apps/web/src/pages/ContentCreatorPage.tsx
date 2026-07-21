@@ -50,6 +50,7 @@ export default function ContentCreatorPage() {
   const [engagementCue, setEngagementCue] = useState<string | null>(null);
   const [engagementType, setEngagementType] = useState<'comment' | 'dm' | 'call' | 'lead'>('comment');
   const [engagementNote, setEngagementNote] = useState('');
+  const [engageIndex, setEngageIndex] = useState(0);
 
   // Cleanup image preview URL on unmount to prevent memory leaks
   useEffect(() => {
@@ -726,23 +727,35 @@ export default function ContentCreatorPage() {
               {(() => {
                 const groupsWithLinks = todayCalendarEvents.filter((e) => e.type === 'post' && e.link);
                 if (groupsWithLinks.length === 0) return null;
+                const currentEngageGroup = groupsWithLinks[engageIndex];
+                const allEngaged = engageIndex >= groupsWithLinks.length;
                 return (
                   <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
                     <p className="text-sm font-bold text-blue-300 mb-2">💬 Engage Your Groups</p>
                     <p className="text-xs text-slate-400 mb-3">Go back into each group to like, comment, and connect. This boosts your visibility.</p>
-                    <div className="space-y-2">
-                      {groupsWithLinks.map((g, idx) => (
+                    {!allEngaged ? (
+                      <>
                         <button
-                          key={g.id}
-                          onClick={() => window.open(g.link!, '_blank')}
-                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all text-left active:scale-[0.98]"
+                          onClick={() => {
+                            window.open(currentEngageGroup.link!, '_blank');
+                            setEngageIndex((i) => i + 1);
+                            showToast(`💬 Opened — ${groupsWithLinks.length - engageIndex - 1} group${groupsWithLinks.length - engageIndex - 1 !== 1 ? 's' : ''} left`);
+                          }}
+                          className="w-full px-4 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-lg shadow-blue-500/20"
                         >
-                          <span className="text-sm shrink-0">#{idx + 1}</span>
-                          <span className="text-xs text-slate-200 flex-1 truncate">{g.title}</span>
-                          <span className="text-xs text-blue-400 shrink-0">Open →</span>
+                          <span className="text-base">💬 Open Next Group to Engage</span>
+                          <span className="text-xs font-normal opacity-80 truncate max-w-full">{currentEngageGroup.title}</span>
                         </button>
-                      ))}
-                    </div>
+                        <p className="text-xs text-slate-400 text-center mt-2">{groupsWithLinks.length - engageIndex} group{groupsWithLinks.length - engageIndex !== 1 ? 's' : ''} remaining — open, engage, come back, repeat</p>
+                      </>
+                    ) : (
+                      <div className="text-center py-3">
+                        <p className="text-lg">🏆</p>
+                        <p className="text-sm font-bold text-green-300 mt-1">All groups engaged!</p>
+                        <p className="text-xs text-slate-400 mt-1">Great work — consistent engagement builds trust.</p>
+                        <button onClick={() => setEngageIndex(0)} className="mt-3 text-xs text-blue-400 hover:text-blue-300">↺ Start over</button>
+                      </div>
+                    )}
                   </div>
                 );
               })()}

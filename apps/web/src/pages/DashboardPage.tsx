@@ -581,7 +581,7 @@ export default function DashboardPage() {
                 <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Lead detection & Appreciations — find customers automatically</li>
                 <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Sales Tracker — full pipeline from prospect to closed deal</li>
                 <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Hawk Insights — see where leads come from, peak times, top platforms</li>
-                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Copy & Open workflow — one-tap posting to all your groups</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Copy & Open workflow — one-tap posting to all your flocks</li>
                 <li className="flex items-start gap-2"><span className="text-amber-400">•</span>Wingman, linked accounts, folio recaps & more</li>
               </ul>
             </div>

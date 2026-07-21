@@ -540,7 +540,7 @@ export default function ContentCreatorPage() {
             {todayCalendarEvents.filter((e) => e.type === 'post' && e.completed).length}/{todayCalendarEvents.filter((e) => e.type === 'post').length} done
           </span>
         </summary>
-        {/* Copy & Open Next Group button */}
+        {/* Copy & Open Next Flock button */}
         {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && platformContent && (
           <div className="mt-3 space-y-2">
             {(() => {
@@ -578,16 +578,16 @@ export default function ContentCreatorPage() {
                           const used = parseInt(localStorage.getItem(nestUsedKey) || '0') + 1;
                           localStorage.setItem(nestUsedKey, String(used));
                         }
-                        showToast(`✓ Copied & opened — ${remaining.length - 1} group${remaining.length - 1 !== 1 ? 's' : ''} left`);
+                        showToast(`✓ Copied & opened — ${remaining.length - 1} flock${remaining.length - 1 !== 1 ? 's' : ''} left`);
                       }
                     }}
                     className="w-full px-4 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-lg shadow-amber-500/20"
                   >
-                    <span className="text-base">📋 Copy & Open Next Group</span>
-                    <span className="text-xs font-normal opacity-80 truncate max-w-full">{next?.title || 'Next group'}</span>
+                    <span className="text-base">📋 Copy & Open Next Flock</span>
+                    <span className="text-xs font-normal opacity-80 truncate max-w-full">{next?.title || 'Next flock'}</span>
                   </button>
-                  <p className="text-xs text-slate-400 text-center">{remaining.length} group{remaining.length !== 1 ? 's' : ''} remaining{isNestTier ? ` • ${nestLimit - nestUsedToday} free uses left today` : ''}</p>
-                  <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: Photos don't copy to clipboard. Add your image manually in each group for best engagement.</p>
+                  <p className="text-xs text-slate-400 text-center">{remaining.length} flock{remaining.length !== 1 ? 's' : ''} remaining{isNestTier ? ` • ${nestLimit - nestUsedToday} free uses left today` : ''}</p>
+                  <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: Photos don't copy to clipboard. Add your image manually in each flock for best engagement.</p>
                 </>
               );
             })()}
@@ -595,7 +595,7 @@ export default function ContentCreatorPage() {
         )}
         {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && !platformContent && (
           <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
-            <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy & Open Next Group"</strong> to paste it into each group</p>
+            <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy & Open Next Flock"</strong> to paste it into each flock</p>
           </div>
         )}
         <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">
@@ -679,7 +679,7 @@ export default function ContentCreatorPage() {
                       if (updated.has(e.id)) { updated.delete(e.id); } else { updated.add(e.id); }
                       setPersonalOnlyCues(updated);
                       localStorage.setItem('hawkeye_personal_cues', JSON.stringify([...updated]));
-                      showToast(updated.has(e.id) ? '👤 Marked as personal-only group' : '🏢 Marked as business page OK');
+                      showToast(updated.has(e.id) ? '👤 Marked as personal-only flock' : '🏢 Marked as business page OK');
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       isPersonalOnly
@@ -736,7 +736,7 @@ export default function ContentCreatorPage() {
                 <p className="text-lg font-bold text-amber-300">Today's posts are done!</p>
                 <p className="text-sm text-slate-300 mt-1">Now engage — check for comments, reply, and build relationships.</p>
               </div>
-              {/* Engage Groups Flow */}
+              {/* Engage Flocks Flow */}
               {(() => {
                 const groupsWithLinks = todayCalendarEvents.filter((e) => e.type === 'post' && e.link);
                 if (groupsWithLinks.length === 0) return null;
@@ -744,27 +744,27 @@ export default function ContentCreatorPage() {
                 const allEngaged = engageIndex >= groupsWithLinks.length;
                 return (
                   <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                    <p className="text-sm font-bold text-blue-300 mb-2">💬 Engage Your Groups</p>
-                    <p className="text-xs text-slate-400 mb-3">Go back into each group to like, comment, and connect. This boosts your visibility.</p>
+                    <p className="text-sm font-bold text-blue-300 mb-2">💬 Engage Your Flocks</p>
+                    <p className="text-xs text-slate-400 mb-3">Go back into each flock to like, comment, and connect. This boosts your visibility.</p>
                     {!allEngaged ? (
                       <>
                         <button
                           onClick={() => {
                             window.open(currentEngageGroup.link!, '_blank');
                             setEngageIndex((i) => i + 1);
-                            showToast(`💬 Opened — ${groupsWithLinks.length - engageIndex - 1} group${groupsWithLinks.length - engageIndex - 1 !== 1 ? 's' : ''} left`);
+                            showToast(`💬 Opened — ${groupsWithLinks.length - engageIndex - 1} flock${groupsWithLinks.length - engageIndex - 1 !== 1 ? 's' : ''} left`);
                           }}
                           className="w-full px-4 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-lg shadow-blue-500/20"
                         >
-                          <span className="text-base">💬 Open Next Group to Engage</span>
+                          <span className="text-base">💬 Open Next Flock to Engage</span>
                           <span className="text-xs font-normal opacity-80 truncate max-w-full">{currentEngageGroup.title}</span>
                         </button>
-                        <p className="text-xs text-slate-400 text-center mt-2">{groupsWithLinks.length - engageIndex} group{groupsWithLinks.length - engageIndex !== 1 ? 's' : ''} remaining — open, engage, come back, repeat</p>
+                        <p className="text-xs text-slate-400 text-center mt-2">{groupsWithLinks.length - engageIndex} flock{groupsWithLinks.length - engageIndex !== 1 ? 's' : ''} remaining — open, engage, come back, repeat</p>
                       </>
                     ) : (
                       <div className="text-center py-3">
                         <p className="text-lg">🏆</p>
-                        <p className="text-sm font-bold text-green-300 mt-1">All groups engaged!</p>
+                        <p className="text-sm font-bold text-green-300 mt-1">All flocks engaged!</p>
                         <p className="text-xs text-slate-400 mt-1">Great work — consistent engagement builds trust.</p>
                         <button onClick={() => setEngageIndex(0)} className="mt-3 text-xs text-blue-400 hover:text-blue-300">↺ Start over</button>
                       </div>

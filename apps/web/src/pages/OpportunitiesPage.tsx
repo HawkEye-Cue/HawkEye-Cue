@@ -370,36 +370,13 @@ export default function OpportunitiesPage() {
             <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10">View Post ↗</a>
           )}
         </div>
-        {/* Assigned To — inline editable */}
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-xs text-slate-500">👤</span>
-          <select
-            value={(lead as any).assignedTo || ''}
-            onChange={async (e) => {
-              const val = e.target.value;
-              const newAssignee = val || null;
-              setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, assignedTo: val } as any : l));
-              try {
-                const client = await buildClient();
-                await client.request<any>('PUT', `/opportunities/${lead.id}/status`, { status: lead.status, assignedTo: newAssignee });
-                showToast('✓ Assigned');
-              } catch (err) {
-                setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, assignedTo: (lead as any).assignedTo } as any : l));
-                showToast('❌ Failed to assign');
-              }
-            }}
-            className="px-2 py-1 bg-slate-700/80 border border-slate-600/50 rounded text-xs text-slate-300 hover:border-slate-500 cursor-pointer"
-          >
-            <option value="">Unassigned</option>
-            <option value={user?.email || ''}>Me ({user?.email?.split('@')[0] || 'me'})</option>
-            {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => (
-              <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
-            ))}
-          </select>
-          {(lead as any).assignedTo && (
-            <span className="text-xs text-blue-400">{(lead as any).assignedTo.split('@')[0]}</span>
-          )}
-        </div>
+        {/* Worked By */}
+        {(lead as any).assignedTo && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="text-xs text-slate-500">Worked by:</span>
+            <span className="text-xs text-blue-400 font-medium">{(lead as any).assignedTo.split('@')[0]}</span>
+          </div>
+        )}
         <details className="mt-3">
           <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">📝 Notes</summary>
           <textarea defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''} onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)} placeholder="Add notes about this lead..." className="w-full mt-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16" />
@@ -432,7 +409,7 @@ export default function OpportunitiesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-white">Lead Cues</h2>
-        <button onClick={() => setShowAddLead(true)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors">
+        <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors">
           + Add Lead
         </button>
       </div>
@@ -539,9 +516,9 @@ export default function OpportunitiesPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Assigned To (optional)</label>
+                <label className="block text-xs text-slate-400 mb-1">Worked by</label>
                 <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
-                  <option value="">Me ({user?.email?.split('@')[0] || 'current user'})</option>
+                  <option value={user?.email || ''}>Me ({user?.email?.split('@')[0] || 'me'})</option>
                   {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => (
                     <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
                   ))}
@@ -561,7 +538,7 @@ export default function OpportunitiesPage() {
                       leadSource: newLeadSource,
                       leadSourceGroup: newLeadGroup || undefined,
                       policyType: newLeadPolicyType === 'other' ? (newLeadCustomType.trim() || undefined) : (newLeadPolicyType || undefined),
-                      assignedTo: newLeadAssignee || undefined,
+                      assignedTo: newLeadAssignee || user?.email || undefined,
                       bucket: newLeadBucket || undefined,
                     });
                     showToast('🎯 Lead added!');

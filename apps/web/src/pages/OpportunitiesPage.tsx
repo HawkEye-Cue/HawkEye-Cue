@@ -4,6 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useTrade } from '../contexts/TradeContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
+import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
 
 const FILTERS: { label: string; value: OpportunityStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
@@ -46,6 +47,16 @@ export default function OpportunitiesPage() {
   const [newLeadPolicyType, setNewLeadPolicyType] = useState('');
   const [newLeadCustomType, setNewLeadCustomType] = useState('');
   const [userGroups, setUserGroups] = useState<string[]>([]);
+  const [showTeamLeads, setShowTeamLeads] = useState(false);
+  const [teamLeadFilter, setTeamLeadFilter] = useState('all');
+
+  // Team data integration
+  const { isInTeam, teamMembers, teamLeads, leadsNextCursor, fetchLeads, getMemberColorIndex } = useTeamData();
+
+  // Fetch team leads when toggled
+  useEffect(() => {
+    if (showTeamLeads && isInTeam && teamLeads.length === 0) fetchLeads();
+  }, [showTeamLeads, isInTeam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Trade-specific policy types (same as SalesPage TRADE_CONFIGS)
   const LEAD_POLICY_TYPES: Record<string, string[]> = {
@@ -429,6 +440,70 @@ export default function OpportunitiesPage() {
         </div>
       </div>
 
+      {/* Team / Personal Toggle */}
+      {isInTeam && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowTeamLeads(false)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${!showTeamLeads ? 'bg-blue-600 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white'}`}
+          >
+            My Leads
+          </button>
+          <button
+            onClick={() => setShowTeamLeads(true)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${showTeamLeads ? 'bg-purple-600 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white'}`}
+          >
+            👥 Team Pool
+          </button>
+        </div>
+      )}
+
+      {/* Team Leads View */}
+      {showTeamLeads && isInTeam ? (
+        <div className="space-y-3">
+          {/* Team member filter */}
+          <div className="flex flex-wrap gap-1.5">
+            <button onClick={() => setTeamLeadFilter('all')} className={`px-2.5 py-1 rounded-lg text-xs ${teamLeadFilter === 'all' ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30' : 'text-slate-400 bg-white/5'}`}>All</button>
+            {teamMembers.map((m, i) => (
+              <button key={m.userId} onClick={() => setTeamLeadFilter(m.email)} className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 ${teamLeadFilter === m.email ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30' : 'text-slate-400 bg-white/5'}`}>
+                <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
+                {m.email.split('@')[0]}
+              </button>
+            ))}
+          </div>
+          {/* Team leads list */}
+          {teamLeads.length === 0 ? (
+            <div className="glass-card text-center py-8">
+              <p className="text-2xl mb-2">👥</p>
+              <p className="text-sm text-slate-400">No team leads yet</p>
+            </div>
+          ) : (
+            <>
+              {teamLeads.filter((l) => teamLeadFilter === 'all' || l.addedByEmail === teamLeadFilter).map((lead) => {
+                const colorIdx = getMemberColorIndex(lead.addedByEmail);
+                return (
+                  <div key={lead.id} className="glass-card flex items-center gap-3">
+                    <div className={`w-1.5 h-10 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white truncate">{lead.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-slate-500">{lead.sourcePlatform}</span>
+                        <span className={`text-xs ${MEMBER_TEXT_COLORS[colorIdx]}`}>{lead.addedBy}</span>
+                        {lead.policyType && <span className="text-xs text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">{lead.policyType}</span>}
+                      </div>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${lead.status === 'new' ? 'bg-blue-900/40 text-blue-400' : lead.status === 'followed_up' ? 'bg-yellow-900/40 text-yellow-400' : 'bg-green-900/40 text-green-400'}`}>{lead.status.replace('_', ' ')}</span>
+                  </div>
+                );
+              })}
+              {leadsNextCursor && (
+                <button onClick={() => fetchLeads(leadsNextCursor)} className="w-full py-2 text-sm text-blue-400 hover:text-blue-300 bg-white/5 rounded-lg">Load More</button>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
@@ -504,6 +579,8 @@ export default function OpportunitiesPage() {
             leads.map((lead) => renderLeadCard(lead))
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

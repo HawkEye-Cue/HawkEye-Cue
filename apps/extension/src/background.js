@@ -126,6 +126,10 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 
 // Refresh keywords every 15 minutes
 chrome.alarms.create('refreshKeywords', { periodInMinutes: 15 });
+
+// Poll team deal notifications every 5 minutes
+chrome.alarms.create('checkTeamNotifications', { periodInMinutes: 5 });
+
 chrome.alarms.onAlarm.addListener(function(alarm) {
   if (alarm.name === 'refreshKeywords') {
     chrome.storage.local.get(['authToken'], function(result) {
@@ -137,6 +141,28 @@ chrome.alarms.onAlarm.addListener(function(alarm) {
         chrome.storage.local.set({ keywords: keywords });
       })
       .catch(function() {});
+    });
+  }
+
+  // Team deal notification badge
+  if (alarm.name === 'checkTeamNotifications') {
+    chrome.storage.local.get(['authToken'], function(result) {
+      if (!result.authToken) {
+        chrome.action.setBadgeText({ text: '' });
+        return;
+      }
+      fetch(API_BASE + '/team/notifications', {
+        headers: { 'Authorization': 'Bearer ' + result.authToken }
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        var count = (data.notifications || []).filter(function(n) { return !n.dismissed; }).length;
+        chrome.action.setBadgeText({ text: count > 0 ? String(count) : '' });
+        chrome.action.setBadgeBackgroundColor({ color: '#22c55e' });
+      })
+      .catch(function() {
+        chrome.action.setBadgeText({ text: '' });
+      });
     });
   }
 

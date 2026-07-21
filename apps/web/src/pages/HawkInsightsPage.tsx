@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
+import { useTeamData, MEMBER_COLORS } from '../hooks/useTeamData';
 
 interface Deal {
   id: string;
@@ -27,6 +28,7 @@ export default function HawkInsightsPage() {
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState('free');
+  const { isInTeam, teamAnalytics, fetchAnalytics, getMemberColorIndex } = useTeamData();
 
   async function buildClient() {
     const token = await getToken();
@@ -55,6 +57,11 @@ export default function HawkInsightsPage() {
     }
     fetchData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch team analytics when user is in a team
+  useEffect(() => {
+    if (isInTeam) fetchAnalytics();
+  }, [isInTeam, fetchAnalytics]);
 
   if (loading) return <p className="text-sm text-slate-500">Loading insights...</p>;
 
@@ -358,6 +365,58 @@ export default function HawkInsightsPage() {
           );
         })()}
       </div>
+
+      {/* Team Performance Section */}
+      {isInTeam && (
+        <div className="glass-card">
+          <h3 className="font-semibold text-white mb-3">👥 Team Performance</h3>
+          {!teamAnalytics ? (
+            <p className="text-xs text-slate-500">Loading team stats...</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-green-500/30">
+                  <div className="text-xl font-bold text-green-400">${teamAnalytics.totalRevenue.toLocaleString()}</div>
+                  <div className="text-xs text-slate-400">Team Revenue</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-blue-500/30">
+                  <div className="text-xl font-bold text-blue-400">{teamAnalytics.wonDeals}</div>
+                  <div className="text-xs text-slate-400">Team Deals Won</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-purple-500/30">
+                  <div className="text-xl font-bold text-purple-400">{teamAnalytics.flockCompletionRate}%</div>
+                  <div className="text-xs text-slate-400">Team Flock Rate</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-amber-500/30">
+                  <div className="text-xl font-bold text-amber-400">{teamAnalytics.totalDeals}</div>
+                  <div className="text-xs text-slate-400">Total Team Deals</div>
+                </div>
+              </div>
+              {/* Mini Leaderboard */}
+              <div>
+                <p className="text-xs text-slate-400 font-semibold mb-2">🏆 Team Leaderboard</p>
+                <div className="space-y-1.5">
+                  {teamAnalytics.members.sort((a, b) => b.revenue - a.revenue).slice(0, 5).map((m, i) => (
+                    <div key={m.email} className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
+                        <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[getMemberColorIndex(m.email)]}`} />
+                        <span className="text-sm text-white">{m.email.split('@')[0]}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-medium text-green-400">${m.revenue.toLocaleString()}</span>
+                        <span className="text-xs text-slate-500 ml-2">{m.wonDeals}W</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Summary */}
       <div className="glass-card border-blue-500/20 text-center">

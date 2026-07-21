@@ -262,12 +262,18 @@ export default function OpportunitiesPage() {
             value={(lead as any).assignedTo || ''}
             onChange={async (e) => {
               const val = e.target.value;
+              const newAssignee = val || null;
+              // Optimistic update
+              setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, assignedTo: val } as any : l));
               try {
                 const client = await buildClient();
-                await client.request('PUT', `/opportunities/${lead.id}/status`, { assignedTo: val || null });
-                setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, assignedTo: val } as any : l));
+                await client.request<any>('PUT', `/opportunities/${lead.id}/status`, { status: lead.status, assignedTo: newAssignee });
                 showToast('✓ Assigned');
-              } catch { /* ignore */ }
+              } catch (err) {
+                // Revert on failure
+                setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, assignedTo: (lead as any).assignedTo } as any : l));
+                showToast('❌ Failed to assign');
+              }
             }}
             className="px-2 py-1 bg-slate-700/80 border border-slate-600/50 rounded text-xs text-slate-300 hover:border-slate-500 cursor-pointer"
           >

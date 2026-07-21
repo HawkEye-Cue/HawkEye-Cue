@@ -77,6 +77,7 @@ async function handleGetOpportunities(userId) {
     leadSource: item.leadSource || null,
     leadSourceGroup: item.leadSourceGroup || null,
     policyType: item.policyType || null,
+    assignedTo: item.assignedTo || null,
     status: item.status,
     createdAt: item.createdAt,
   }));
@@ -109,6 +110,7 @@ async function handleCreateOpportunity(userId, body) {
         leadSource: body.leadSource || null,
         leadSourceGroup: body.leadSourceGroup || null,
         policyType: body.policyType || null,
+        assignedTo: body.assignedTo || null,
         status: 'new',
         createdAt: now,
       },
@@ -120,9 +122,14 @@ async function handleCreateOpportunity(userId, body) {
 
 // PUT /opportunities/{id}/status
 async function handleUpdateStatus(userId, opportunityId, body) {
-  const { status } = body || {};
+  const { status, assignedTo } = body || {};
 
-  if (!VALID_STATUSES.includes(status)) {
+  // At least one field must be provided
+  if (!status && assignedTo === undefined) {
+    return respond(400, { error: { code: 'INVALID_INPUT', message: 'status or assignedTo is required' } });
+  }
+
+  if (status && !VALID_STATUSES.includes(status)) {
     return respond(400, { error: { code: 'INVALID_STATUS', message: `status must be one of: ${VALID_STATUSES.join(', ')}` } });
   }
 
@@ -143,17 +150,31 @@ async function handleUpdateStatus(userId, opportunityId, body) {
   const item = (queryResult.Items || [])[0];
   if (!item) return respond(404, { error: { code: 'NOT_FOUND', message: 'Opportunity not found' } });
 
+  // Build dynamic update expression
+  const updates = [];
+  const names = {};
+  const values = {};
+  if (status) {
+    updates.push('#status = :status');
+    names['#status'] = 'status';
+    values[':status'] = status;
+  }
+  if (assignedTo !== undefined) {
+    updates.push('assignedTo = :assignedTo');
+    values[':assignedTo'] = assignedTo || null;
+  }
+
   await dynamo.send(
     new UpdateCommand({
       TableName: TABLE_NAME,
       Key: { PK: item.PK, SK: item.SK },
-      UpdateExpression: 'SET #status = :status',
-      ExpressionAttributeNames: { '#status': 'status' },
-      ExpressionAttributeValues: { ':status': status },
+      UpdateExpression: `SET ${updates.join(', ')}`,
+      ...(Object.keys(names).length > 0 ? { ExpressionAttributeNames: names } : {}),
+      ExpressionAttributeValues: values,
     })
   );
 
-  return respond(200, { id: opportunityId, status });
+  return respond(200, { id: opportunityId, status: status || item.status, assignedTo: assignedTo !== undefined ? assignedTo : item.assignedTo });
 }
 
 // DELETE /opportunities/{id}

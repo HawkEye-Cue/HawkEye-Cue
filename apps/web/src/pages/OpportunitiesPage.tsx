@@ -46,6 +46,7 @@ export default function OpportunitiesPage() {
   const [newLeadNote, setNewLeadNote] = useState('');
   const [newLeadPolicyType, setNewLeadPolicyType] = useState('');
   const [newLeadCustomType, setNewLeadCustomType] = useState('');
+  const [newLeadAssignee, setNewLeadAssignee] = useState('');
   const [userGroups, setUserGroups] = useState<string[]>([]);
   const [showTeamLeads, setShowTeamLeads] = useState(false);
   const [teamLeadFilter, setTeamLeadFilter] = useState('all');
@@ -254,6 +255,29 @@ export default function OpportunitiesPage() {
             <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10">View Post ↗</a>
           )}
         </div>
+        {/* Assigned To — inline editable */}
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-xs text-slate-500">👤</span>
+          <select
+            value={(lead as any).assignedTo || ''}
+            onChange={async (e) => {
+              const val = e.target.value;
+              try {
+                const client = await buildClient();
+                await client.updateOpportunityStatus(lead.id, lead.status);
+                await client.request('PUT', `/opportunities/${lead.id}/status`, { assignedTo: val || null });
+                setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, assignedTo: val } as any : l));
+              } catch { /* ignore */ }
+            }}
+            className="px-2 py-1 bg-slate-700/50 border border-slate-600/50 rounded text-xs text-slate-300 hover:border-slate-500 cursor-pointer"
+          >
+            <option value="">Unassigned</option>
+            {isInTeam && teamMembers.map((m) => (
+              <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
+            ))}
+            {!(lead as any).assignedTo && !isInTeam && <option value="">Type in notes...</option>}
+          </select>
+        </div>
         <details className="mt-3">
           <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">📝 Notes</summary>
           <textarea defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''} onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)} placeholder="Add notes about this lead..." className="w-full mt-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16" />
@@ -383,6 +407,19 @@ export default function OpportunitiesPage() {
                   />
                 )}
               </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Assigned To (optional)</label>
+                {isInTeam && teamMembers.length > 0 ? (
+                  <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                    <option value="">Me</option>
+                    {teamMembers.map((m) => (
+                      <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} placeholder="e.g. team member name" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                )}
+              </div>
               <button
                 onClick={async () => {
                   if (!newLeadName.trim()) return;
@@ -397,6 +434,7 @@ export default function OpportunitiesPage() {
                       leadSource: newLeadSource,
                       leadSourceGroup: newLeadGroup || undefined,
                       policyType: newLeadPolicyType === 'other' ? (newLeadCustomType.trim() || undefined) : (newLeadPolicyType || undefined),
+                      assignedTo: newLeadAssignee || undefined,
                     });
                     showToast('🎯 Lead added!');
                     setShowAddLead(false);
@@ -405,6 +443,7 @@ export default function OpportunitiesPage() {
                     setNewLeadGroup('');
                     setNewLeadPolicyType('');
                     setNewLeadCustomType('');
+                    setNewLeadAssignee('');
                     fetchData();
                   } catch {
                     showToast('❌ Failed to add lead');

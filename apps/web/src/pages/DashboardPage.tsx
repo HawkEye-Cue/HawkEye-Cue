@@ -327,12 +327,22 @@ export default function DashboardPage() {
       {/* Meeting Alert Banner */}
       {(() => {
         const todayMeetings = todayEvents.filter((e) => e.type === 'meeting' || e.type === 'task');
+        const undoneMeetings = todayMeetings.filter((m) => !m.completed);
         if (todayMeetings.length === 0) return null;
+        if (undoneMeetings.length === 0) {
+          // All meetings done — show compact completed banner
+          return (
+            <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-2">
+              <span className="text-sm">✅</span>
+              <p className="text-xs text-green-300">{todayMeetings.length} meeting{todayMeetings.length !== 1 ? 's' : ''} completed today</p>
+            </div>
+          );
+        }
         return (
           <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border-2 border-amber-500/40">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xl">🤝</span>
-              <p className="text-sm font-bold text-amber-300">{todayMeetings.length} Meeting{todayMeetings.length !== 1 ? 's' : ''} Today</p>
+              <p className="text-sm font-bold text-amber-300">{undoneMeetings.length} Meeting{undoneMeetings.length !== 1 ? 's' : ''} Today</p>
             </div>
             <div className="space-y-1.5">
               {todayMeetings.map((m) => {
@@ -344,6 +354,14 @@ export default function DashboardPage() {
                   const min = timeMatch[2];
                   timeStr = `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${min} ${h >= 12 ? 'PM' : 'AM'}`;
                 }
+                if (m.completed) {
+                  return (
+                    <div key={m.id} className="flex items-center gap-2 bg-green-500/10 rounded-lg px-3 py-1.5 opacity-60">
+                      <span className="text-xs text-green-400">✓</span>
+                      <span className="text-xs text-slate-400 flex-1 truncate line-through">{cleanTitle}</span>
+                    </div>
+                  );
+                }
                 return (
                   <div key={m.id} className="flex items-center gap-2 bg-black/20 rounded-lg px-3 py-2">
                     {timeStr && <span className="text-xs font-bold text-white bg-amber-600 px-2 py-0.5 rounded">{timeStr}</span>}
@@ -351,6 +369,12 @@ export default function DashboardPage() {
                     {m.inviteStatus === 'confirmed' && <span className="text-[9px] bg-green-600/40 text-green-300 px-1.5 py-0.5 rounded-full">✓ Confirmed</span>}
                     {m.inviteStatus === 'pending' && <span className="text-[9px] bg-amber-600/40 text-amber-300 px-1.5 py-0.5 rounded-full">⏳ Pending</span>}
                     {m.link && <a href={m.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 shrink-0">🔗</a>}
+                    <button
+                      onClick={() => toggleComplete(m.id)}
+                      className="text-xs text-green-400 hover:text-green-300 bg-green-600/20 px-2 py-0.5 rounded font-medium shrink-0"
+                    >
+                      Done
+                    </button>
                   </div>
                 );
               })}

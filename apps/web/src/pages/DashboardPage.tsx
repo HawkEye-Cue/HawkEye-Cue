@@ -538,40 +538,71 @@ export default function DashboardPage() {
 
             {!dashCalAdd ? (
               <>
-                {/* Day events list */}
+                {/* Day events organized by category */}
                 {(() => {
                   const dayEvts = events.filter((e) => e.date === dashCalDay);
                   if (dayEvts.length === 0) return <p className="text-xs text-slate-500 text-center py-4">No events — tap + to add</p>;
+                  const posts = dayEvts.filter((e) => e.type === 'post');
+                  const meetings = dayEvts.filter((e) => e.type === 'meeting' || e.type === 'task');
+                  const reminders = dayEvts.filter((e) => e.type === 'reminder');
+
+                  const renderEvt = (evt: any) => (
+                    <div key={evt.id} className="p-2 rounded-lg bg-white/5">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                        {evt.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full">✓</span>}
+                      </div>
+                      <div className="flex justify-between mt-2">
+                        {evt.link ? <a href={evt.link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                        <button onClick={() => {
+                          const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
+                          const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/);
+                          let cleanTitle = evt.title;
+                          if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], '');
+                          if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, '');
+                          const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/);
+                          if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], '');
+                          setEditingEvent(evt);
+                          setEditTitle(cleanTitle.trim());
+                          setEditTime(timeMatch ? timeMatch[1] : '');
+                          setEditLocation(locationMatch ? locationMatch[1].trim() : '');
+                          setEditLink(evt.link || '');
+                          setEditDate(evt.date);
+                        }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                        <button onClick={() => removeEvent(evt.id)} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
+                      </div>
+                    </div>
+                  );
+
                   return (
                     <div className="space-y-2 mb-3">
-                      {dayEvts.map((evt) => (
-                        <div key={evt.id} className={`p-2.5 rounded-lg border ${evt.type === 'post' ? 'border-blue-500/20 bg-blue-500/5' : evt.type === 'meeting' || evt.type === 'task' ? 'border-amber-500/20 bg-amber-500/5' : 'border-green-500/20 bg-green-500/5'}`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">{evt.type === 'post' ? '📤' : evt.type === 'meeting' || evt.type === 'task' ? '🤝' : '🔔'}</span>
-                            <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
-                            {evt.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full">✓</span>}
-                          </div>
-                          <div className="flex justify-between mt-2">
-                            {evt.link ? <a href={evt.link} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-medium hover:bg-blue-500/20 min-w-[44px] text-center">🔗 Link</a> : <span />}
-                            <button onClick={() => {
-                              const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
-                              const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/);
-                              let cleanTitle = evt.title;
-                              if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], '');
-                              if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, '');
-                              const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/);
-                              if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], '');
-                              setEditingEvent(evt);
-                              setEditTitle(cleanTitle.trim());
-                              setEditTime(timeMatch ? timeMatch[1] : '');
-                              setEditLocation(locationMatch ? locationMatch[1].trim() : '');
-                              setEditLink(evt.link || '');
-                              setEditDate(evt.date);
-                            }} className="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 min-w-[44px] text-center">✏️ Edit</button>
-                            <button onClick={() => removeEvent(evt.id)} className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 min-w-[44px] text-center">🗑️</button>
-                          </div>
-                        </div>
-                      ))}
+                      {posts.length > 0 && (
+                        <details className="rounded-xl border border-blue-500/20 bg-blue-500/5 overflow-hidden" open>
+                          <summary className="flex items-center justify-between p-2.5 cursor-pointer">
+                            <span className="text-xs font-bold text-blue-400">📤 Posts</span>
+                            <span className="text-xs text-slate-500">{posts.length}</span>
+                          </summary>
+                          <div className="px-2.5 pb-2.5 space-y-1.5">{posts.map(renderEvt)}</div>
+                        </details>
+                      )}
+                      {meetings.length > 0 && (
+                        <details className="rounded-xl border border-amber-500/20 bg-amber-500/5 overflow-hidden" open>
+                          <summary className="flex items-center justify-between p-2.5 cursor-pointer">
+                            <span className="text-xs font-bold text-amber-400">🤝 Meetings</span>
+                            <span className="text-xs text-slate-500">{meetings.length}</span>
+                          </summary>
+                          <div className="px-2.5 pb-2.5 space-y-1.5">{meetings.map(renderEvt)}</div>
+                        </details>
+                      )}
+                      {reminders.length > 0 && (
+                        <details className="rounded-xl border border-green-500/20 bg-green-500/5 overflow-hidden" open>
+                          <summary className="flex items-center justify-between p-2.5 cursor-pointer">
+                            <span className="text-xs font-bold text-green-400">🔔 Reminders</span>
+                            <span className="text-xs text-slate-500">{reminders.length}</span>
+                          </summary>
+                          <div className="px-2.5 pb-2.5 space-y-1.5">{reminders.map(renderEvt)}</div>
+                        </details>
+                      )}
                     </div>
                   );
                 })()}

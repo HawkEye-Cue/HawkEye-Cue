@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTrade } from '../contexts/TradeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useToast } from '../contexts/ToastContext';
 import { TRADES, ApiClient } from '@social-lead-gen/shared';
 import type { ScheduledPost } from '@social-lead-gen/shared';
 import TradeSelector from '../components/TradeSelector';
@@ -11,7 +12,8 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
   const { getToken, user } = useAuth();
-  const { events, toggleComplete, removeEvent, updateEvent, refreshEvents, addEvent } = useCalendar();
+  const { events, toggleComplete, removeEvent, updateEvent, refreshEvents, addEvent, removeAllByTitle } = useCalendar();
+  const { showToast } = useToast();
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });
@@ -29,6 +31,8 @@ export default function DashboardPage() {
   const [editTime, setEditTime] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editDate, setEditDate] = useState('');
+  const [rescheduleRepeat, setRescheduleRepeat] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly'>('weekly');
+  const [rescheduleStartDate, setRescheduleStartDate] = useState('');
   const [dashCalDay, setDashCalDay] = useState<string | null>(null);
   const [dashCalAdd, setDashCalAdd] = useState(false);
   const [dashCalTitle, setDashCalTitle] = useState('');
@@ -968,6 +972,69 @@ export default function DashboardPage() {
               >
                 Cancel
               </button>
+
+              {/* Reschedule Series */}
+              {editingEvent.type === 'post' && (
+                <details className="mt-3 border-t border-white/10 pt-3">
+                  <summary className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium">🔄 Reschedule entire series</summary>
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[10px] text-slate-500">This removes all future instances of this flock and re-creates them on a new schedule.</p>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-1">New start date</label>
+                      <input type="date" value={rescheduleStartDate} onChange={(e) => setRescheduleStartDate(e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-1">New repeat</label>
+                      <select value={rescheduleRepeat} onChange={(e) => setRescheduleRepeat(e.target.value as any)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="biweekly">Bi-weekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!rescheduleStartDate) return;
+                        // Get the clean title (without time/location) to match all instances
+                        const timeMatch = editingEvent.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
+                        let matchTitle = editingEvent.title;
+                        if (timeMatch) matchTitle = matchTitle.replace(timeMatch[0], '');
+                        // Remove location and notes from match
+                        matchTitle = matchTitle.replace(/\s*—\s*📍.*$/, '').replace(/\s*\|.*$/, '').trim();
+
+                        // Delete all future events with this title
+                        await removeAllByTitle(matchTitle);
+
+                        // Re-create on new schedule
+                        const baseDate = new Date(rescheduleStartDate + 'T12:00:00');
+                        const incrementDays = rescheduleRepeat === 'daily' ? 1 : rescheduleRepeat === 'weekly' ? 7 : rescheduleRepeat === 'biweekly' ? 14 : 0;
+                        const count = rescheduleRepeat === 'daily' ? 365 : rescheduleRepeat === 'weekly' ? 260 : rescheduleRepeat === 'biweekly' ? 130 : 120;
+
+                        for (let i = 0; i < count; i++) {
+                          const d = new Date(baseDate);
+                          if (incrementDays > 0) {
+                            d.setDate(d.getDate() + (i * incrementDays));
+                          } else {
+                            d.setMonth(d.getMonth() + i);
+                          }
+                          const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                          let title = editTitle.trim();
+                          if (editTime) title = `[${editTime}] ${title}`;
+                          await addEvent({ date: dateStr, title, type: 'post', link: editLink.trim() || undefined });
+                        }
+
+                        setEditingEvent(null);
+                        showToast('🔄 Series rescheduled');
+                        refreshEvents();
+                      }}
+                      disabled={!rescheduleStartDate}
+                      className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg disabled:opacity-50 transition-all active:scale-95"
+                    >
+                      🔄 Reschedule Series
+                    </button>
+                  </div>
+                </details>
+              )}
             </div>
           </div>
         </div>

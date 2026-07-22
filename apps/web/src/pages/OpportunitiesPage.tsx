@@ -520,6 +520,10 @@ export default function OpportunitiesPage() {
                 </select>
               </div>
               <div>
+                <label className="block text-xs text-slate-400 mb-1">Expected Premium / Value ($)</label>
+                <input type="number" id="newLeadPremium" placeholder="e.g. 1200" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+              </div>
+              <div>
                 <label className="block text-xs text-slate-400 mb-1">Worked by</label>
                 <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
                   <option value={user?.email || ''}>Me ({user?.email?.split('@')[0] || 'me'})</option>
@@ -544,6 +548,7 @@ export default function OpportunitiesPage() {
                       policyType: newLeadPolicyType === 'other' ? (newLeadCustomType.trim() || undefined) : (newLeadPolicyType || undefined),
                       assignedTo: newLeadAssignee || user?.email || undefined,
                       bucket: newLeadBucket || undefined,
+                      expectedPremium: parseFloat((document.getElementById('newLeadPremium') as HTMLInputElement)?.value) || undefined,
                     });
                     showToast('🎯 Lead added!');
                     setShowAddLead(false);
@@ -752,7 +757,7 @@ export default function OpportunitiesPage() {
                       </span>
                       {/* Premium */}
                       <span className="w-16 text-center text-[10px] text-green-400 font-medium">
-                        {(lead as any).policyType || '—'}
+                        {(lead as any).expectedPremium ? `$${Number((lead as any).expectedPremium).toLocaleString()}` : '—'}
                       </span>
                       {/* Color / Priority */}
                       <div className="w-10 flex justify-center gap-0.5">

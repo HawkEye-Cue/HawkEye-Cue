@@ -79,6 +79,7 @@ async function handleGetOpportunities(userId) {
     policyType: item.policyType || null,
     assignedTo: item.assignedTo || null,
     bucket: item.bucket || null,
+    expectedPremium: item.expectedPremium || null,
     status: item.status,
     createdAt: item.createdAt,
   }));
@@ -113,6 +114,7 @@ async function handleCreateOpportunity(userId, body) {
         policyType: body.policyType || null,
         assignedTo: body.assignedTo || null,
         bucket: body.bucket || null,
+        expectedPremium: body.expectedPremium || null,
         status: 'new',
         createdAt: now,
       },

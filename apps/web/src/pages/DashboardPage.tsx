@@ -740,13 +740,42 @@ export default function DashboardPage() {
                   return (
                     <div className="space-y-2 mb-3">
                       {meetings.length > 0 && (
-                        <details className="rounded-xl border border-amber-500/20 bg-amber-500/5 overflow-hidden" open>
-                          <summary className="flex items-center justify-between p-2.5 cursor-pointer">
+                        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 overflow-hidden">
+                          <div className="flex items-center justify-between p-2.5">
                             <span className="text-xs font-bold text-amber-400">🤝 Meetings</span>
                             <span className="text-xs text-slate-500">{meetings.length}</span>
-                          </summary>
-                          <div className="px-2.5 pb-2.5 space-y-1.5">{meetings.map(renderMeeting)}</div>
-                        </details>
+                          </div>
+                          {/* Hourly calendar view */}
+                          <div className="px-2.5 pb-2.5">
+                            <div className="relative border-l-2 border-amber-500/30 ml-3 space-y-0">
+                              {Array.from({ length: 13 }, (_, i) => i + 7).map((hour) => {
+                                const hourMeetings = meetings.filter((m: any) => {
+                                  const match = m.title.match(/^\[(\d{1,2}):(\d{2})\]/);
+                                  if (!match) return hour === 9; // default unscheduled to 9am
+                                  return parseInt(match[1]) === hour;
+                                });
+                                const hourLabel = hour === 0 ? '12a' : hour < 12 ? `${hour}a` : hour === 12 ? '12p' : `${hour - 12}p`;
+                                return (
+                                  <div key={hour} className={`flex items-start gap-2 min-h-[28px] ${hourMeetings.length > 0 ? '' : 'opacity-40'}`}>
+                                    <span className="text-[9px] text-slate-500 w-7 shrink-0 pt-0.5 text-right">{hourLabel}</span>
+                                    <div className="flex-1 border-t border-white/5 pt-0.5">
+                                      {hourMeetings.map((m: any) => {
+                                        const cleanTitle = m.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*—\s*📍.*$/, '').replace(/\s*\|.*$/, '');
+                                        return (
+                                          <div key={m.id} className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 rounded px-2 py-1 mb-0.5">
+                                            <span className={`text-xs font-medium flex-1 ${m.completed ? 'line-through text-slate-500' : 'text-amber-200'}`}>{cleanTitle}</span>
+                                            {m.inviteStatus === 'confirmed' && <span className="text-[8px] text-green-400">✓</span>}
+                                            <button onClick={() => { removeEvent(m.id); }} className="text-[9px] text-slate-500 hover:text-red-400">✕</button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
                       )}
                       {reminders.length > 0 && (
                         <details className="rounded-xl border border-green-500/20 bg-green-500/5 overflow-hidden" open>

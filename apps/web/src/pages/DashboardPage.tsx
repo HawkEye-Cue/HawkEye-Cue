@@ -739,15 +739,6 @@ export default function DashboardPage() {
 
                   return (
                     <div className="space-y-2 mb-3">
-                      {posts.length > 0 && (
-                        <details className="rounded-xl border border-blue-500/20 bg-blue-500/5 overflow-hidden" open>
-                          <summary className="flex items-center justify-between p-2.5 cursor-pointer">
-                            <span className="text-xs font-bold text-blue-400">📤 Posts</span>
-                            <span className="text-xs text-slate-500">{posts.length}</span>
-                          </summary>
-                          <div className="px-2.5 pb-2.5 space-y-1.5">{posts.map(renderEvt)}</div>
-                        </details>
-                      )}
                       {meetings.length > 0 && (
                         <details className="rounded-xl border border-amber-500/20 bg-amber-500/5 overflow-hidden" open>
                           <summary className="flex items-center justify-between p-2.5 cursor-pointer">
@@ -764,6 +755,15 @@ export default function DashboardPage() {
                             <span className="text-xs text-slate-500">{reminders.length}</span>
                           </summary>
                           <div className="px-2.5 pb-2.5 space-y-1.5">{reminders.map(renderEvt)}</div>
+                        </details>
+                      )}
+                      {posts.length > 0 && (
+                        <details className="rounded-xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">
+                          <summary className="flex items-center justify-between p-2.5 cursor-pointer">
+                            <span className="text-xs font-bold text-blue-400">📤 Posts</span>
+                            <span className="text-xs text-slate-500">{posts.length}</span>
+                          </summary>
+                          <div className="px-2.5 pb-2.5 space-y-1.5">{posts.map(renderEvt)}</div>
                         </details>
                       )}
                     </div>

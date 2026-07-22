@@ -363,22 +363,24 @@ export default function TeamPage() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      {/* Tab Navigation — tile style matching rest of site */}
+      <div className="grid grid-cols-5 gap-2">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+            className={`relative flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
               tab === t.id
-                ? 'bg-purple-600/40 text-purple-200 border border-purple-400/50'
-                : 'text-slate-400 hover:text-white hover:bg-white/10 bg-slate-700'
+                ? 'border-purple-500 bg-purple-600/20 scale-[1.03] shadow-lg shadow-purple-500/20'
+                : 'border-white/20 bg-slate-800 hover:border-purple-500/40'
             }`}
           >
-            <span>{t.icon}</span>
-            <span>{t.label}</span>
+            <span className="text-xl">{t.icon}</span>
+            <span className={`text-[10px] font-bold mt-1 ${tab === t.id ? 'text-purple-300' : 'text-slate-300'}`}>{t.label}</span>
             {t.id === 'notifications' && unreadNotifs > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded-full">{unreadNotifs}</span>
+              <div className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-[9px] font-bold text-white">{unreadNotifs}</span>
+              </div>
             )}
           </button>
         ))}

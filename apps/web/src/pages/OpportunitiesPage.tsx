@@ -413,7 +413,7 @@ export default function OpportunitiesPage() {
       <div className="min-w-0 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-white">Lead Cues</h2>
-        <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors">
+        <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95">
           + Add Lead
         </button>
       </div>
@@ -624,33 +624,33 @@ export default function OpportunitiesPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <button
               onClick={() => setActiveBucket(null)}
-              className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${!activeBucket ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]' : 'border-white/15 bg-slate-800 hover:border-amber-500/30'}`}
+              className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${!activeBucket ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
             >
               <span className="text-3xl mb-1">🪹</span>
               <span className="text-2xl absolute top-2 right-2">🦅</span>
-              <span className="text-lg font-bold text-white">{leads.length}</span>
-              <span className="text-[10px] text-slate-400 mt-0.5">All Leads</span>
+              <span className="text-2xl font-bold text-white">{leads.length}</span>
+              <span className="text-xs text-slate-300 mt-1 font-medium">All Leads</span>
             </button>
             {buckets.map((bucket) => {
               const count = leads.filter((l) => {
                 const lb = ((l as any).bucket || '').toLowerCase();
-                const ls = ((l as any).leadSource || '').toLowerCase();
+                const ls = ((l as any).leadSource || '').replace(/-/g, ' ').toLowerCase();
                 const bLower = bucket.toLowerCase();
-                return lb === bLower || ls === bLower.replace(/ /g, '-');
+                return lb === bLower || ls === bLower || ((l as any).leadSource || '').toLowerCase() === bLower.replace(/ /g, '-');
               }).length;
               const isActive = activeBucket === bucket;
               return (
                 <button
                   key={bucket}
                   onClick={() => setActiveBucket(isActive ? null : bucket)}
-                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${isActive ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]' : 'border-white/15 bg-slate-800 hover:border-amber-500/30'}`}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${isActive ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
                 >
                   <span className="text-3xl mb-1">🪹</span>
                   <span className="text-2xl absolute top-2 right-2">🦅</span>
-                  <div className="absolute top-3 right-3 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-black">{count}</span>
+                  <div className="absolute top-2 right-2 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center shadow-md">
+                    <span className="text-xs font-bold text-black">{count}</span>
                   </div>
-                  <span className="text-[10px] text-slate-300 mt-0.5 text-center leading-tight">{bucket}</span>
+                  <span className="text-xs text-white mt-1 font-medium text-center leading-tight">{bucket}</span>
                 </button>
               );
             })}

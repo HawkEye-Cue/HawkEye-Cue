@@ -551,6 +551,14 @@ export default function OpportunitiesPage() {
                       expectedPremium: parseFloat((document.getElementById('newLeadPremium') as HTMLInputElement)?.value) || undefined,
                     });
                     showToast('🎯 Lead added!');
+
+                    // Save bucket locally as fallback (in case Lambda doesn't have bucket field yet)
+                    if (newLeadBucket) {
+                      const localBuckets = JSON.parse(localStorage.getItem(`hawkeye_lead_buckets_map_${user?.sub}`) || '{}');
+                      // We'll match by name since we don't have the ID yet
+                      localBuckets[newLeadName.trim().toLowerCase()] = newLeadBucket;
+                      localStorage.setItem(`hawkeye_lead_buckets_map_${user?.sub}`, JSON.stringify(localBuckets));
+                    }
                     setShowAddLead(false);
                     setNewLeadName('');
                     setNewLeadNote('');
@@ -637,11 +645,19 @@ export default function OpportunitiesPage() {
               <span className="text-xs text-slate-300 mt-1 font-medium">All Leads</span>
             </button>
             {buckets.map((bucket) => {
+              const localBucketsMap = JSON.parse(localStorage.getItem(`hawkeye_lead_buckets_map_${user?.sub}`) || '{}');
               const count = leads.filter((l) => {
                 const lb = ((l as any).bucket || '').toLowerCase();
                 const ls = ((l as any).leadSource || '').replace(/-/g, ' ').toLowerCase();
                 const bLower = bucket.toLowerCase();
-                return lb === bLower || ls === bLower || ((l as any).leadSource || '').toLowerCase() === bLower.replace(/ /g, '-');
+                // Check API bucket field
+                if (lb === bLower) return true;
+                // Check leadSource match
+                if (ls === bLower || ((l as any).leadSource || '').toLowerCase() === bLower.replace(/ /g, '-')) return true;
+                // Check localStorage fallback
+                const authorKey = (l.sourceAuthor || '').toLowerCase();
+                if (localBucketsMap[authorKey] && localBucketsMap[authorKey].toLowerCase() === bLower) return true;
+                return false;
               }).length;
               const isActive = activeBucket === bucket;
               return (
@@ -681,7 +697,13 @@ export default function OpportunitiesPage() {
               const lb = ((lead as any).bucket || '').toLowerCase();
               const ls = ((lead as any).leadSource || '').toLowerCase();
               const bLower = activeBucket.toLowerCase();
-              return lb === bLower || ls === bLower.replace(/ /g, '-');
+              if (lb === bLower) return true;
+              if (ls === bLower.replace(/ /g, '-') || ls.replace(/-/g, ' ') === bLower) return true;
+              // localStorage fallback
+              const localBucketsMap = JSON.parse(localStorage.getItem(`hawkeye_lead_buckets_map_${user?.sub}`) || '{}');
+              const authorKey = (lead.sourceAuthor || '').toLowerCase();
+              if (localBucketsMap[authorKey] && localBucketsMap[authorKey].toLowerCase() === bLower) return true;
+              return false;
             }
             return true;
           })

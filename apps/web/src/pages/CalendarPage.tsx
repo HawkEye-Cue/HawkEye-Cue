@@ -311,7 +311,7 @@ export default function CalendarPage() {
               <div
                 key={day}
                 onClick={() => handleDayClick(day)}
-                className={`aspect-square flex flex-col items-center justify-start pt-1 rounded-lg text-sm relative group ${
+                className={`min-h-[70px] sm:min-h-[85px] flex flex-col items-center justify-start pt-1 rounded-lg text-sm relative group ${
                   isFolioStart
                     ? 'bg-green-600/30 border border-green-500/50 text-green-300 font-bold'
                     : isFolioEnd

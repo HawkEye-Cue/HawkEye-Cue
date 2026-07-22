@@ -689,55 +689,71 @@ export default function OpportunitiesPage() {
             </div>
 
             {/* Column headers */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-3 py-1.5 text-[10px] text-slate-500 uppercase tracking-wide font-semibold border-b border-white/10">
-              <span>Name / Type</span>
-              <span className="w-20 text-center">Status</span>
-              <span className="w-20 text-center">Worked by</span>
-              <span className="w-8"></span>
+            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-1.5 text-[10px] text-slate-400 uppercase tracking-wide font-semibold border-b border-white/20 bg-slate-700/50 rounded-t-lg">
+              <span>Lead / Type</span>
+              <span className="w-16 text-center">Status</span>
+              <span className="w-20 text-center">Producer</span>
+              <span className="w-16 text-center">Premium</span>
+              <span className="w-10 text-center">Priority</span>
             </div>
 
             {/* Compact lead rows */}
-            <div className="space-y-1 max-h-[600px] overflow-y-auto">
+            <div className="space-y-0.5 max-h-[600px] overflow-y-auto">
               {filtered.map((lead) => {
                 const followup = leadFollowups[lead.id];
                 const steps = followup?.steps || [];
                 const completedSteps = steps.filter((s: any) => s.completed).length;
                 const totalSteps = steps.length;
                 const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+                const leadColor = localStorage.getItem(`hawkeye_lead_color_${lead.id}`) || '';
+                const colorBorder = leadColor === 'yellow' ? 'border-l-4 border-l-yellow-400' : leadColor === 'green' ? 'border-l-4 border-l-green-400' : leadColor === 'red' ? 'border-l-4 border-l-red-400' : '';
+                const colorBg = leadColor === 'yellow' ? 'bg-yellow-500/5' : leadColor === 'green' ? 'bg-green-500/5' : leadColor === 'red' ? 'bg-red-500/5' : '';
 
                 return (
-                  <details key={lead.id} className="group rounded-lg border border-white/10 bg-slate-800/90 overflow-hidden">
-                    <summary className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-3 py-2.5 cursor-pointer hover:bg-white/5">
+                  <details key={lead.id} className={`group rounded-lg border border-white/15 bg-slate-700/80 overflow-hidden ${colorBorder} ${colorBg}`}>
+                    <summary className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-3 py-2.5 cursor-pointer hover:bg-white/5">
                       {/* Name + Policy Type + Progress */}
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm shrink-0">{platformIcons[lead.sourcePlatform] || '📱'}</span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-sm text-white font-medium truncate">{lead.sourceAuthor}</span>
+                            <span className="text-sm text-white font-semibold truncate">{lead.sourceAuthor}</span>
                             {(lead as any).policyType && (
-                              <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">{(lead as any).policyType}</span>
+                              <span className="text-[10px] font-bold text-amber-200 bg-amber-500/30 px-1.5 py-0.5 rounded-full border border-amber-400/40 shrink-0">{(lead as any).policyType}</span>
                             )}
                           </div>
                           {totalSteps > 0 && (
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <div className="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full" style={{ width: `${progress}%` }} />
+                              <div className="w-16 h-1 bg-slate-600 rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-blue-400 to-green-400 rounded-full" style={{ width: `${progress}%` }} />
                               </div>
-                              <span className="text-[9px] text-slate-500">{completedSteps}/{totalSteps}</span>
+                              <span className="text-[9px] text-slate-400">{completedSteps}/{totalSteps}</span>
                             </div>
                           )}
                         </div>
                       </div>
                       {/* Status */}
-                      <span className={`w-20 text-center text-[10px] px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>
-                        {lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? 'Converted' : 'New'}
+                      <span className={`w-16 text-center text-[10px] px-1.5 py-0.5 rounded-full border ${statusColors[lead.status]}`}>
+                        {lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New'}
                       </span>
-                      {/* Worked by */}
-                      <span className="w-20 text-center text-[10px] text-blue-400 truncate">
+                      {/* Producer */}
+                      <span className="w-20 text-center text-[10px] text-blue-300 font-medium truncate">
                         {(lead as any).assignedTo ? (lead as any).assignedTo.split('@')[0] : '—'}
                       </span>
-                      {/* Expand icon */}
-                      <span className="w-8 text-center text-slate-500 group-open:rotate-90 transition-transform text-xs">▶</span>
+                      {/* Premium */}
+                      <span className="w-16 text-center text-[10px] text-green-400 font-medium">
+                        {(lead as any).policyType || '—'}
+                      </span>
+                      {/* Color / Priority */}
+                      <div className="w-10 flex justify-center gap-0.5">
+                        {['yellow', 'green', 'red'].map((c) => (
+                          <button
+                            key={c}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); setLeads([...leads]); }}
+                            className={`w-2.5 h-2.5 rounded-full border ${c === 'yellow' ? 'bg-yellow-400 border-yellow-300' : c === 'green' ? 'bg-green-400 border-green-300' : 'bg-red-400 border-red-300'} ${leadColor === c ? 'ring-1 ring-white scale-125' : 'opacity-50 hover:opacity-100'}`}
+                          />
+                        ))}
+                      </div>
                     </summary>
 
                     {/* Expanded content */}
@@ -788,12 +804,13 @@ export default function OpportunitiesPage() {
 
       {/* Lead Flight Projection — Visual Timeline */}
       <div className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-1">
           <h3 className="text-sm font-semibold text-white">🦅 Flight Projection</h3>
           <button onClick={() => setShowProtocolEditor(!showProtocolEditor)} className="text-xs text-blue-400 hover:text-blue-300">
             {showProtocolEditor ? 'Close' : 'Edit'}
           </button>
         </div>
+        <p className="text-xs text-slate-400 mb-3">Your automated follow-up sequence. When you add a lead, these steps schedule as reminders on your calendar so every lead gets consistent outreach.</p>
 
         {/* Visual timeline */}
         {!showProtocolEditor && (
@@ -860,28 +877,43 @@ export default function OpportunitiesPage() {
           </div>
         )}
 
-        {/* Mini Calendar — upcoming follow-ups */}
+        {/* 7-Day Follow-Up Calendar View */}
         {(() => {
           const now = new Date();
-          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
           const next7 = Array.from({ length: 7 }, (_, i) => {
             const d = new Date(now);
             d.setDate(d.getDate() + i);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            return {
+              date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+              dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+              dayNum: d.getDate(),
+              isToday: i === 0,
+            };
           });
-          const followUpEvents = events.filter((e) => e.type === 'task' && next7.includes(e.date) && (e.title.includes('📞') || e.title.includes('💬') || e.title.includes('✉️')));
-          if (followUpEvents.length === 0) return null;
+          const followUpEvents = events.filter((e) => (e.type === 'reminder' || e.type === 'task') && next7.some((d) => d.date === e.date) && (e.title.includes('📞') || e.title.includes('💬') || e.title.includes('✉️')));
+
           return (
-            <div className="mt-3 pt-3 border-t border-white/10">
-              <p className="text-xs text-slate-400 font-semibold mb-2">📅 Upcoming Follow-Ups (7 days)</p>
-              <div className="space-y-1">
-                {followUpEvents.slice(0, 6).map((e) => (
-                  <div key={e.id} className="flex items-center gap-2 text-xs">
-                    <span className="text-slate-500 w-16">{new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                    <span className={`flex-1 truncate ${e.completed ? 'line-through text-slate-600' : 'text-slate-300'}`}>{e.title}</span>
-                  </div>
-                ))}
-                {followUpEvents.length > 6 && <p className="text-xs text-slate-500">+{followUpEvents.length - 6} more</p>}
+            <div className="mt-4 pt-3 border-t border-white/10">
+              <p className="text-xs text-slate-400 font-semibold mb-2">📅 Next 7 Days — Follow-Ups</p>
+              <div className="grid grid-cols-7 gap-1">
+                {next7.map((day) => {
+                  const dayEvents = followUpEvents.filter((e) => e.date === day.date);
+                  return (
+                    <div key={day.date} className={`flex flex-col items-center p-2 rounded-lg border ${day.isToday ? 'border-blue-500/50 bg-blue-500/10' : 'border-white/10 bg-white/5'}`}>
+                      <span className={`text-[10px] font-medium ${day.isToday ? 'text-blue-400' : 'text-slate-500'}`}>{day.dayName}</span>
+                      <span className={`text-sm font-bold ${day.isToday ? 'text-white' : 'text-slate-300'}`}>{day.dayNum}</span>
+                      {dayEvents.length > 0 ? (
+                        <div className="mt-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
+                          <span className="text-[10px] font-bold text-black">{dayEvents.length}</span>
+                        </div>
+                      ) : (
+                        <div className="mt-1 w-6 h-6 rounded-full border border-slate-600 flex items-center justify-center">
+                          <span className="text-[10px] text-slate-600">0</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

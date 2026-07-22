@@ -725,7 +725,7 @@ export default function OpportunitiesPage() {
                 const colorBg = leadColor === 'yellow' ? 'bg-yellow-500/5' : leadColor === 'green' ? 'bg-green-500/5' : leadColor === 'red' ? 'bg-red-500/5' : '';
 
                 return (
-                  <details key={lead.id} className={`group rounded-lg border border-white/25 bg-slate-700 overflow-hidden ${colorBorder} ${colorBg}`}>
+                  <details key={lead.id} className={`group rounded-lg border-2 border-white/30 bg-slate-600 overflow-hidden ${colorBorder} ${colorBg}`}>
                     <summary className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-3 py-2.5 cursor-pointer hover:bg-white/10">
                       {/* Name + Policy Type + Progress */}
                       <div className="flex items-center gap-2 min-w-0">

@@ -630,7 +630,12 @@ export default function OpportunitiesPage() {
               <span className="text-[10px] text-slate-400 mt-0.5">All Leads</span>
             </button>
             {buckets.map((bucket) => {
-              const count = leads.filter((l) => (l as any).bucket === bucket || (l as any).leadSource === bucket.toLowerCase().replace(/ /g, '-')).length;
+              const count = leads.filter((l) => {
+                const lb = ((l as any).bucket || '').toLowerCase();
+                const ls = ((l as any).leadSource || '').toLowerCase();
+                const bLower = bucket.toLowerCase();
+                return lb === bLower || ls === bLower.replace(/ /g, '-');
+              }).length;
               const isActive = activeBucket === bucket;
               return (
                 <button
@@ -666,7 +671,10 @@ export default function OpportunitiesPage() {
         const filtered = leads
           .filter((lead) => {
             if (activeBucket) {
-              return (lead as any).bucket === activeBucket || (lead as any).leadSource === activeBucket.toLowerCase().replace(/ /g, '-');
+              const lb = ((lead as any).bucket || '').toLowerCase();
+              const ls = ((lead as any).leadSource || '').toLowerCase();
+              const bLower = activeBucket.toLowerCase();
+              return lb === bLower || ls === bLower.replace(/ /g, '-');
             }
             return true;
           })

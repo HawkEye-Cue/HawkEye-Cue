@@ -555,10 +555,17 @@ export default function OpportunitiesPage() {
                     // Save bucket locally as fallback (in case Lambda doesn't have bucket field yet)
                     if (newLeadBucket) {
                       const localBuckets = JSON.parse(localStorage.getItem(`hawkeye_lead_buckets_map_${user?.sub}`) || '{}');
-                      // We'll match by name since we don't have the ID yet
                       localBuckets[newLeadName.trim().toLowerCase()] = newLeadBucket;
                       localStorage.setItem(`hawkeye_lead_buckets_map_${user?.sub}`, JSON.stringify(localBuckets));
                     }
+                    // Save producer and premium locally as fallback
+                    const localLeadData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+                    localLeadData[newLeadName.trim().toLowerCase()] = {
+                      assignedTo: newLeadAssignee || user?.email || '',
+                      expectedPremium: parseFloat((document.getElementById('newLeadPremium') as HTMLInputElement)?.value) || 0,
+                      bucket: newLeadBucket || '',
+                    };
+                    localStorage.setItem(`hawkeye_lead_data_${user?.sub}`, JSON.stringify(localLeadData));
                     setShowAddLead(false);
                     setNewLeadName('');
                     setNewLeadNote('');
@@ -775,11 +782,21 @@ export default function OpportunitiesPage() {
                       </span>
                       {/* Producer */}
                       <span className="w-20 text-center text-[10px] text-blue-300 font-medium truncate">
-                        {(lead as any).assignedTo ? (lead as any).assignedTo.split('@')[0] : '—'}
+                        {(() => {
+                          const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+                          const assigned = (lead as any).assignedTo || localData[(lead.sourceAuthor || '').toLowerCase()]?.assignedTo || '';
+                          if (!assigned) return '—';
+                          const displayNames = JSON.parse(localStorage.getItem(`hawkeye_display_names`) || '{}');
+                          return displayNames[assigned] || assigned.split('@')[0];
+                        })()}
                       </span>
                       {/* Premium */}
                       <span className="w-16 text-center text-[10px] text-green-400 font-medium">
-                        {(lead as any).expectedPremium ? `$${Number((lead as any).expectedPremium).toLocaleString()}` : '—'}
+                        {(() => {
+                          const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+                          const premium = (lead as any).expectedPremium || localData[(lead.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;
+                          return premium ? `$${Number(premium).toLocaleString()}` : '—';
+                        })()}
                       </span>
                       {/* Color / Priority */}
                       <div className="w-10 flex justify-center gap-0.5">

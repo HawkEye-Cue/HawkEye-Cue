@@ -396,21 +396,40 @@ export default function TeamPage() {
           {/* Members */}
           <div className="glass-card space-y-3">
             <h3 className="font-semibold text-white">Members</h3>
+            <p className="text-xs text-slate-400">Click a name to set a display name</p>
             <div className="space-y-2">
-              {team.members.map((member, i) => (
+              {team.members.map((member, i) => {
+                const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                const displayName = displayNames[member.email] || '';
+                return (
                 <div key={member.userId} className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
                     <div>
-                      <p className="text-sm text-white">{member.email}</p>
-                      <p className="text-xs text-slate-500">{member.role === 'admin' ? '👑 Admin' : '👤 Member'} · Joined {new Date(member.joinedAt).toLocaleDateString()}</p>
+                      <input
+                        type="text"
+                        defaultValue={displayName || member.email.split('@')[0]}
+                        onBlur={(e) => {
+                          const names = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                          const val = e.target.value.trim();
+                          if (val && val !== member.email.split('@')[0]) {
+                            names[member.email] = val;
+                          } else {
+                            delete names[member.email];
+                          }
+                          localStorage.setItem('hawkeye_display_names', JSON.stringify(names));
+                        }}
+                        className="text-sm text-white bg-transparent border-b border-transparent hover:border-slate-500 focus:border-blue-500 outline-none w-full"
+                      />
+                      <p className="text-xs text-slate-500">{member.role === 'admin' ? '👑 Admin' : '👤 Member'} · {member.email}</p>
                     </div>
                   </div>
                   {team.role === 'admin' && member.role !== 'admin' && (
                     <button onClick={() => handleRemoveMember(member.userId)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

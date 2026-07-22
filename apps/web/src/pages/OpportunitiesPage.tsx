@@ -803,8 +803,8 @@ export default function OpportunitiesPage() {
                         {['yellow', 'green', 'red'].map((c) => (
                           <button
                             key={c}
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); setLeads([...leads]); }}
-                            className={`w-2.5 h-2.5 rounded-full border ${c === 'yellow' ? 'bg-yellow-400 border-yellow-300' : c === 'green' ? 'bg-green-400 border-green-300' : 'bg-red-400 border-red-300'} ${leadColor === c ? 'ring-1 ring-white scale-125' : 'opacity-50 hover:opacity-100'}`}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); setLeads((prev) => [...prev]); }}
+                            className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${c === 'yellow' ? 'bg-yellow-400 border-yellow-300' : c === 'green' ? 'bg-green-400 border-green-300' : 'bg-red-400 border-red-300'} ${leadColor === c ? 'ring-2 ring-white scale-150 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-125'}`}
                           />
                         ))}
                       </div>

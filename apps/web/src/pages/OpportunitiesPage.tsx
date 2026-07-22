@@ -620,7 +620,6 @@ export default function OpportunitiesPage() {
 
           {/* Nest grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {/* All leads nest */}
             <button
               onClick={() => setActiveBucket(null)}
               className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${!activeBucket ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]' : 'border-white/15 bg-slate-800/90 hover:border-amber-500/30'}`}
@@ -630,8 +629,6 @@ export default function OpportunitiesPage() {
               <span className="text-lg font-bold text-white">{leads.length}</span>
               <span className="text-[10px] text-slate-400 mt-0.5">All Leads</span>
             </button>
-
-            {/* Per-bucket nests */}
             {buckets.map((bucket) => {
               const count = leads.filter((l) => (l as any).bucket === bucket || (l as any).leadSource === bucket.toLowerCase().replace(/ /g, '-')).length;
               const isActive = activeBucket === bucket;
@@ -654,7 +651,7 @@ export default function OpportunitiesPage() {
         </div>
       )}
 
-      {/* Leads List — filtered by active bucket, sorted by priority */}
+      {/* Leads Table — scalable for hundreds */}
       {loading ? (
         <p className="text-sm text-slate-500">Loading leads...</p>
       ) : leads.length === 0 ? (
@@ -665,23 +662,129 @@ export default function OpportunitiesPage() {
             Install the browser extension and configure keywords to start detecting leads!
           </p>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {activeBucket && <p className="text-xs text-amber-400 font-medium">🪹 Showing: {activeBucket}</p>}
-          {leads
-            .filter((lead) => {
-              if (!activeBucket) return true;
+      ) : (() => {
+        const filtered = leads
+          .filter((lead) => {
+            if (activeBucket) {
               return (lead as any).bucket === activeBucket || (lead as any).leadSource === activeBucket.toLowerCase().replace(/ /g, '-');
-            })
-            .sort((a, b) => {
-              // Priority: new first, then by date (newest first)
-              if (a.status === 'new' && b.status !== 'new') return -1;
-              if (b.status === 'new' && a.status !== 'new') return 1;
-              return ((b as any).createdAt || '').localeCompare((a as any).createdAt || '');
-            })
-            .map((lead) => renderLeadCard(lead))}
-        </div>
-      )}
+            }
+            return true;
+          })
+          .sort((a, b) => {
+            if (a.status === 'new' && b.status !== 'new') return -1;
+            if (b.status === 'new' && a.status !== 'new') return 1;
+            return ((b as any).createdAt || '').localeCompare((a as any).createdAt || '');
+          });
+
+        const PAGE_SIZE = 25;
+        const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+        const pageLeads = filtered.slice(0, PAGE_SIZE * Math.max(1, 1)); // We'll use "show more" instead of pages
+
+        return (
+          <div className="space-y-2">
+            {/* Header bar */}
+            <div className="flex items-center justify-between">
+              {activeBucket && <p className="text-xs text-amber-400 font-medium">🪹 {activeBucket}</p>}
+              <p className="text-xs text-slate-500 ml-auto">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</p>
+            </div>
+
+            {/* Column headers */}
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-3 py-1.5 text-[10px] text-slate-500 uppercase tracking-wide font-semibold border-b border-white/10">
+              <span>Name / Type</span>
+              <span className="w-20 text-center">Status</span>
+              <span className="w-20 text-center">Worked by</span>
+              <span className="w-8"></span>
+            </div>
+
+            {/* Compact lead rows */}
+            <div className="space-y-1 max-h-[600px] overflow-y-auto">
+              {filtered.map((lead) => {
+                const followup = leadFollowups[lead.id];
+                const steps = followup?.steps || [];
+                const completedSteps = steps.filter((s: any) => s.completed).length;
+                const totalSteps = steps.length;
+                const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+                return (
+                  <details key={lead.id} className="group rounded-lg border border-white/10 bg-slate-800/90 overflow-hidden">
+                    <summary className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-3 py-2.5 cursor-pointer hover:bg-white/5">
+                      {/* Name + Policy Type + Progress */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm shrink-0">{platformIcons[lead.sourcePlatform] || '📱'}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm text-white font-medium truncate">{lead.sourceAuthor}</span>
+                            {(lead as any).policyType && (
+                              <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">{(lead as any).policyType}</span>
+                            )}
+                          </div>
+                          {totalSteps > 0 && (
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full" style={{ width: `${progress}%` }} />
+                              </div>
+                              <span className="text-[9px] text-slate-500">{completedSteps}/{totalSteps}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Status */}
+                      <span className={`w-20 text-center text-[10px] px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>
+                        {lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? 'Converted' : 'New'}
+                      </span>
+                      {/* Worked by */}
+                      <span className="w-20 text-center text-[10px] text-blue-400 truncate">
+                        {(lead as any).assignedTo ? (lead as any).assignedTo.split('@')[0] : '—'}
+                      </span>
+                      {/* Expand icon */}
+                      <span className="w-8 text-center text-slate-500 group-open:rotate-90 transition-transform text-xs">▶</span>
+                    </summary>
+
+                    {/* Expanded content */}
+                    <div className="px-3 pb-3 pt-1 border-t border-white/5 space-y-2">
+                      <p className="text-xs text-slate-400">{new Date(lead.detectedAt || (lead as any).createdAt).toLocaleDateString()} • {lead.sourcePlatform} • {(lead as any).keywordText || (lead as any).leadSource || ''}</p>
+                      {lead.sourceContent && (
+                        <p className="text-xs text-slate-300 italic bg-white/5 p-2 rounded-lg">&quot;{lead.sourceContent.slice(0, 200)}&quot;</p>
+                      )}
+                      {/* Next step */}
+                      {(() => {
+                        const nextStep = steps.find((s: any) => !s.completed);
+                        if (!nextStep) return null;
+                        return (
+                          <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-1.5">
+                            <span className="text-xs">{nextStep.type === 'call' ? '📞' : nextStep.type === 'sms' ? '💬' : '✉️'}</span>
+                            <span className="text-xs text-blue-300 flex-1">Next: {nextStep.task}</span>
+                            <button
+                              onClick={async (e) => { e.stopPropagation(); try { const client = await buildClient(); const result = await client.request<{ steps: any[] }>('PUT', `/opportunities/${lead.id}/followups/${nextStep.idx}`, { completed: true }); setLeadFollowups((prev) => ({ ...prev, [lead.id]: { steps: result.steps } })); showToast('✓ Done'); } catch { showToast('❌ Failed'); } }}
+                              className="text-[10px] text-green-400 bg-green-600/20 px-2 py-0.5 rounded font-medium"
+                            >Done ✓</button>
+                          </div>
+                        );
+                      })()}
+                      {/* Actions */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {lead.status === 'new' && (
+                          <button onClick={() => handleUpdateStatus(lead.id, 'followed_up')} disabled={updatingId === lead.id} className="px-2.5 py-1 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded text-[10px] font-medium hover:bg-yellow-600/30 disabled:opacity-50">📞 Followed Up</button>
+                        )}
+                        {(lead.status === 'new' || lead.status === 'followed_up') && (
+                          <button onClick={() => handleUpdateStatus(lead.id, 'converted')} disabled={updatingId === lead.id} className="px-2.5 py-1 bg-green-600/20 border border-green-500/30 text-green-300 rounded text-[10px] font-medium hover:bg-green-600/30 disabled:opacity-50">✓ Converted</button>
+                        )}
+                        {lead.sourceUrl && <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 bg-white/5 border border-white/10 text-slate-400 rounded text-[10px]">View ↗</a>}
+                        <button onClick={() => handleDelete(lead.id)} className="px-2.5 py-1 text-red-400 text-[10px] hover:text-red-300">Delete</button>
+                      </div>
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+
+            {/* Load more indicator */}
+            {filtered.length > 25 && (
+              <p className="text-xs text-slate-500 text-center py-2">Scroll to see all {filtered.length} leads</p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Lead Flight Projection — Visual Timeline */}
       <div className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">

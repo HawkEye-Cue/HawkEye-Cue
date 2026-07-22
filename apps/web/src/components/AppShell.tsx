@@ -61,8 +61,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {/* Main Content — page transition */}
-      <main key={location.pathname} className="p-3 sm:p-4 max-w-4xl mx-auto w-full page-enter" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
+      {/* Main Content */}
+      <main key={location.pathname} className="p-3 sm:p-4 max-w-4xl mx-auto w-full page-enter relative z-10 bg-slate-950" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
         {children}
       </main>
 

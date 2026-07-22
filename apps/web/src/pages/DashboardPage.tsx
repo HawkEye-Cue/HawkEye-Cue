@@ -327,7 +327,7 @@ export default function DashboardPage() {
 
       {/* Meeting Alert Banner */}
       {(() => {
-        const todayMeetings = todayEvents.filter((e) => e.type === 'meeting' || e.type === 'task');
+        const todayMeetings = todayEvents.filter((e) => e.type === 'meeting');
         const undoneMeetings = todayMeetings.filter((m) => !m.completed);
         if (todayMeetings.length === 0) return null;
         if (undoneMeetings.length === 0) {
@@ -392,8 +392,8 @@ export default function DashboardPage() {
           <>
             {(() => {
               const posts = todayEvents.filter((e) => e.type === 'post');
-              const meetings = todayEvents.filter((e) => e.type === 'meeting' || e.type === 'task');
-              const reminders = todayEvents.filter((e) => e.type === 'reminder');
+              const meetings = todayEvents.filter((e) => e.type === 'meeting');
+              const reminders = todayEvents.filter((e) => e.type === 'reminder' || e.type === 'task');
 
               return (
                 <>
@@ -605,8 +605,8 @@ export default function DashboardPage() {
                       {dayEvents.length > 0 && (
                         <div className="flex justify-center gap-0.5 mt-0.5">
                           {dayEvents.some((e) => e.type === 'post') && <span className="w-1 h-1 rounded-full bg-blue-400"></span>}
-                          {dayEvents.some((e) => e.type === 'meeting' || e.type === 'task') && <span className="w-1 h-1 rounded-full bg-amber-400"></span>}
-                          {dayEvents.some((e) => e.type === 'reminder') && <span className="w-1 h-1 rounded-full bg-green-400"></span>}
+                          {dayEvents.some((e) => e.type === 'meeting') && <span className="w-1 h-1 rounded-full bg-amber-400"></span>}
+                          {dayEvents.some((e) => e.type === 'reminder' || e.type === 'task') && <span className="w-1 h-1 rounded-full bg-green-400"></span>}
                         </div>
                       )}
                       {isFuture && (
@@ -644,8 +644,8 @@ export default function DashboardPage() {
                   const dayEvts = events.filter((e) => e.date === dashCalDay);
                   if (dayEvts.length === 0) return <p className="text-xs text-slate-500 text-center py-4">No events — tap + to add</p>;
                   const posts = dayEvts.filter((e) => e.type === 'post');
-                  const meetings = dayEvts.filter((e) => e.type === 'meeting' || e.type === 'task');
-                  const reminders = dayEvts.filter((e) => e.type === 'reminder');
+                  const meetings = dayEvts.filter((e) => e.type === 'meeting');
+                  const reminders = dayEvts.filter((e) => e.type === 'reminder' || e.type === 'task');
 
                   const renderEvt = (evt: any) => (
                     <div key={evt.id} className="p-2 rounded-lg bg-white/5">

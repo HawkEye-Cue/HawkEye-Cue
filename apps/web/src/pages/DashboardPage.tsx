@@ -340,7 +340,7 @@ export default function DashboardPage() {
           );
         }
         return (
-          <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border-2 border-amber-500/40">
+          <div className="p-4 rounded-xl bg-slate-700/95 border-2 border-amber-500/50">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xl">🤝</span>
               <p className="text-sm font-bold text-amber-300">{undoneMeetings.length} Meeting{undoneMeetings.length !== 1 ? 's' : ''} Today</p>

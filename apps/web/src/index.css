@@ -59,14 +59,14 @@ body::after {
 @layer components {
   .glass-card {
     @apply rounded-xl border border-white/20 p-4;
-    background: rgba(30, 41, 59, 0.85);
+    background: rgba(51, 65, 85, 0.95);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
 
   .glass-card-strong {
     @apply rounded-xl border border-white/25 p-6;
-    background: rgba(30, 41, 59, 0.9);
+    background: rgba(51, 65, 85, 0.98);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }

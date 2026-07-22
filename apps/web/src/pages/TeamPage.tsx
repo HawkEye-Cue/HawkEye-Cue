@@ -372,7 +372,7 @@ export default function TeamPage() {
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
               tab === t.id
                 ? 'bg-purple-600/40 text-purple-200 border border-purple-400/50'
-                : 'text-slate-400 hover:text-white hover:bg-white/10 bg-slate-700/80'
+                : 'text-slate-400 hover:text-white hover:bg-white/10 bg-slate-700'
             }`}
           >
             <span>{t.icon}</span>

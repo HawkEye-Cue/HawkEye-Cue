@@ -375,21 +375,21 @@ export default function HawkInsightsPage() {
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
-                <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-green-500/30">
+                <div className="text-center p-3 rounded-lg bg-slate-800 border border-green-500/30">
                   <div className="text-xl font-bold text-green-400">${teamAnalytics.totalRevenue.toLocaleString()}</div>
                   <div className="text-xs text-slate-400">Team Revenue</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-blue-500/30">
+                <div className="text-center p-3 rounded-lg bg-slate-800 border border-blue-500/30">
                   <div className="text-xl font-bold text-blue-400">{teamAnalytics.wonDeals}</div>
                   <div className="text-xs text-slate-400">Team Deals Won</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-purple-500/30">
+                <div className="text-center p-3 rounded-lg bg-slate-800 border border-purple-500/30">
                   <div className="text-xl font-bold text-purple-400">{teamAnalytics.flockCompletionRate}%</div>
                   <div className="text-xs text-slate-400">Team Flock Rate</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-slate-800/90 border border-amber-500/30">
+                <div className="text-center p-3 rounded-lg bg-slate-800 border border-amber-500/30">
                   <div className="text-xl font-bold text-amber-400">{teamAnalytics.totalDeals}</div>
                   <div className="text-xs text-slate-400">Total Team Deals</div>
                 </div>

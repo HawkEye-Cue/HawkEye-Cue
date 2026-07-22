@@ -301,7 +301,7 @@ export default function OpportunitiesPage() {
     const nextStep = steps.find((s: any) => !s.completed);
 
     return (
-      <div key={lead.id} className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">
+      <div key={lead.id} className="rounded-xl border border-white/20 p-4 bg-slate-800 backdrop-blur-sm">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-lg">{platformIcons[lead.sourcePlatform] || '📱'}</span>
@@ -604,7 +604,7 @@ export default function OpportunitiesPage() {
 
           {/* Bucket manager */}
           {showBucketManager && (
-            <div className="rounded-xl border border-white/20 p-3 bg-slate-800/95 space-y-2">
+            <div className="rounded-xl border border-white/20 p-3 bg-slate-800 space-y-2">
               <div className="flex gap-2">
                 <input type="text" value={newBucketName} onChange={(e) => setNewBucketName(e.target.value)} placeholder="New bucket name..." className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500" />
                 <button onClick={() => { if (newBucketName.trim() && !buckets.includes(newBucketName.trim())) { saveBuckets([...buckets, newBucketName.trim()]); setNewBucketName(''); } }} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs">Add</button>
@@ -624,7 +624,7 @@ export default function OpportunitiesPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <button
               onClick={() => setActiveBucket(null)}
-              className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${!activeBucket ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]' : 'border-white/15 bg-slate-800/90 hover:border-amber-500/30'}`}
+              className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${!activeBucket ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]' : 'border-white/15 bg-slate-800 hover:border-amber-500/30'}`}
             >
               <span className="text-3xl mb-1">🪹</span>
               <span className="text-2xl absolute top-2 right-2">🦅</span>
@@ -643,7 +643,7 @@ export default function OpportunitiesPage() {
                 <button
                   key={bucket}
                   onClick={() => setActiveBucket(isActive ? null : bucket)}
-                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${isActive ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]' : 'border-white/15 bg-slate-800/90 hover:border-amber-500/30'}`}
+                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${isActive ? 'border-amber-500/50 bg-amber-500/10 scale-[1.02]' : 'border-white/15 bg-slate-800 hover:border-amber-500/30'}`}
                 >
                   <span className="text-3xl mb-1">🪹</span>
                   <span className="text-2xl absolute top-2 right-2">🦅</span>
@@ -699,7 +699,7 @@ export default function OpportunitiesPage() {
             </div>
 
             {/* Column headers */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-1.5 text-[10px] text-slate-400 uppercase tracking-wide font-semibold border-b border-white/20 bg-slate-700/50 rounded-t-lg">
+            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-1.5 text-[10px] text-slate-400 uppercase tracking-wide font-semibold border-b border-white/20 bg-slate-700 rounded-t-lg">
               <span>Lead / Type</span>
               <span className="w-16 text-center">Status</span>
               <span className="w-20 text-center">Producer</span>
@@ -720,7 +720,7 @@ export default function OpportunitiesPage() {
                 const colorBg = leadColor === 'yellow' ? 'bg-yellow-500/5' : leadColor === 'green' ? 'bg-green-500/5' : leadColor === 'red' ? 'bg-red-500/5' : '';
 
                 return (
-                  <details key={lead.id} className={`group rounded-lg border border-white/25 bg-slate-600/90 overflow-hidden ${colorBorder} ${colorBg}`}>
+                  <details key={lead.id} className={`group rounded-lg border border-white/25 bg-slate-700 overflow-hidden ${colorBorder} ${colorBg}`}>
                     <summary className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-3 py-2.5 cursor-pointer hover:bg-white/10">
                       {/* Name + Policy Type + Progress */}
                       <div className="flex items-center gap-2 min-w-0">
@@ -767,7 +767,7 @@ export default function OpportunitiesPage() {
                     </summary>
 
                     {/* Expanded content — full lead details + call notes */}
-                    <div className="px-3 pb-3 pt-2 border-t border-white/10 space-y-3 bg-slate-700/50">
+                    <div className="px-3 pb-3 pt-2 border-t border-white/10 space-y-3 bg-slate-700">
                       {/* Lead info row */}
                       <div className="flex flex-wrap gap-3 text-xs text-slate-300">
                         <span>📅 {new Date(lead.detectedAt || (lead as any).createdAt).toLocaleDateString()}</span>
@@ -806,7 +806,7 @@ export default function OpportunitiesPage() {
                           return notes.length > 0 ? (
                             <div className="space-y-1.5 mb-2 max-h-40 overflow-y-auto">
                               {notes.map((note, idx) => (
-                                <div key={idx} className="bg-slate-800/80 border border-white/10 rounded-lg px-3 py-2">
+                                <div key={idx} className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2">
                                   <p className="text-[10px] text-slate-500 mb-0.5">{note.date}</p>
                                   <p className="text-xs text-slate-200">{note.text}</p>
                                 </div>
@@ -872,7 +872,7 @@ export default function OpportunitiesPage() {
 
       {/* Right column */}
       <div className="min-w-0 space-y-4">
-      <div className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">
+      <div className="rounded-xl border border-white/20 p-4 bg-slate-800 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-sm font-semibold text-white">🦅 Flight Projection</h3>
           <button onClick={() => setShowProtocolEditor(!showProtocolEditor)} className="text-xs text-blue-400 hover:text-blue-300">

@@ -710,8 +710,8 @@ export default function OpportunitiesPage() {
                 const colorBg = leadColor === 'yellow' ? 'bg-yellow-500/5' : leadColor === 'green' ? 'bg-green-500/5' : leadColor === 'red' ? 'bg-red-500/5' : '';
 
                 return (
-                  <details key={lead.id} className={`group rounded-lg border border-white/15 bg-slate-700/80 overflow-hidden ${colorBorder} ${colorBg}`}>
-                    <summary className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-3 py-2.5 cursor-pointer hover:bg-white/5">
+                  <details key={lead.id} className={`group rounded-lg border border-white/25 bg-slate-600/90 overflow-hidden ${colorBorder} ${colorBg}`}>
+                    <summary className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-3 py-2.5 cursor-pointer hover:bg-white/10">
                       {/* Name + Policy Type + Progress */}
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm shrink-0">{platformIcons[lead.sourcePlatform] || '📱'}</span>
@@ -756,37 +756,57 @@ export default function OpportunitiesPage() {
                       </div>
                     </summary>
 
-                    {/* Expanded content */}
-                    <div className="px-3 pb-3 pt-1 border-t border-white/5 space-y-2">
-                      <p className="text-xs text-slate-400">{new Date(lead.detectedAt || (lead as any).createdAt).toLocaleDateString()} • {lead.sourcePlatform} • {(lead as any).keywordText || (lead as any).leadSource || ''}</p>
+                    {/* Expanded content — full lead details + call notes */}
+                    <div className="px-3 pb-3 pt-2 border-t border-white/10 space-y-3 bg-slate-700/50">
+                      {/* Lead info row */}
+                      <div className="flex flex-wrap gap-3 text-xs text-slate-300">
+                        <span>📅 {new Date(lead.detectedAt || (lead as any).createdAt).toLocaleDateString()}</span>
+                        <span>📱 {lead.sourcePlatform}</span>
+                        {(lead as any).leadSource && <span>📍 {(lead as any).leadSource}</span>}
+                        {(lead as any).assignedTo && <span>👤 {(lead as any).assignedTo.split('@')[0]}</span>}
+                      </div>
+
                       {lead.sourceContent && (
-                        <p className="text-xs text-slate-300 italic bg-white/5 p-2 rounded-lg">&quot;{lead.sourceContent.slice(0, 200)}&quot;</p>
+                        <p className="text-xs text-slate-300 italic bg-white/5 p-2 rounded-lg border border-white/10">&quot;{lead.sourceContent.slice(0, 200)}&quot;</p>
                       )}
-                      {/* Next step */}
+
+                      {/* Next Flight Projection step */}
                       {(() => {
                         const nextStep = steps.find((s: any) => !s.completed);
                         if (!nextStep) return null;
                         return (
-                          <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-1.5">
-                            <span className="text-xs">{nextStep.type === 'call' ? '📞' : nextStep.type === 'sms' ? '💬' : '✉️'}</span>
-                            <span className="text-xs text-blue-300 flex-1">Next: {nextStep.task}</span>
+                          <div className="flex items-center gap-2 bg-blue-500/15 border border-blue-500/30 rounded-lg px-3 py-2">
+                            <span className="text-sm">{nextStep.type === 'call' ? '📞' : nextStep.type === 'sms' ? '💬' : '✉️'}</span>
+                            <span className="text-xs text-blue-200 flex-1 font-medium">Next: {nextStep.task}</span>
                             <button
                               onClick={async (e) => { e.stopPropagation(); try { const client = await buildClient(); const result = await client.request<{ steps: any[] }>('PUT', `/opportunities/${lead.id}/followups/${nextStep.idx}`, { completed: true }); setLeadFollowups((prev) => ({ ...prev, [lead.id]: { steps: result.steps } })); showToast('✓ Done'); } catch { showToast('❌ Failed'); } }}
-                              className="text-[10px] text-green-400 bg-green-600/20 px-2 py-0.5 rounded font-medium"
+                              className="text-xs text-green-400 bg-green-600/20 px-2.5 py-1 rounded font-medium"
                             >Done ✓</button>
                           </div>
                         );
                       })()}
+
+                      {/* Call Notes — prominent */}
+                      <div>
+                        <p className="text-xs text-white font-semibold mb-1">📝 Call Notes</p>
+                        <textarea
+                          defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''}
+                          onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)}
+                          placeholder="Log your call notes, conversation details, next steps..."
+                          className="w-full px-3 py-2 bg-slate-800 border border-white/20 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-24 focus:border-blue-500/50 focus:outline-none"
+                        />
+                      </div>
+
                       {/* Actions */}
                       <div className="flex flex-wrap items-center gap-2">
                         {lead.status === 'new' && (
-                          <button onClick={() => handleUpdateStatus(lead.id, 'followed_up')} disabled={updatingId === lead.id} className="px-2.5 py-1 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded text-[10px] font-medium hover:bg-yellow-600/30 disabled:opacity-50">📞 Followed Up</button>
+                          <button onClick={() => handleUpdateStatus(lead.id, 'followed_up')} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-600/30 disabled:opacity-50">📞 Followed Up</button>
                         )}
                         {(lead.status === 'new' || lead.status === 'followed_up') && (
-                          <button onClick={() => handleUpdateStatus(lead.id, 'converted')} disabled={updatingId === lead.id} className="px-2.5 py-1 bg-green-600/20 border border-green-500/30 text-green-300 rounded text-[10px] font-medium hover:bg-green-600/30 disabled:opacity-50">✓ Converted</button>
+                          <button onClick={() => handleUpdateStatus(lead.id, 'converted')} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">✓ Converted</button>
                         )}
-                        {lead.sourceUrl && <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 bg-white/5 border border-white/10 text-slate-400 rounded text-[10px]">View ↗</a>}
-                        <button onClick={() => handleDelete(lead.id)} className="px-2.5 py-1 text-red-400 text-[10px] hover:text-red-300">Delete</button>
+                        {lead.sourceUrl && <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-400 rounded-lg text-xs">View ↗</a>}
+                        <button onClick={() => handleDelete(lead.id)} className="ml-auto px-3 py-1.5 text-red-400 text-xs hover:text-red-300 hover:bg-red-500/10 rounded-lg">Delete</button>
                       </div>
                     </div>
                   </details>

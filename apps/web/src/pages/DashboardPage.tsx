@@ -820,6 +820,14 @@ export default function DashboardPage() {
                 {/* Add event form */}
                 <button onClick={() => setDashCalAdd(false)} className="text-xs text-blue-400 hover:text-blue-300 mb-2">← Back</button>
                 <div className="space-y-3">
+                  {/* Type selector — first thing after back button */}
+                  <div className="flex gap-2">
+                    {(['meeting', 'reminder', 'post'] as const).map((t) => (
+                      <button key={t} onClick={() => setDashCalType(t)} className={`flex-1 py-2 rounded-lg text-xs font-bold ${dashCalType === t ? (t === 'post' ? 'bg-blue-600 text-white' : t === 'meeting' ? 'bg-amber-500 text-black' : 'bg-green-600 text-white') : 'bg-slate-700 text-slate-400 hover:text-white'}`}>
+                        {t === 'post' ? '📤 Post' : t === 'meeting' ? '🤝 Meeting' : '🔔 Reminder'}
+                      </button>
+                    ))}
+                  </div>
                   <input type="text" value={dashCalTitle} onChange={(e) => setDashCalTitle(e.target.value)} placeholder="What's happening?" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" autoFocus />
                   {/* Quick Time Picker */}
                   <div>
@@ -841,13 +849,6 @@ export default function DashboardPage() {
                       <input type="time" value={dashCalTime} onChange={(e) => setDashCalTime(e.target.value)} className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
                       {dashCalTime && <button onClick={() => setDashCalTime('')} className="text-[10px] text-red-400">Clear</button>}
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {(['post', 'meeting', 'reminder'] as const).map((t) => (
-                      <button key={t} onClick={() => setDashCalType(t)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dashCalType === t ? (t === 'post' ? 'bg-blue-600 text-white' : t === 'meeting' ? 'bg-amber-500 text-black' : 'bg-green-600 text-white') : 'bg-slate-700 text-slate-400'}`}>
-                        {t === 'post' ? '📤 Post' : t === 'meeting' ? '🤝 Meeting' : '🔔 Reminder'}
-                      </button>
-                    ))}
                   </div>
                   <input type="url" value={dashCalLink} onChange={(e) => setDashCalLink(e.target.value)} placeholder="Link (optional)" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
                   {dashCalType === 'meeting' && (

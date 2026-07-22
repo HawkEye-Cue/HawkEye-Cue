@@ -598,7 +598,7 @@ export default function DashboardPage() {
                     <div
                       key={day}
                       onClick={() => { setDashCalDay(dateStr); setDashCalAdd(false); }}
-                      className={`text-center py-1 rounded cursor-pointer relative group ${
+                      className={`text-center py-3 sm:py-4 rounded-lg cursor-pointer relative group ${
                         isFolioStart ? 'bg-green-600/40 border border-green-500/60 font-bold'
                         : isFolioEnd ? 'bg-red-600/40 border border-red-500/60 font-bold'
                         : isToday ? 'bg-blue-600 text-white font-bold'
@@ -607,7 +607,7 @@ export default function DashboardPage() {
                         : 'text-slate-500 hover:bg-white/5'
                       }`}
                     >
-                      <span className={`text-[11px] ${isFolioStart ? 'text-green-300' : isFolioEnd ? 'text-red-300' : isToday ? 'text-white' : ''}`}>{day}</span>
+                      <span className={`text-sm font-medium ${isFolioStart ? 'text-green-300' : isFolioEnd ? 'text-red-300' : isToday ? 'text-white' : ''}`}>{day}</span>
                       {dayEvents.length > 0 && (
                         <div className="flex justify-center gap-0.5 mt-0.5">
                           {dayEvents.some((e) => e.type === 'post') && <span className="w-1 h-1 rounded-full bg-blue-400"></span>}
@@ -618,7 +618,7 @@ export default function DashboardPage() {
                       {isFuture && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setDashCalDay(dateStr); setDashCalAdd(true); }}
-                          className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] bg-blue-600/80 text-white px-1 py-0 rounded font-bold hover:bg-blue-500 transition-colors opacity-0 group-hover:opacity-100"
+                          className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold hover:bg-blue-500 transition-colors"
                         >
                           +
                         </button>

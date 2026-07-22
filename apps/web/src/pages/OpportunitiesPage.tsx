@@ -786,15 +786,50 @@ export default function OpportunitiesPage() {
                         );
                       })()}
 
-                      {/* Call Notes — prominent */}
+                      {/* Call Notes — timestamped log */}
                       <div>
-                        <p className="text-xs text-white font-semibold mb-1">📝 Call Notes</p>
-                        <textarea
-                          defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''}
-                          onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)}
-                          placeholder="Log your call notes, conversation details, next steps..."
-                          className="w-full px-3 py-2 bg-slate-800 border border-white/20 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-24 focus:border-blue-500/50 focus:outline-none"
-                        />
+                        <p className="text-xs text-white font-semibold mb-2">📝 Activity Log</p>
+                        {/* Previous notes */}
+                        {(() => {
+                          const notesRaw = localStorage.getItem(`hawkeye_lead_notes_${lead.id}`);
+                          const notes: { text: string; date: string }[] = notesRaw ? (() => { try { return JSON.parse(notesRaw); } catch { return []; } })() : [];
+                          return notes.length > 0 ? (
+                            <div className="space-y-1.5 mb-2 max-h-40 overflow-y-auto">
+                              {notes.map((note, idx) => (
+                                <div key={idx} className="bg-slate-800/80 border border-white/10 rounded-lg px-3 py-2">
+                                  <p className="text-[10px] text-slate-500 mb-0.5">{note.date}</p>
+                                  <p className="text-xs text-slate-200">{note.text}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
+                        {/* New note input */}
+                        <div className="flex gap-2">
+                          <textarea
+                            id={`note-input-${lead.id}`}
+                            placeholder="Add a note..."
+                            className="flex-1 px-3 py-2 bg-slate-800 border border-white/20 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16 focus:border-blue-500/50 focus:outline-none"
+                          />
+                          <button
+                            onClick={() => {
+                              const input = document.getElementById(`note-input-${lead.id}`) as HTMLTextAreaElement;
+                              if (!input || !input.value.trim()) return;
+                              const notesRaw = localStorage.getItem(`hawkeye_lead_notes_${lead.id}`);
+                              const notes: { text: string; date: string }[] = notesRaw ? (() => { try { return JSON.parse(notesRaw); } catch { return []; } })() : [];
+                              const now = new Date();
+                              const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                              notes.unshift({ text: input.value.trim(), date: dateStr });
+                              localStorage.setItem(`hawkeye_lead_notes_${lead.id}`, JSON.stringify(notes));
+                              input.value = '';
+                              setLeads([...leads]); // force re-render
+                              showToast('✓ Note saved');
+                            }}
+                            className="self-end px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors"
+                          >
+                            Save
+                          </button>
+                        </div>
                       </div>
 
                       {/* Actions */}

@@ -808,7 +808,27 @@ export default function DashboardPage() {
                 <button onClick={() => setDashCalAdd(false)} className="text-xs text-blue-400 hover:text-blue-300 mb-2">← Back</button>
                 <div className="space-y-3">
                   <input type="text" value={dashCalTitle} onChange={(e) => setDashCalTitle(e.target.value)} placeholder="What's happening?" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" autoFocus />
-                  <input type="time" value={dashCalTime} onChange={(e) => setDashCalTime(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                  {/* Quick Time Picker */}
+                  <div>
+                    <p className="text-[10px] text-slate-400 mb-1.5">Time</p>
+                    <div className="grid grid-cols-4 gap-1.5 mb-2">
+                      {['8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'].map((t) => {
+                        const h = parseInt(t.split(':')[0]);
+                        const label = h === 12 ? '12pm' : h > 12 ? `${h - 12}pm` : `${h}am`;
+                        const isSelected = dashCalTime === t;
+                        return (
+                          <button key={t} onClick={() => setDashCalTime(isSelected ? '' : t)} className={`py-1.5 rounded-lg text-xs font-medium transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600'}`}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500">Custom:</span>
+                      <input type="time" value={dashCalTime} onChange={(e) => setDashCalTime(e.target.value)} className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
+                      {dashCalTime && <button onClick={() => setDashCalTime('')} className="text-[10px] text-red-400">Clear</button>}
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     {(['post', 'meeting', 'reminder'] as const).map((t) => (
                       <button key={t} onClick={() => setDashCalType(t)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dashCalType === t ? (t === 'post' ? 'bg-blue-600 text-white' : t === 'meeting' ? 'bg-amber-500 text-black' : 'bg-green-600 text-white') : 'bg-slate-700 text-slate-400'}`}>

@@ -52,6 +52,7 @@ export default function OpportunitiesPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [tier, setTier] = useState('free');
   const [showAddLead, setShowAddLead] = useState(false);
+  const [editingLead, setEditingLead] = useState<any>(null);
   const [newLeadName, setNewLeadName] = useState('');
   const [newLeadSource, setNewLeadSource] = useState('facebook-group');
   const [newLeadGroup, setNewLeadGroup] = useState('');
@@ -612,6 +613,96 @@ export default function OpportunitiesPage() {
         </div>
       )}
 
+      {/* Edit Lead Modal */}
+      {editingLead && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-white">✏️ Edit Lead</h3>
+              <button onClick={() => setEditingLead(null)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Lead Name / Contact</label>
+                <input type="text" defaultValue={editingLead.sourceAuthor} id="editLeadName" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Policy Type</label>
+                <select defaultValue={(editingLead as any).policyType || ''} id="editLeadPolicyType" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <option value="">Select policy type...</option>
+                  {policyTypes.map((pt) => (<option key={pt} value={pt}>{pt}</option>))}
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Expected Premium ($)</label>
+                <input type="number" defaultValue={editingLead._localPremium || ''} id="editLeadPremium" placeholder="e.g. 1200" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Bucket / Category</label>
+                <select defaultValue={editingLead._localBucket || ''} id="editLeadBucket" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <option value="">Select bucket...</option>
+                  {buckets.map((b) => (<option key={b} value={b}>{b}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Worked by</label>
+                <select defaultValue={editingLead._localAssignee || user?.email || ''} id="editLeadAssignee" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <option value={user?.email || ''}>Me ({user?.email?.split('@')[0] || 'me'})</option>
+                  {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => (
+                    <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Status</label>
+                <select defaultValue={editingLead.status} id="editLeadStatus" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <option value="new">New</option>
+                  <option value="followed_up">Followed Up</option>
+                  <option value="converted">Converted</option>
+                </select>
+              </div>
+              <button
+                onClick={async () => {
+                  const name = (document.getElementById('editLeadName') as HTMLInputElement).value.trim();
+                  const policyType = (document.getElementById('editLeadPolicyType') as HTMLSelectElement).value;
+                  const premium = parseFloat((document.getElementById('editLeadPremium') as HTMLInputElement).value) || 0;
+                  const bucket = (document.getElementById('editLeadBucket') as HTMLSelectElement).value;
+                  const assignee = (document.getElementById('editLeadAssignee') as HTMLSelectElement).value;
+                  const status = (document.getElementById('editLeadStatus') as HTMLSelectElement).value;
+
+                  // Save to localStorage
+                  const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+                  localData[name.toLowerCase()] = { assignedTo: assignee, expectedPremium: premium, bucket };
+                  localStorage.setItem(`hawkeye_lead_data_${user?.sub}`, JSON.stringify(localData));
+
+                  // Save bucket mapping
+                  if (bucket) {
+                    const localBuckets = JSON.parse(localStorage.getItem(`hawkeye_lead_buckets_map_${user?.sub}`) || '{}');
+                    localBuckets[name.toLowerCase()] = bucket;
+                    localStorage.setItem(`hawkeye_lead_buckets_map_${user?.sub}`, JSON.stringify(localBuckets));
+                  }
+
+                  // Update status on server
+                  try {
+                    const client = await buildClient();
+                    await client.request('PUT', `/opportunities/${editingLead.id}/status`, { status, assignedTo: assignee });
+                  } catch { /* ignore if fails */ }
+
+                  // Update local state
+                  setLeads((prev) => prev.map((l) => l.id === editingLead.id ? { ...l, sourceAuthor: name, status, policyType, assignedTo: assignee, expectedPremium: premium, bucket } as any : l));
+                  setEditingLead(null);
+                  showToast('✓ Lead updated');
+                }}
+                className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95"
+              >
+                ✓ Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
 
       {/* Hawk Nests — Lead Buckets */}
@@ -895,6 +986,11 @@ export default function OpportunitiesPage() {
                           <button onClick={() => handleUpdateStatus(lead.id, 'converted')} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">✓ Converted</button>
                         )}
                         {lead.sourceUrl && <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-400 rounded-lg text-xs">View ↗</a>}
+                        <button onClick={() => {
+                          const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+                          const ld = localData[(lead.sourceAuthor || '').toLowerCase()] || {};
+                          setEditingLead({ ...lead, _localBucket: ld.bucket || (lead as any).bucket || '', _localPremium: ld.expectedPremium || (lead as any).expectedPremium || '', _localAssignee: ld.assignedTo || (lead as any).assignedTo || '' });
+                        }} className="px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-600/30">✏️ Edit</button>
                         <button onClick={() => handleDelete(lead.id)} className="ml-auto px-3 py-1.5 text-red-400 text-xs hover:text-red-300 hover:bg-red-500/10 rounded-lg">Delete</button>
                       </div>
                     </div>

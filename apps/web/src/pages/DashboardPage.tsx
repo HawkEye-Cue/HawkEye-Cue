@@ -308,7 +308,7 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-1.5">
             {teamWins.map((win) => (
-              <div key={win.id} className="flex items-center justify-between bg-black/20 rounded-lg px-3 py-2">
+              <div key={win.id} className="flex items-center justify-between bg-slate-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-slate-200"><strong>{win.memberName}</strong> closed <strong>{win.dealName}</strong></p>
                 </div>
@@ -357,14 +357,14 @@ export default function DashboardPage() {
                 }
                 if (m.completed) {
                   return (
-                    <div key={m.id} className="flex items-center gap-2 bg-green-500/10 rounded-lg px-3 py-1.5 opacity-60">
+                    <div key={m.id} className="flex items-center gap-2 bg-slate-800 border border-green-500/30 rounded-lg px-3 py-1.5 opacity-70">
                       <span className="text-xs text-green-400">✓</span>
                       <span className="text-xs text-slate-400 flex-1 truncate line-through">{cleanTitle}</span>
                     </div>
                   );
                 }
                 return (
-                  <div key={m.id} className="flex items-center gap-2 bg-black/20 rounded-lg px-3 py-2">
+                  <div key={m.id} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2">
                     {timeStr && <span className="text-xs font-bold text-white bg-amber-600 px-2 py-0.5 rounded">{timeStr}</span>}
                     <span className="text-xs text-slate-200 flex-1 truncate">{cleanTitle}</span>
                     {m.inviteStatus === 'confirmed' && <span className="text-[9px] bg-green-600/40 text-green-300 px-1.5 py-0.5 rounded-full">✓ Confirmed</span>}

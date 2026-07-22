@@ -171,7 +171,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      {/* Left column: account info, trade selector, subscription plans */}
+      <div className="min-w-0 space-y-4">
       <h2 className="text-xl font-bold text-white">Settings</h2>
 
       {/* Team Management Link */}
@@ -417,6 +419,11 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Keyword Tracking - NOW ABOVE pricing was moved, this stays where subscription was */}
+      </div>{/* end left column */}
+
+      {/* Right column: connected social accounts, keyword tracking, browser extension */}
+      <div className="min-w-0 space-y-4">
       {/* Keyword Tracking - NOW ABOVE pricing was moved, this stays where subscription was */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">🔑 Keyword Tracking</h3>
@@ -698,6 +705,7 @@ export default function SettingsPage() {
           📧 Contact Us: briannafrashier@hawkeyecue.com
         </a>
       </div>
+      </div>{/* end right column */}
     </div>
   );
 }

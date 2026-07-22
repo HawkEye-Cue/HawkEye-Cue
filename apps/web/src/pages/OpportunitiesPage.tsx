@@ -408,7 +408,9 @@ export default function OpportunitiesPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      {/* Left column */}
+      <div className="min-w-0 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-white">Lead Cues</h2>
         <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors">
@@ -866,6 +868,10 @@ export default function OpportunitiesPage() {
       })()}
 
       {/* Lead Flight Projection — Visual Timeline */}
+      </div>{/* end left column */}
+
+      {/* Right column */}
+      <div className="min-w-0 space-y-4">
       <div className="rounded-xl border border-white/20 p-4 bg-slate-800/95 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-sm font-semibold text-white">🦅 Flight Projection</h3>
@@ -990,6 +996,7 @@ export default function OpportunitiesPage() {
           <p className="text-xs text-slate-300">This is your follow-up sequence. Every time you add a lead, these steps will auto-schedule on your calendar so you never miss a touch.</p>
         </div>
       )}
+      </div>{/* end right column */}
     </div>
   );
 }

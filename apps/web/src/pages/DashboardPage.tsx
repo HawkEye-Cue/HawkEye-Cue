@@ -192,7 +192,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      {/* Left column */}
+      <div className="min-w-0 space-y-4">
       <div className="flex flex-col items-center gap-2">
         <h2 className="text-xl font-bold text-white">Dashboard</h2>
         <div className="flex flex-wrap justify-center gap-1.5">
@@ -551,6 +553,10 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      </div>
+
+      {/* Right column */}
+      <div className="min-w-0 space-y-4">
 
       {/* Full Month Calendar */}
       <div className="glass-card">
@@ -1159,6 +1165,7 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

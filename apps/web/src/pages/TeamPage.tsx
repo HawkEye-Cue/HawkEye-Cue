@@ -350,7 +350,9 @@ export default function TeamPage() {
   const unreadNotifs = notifications.filter((n) => !n.dismissed).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      {/* Left column: header, tabs, manage tab */}
+      <div className="min-w-0 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -474,6 +476,11 @@ export default function TeamPage() {
         </div>
       )}
 
+      {/* ═══ CALENDAR TAB ═══ */}
+      </div>{/* end left column */}
+
+      {/* Right column: calendar, leads, analytics, notifications tabs */}
+      <div className="min-w-0 space-y-4">
       {/* ═══ CALENDAR TAB ═══ */}
       {tab === 'calendar' && (
         <div className="space-y-4">
@@ -716,6 +723,7 @@ export default function TeamPage() {
           </div>
         </div>
       )}
+      </div>{/* end right column */}
     </div>
   );
 }

@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const [dashCalType, setDashCalType] = useState<'post' | 'meeting' | 'reminder'>('post');
   const [dashCalTime, setDashCalTime] = useState('');
   const [dashCalLink, setDashCalLink] = useState('');
+  const [dashCalInviteEmail, setDashCalInviteEmail] = useState('');
   const [teamWins, setTeamWins] = useState<{ id: string; memberName: string; dealName: string; dealValue: number; closedAt: string }[]>([]);
 
   // Refetch when page becomes visible (user navigates back)
@@ -781,13 +782,36 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   <input type="url" value={dashCalLink} onChange={(e) => setDashCalLink(e.target.value)} placeholder="Link (optional)" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                  {dashCalType === 'meeting' && (
+                    <input type="email" value={dashCalInviteEmail} onChange={(e) => setDashCalInviteEmail(e.target.value)} placeholder="Invite email (sends meeting invite)" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                  )}
                   <button
                     onClick={async () => {
                       if (!dashCalTitle.trim()) return;
                       let title = dashCalTitle.trim();
                       if (dashCalTime) title = `[${dashCalTime}] ${title}`;
-                      await addEvent({ date: dashCalDay!, title, type: dashCalType, link: dashCalLink.trim() || undefined });
-                      setDashCalTitle(''); setDashCalTime(''); setDashCalLink('');
+                      const eventId = await addEvent({ date: dashCalDay!, title, type: dashCalType, link: dashCalLink.trim() || undefined });
+
+                      // Send meeting invite if email provided
+                      if (dashCalType === 'meeting' && dashCalInviteEmail.trim()) {
+                        try {
+                          const token = await getToken();
+                          const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                          await client.request('POST', '/calendar/invite', {
+                            eventId: eventId || undefined,
+                            email: dashCalInviteEmail.trim(),
+                            meetingTitle: dashCalTitle.trim(),
+                            meetingDate: dashCalDay,
+                            meetingTime: dashCalTime || undefined,
+                            zoomLink: dashCalLink.trim() || undefined,
+                          });
+                          showToast('✉️ Meeting invite sent!');
+                        } catch {
+                          showToast('⚠️ Event added but invite failed to send');
+                        }
+                      }
+
+                      setDashCalTitle(''); setDashCalTime(''); setDashCalLink(''); setDashCalInviteEmail('');
                       setDashCalAdd(false);
                     }}
                     disabled={!dashCalTitle.trim()}

@@ -756,19 +756,32 @@ export default function DashboardPage() {
                                 });
                                 const hourLabel = hour === 0 ? '12a' : hour < 12 ? `${hour}a` : hour === 12 ? '12p' : `${hour - 12}p`;
                                 return (
-                                  <div key={hour} className={`flex items-start gap-2 min-h-[28px] ${hourMeetings.length > 0 ? '' : 'opacity-40'}`}>
-                                    <span className="text-[9px] text-slate-500 w-7 shrink-0 pt-0.5 text-right">{hourLabel}</span>
-                                    <div className="flex-1 border-t border-white/5 pt-0.5">
-                                      {hourMeetings.map((m: any) => {
-                                        const cleanTitle = m.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*—\s*📍.*$/, '').replace(/\s*\|.*$/, '');
-                                        return (
-                                          <div key={m.id} className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 rounded px-2 py-1 mb-0.5">
-                                            <span className={`text-xs font-medium flex-1 ${m.completed ? 'line-through text-slate-500' : 'text-amber-200'}`}>{cleanTitle}</span>
-                                            {m.inviteStatus === 'confirmed' && <span className="text-[8px] text-green-400">✓</span>}
-                                            <button onClick={() => { removeEvent(m.id); }} className="text-[9px] text-slate-500 hover:text-red-400">✕</button>
-                                          </div>
-                                        );
-                                      })}
+                                  <div key={hour} className={`flex items-start gap-2 min-h-[32px] ${hourMeetings.length > 0 ? '' : 'opacity-30'}`}>
+                                    <span className="text-[9px] text-slate-500 w-7 shrink-0 pt-1 text-right">{hourLabel}</span>
+                                    <div className="flex-1 border-t border-white/10 pt-0.5">
+                                      {/* Stack overlapping meetings side by side */}
+                                      <div className="flex gap-1 flex-wrap">
+                                        {hourMeetings.map((m: any) => {
+                                          const cleanTitle = m.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*—\s*📍.*$/, '').replace(/\s*\|.*$/, '');
+                                          // Team member color (if event has memberEmail from team calendar)
+                                          const memberColors = ['bg-blue-500/20 border-blue-400/40', 'bg-purple-500/20 border-purple-400/40', 'bg-emerald-500/20 border-emerald-400/40', 'bg-amber-500/20 border-amber-400/40', 'bg-pink-500/20 border-pink-400/40'];
+                                          const memberTextColors = ['text-blue-200', 'text-purple-200', 'text-emerald-200', 'text-amber-200', 'text-pink-200'];
+                                          const memberDots = ['bg-blue-400', 'bg-purple-400', 'bg-emerald-400', 'bg-amber-400', 'bg-pink-400'];
+                                          const memberIdx = m.memberEmail ? Math.abs([...m.memberEmail].reduce((a: number, c: string) => a + c.charCodeAt(0), 0)) % 5 : -1;
+                                          const bgColor = memberIdx >= 0 ? memberColors[memberIdx] : 'bg-amber-500/15 border-amber-500/30';
+                                          const textColor = memberIdx >= 0 ? memberTextColors[memberIdx] : 'text-amber-200';
+                                          const dotColor = memberIdx >= 0 ? memberDots[memberIdx] : '';
+
+                                          return (
+                                            <div key={m.id} className={`flex items-center gap-1.5 ${bgColor} border rounded px-2 py-1.5 flex-1 min-w-[80px]`}>
+                                              {dotColor && <div className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} />}
+                                              <span className={`text-xs font-medium flex-1 truncate ${m.completed ? 'line-through text-slate-500' : textColor}`}>{cleanTitle}</span>
+                                              {m.inviteStatus === 'confirmed' && <span className="text-[8px] text-green-400">✓</span>}
+                                              <button onClick={() => { removeEvent(m.id); }} className="text-[9px] text-slate-500 hover:text-red-400">✕</button>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
                                     </div>
                                   </div>
                                 );

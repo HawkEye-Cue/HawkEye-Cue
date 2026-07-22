@@ -451,14 +451,24 @@ export default function DashboardPage() {
                         <span className="text-lg font-bold text-green-400">{reminders.length}</span>
                       </summary>
                       {reminders.length > 0 && (
-                        <div className="px-2 pb-2 space-y-1 border-t border-green-500/20 pt-2">
-                          {reminders.map((event) => (
-                            <label key={event.id} className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-green-500/10">
-                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-green-500" />
-                              <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
-                              {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 shrink-0 text-xs">🔗</a>}
-                            </label>
-                          ))}
+                        <div className="px-2 pb-2 space-y-0.5 border-t border-green-500/20 pt-2">
+                          {reminders.map((event) => {
+                            // Extract just the person's name from title (format: "📞 Name — task")
+                            const nameMatch = event.title.match(/^[📞💬✉️🔔]\s*(.+?)(?:\s*—|$)/);
+                            const displayName = nameMatch ? nameMatch[1].trim() : event.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').slice(0, 25);
+                            const icon = event.title.startsWith('📞') ? '📞' : event.title.startsWith('💬') ? '💬' : event.title.startsWith('✉️') ? '✉️' : '🔔';
+                            return (
+                              <div
+                                key={event.id}
+                                onClick={() => navigate('/opportunities')}
+                                className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-green-500/10 transition-colors ${event.completed ? 'opacity-50' : ''}`}
+                              >
+                                <input type="checkbox" checked={event.completed} onChange={(e) => { e.stopPropagation(); toggleComplete(event.id); }} className="w-3 h-3 rounded shrink-0 accent-green-500" />
+                                <span className="text-xs">{icon}</span>
+                                <span className={`text-xs flex-1 truncate ${event.completed ? 'line-through text-slate-600' : 'text-white font-medium'}`}>{displayName}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </details>

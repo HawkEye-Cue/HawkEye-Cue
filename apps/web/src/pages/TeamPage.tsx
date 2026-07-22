@@ -506,59 +506,111 @@ export default function TeamPage() {
           <div className="glass-card">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-white">📅 Team Calendar</h3>
-              <p className="text-xs text-slate-500">Next 30 days</p>
+              <p className="text-xs text-slate-500">{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
             </div>
 
             {/* Member color legend */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {team.members.map((m, i) => (
-                <div key={m.userId} className="flex items-center gap-1.5">
-                  <div className={`w-2.5 h-2.5 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
-                  <span className="text-xs text-slate-400">{m.email.split('@')[0]}</span>
-                </div>
-              ))}
+            <div className="flex flex-wrap gap-3 mb-4">
+              {team.members.map((m, i) => {
+                const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                const name = displayNames[m.email] || m.email.split('@')[0];
+                return (
+                  <div key={m.userId} className="flex items-center gap-1.5">
+                    <div className={`w-3 h-3 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
+                    <span className="text-xs text-white font-medium">{name}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {calendarLoading ? (
               <p className="text-xs text-slate-500">Loading team calendar...</p>
-            ) : teamCalendar.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-2xl mb-2">📅</p>
-                <p className="text-sm text-slate-400">No upcoming team events</p>
-                <p className="text-xs text-slate-500 mt-1">Team members' meetings and posts will show up here</p>
-              </div>
             ) : (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                {/* Group by date */}
-                {Object.entries(
-                  teamCalendar.reduce((acc, event) => {
-                    if (!acc[event.date]) acc[event.date] = [];
-                    acc[event.date].push(event);
-                    return acc;
-                  }, {} as Record<string, TeamCalendarEvent[]>)
-                ).sort(([a], [b]) => a.localeCompare(b)).map(([date, dayEvents]) => (
-                  <div key={date}>
-                    <p className="text-xs font-semibold text-slate-400 mb-1.5 sticky top-0 bg-slate-900/90 py-1">
-                      {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </p>
-                    <div className="space-y-1.5">
-                      {dayEvents.map((event) => {
-                        const colorIdx = getMemberColorIndex(event.memberEmail);
-                        return (
-                          <div key={event.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${MEMBER_BORDER_COLORS[colorIdx]} ${MEMBER_BG_COLORS[colorIdx]}`}>
-                            <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white truncate">{event.title}</p>
-                              <p className="text-xs text-slate-400">{event.memberName || event.memberEmail.split('@')[0]}{event.startTime ? ` · ${event.startTime}` : ''}</p>
+              <>
+                {/* Monthly grid calendar */}
+                {(() => {
+                  const now = new Date();
+                  const year = now.getFullYear();
+                  const month = now.getMonth();
+                  const daysInMonth = new Date(year, month + 1, 0).getDate();
+                  const firstDayOfWeek = new Date(year, month, 1).getDay();
+                  const today = now.getDate();
+
+                  return (
+                    <div>
+                      <div className="grid grid-cols-7 gap-0.5 mb-1">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                          <div key={i} className="text-center text-[10px] text-slate-500 font-medium py-1">{d}</div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-0.5">
+                        {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e-${i}`} />)}
+                        {Array.from({ length: daysInMonth }, (_, i) => {
+                          const day = i + 1;
+                          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                          const dayEvents = teamCalendar.filter((e) => e.date === dateStr);
+                          const isToday = day === today;
+                          const uniqueMembers = [...new Set(dayEvents.map((e) => e.memberEmail))];
+
+                          return (
+                            <div
+                              key={day}
+                              className={`text-center py-2 sm:py-3 rounded-lg cursor-pointer relative ${isToday ? 'bg-blue-600 text-white font-bold' : dayEvents.length > 0 ? 'bg-slate-700 text-white' : 'text-slate-500 hover:bg-slate-700/50'}`}
+                            >
+                              <span className="text-xs sm:text-sm">{day}</span>
+                              {uniqueMembers.length > 0 && (
+                                <div className="flex justify-center gap-0.5 mt-0.5">
+                                  {uniqueMembers.slice(0, 4).map((email) => (
+                                    <div key={email} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[getMemberColorIndex(email)]}`} />
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <span className="text-xs text-slate-500 shrink-0">{event.type === 'meeting' ? '🤝' : event.type === 'post' ? '📤' : '🔔'}</span>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Day detail list below calendar */}
+                {teamCalendar.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-white/10">
+                    <p className="text-xs text-slate-400 font-semibold mb-2">Upcoming Events</p>
+                    <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
+                      {Object.entries(
+                        teamCalendar.reduce((acc, event) => {
+                          if (!acc[event.date]) acc[event.date] = [];
+                          acc[event.date].push(event);
+                          return acc;
+                        }, {} as Record<string, TeamCalendarEvent[]>)
+                      ).sort(([a], [b]) => a.localeCompare(b)).slice(0, 7).map(([date, dayEvents]) => (
+                        <div key={date}>
+                          <p className="text-[10px] font-semibold text-slate-500 mb-1">
+                            {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </p>
+                          {dayEvents.map((event) => {
+                            const colorIdx = getMemberColorIndex(event.memberEmail);
+                            const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                            const memberName = displayNames[event.memberEmail] || event.memberName || event.memberEmail.split('@')[0];
+                            const cleanTitle = event.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
+                            return (
+                              <div key={event.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${MEMBER_BORDER_COLORS[colorIdx]} bg-slate-700 mb-0.5`}>
+                                <div className={`w-2.5 h-2.5 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-xs text-white truncate block">{cleanTitle}</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 shrink-0">{memberName}</span>
+                                <span className="text-xs shrink-0">{event.type === 'meeting' ? '🤝' : event.type === 'post' ? '📤' : '🔔'}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         </div>

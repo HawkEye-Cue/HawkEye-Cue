@@ -6,6 +6,7 @@ import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
+import LeadProfilePopup from '../components/LeadProfilePopup';
 
 const FILTERS: { label: string; value: OpportunityStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
@@ -68,6 +69,7 @@ export default function OpportunitiesPage() {
   const [activeBucket, setActiveBucket] = useState<string | null>(null);
   const [showBucketManager, setShowBucketManager] = useState(false);
   const [newBucketName, setNewBucketName] = useState('');
+  const [selectedLead, setSelectedLead] = useState<Opportunity | null>(null);
 
   // Buckets (persisted in localStorage)
   const bucketsKey = `hawkeye_lead_buckets_${user?.sub || 'default'}`;
@@ -372,6 +374,7 @@ export default function OpportunitiesPage() {
           {lead.sourceUrl && (
             <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10">View Post ↗</a>
           )}
+          <button onClick={() => setSelectedLead(lead)} className="px-3 py-1.5 bg-purple-600/20 border border-purple-500/30 text-purple-300 rounded-lg text-xs font-medium hover:bg-purple-600/30">👤 Profile</button>
         </div>
         {/* Worked By */}
         {(lead as any).assignedTo && (
@@ -979,6 +982,7 @@ export default function OpportunitiesPage() {
 
                       {/* Actions */}
                       <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); }} className="px-3 py-1.5 bg-purple-600/20 border border-purple-500/30 text-purple-300 rounded-lg text-xs font-medium hover:bg-purple-600/30">👤 Profile</button>
                         {lead.status === 'new' && (
                           <button onClick={() => handleUpdateStatus(lead.id, 'followed_up')} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-600/30 disabled:opacity-50">📞 Followed Up</button>
                         )}
@@ -1137,6 +1141,39 @@ export default function OpportunitiesPage() {
         </div>
       )}
       </div>{/* end right column */}
+
+      {/* Lead Profile Popup */}
+      {selectedLead && (
+        <LeadProfilePopup
+          lead={selectedLead}
+          followupSteps={leadFollowups[selectedLead.id]?.steps || []}
+          isOpen={selectedLead !== null}
+          onClose={() => setSelectedLead(null)}
+          onStatusUpdate={async (leadId, status) => {
+            await handleUpdateStatus(leadId, status);
+            setSelectedLead(null);
+          }}
+          onFollowupComplete={async (leadId, stepIdx) => {
+            try {
+              const client = await buildClient();
+              const result = await client.request<{ steps: any[] }>('PUT', `/opportunities/${leadId}/followups/${stepIdx}`, { completed: true });
+              setLeadFollowups((prev) => ({ ...prev, [leadId]: { steps: result.steps } }));
+              showToast('✓ Step completed');
+            } catch { showToast('❌ Failed'); }
+          }}
+          onDelete={async (leadId) => {
+            await handleDelete(leadId);
+            setSelectedLead(null);
+          }}
+          onEdit={(lead) => {
+            const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+            const ld = localData[(lead.sourceAuthor || '').toLowerCase()] || {};
+            setEditingLead({ ...lead, _localBucket: ld.bucket || (lead as any).bucket || '', _localPremium: ld.expectedPremium || (lead as any).expectedPremium || '', _localAssignee: ld.assignedTo || (lead as any).assignedTo || '' });
+            setSelectedLead(null);
+          }}
+          updatingId={updatingId}
+        />
+      )}
     </div>
   );
 }

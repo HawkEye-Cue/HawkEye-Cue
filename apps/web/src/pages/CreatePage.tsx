@@ -22,6 +22,7 @@ export default function CreatePage() {
       </div>
       {/* Preview + Calendar - Right/Bottom */}
       <div className="min-w-0 space-y-4">
+        <CalendarPage />
         {/* Post Preview Panel */}
         {previewContent && Object.keys(previewContent).length > 0 && (
           <div className="rounded-xl border border-white/20 p-4 bg-slate-800 backdrop-blur-sm sticky top-4">
@@ -52,7 +53,6 @@ export default function CreatePage() {
             </div>
           </div>
         )}
-        <CalendarPage />
       </div>
     </div>
   );

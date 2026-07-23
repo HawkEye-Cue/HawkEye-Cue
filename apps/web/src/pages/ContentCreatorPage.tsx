@@ -535,6 +535,261 @@ export default function ContentCreatorPage() {
       </>
       )}
 
+      {platformContent && (
+        <div className="space-y-4 animate-scale-in">
+          <h3 className="font-semibold text-white">Generated Content — Per Platform</h3>
+
+          {Object.entries(platformContent).map(([platform, content]) => (
+            <div key={platform} className="glass-card-strong gradient-border">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">{PLATFORM_ICONS[platform] || '📱'}</span>
+                <h4 className="font-medium text-white capitalize">{platform}</h4>
+              </div>
+              <div className="relative">
+                <textarea
+                  id={`platform-textarea-${platform}`}
+                  value={content}
+                  onChange={(e) =>
+                    setPlatformContent((prev) =>
+                      prev ? { ...prev, [platform]: e.target.value } : prev
+                    )
+                  }
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white resize-none h-32 focus:border-blue-500/50 focus:outline-none transition-colors text-sm"
+                />
+                <button
+                  onClick={() => setShowEmojiPicker(showEmojiPicker === platform ? false : platform as any)}
+                  className="absolute top-2 right-2 text-lg hover:scale-125 transition-transform"
+                  title="Add emoji"
+                >
+                  😀
+                </button>
+                {showEmojiPicker === platform && (
+                  <div className="absolute top-10 right-0 z-50 bg-slate-800 border border-white/20 rounded-xl p-3 shadow-xl w-72 max-h-48 overflow-y-auto">
+                    <div className="flex flex-wrap gap-1.5">
+                      {EMOJI_LIST.map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => {
+                            setPlatformContent((prev) => prev ? { ...prev, [platform]: prev[platform] + emoji } : prev);
+                            setShowEmojiPicker(false);
+                          }}
+                          className="text-xl hover:scale-125 hover:bg-white/10 rounded p-1 transition-all"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-slate-500">
+                  {content.length} characters
+                </span>
+                <button
+                  onClick={() => navigator.clipboard.writeText(content)}
+                  className="text-xs text-blue-400 hover:text-blue-300"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {/* Post Preview */}
+          <details className="glass-card-strong" open>
+            <summary className="font-semibold text-white cursor-pointer flex items-center gap-2">
+              👁️ Post Preview
+            </summary>
+            <div className="mt-4 space-y-4">
+              {Object.entries(platformContent).map(([platform, content]) => (
+                <div key={`preview-${platform}`} className="rounded-xl border border-slate-600 overflow-hidden bg-white">
+                  {/* Platform header */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                      {user?.email?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900">{currentTrade?.name || 'Your Business'}</p>
+                      <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                        {PLATFORM_ICONS[platform]} {platform.charAt(0).toUpperCase() + platform.slice(1)} · Just now
+                      </p>
+                    </div>
+                  </div>
+                  {/* Post content */}
+                  <div className="px-3 py-2">
+                    <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{content.slice(0, 300)}{content.length > 300 ? '...' : ''}</p>
+                  </div>
+                  {/* Media */}
+                  {imagePreview && (
+                    <div className="px-3 pb-2">
+                      <img src={imagePreview} alt="Post media" className="w-full rounded-lg object-cover max-h-64" />
+                    </div>
+                  )}
+                  {videoName && !imagePreview && (
+                    <div className="px-3 pb-2">
+                      <div className="w-full h-48 rounded-lg bg-slate-900 flex items-center justify-center">
+                        <div className="text-center">
+                          <span className="text-4xl">🎬</span>
+                          <p className="text-xs text-slate-400 mt-1">{videoName}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Engagement bar */}
+                  <div className="px-3 py-2 border-t border-slate-200 flex items-center gap-4 text-slate-500 text-xs">
+                    <span>👍 Like</span>
+                    <span>💬 Comment</span>
+                    <span>↗️ Share</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <button
+                disabled={scheduling}
+                onClick={async () => {
+                  if (!platformContent) return;
+                  setError('');
+                  setSuccess('');
+                  setScheduling(true);
+                  try {
+                    const token = await getToken();
+                    const client = new ApiClient({
+                      baseUrl: import.meta.env.VITE_API_URL as string,
+                      getToken: async () => token,
+                    });
+
+                    // Upload image if provided
+                    let mediaUrls: string[] = [];
+                    if (imageFile) {
+                      const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
+                      await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
+                      mediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
+                    } else if (videoFile) {
+                      const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
+                      await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
+                      mediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
+                    }
+
+                    const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+                    const content = Object.values(platformContent)[0] || '';
+                    await client.schedulePosts({
+                      contentId: 'generated-' + Date.now(),
+                      content,
+                      platformContent,
+                      platforms,
+                      scheduledAt,
+                      mediaUrls,
+                    });
+                    setSuccess('✓ Posted! It will go live in about 2 minutes.');
+                    setShowHawkSwoop(true);
+                    setTimeout(() => setShowHawkSwoop(false), 1400);
+                    setScheduling(false);
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : 'Failed to post';
+                    setError(msg);
+                    setScheduling(false);
+                  }
+                }}
+                className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 disabled:opacity-50 active:scale-95 transition-all duration-200"
+              >
+                {scheduling ? 'Posting...' : 'Post Now'}
+              </button>
+              <button
+                onClick={() => {
+                  if (platformContent) {
+                    const allText = Object.entries(platformContent).map(([p, c]) => `--- ${p.toUpperCase()} ---\n${c}`).join('\n\n');
+                    navigator.clipboard.writeText(allText);
+                    setSuccess('✓ All content copied to clipboard');
+                  }
+                }}
+                className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200"
+              >
+                Copy All
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="datetime-local"
+                id="schedule-time"
+                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-blue-500/50 focus:outline-none"
+                min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)}
+              />
+              <button
+                disabled={scheduling}
+                onClick={async () => {
+                  if (!platformContent) return;
+                  const input = document.getElementById('schedule-time') as HTMLInputElement;
+                  if (!input?.value) {
+                    setError('Please pick a date and time to schedule');
+                    return;
+                  }
+                  setError('');
+                  setScheduling(true);
+                  try {
+                    const token = await getToken();
+                    const client = new ApiClient({
+                      baseUrl: import.meta.env.VITE_API_URL as string,
+                      getToken: async () => token,
+                    });
+
+                    // Upload media if provided
+                    let schedMediaUrls: string[] = [];
+                    if (imageFile) {
+                      const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
+                      await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
+                      schedMediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
+                    } else if (videoFile) {
+                      const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
+                      await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
+                      schedMediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
+                    }
+
+                    const scheduledAt = new Date(input.value).toISOString();
+                    const content = Object.values(platformContent)[0] || '';
+                    await client.schedulePosts({
+                      contentId: 'generated-' + Date.now(),
+                      content,
+                      platformContent,
+                      platforms,
+                      scheduledAt,
+                      mediaUrls: schedMediaUrls,
+                    });
+                    setSuccess('✓ Scheduled! Check the Calendar tab.');
+                    setShowHawkSwoop(true);
+                    setTimeout(() => setShowHawkSwoop(false), 1400);
+                    setScheduling(false);
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : 'Failed to schedule';
+                    setError(msg);
+                    setScheduling(false);
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50 active:scale-95 transition-all duration-200"
+              >
+                Schedule
+              </button>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="p-3 rounded-lg bg-green-950/40 border border-green-500/40 text-sm text-green-300">
+                {success}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Flocks Tabs */}
       <div className="glass-card">
         <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1 mb-3">
@@ -882,261 +1137,6 @@ export default function ContentCreatorPage() {
         </>
         )}
       </div>
-
-      {platformContent && (
-        <div className="space-y-4 animate-scale-in">
-          <h3 className="font-semibold text-white">Generated Content — Per Platform</h3>
-
-          {Object.entries(platformContent).map(([platform, content]) => (
-            <div key={platform} className="glass-card-strong gradient-border">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">{PLATFORM_ICONS[platform] || '📱'}</span>
-                <h4 className="font-medium text-white capitalize">{platform}</h4>
-              </div>
-              <div className="relative">
-                <textarea
-                  id={`platform-textarea-${platform}`}
-                  value={content}
-                  onChange={(e) =>
-                    setPlatformContent((prev) =>
-                      prev ? { ...prev, [platform]: e.target.value } : prev
-                    )
-                  }
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white resize-none h-32 focus:border-blue-500/50 focus:outline-none transition-colors text-sm"
-                />
-                <button
-                  onClick={() => setShowEmojiPicker(showEmojiPicker === platform ? false : platform as any)}
-                  className="absolute top-2 right-2 text-lg hover:scale-125 transition-transform"
-                  title="Add emoji"
-                >
-                  😀
-                </button>
-                {showEmojiPicker === platform && (
-                  <div className="absolute top-10 right-0 z-50 bg-slate-800 border border-white/20 rounded-xl p-3 shadow-xl w-72 max-h-48 overflow-y-auto">
-                    <div className="flex flex-wrap gap-1.5">
-                      {EMOJI_LIST.map((emoji) => (
-                        <button
-                          key={emoji}
-                          onClick={() => {
-                            setPlatformContent((prev) => prev ? { ...prev, [platform]: prev[platform] + emoji } : prev);
-                            setShowEmojiPicker(false);
-                          }}
-                          className="text-xl hover:scale-125 hover:bg-white/10 rounded p-1 transition-all"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-xs text-slate-500">
-                  {content.length} characters
-                </span>
-                <button
-                  onClick={() => navigator.clipboard.writeText(content)}
-                  className="text-xs text-blue-400 hover:text-blue-300"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {/* Post Preview */}
-          <details className="glass-card-strong" open>
-            <summary className="font-semibold text-white cursor-pointer flex items-center gap-2">
-              👁️ Post Preview
-            </summary>
-            <div className="mt-4 space-y-4">
-              {Object.entries(platformContent).map(([platform, content]) => (
-                <div key={`preview-${platform}`} className="rounded-xl border border-slate-600 overflow-hidden bg-white">
-                  {/* Platform header */}
-                  <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-                      {user?.email?.[0]?.toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-900">{currentTrade?.name || 'Your Business'}</p>
-                      <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                        {PLATFORM_ICONS[platform]} {platform.charAt(0).toUpperCase() + platform.slice(1)} · Just now
-                      </p>
-                    </div>
-                  </div>
-                  {/* Post content */}
-                  <div className="px-3 py-2">
-                    <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{content.slice(0, 300)}{content.length > 300 ? '...' : ''}</p>
-                  </div>
-                  {/* Media */}
-                  {imagePreview && (
-                    <div className="px-3 pb-2">
-                      <img src={imagePreview} alt="Post media" className="w-full rounded-lg object-cover max-h-64" />
-                    </div>
-                  )}
-                  {videoName && !imagePreview && (
-                    <div className="px-3 pb-2">
-                      <div className="w-full h-48 rounded-lg bg-slate-900 flex items-center justify-center">
-                        <div className="text-center">
-                          <span className="text-4xl">🎬</span>
-                          <p className="text-xs text-slate-400 mt-1">{videoName}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {/* Engagement bar */}
-                  <div className="px-3 py-2 border-t border-slate-200 flex items-center gap-4 text-slate-500 text-xs">
-                    <span>👍 Like</span>
-                    <span>💬 Comment</span>
-                    <span>↗️ Share</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </details>
-
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <button
-                disabled={scheduling}
-                onClick={async () => {
-                  if (!platformContent) return;
-                  setError('');
-                  setSuccess('');
-                  setScheduling(true);
-                  try {
-                    const token = await getToken();
-                    const client = new ApiClient({
-                      baseUrl: import.meta.env.VITE_API_URL as string,
-                      getToken: async () => token,
-                    });
-
-                    // Upload image if provided
-                    let mediaUrls: string[] = [];
-                    if (imageFile) {
-                      const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
-                      await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
-                      mediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
-                    } else if (videoFile) {
-                      const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
-                      await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
-                      mediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
-                    }
-
-                    const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-                    const content = Object.values(platformContent)[0] || '';
-                    await client.schedulePosts({
-                      contentId: 'generated-' + Date.now(),
-                      content,
-                      platformContent,
-                      platforms,
-                      scheduledAt,
-                      mediaUrls,
-                    });
-                    setSuccess('✓ Posted! It will go live in about 2 minutes.');
-                    setShowHawkSwoop(true);
-                    setTimeout(() => setShowHawkSwoop(false), 1400);
-                    setScheduling(false);
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : 'Failed to post';
-                    setError(msg);
-                    setScheduling(false);
-                  }
-                }}
-                className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-500 disabled:opacity-50 active:scale-95 transition-all duration-200"
-              >
-                {scheduling ? 'Posting...' : 'Post Now'}
-              </button>
-              <button
-                onClick={() => {
-                  if (platformContent) {
-                    const allText = Object.entries(platformContent).map(([p, c]) => `--- ${p.toUpperCase()} ---\n${c}`).join('\n\n');
-                    navigator.clipboard.writeText(allText);
-                    setSuccess('✓ All content copied to clipboard');
-                  }
-                }}
-                className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all duration-200"
-              >
-                Copy All
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="datetime-local"
-                id="schedule-time"
-                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-blue-500/50 focus:outline-none"
-                min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)}
-              />
-              <button
-                disabled={scheduling}
-                onClick={async () => {
-                  if (!platformContent) return;
-                  const input = document.getElementById('schedule-time') as HTMLInputElement;
-                  if (!input?.value) {
-                    setError('Please pick a date and time to schedule');
-                    return;
-                  }
-                  setError('');
-                  setScheduling(true);
-                  try {
-                    const token = await getToken();
-                    const client = new ApiClient({
-                      baseUrl: import.meta.env.VITE_API_URL as string,
-                      getToken: async () => token,
-                    });
-
-                    // Upload media if provided
-                    let schedMediaUrls: string[] = [];
-                    if (imageFile) {
-                      const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
-                      await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
-                      schedMediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
-                    } else if (videoFile) {
-                      const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
-                      await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
-                      schedMediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
-                    }
-
-                    const scheduledAt = new Date(input.value).toISOString();
-                    const content = Object.values(platformContent)[0] || '';
-                    await client.schedulePosts({
-                      contentId: 'generated-' + Date.now(),
-                      content,
-                      platformContent,
-                      platforms,
-                      scheduledAt,
-                      mediaUrls: schedMediaUrls,
-                    });
-                    setSuccess('✓ Scheduled! Check the Calendar tab.');
-                    setShowHawkSwoop(true);
-                    setTimeout(() => setShowHawkSwoop(false), 1400);
-                    setScheduling(false);
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : 'Failed to schedule';
-                    setError(msg);
-                    setScheduling(false);
-                  }
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50 active:scale-95 transition-all duration-200"
-              >
-                Schedule
-              </button>
-            </div>
-
-            {error && (
-              <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="p-3 rounded-lg bg-green-950/40 border border-green-500/40 text-sm text-green-300">
-                {success}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Engagement Log Modal */}
       {engagementCue && (

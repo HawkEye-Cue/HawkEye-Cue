@@ -73,9 +73,11 @@ async function generateWithAI(tone, postType, platforms, baseText, tradeName, po
     .map((p) => PLATFORM_GUIDELINES[p])
     .join('\n');
 
-  const lengthInstruction = postLength === 'short' ? 'Keep it SHORT — 1-2 sentences max per platform. Quick, punchy, to the point.'
+  const lengthInstruction = postLength === 'short' ? 'CRITICAL LENGTH CONSTRAINT: Keep each post to 1-2 sentences MAXIMUM (under 50 words per platform). Be punchy and concise. No hashtags. No lists. No paragraphs.'
     : postLength === 'long' ? 'Make it LONG — a full detailed paragraph per platform. Be thorough, tell a story, add context and value.'
     : 'Keep it MEDIUM length — 3-5 sentences per platform. Balanced detail without being too wordy.';
+
+  const maxTokens = postLength === 'short' ? 600 : postLength === 'long' ? 2000 : 1200;
 
   const prompt = `You are a social media content expert for a ${tradeName} business. Generate a ${tone} ${postType} post.
 
@@ -93,9 +95,10 @@ Respond in JSON format like this (no markdown, just raw JSON):
 }
 
 Important rules:
+- ${lengthInstruction}
 - Each platform version should feel native to that platform
 - Maintain the same core message across all platforms
-- Adjust tone, length, emoji usage, and hashtag strategy per platform
+- Adjust tone, emoji usage, and hashtag strategy per platform
 - Make content feel authentic, not generic or AI-generated
 - Use the ${tone} tone consistently but adapted to each platform's style`;
 
@@ -104,7 +107,7 @@ Important rules:
       { role: 'user', content: [{ text: prompt }] },
     ],
     inferenceConfig: {
-      maxTokens: 2000,
+      maxTokens: maxTokens,
       temperature: 0.7,
     },
   };

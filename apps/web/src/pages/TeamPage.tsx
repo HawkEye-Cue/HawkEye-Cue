@@ -113,6 +113,7 @@ export default function TeamPage() {
   // Shared data states
   const [teamCalendar, setTeamCalendar] = useState<TeamCalendarEvent[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
+  const [selectedTeamDay, setSelectedTeamDay] = useState<string | null>(null);
   const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [leadFilter, setLeadFilter] = useState<string>('all');
@@ -533,6 +534,7 @@ export default function TeamPage() {
       <div className="glass-card">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-white">📅 Team Calendar</h3>
+          <p className="text-xs text-slate-400">All members' schedules combined</p>
         </div>
         {/* Member color legend */}
         <div className="flex flex-wrap gap-3 mb-3">
@@ -567,9 +569,14 @@ export default function TeamPage() {
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                   const dayEvents = teamCalendar.filter((e) => e.date === dateStr);
                   const isToday = day === today;
+                  const isSelected = selectedTeamDay === dateStr;
                   const uniqueMembers = [...new Set(dayEvents.map((e) => e.memberEmail))];
                   return (
-                    <div key={day} className={`text-center py-2 sm:py-3 rounded-lg ${isToday ? 'bg-blue-600 text-white font-bold' : dayEvents.length > 0 ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>
+                    <div
+                      key={day}
+                      onClick={() => dayEvents.length > 0 ? setSelectedTeamDay(isSelected ? null : dateStr) : null}
+                      className={`text-center py-2 sm:py-3 rounded-lg transition-colors ${isSelected ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-400' : isToday ? 'bg-blue-600 text-white font-bold' : dayEvents.length > 0 ? 'bg-slate-700 text-white cursor-pointer hover:bg-slate-600' : 'text-slate-500'}`}
+                    >
                       <span className="text-xs sm:text-sm">{day}</span>
                       {uniqueMembers.length > 0 && (
                         <div className="flex justify-center gap-0.5 mt-0.5">
@@ -583,19 +590,73 @@ export default function TeamPage() {
             </div>
           );
         })()}
+
+        {/* Day Detail — shows all members' events for selected day */}
+        {selectedTeamDay && (() => {
+          const dayEvents = teamCalendar.filter((e) => e.date === selectedTeamDay);
+          const dateLabel = new Date(selectedTeamDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+          // Group by member
+          const byMember: Record<string, TeamCalendarEvent[]> = {};
+          dayEvents.forEach((e) => {
+            if (!byMember[e.memberEmail]) byMember[e.memberEmail] = [];
+            byMember[e.memberEmail].push(e);
+          });
+          const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+          return (
+            <div className="mt-3 p-3 rounded-xl border border-blue-500/30 bg-slate-700/80 backdrop-blur-sm animate-scale-in">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-white">{dateLabel}</p>
+                <button onClick={() => setSelectedTeamDay(null)} className="text-xs text-slate-400 hover:text-white">✕</button>
+              </div>
+              <div className="space-y-3">
+                {Object.entries(byMember).map(([email, events]) => {
+                  const colorIdx = getMemberColorIndex(email);
+                  const name = displayNames[email] || email.split('@')[0];
+                  return (
+                    <div key={email}>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className={`w-3 h-3 rounded-full ${MEMBER_COLORS[colorIdx]}`} />
+                        <span className="text-xs font-semibold text-white">{name}</span>
+                        <span className="text-[10px] text-slate-500">{events.length} event{events.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="space-y-1 pl-5">
+                        {events.map((evt) => {
+                          const icon = evt.type === 'post' ? '📤' : evt.type === 'meeting' ? '🤝' : evt.type === 'reminder' ? '🔔' : '📋';
+                          const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
+                          const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]/);
+                          return (
+                            <div key={evt.id} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2">
+                              <span className="text-sm shrink-0">{icon}</span>
+                              <span className="text-xs text-slate-200 flex-1 truncate">{cleanTitle}</span>
+                              {timeMatch && <span className="text-[10px] text-slate-500 shrink-0">{timeMatch[1]}</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Upcoming events */}
-        {teamCalendar.length > 0 && (
+        {!selectedTeamDay && teamCalendar.length > 0 && (
           <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5 max-h-[200px] overflow-y-auto">
+            <p className="text-xs text-slate-400 font-semibold mb-1">Upcoming</p>
             {teamCalendar.slice(0, 10).map((event) => {
               const colorIdx = getMemberColorIndex(event.memberEmail);
               const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
               const memberName = displayNames[event.memberEmail] || event.memberName;
               const cleanTitle = event.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
+              const icon = event.type === 'post' ? '📤' : event.type === 'meeting' ? '🤝' : event.type === 'reminder' ? '🔔' : '📋';
               return (
                 <div key={event.id} className="flex items-center gap-2 bg-slate-700 px-3 py-1.5 rounded-lg">
                   <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
+                  <span className="text-xs shrink-0">{icon}</span>
                   <span className="text-xs text-white flex-1 truncate">{cleanTitle}</span>
-                  <span className="text-[10px] text-slate-400">{memberName}</span>
+                  <span className="text-[10px] text-slate-400 shrink-0">{memberName}</span>
                 </div>
               );
             })}

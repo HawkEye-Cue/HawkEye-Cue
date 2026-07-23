@@ -379,7 +379,7 @@ export default function TeamPage() {
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
                   <div>
-                    <input type="text" defaultValue={displayName || member.email.split('@')[0]} onBlur={(e) => { const names = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); const val = e.target.value.trim(); if (val && val !== member.email.split('@')[0]) { names[member.email] = val; } else { delete names[member.email]; } localStorage.setItem('hawkeye_display_names', JSON.stringify(names)); }} className="text-sm text-white bg-transparent border-b border-transparent hover:border-slate-500 focus:border-blue-500 outline-none w-full" />
+                    <input type="text" defaultValue={displayName || member.email.split('@')[0]} onBlur={(e) => { const names = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); const val = e.target.value.trim(); if (val) { names[member.email] = val; } else { delete names[member.email]; } localStorage.setItem('hawkeye_display_names', JSON.stringify(names)); }} className="text-sm text-white bg-transparent border-b border-transparent hover:border-slate-500 focus:border-blue-500 outline-none w-full" />
                     <p className="text-xs text-slate-500">{member.role === 'admin' ? '👑 Admin' : '👤 Member'} · {member.email}</p>
                   </div>
                 </div>

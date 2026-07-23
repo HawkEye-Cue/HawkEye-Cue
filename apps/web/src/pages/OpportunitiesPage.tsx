@@ -44,7 +44,7 @@ export default function OpportunitiesPage() {
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const { selectedTrade } = useTrade();
-  const { events, addEvent } = useCalendar();
+  const { events, addEvent, toggleComplete } = useCalendar();
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
   const [groupBy, setGroupBy] = useState<'none' | 'platform' | 'keyword'>('none');
   const [leads, setLeads] = useState<Opportunity[]>([]);
@@ -70,6 +70,7 @@ export default function OpportunitiesPage() {
   const [showBucketManager, setShowBucketManager] = useState(false);
   const [newBucketName, setNewBucketName] = useState('');
   const [selectedLead, setSelectedLead] = useState<Opportunity | null>(null);
+  const [selectedFollowUpDay, setSelectedFollowUpDay] = useState<string | null>(null);
 
   // Buckets (persisted in localStorage)
   const bucketsKey = `hawkeye_lead_buckets_${user?.sub || 'default'}`;
@@ -921,13 +922,17 @@ export default function OpportunitiesPage() {
 
       {/* Right column */}
       <div className="min-w-0 space-y-4">
-      <div className="rounded-xl border border-white/20 p-4 bg-slate-800 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-1">
+      <details className="rounded-xl border border-white/20 bg-slate-800 backdrop-blur-sm overflow-hidden" open>
+        <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5">
           <h3 className="text-sm font-semibold text-white">🦅 Flight Projection</h3>
-          <button onClick={() => setShowProtocolEditor(!showProtocolEditor)} className="text-xs text-blue-400 hover:text-blue-300">
-            {showProtocolEditor ? 'Close' : 'Edit'}
-          </button>
-        </div>
+          <div className="flex items-center gap-2">
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowProtocolEditor(!showProtocolEditor); }} className="text-xs text-blue-400 hover:text-blue-300">
+              {showProtocolEditor ? 'Close' : 'Edit'}
+            </button>
+            <span className="text-xs text-slate-500">▼</span>
+          </div>
+        </summary>
+        <div className="px-4 pb-4">
         <p className="text-xs text-slate-400 mb-3">Your automated follow-up sequence. When you add a lead, these steps schedule as reminders on your calendar so every lead gets consistent outreach.</p>
 
         {/* Visual timeline */}
@@ -1017,7 +1022,11 @@ export default function OpportunitiesPage() {
                 {next7.map((day) => {
                   const dayEvents = followUpEvents.filter((e) => e.date === day.date);
                   return (
-                    <div key={day.date} className={`flex flex-col items-center p-2 rounded-lg border ${day.isToday ? 'border-blue-500/50 bg-blue-500/10' : 'border-white/10 bg-white/5'}`}>
+                    <div
+                      key={day.date}
+                      onClick={() => dayEvents.length > 0 ? setSelectedFollowUpDay(day.date) : null}
+                      className={`flex flex-col items-center p-2 rounded-lg border transition-colors ${day.isToday ? 'border-blue-500/50 bg-blue-500/10' : 'border-white/10 bg-white/5'} ${dayEvents.length > 0 ? 'cursor-pointer hover:bg-amber-500/10 hover:border-amber-500/30' : ''}`}
+                    >
                       <span className={`text-[10px] font-medium ${day.isToday ? 'text-blue-400' : 'text-slate-500'}`}>{day.dayName}</span>
                       <span className={`text-sm font-bold ${day.isToday ? 'text-white' : 'text-slate-300'}`}>{day.dayNum}</span>
                       {dayEvents.length > 0 ? (
@@ -1033,10 +1042,52 @@ export default function OpportunitiesPage() {
                   );
                 })}
               </div>
+              {/* Follow-up day detail popup */}
+              {selectedFollowUpDay && (() => {
+                const dayEvts = followUpEvents.filter((e) => e.date === selectedFollowUpDay);
+                const dateObj = new Date(selectedFollowUpDay + 'T12:00:00');
+                const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                if (dayEvts.length === 0) { setSelectedFollowUpDay(null); return null; }
+                return (
+                  <div className="mt-3 p-3 rounded-xl border border-amber-500/30 bg-slate-700/80 backdrop-blur-sm animate-scale-in">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-bold text-amber-300">{dateLabel} — {dayEvts.length} Follow-Up{dayEvts.length !== 1 ? 's' : ''}</p>
+                      <button onClick={() => setSelectedFollowUpDay(null)} className="text-xs text-slate-400 hover:text-white">✕</button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {dayEvts.map((evt) => {
+                        const nameMatch = evt.title.match(/^[📞💬✉️]\s*(.+?)(?:\s*—|$)/);
+                        const leadName = nameMatch ? nameMatch[1].trim() : evt.title.slice(0, 30);
+                        const icon = evt.title.startsWith('📞') ? '📞' : evt.title.startsWith('💬') ? '💬' : '✉️';
+                        const taskMatch = evt.title.match(/—\s*(.+)$/);
+                        const task = taskMatch ? taskMatch[1].trim() : '';
+                        return (
+                          <div key={evt.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800 border border-white/10 hover:border-amber-500/30 transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                              <span className="text-sm">{icon}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-white font-semibold truncate">{leadName}</p>
+                              {task && <p className="text-[10px] text-slate-400 truncate">{task}</p>}
+                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleComplete(evt.id); }}
+                              className={`text-[10px] px-2 py-1 rounded font-medium shrink-0 ${evt.completed ? 'bg-green-600/20 text-green-400' : 'bg-amber-600/20 text-amber-300 hover:bg-amber-600/30'}`}
+                            >
+                              {evt.completed ? '✓ Done' : 'Mark Done'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}
       </div>
+      </details>
 
       {/* Protocol Setup Prompt (first time) */}
       {showProtocolEditor && !hasSetProtocol && (

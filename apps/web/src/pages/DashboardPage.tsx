@@ -473,25 +473,15 @@ export default function DashboardPage() {
                       )}
                     </details>
 
-                    {/* Posts Tile — collapsed by default */}
-                    <details className="rounded-xl border border-blue-500/40 bg-slate-800 overflow-hidden backdrop-blur-sm">
-                      <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                    {/* Posts Tile — navigate to Create tab */}
+                    <div className="rounded-xl border border-blue-500/40 bg-slate-800 overflow-hidden backdrop-blur-sm cursor-pointer hover:bg-blue-500/5 transition-colors" onClick={() => navigate('/create')}>
+                      <div className="flex flex-col items-center justify-center p-3">
                         <span className="text-xl">📤</span>
                         <span className="text-xs font-bold text-blue-400 mt-0.5">Posts</span>
                         <span className="text-lg font-bold text-blue-400">{posts.length}</span>
-                      </summary>
-                      {posts.length > 0 && (
-                        <div className="px-2 pb-2 space-y-1 border-t border-blue-500/20 pt-2">
-                          {posts.map((event) => (
-                            <label key={event.id} className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-blue-500/10">
-                              <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-blue-500" />
-                              <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
-                              {event.link && <a href={event.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 shrink-0 text-xs">🔗</a>}
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </details>
+                        <span className="text-[9px] text-blue-300 mt-0.5">Tap to create →</span>
+                      </div>
+                    </div>
                   </div>
                 </>
               );

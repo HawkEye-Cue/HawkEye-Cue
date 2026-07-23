@@ -369,7 +369,7 @@ export default function TeamPage() {
       {/* 👥 Team Members */}
       <div className="glass-card space-y-3">
         <h3 className="font-semibold text-white">👥 Team Members</h3>
-        <p className="text-xs text-slate-400">Click a name to set a display name</p>
+        <p className="text-xs text-slate-400">Edit display names below, then click Save</p>
         <div className="space-y-2">
           {team.members.map((member, i) => {
             const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
@@ -379,7 +379,7 @@ export default function TeamPage() {
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
                   <div>
-                    <input type="text" defaultValue={displayName || member.email.split('@')[0]} onBlur={(e) => { const names = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); const val = e.target.value.trim(); if (val) { names[member.email] = val; } else { delete names[member.email]; } localStorage.setItem('hawkeye_display_names', JSON.stringify(names)); }} className="text-sm text-white bg-transparent border-b border-transparent hover:border-slate-500 focus:border-blue-500 outline-none w-full" />
+                    <input type="text" id={`team-name-${member.userId}`} defaultValue={displayName || member.email.split('@')[0]} className="text-sm text-white bg-transparent border-b border-transparent hover:border-slate-500 focus:border-blue-500 outline-none w-full" />
                     <p className="text-xs text-slate-500">{member.role === 'admin' ? '👑 Admin' : '👤 Member'} · {member.email}</p>
                   </div>
                 </div>
@@ -390,6 +390,27 @@ export default function TeamPage() {
             );
           })}
         </div>
+        <button
+          onClick={() => {
+            const names = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+            team.members.forEach((member) => {
+              const input = document.getElementById(`team-name-${member.userId}`) as HTMLInputElement;
+              if (input) {
+                const val = input.value.trim();
+                if (val) {
+                  names[member.email] = val;
+                } else {
+                  delete names[member.email];
+                }
+              }
+            });
+            localStorage.setItem('hawkeye_display_names', JSON.stringify(names));
+            showToast('✓ Display names saved');
+          }}
+          className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95"
+        >
+          💾 Save Names
+        </button>
         {/* Invite Form */}
         {team.role === 'admin' && team.members.length + team.invites.length < team.maxMembers && (
           <div className="flex gap-2 pt-2 border-t border-white/10">

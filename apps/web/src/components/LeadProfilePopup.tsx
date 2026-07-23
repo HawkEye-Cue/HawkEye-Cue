@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Opportunity, OpportunityStatus } from '@social-lead-gen/shared';
 import { MEMBER_COLORS } from '../hooks/useTeamData';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface FollowupStep {
   idx: number;
@@ -76,6 +77,7 @@ export default function LeadProfilePopup({
   onEdit,
   updatingId,
 }: LeadProfilePopupProps) {
+  const { user } = useAuth();
   const [notes, setNotes] = useState<ActivityNote[]>(() => readNotes(lead.id));
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -110,7 +112,7 @@ export default function LeadProfilePopup({
   if (!isOpen) return null;
 
   // Info Grid computed values
-  const localDataRaw = (() => { try { const raw = localStorage.getItem(`hawkeye_lead_data_${(lead as any).userId || ''}`); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
+  const localDataRaw = (() => { try { const raw = localStorage.getItem(`hawkeye_lead_data_${user?.sub || ''}`); return raw ? JSON.parse(raw) : {}; } catch { return {}; } })();
   const leadKey = (lead.sourceAuthor || '').toLowerCase();
   const localData = localDataRaw[leadKey] || {};
   const assignee = (lead as any).assignedTo || localData.assignedTo || '';

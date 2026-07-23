@@ -148,11 +148,11 @@ export default function TeamPage() {
   // Fetch tab-specific data when tab changes
   useEffect(() => {
     if (!team) return;
-    if (tab === 'calendar') fetchTeamCalendar();
-    if (tab === 'leads') fetchTeamLeads();
-    if (tab === 'analytics') fetchTeamAnalytics();
-    if (tab === 'notifications') fetchNotifications();
-  }, [tab, team]); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchTeamCalendar();
+    fetchTeamLeads();
+    fetchTeamAnalytics();
+    fetchNotifications();
+  }, [team]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchTeamCalendar() {
     setCalendarLoading(true);
@@ -348,15 +348,6 @@ export default function TeamPage() {
   ];
 
   const unreadNotifs = notifications.filter((n) => !n.dismissed).length;
-
-  // Fetch all data on mount (no tabs — everything visible at once)
-  useEffect(() => {
-    if (!team) return;
-    fetchTeamCalendar();
-    fetchTeamLeads();
-    fetchTeamAnalytics();
-    fetchNotifications();
-  }, [team]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">

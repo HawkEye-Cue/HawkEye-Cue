@@ -73,11 +73,11 @@ async function generateWithAI(tone, postType, platforms, baseText, tradeName, po
     .map((p) => PLATFORM_GUIDELINES[p])
     .join('\n');
 
-  const lengthInstruction = postLength === 'short' ? 'CRITICAL LENGTH CONSTRAINT: Keep each post to 1-2 sentences MAXIMUM (under 50 words per platform). Be punchy and concise. No hashtags. No lists. No paragraphs.'
+  const lengthInstruction = postLength === 'short' ? 'ABSOLUTE HARD LIMIT: Each platform post MUST be 1-2 sentences only. Maximum 30 words total. No hashtags. No emojis at the end. No call-to-action. No lists. Just one or two short, natural sentences. If you write more than 2 sentences you have FAILED.'
     : postLength === 'long' ? 'Make it LONG — a full detailed paragraph per platform. Be thorough, tell a story, add context and value.'
     : 'Keep it MEDIUM length — 3-5 sentences per platform. Balanced detail without being too wordy.';
 
-  const maxTokens = postLength === 'short' ? 600 : postLength === 'long' ? 2000 : 1200;
+  const maxTokens = postLength === 'short' ? 300 : postLength === 'long' ? 2000 : 1200;
 
   const prompt = `You are a social media content expert for a ${tradeName} business. Generate a ${tone} ${postType} post.
 

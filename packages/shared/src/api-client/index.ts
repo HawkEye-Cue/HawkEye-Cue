@@ -146,7 +146,7 @@ export class ApiClient {
     return this.request<{ url: string; key: string }>(
       'POST',
       '/content/upload-url',
-      { filename, contentType },
+      { fileName: filename, contentType },
     );
   }
 

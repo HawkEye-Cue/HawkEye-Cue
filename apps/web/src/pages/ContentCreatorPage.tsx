@@ -104,7 +104,7 @@ export default function ContentCreatorPage() {
       // The API now returns platformContent with per-platform versions
       if (result.platformContent) {
         setPlatformContent(result.platformContent as Record<string, string>);
-        window.dispatchEvent(new CustomEvent('hawkeye-post-preview', { detail: result.platformContent }));
+        window.dispatchEvent(new CustomEvent('hawkeye-post-preview', { detail: { content: result.platformContent, imagePreview } }));
         localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
         setShowHawkSwoop(true);
         setTimeout(() => setShowHawkSwoop(false), 1400);
@@ -521,7 +521,7 @@ export default function ContentCreatorPage() {
               content[p] = ownContent.trim();
             }
             setPlatformContent(content);
-            window.dispatchEvent(new CustomEvent('hawkeye-post-preview', { detail: content }));
+            window.dispatchEvent(new CustomEvent('hawkeye-post-preview', { detail: { content, imagePreview } }));
             setShowHawkSwoop(true);
             setTimeout(() => setShowHawkSwoop(false), 1400);
             showToast('✓ Ready to post');

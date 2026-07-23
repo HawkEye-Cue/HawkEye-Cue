@@ -4,11 +4,19 @@ import CalendarPage from './CalendarPage';
 
 export default function CreatePage() {
   const [previewContent, setPreviewContent] = useState<Record<string, string> | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Listen for content changes from ContentCreatorPage via custom event
   useEffect(() => {
     function handlePreview(e: CustomEvent) {
-      setPreviewContent(e.detail);
+      if (e.detail && e.detail.content) {
+        setPreviewContent(e.detail.content);
+        setPreviewImage(e.detail.imagePreview || null);
+      } else {
+        // Fallback for old format
+        setPreviewContent(e.detail);
+        setPreviewImage(null);
+      }
     }
     window.addEventListener('hawkeye-post-preview' as any, handlePreview as any);
     return () => window.removeEventListener('hawkeye-post-preview' as any, handlePreview as any);
@@ -43,6 +51,11 @@ export default function CreatePage() {
                   <div className="px-3 py-2">
                     <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{content.slice(0, 300)}{content.length > 300 ? '...' : ''}</p>
                   </div>
+                  {previewImage && (
+                    <div className="px-3 pb-2">
+                      <img src={previewImage} alt="Post media" className="w-full rounded-lg object-cover max-h-64" />
+                    </div>
+                  )}
                   <div className="px-3 py-2 border-t border-slate-200 flex items-center gap-4 text-slate-500 text-xs">
                     <span>👍 Like</span>
                     <span>💬 Comment</span>

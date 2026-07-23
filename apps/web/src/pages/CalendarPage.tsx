@@ -344,20 +344,6 @@ export default function CalendarPage() {
                     })()}
                   </div>
                 )}
-                {/* Team event dots */}
-                {isInTeam && (() => {
-                  const teamDayEvents = teamCalendar.filter((e) => e.date === dateStr);
-                  if (teamDayEvents.length === 0) return null;
-                  const uniqueMembers = [...new Set(teamDayEvents.map((e) => e.memberEmail))];
-                  return (
-                    <div className="flex gap-0.5 mt-0.5">
-                      {uniqueMembers.slice(0, 3).map((email) => (
-                        <div key={email} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[getMemberColorIndex(email)]}`} />
-                      ))}
-                      {uniqueMembers.length > 3 && <span className="text-[8px] text-slate-500">+{uniqueMembers.length - 3}</span>}
-                    </div>
-                  );
-                })()}
                 {/* + button for future days */}
                 {future && (
                   <button
@@ -371,24 +357,12 @@ export default function CalendarPage() {
             );
           })}
         </div>
-
         {/* Legend */}
         <div className="flex gap-3 mt-3 text-xs text-slate-400">
           <span className="flex items-center gap-1">📤 Post</span>
           <span className="flex items-center gap-1">🤝 Meeting</span>
           <span className="flex items-center gap-1">🔔 Reminder</span>
         </div>
-        {/* Team member color legend */}
-        {isInTeam && teamMembers.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {teamMembers.map((m, i) => (
-              <div key={m.userId} className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
-                <span className="text-[10px] text-slate-500">{m.email.split('@')[0]}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Day Detail Modal */}

@@ -600,12 +600,12 @@ exports.handler = async (event) => {
         const result = await dynamo.send(new QueryCommand({
           TableName: TABLE_NAME,
           KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'CALENDAR#' },
+          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'CAL#' },
         }));
         const memberEvents = (result.Items || [])
           .filter((e) => e.date >= start && e.date <= end)
           .map((e) => ({
-            id: e.SK.replace('CALENDAR#', ''),
+            id: e.eventId || e.SK.replace('CAL#', '').split('#').pop() || e.SK,
             title: e.title || 'Untitled',
             date: e.date,
             type: e.type || 'post',
@@ -700,7 +700,7 @@ exports.handler = async (event) => {
         const calResult = await dynamo.send(new QueryCommand({
           TableName: TABLE_NAME,
           KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'CALENDAR#' },
+          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'CAL#' },
         }));
         const calEvents = (calResult.Items || []).filter((e) => e.type === 'post');
         const today = new Date().toISOString().split('T')[0];

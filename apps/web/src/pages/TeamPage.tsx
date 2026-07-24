@@ -455,85 +455,92 @@ export default function TeamPage() {
       {/* 🪹 Lead Nests by Member */}
       <div className="glass-card space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-white">🪹 Lead Nests</h3>
-          <span className="text-xs text-slate-500">{teamLeads.length} leads</span>
+          <h3 className="text-sm font-semibold text-white">🪹 Lead Nests</h3>
+          <span className="text-xs text-slate-500">{teamLeads.length} total leads</span>
         </div>
         {leadsLoading ? (
           <p className="text-xs text-slate-500">Loading...</p>
-        ) : teamLeads.length === 0 ? (
-          <p className="text-xs text-slate-500">No leads yet — leads added by any team member show here</p>
         ) : (
-          <div className="space-y-3">
+          <>
+            {/* Nest grid — hawk nest style per member */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {(() => {
+                const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                const members = team ? team.members : [];
+                return members.map((member, i) => {
+                  const memberLeads = teamLeads.filter((l) => l.addedByEmail === member.email);
+                  const name = displayNames[member.email] || member.email.split('@')[0];
+                  const colorIdx = i % MEMBER_COLORS.length;
+                  const isActive = leadFilter === member.email;
+                  return (
+                    <button
+                      key={member.userId}
+                      onClick={() => setLeadFilter(isActive ? 'all' : member.email)}
+                      className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${isActive ? `${MEMBER_BORDER_COLORS[colorIdx]} ${MEMBER_BG_COLORS[colorIdx]} scale-[1.03] shadow-lg` : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
+                    >
+                      <span className="text-3xl mb-1">🪹</span>
+                      <div className={`absolute top-2 right-2 w-7 h-7 ${MEMBER_COLORS[colorIdx]} rounded-full flex items-center justify-center shadow-md`}>
+                        <span className="text-xs font-bold text-white">{memberLeads.length}</span>
+                      </div>
+                      <span className="text-xs text-white mt-1 font-medium text-center leading-tight">{name}</span>
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Filtered leads list */}
             {(() => {
               const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
-              // Group leads by the member they belong to (addedByEmail)
-              const byMember: Record<string, typeof teamLeads> = {};
-              // Ensure all team members have a nest even if empty
-              if (team) {
-                team.members.forEach((m) => { byMember[m.email] = []; });
-              }
-              teamLeads.forEach((lead) => {
-                const key = lead.addedByEmail || 'unknown';
-                if (!byMember[key]) byMember[key] = [];
-                byMember[key].push(lead);
-              });
-              return Object.entries(byMember).map(([email, leads]) => {
-                const colorIdx = getMemberColorIndex(email);
-                const name = displayNames[email] || email.split('@')[0];
-                return (
-                  <details key={email} className={`rounded-xl border-2 ${MEMBER_BORDER_COLORS[colorIdx]} ${MEMBER_BG_COLORS[colorIdx]} overflow-hidden`} open={leads.length > 0}>
-                    <summary className="flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-white/5">
-                      <div className={`w-4 h-4 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0 flex items-center justify-center`}>
-                        <span className="text-[8px] text-white font-bold">{(name[0] || '').toUpperCase()}</span>
-                      </div>
-                      <span className={`text-sm font-bold ${MEMBER_TEXT_COLORS[colorIdx]} flex-1`}>{name}'s Nest</span>
-                      <span className="text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded-full">{leads.length}</span>
-                    </summary>
-                    <div className="px-3 pb-3 space-y-1.5 border-t border-white/10 pt-2">
-                      {leads.length === 0 && <p className="text-xs text-slate-500 italic py-2 text-center">No leads in this nest</p>}
-                      {leads.map((lead) => (
-                        <div key={lead.id} className="flex items-center gap-2 bg-slate-800 border border-white/10 px-3 py-2.5 rounded-lg">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-white font-medium truncate">{lead.name}</span>
-                              {(lead as any).policyType && <span className="text-[9px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">{(lead as any).policyType}</span>}
-                            </div>
-                            <p className="text-[10px] text-slate-500 mt-0.5">{lead.sourcePlatform} · {new Date(lead.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+              const filtered = leadFilter === 'all' ? teamLeads : teamLeads.filter((l) => l.addedByEmail === leadFilter);
+              if (filtered.length === 0) return <p className="text-xs text-slate-500 text-center py-3">No leads in this nest</p>;
+              return (
+                <div className="space-y-1.5 max-h-[350px] overflow-y-auto">
+                  {filtered.map((lead) => {
+                    const colorIdx = getMemberColorIndex(lead.addedByEmail);
+                    return (
+                      <div key={lead.id} className="flex items-center gap-2 bg-slate-800 border border-white/10 px-3 py-2.5 rounded-lg">
+                        <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-white font-medium truncate">{lead.name}</span>
+                            {(lead as any).policyType && <span className="text-[9px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">{(lead as any).policyType}</span>}
                           </div>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${lead.status === 'converted' ? 'bg-green-900/40 text-green-400 border border-green-500/20' : lead.status === 'followed_up' ? 'bg-yellow-900/40 text-yellow-400 border border-yellow-500/20' : 'bg-blue-900/40 text-blue-400 border border-blue-500/20'}`}>
-                            {lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New'}
-                          </span>
-                          {/* Transfer dropdown */}
-                          {team && team.members.length > 1 && (
-                            <select
-                              defaultValue=""
-                              onChange={async (e) => {
-                                const targetEmail = e.target.value;
-                                if (!targetEmail) return;
-                                try {
-                                  const client = await buildClient();
-                                  await client.request('PUT', `/opportunities/${lead.id}/status`, { assignedTo: targetEmail });
-                                  showToast(`✓ Transferred to ${displayNames[targetEmail] || targetEmail.split('@')[0]}`);
-                                  fetchTeamLeads(); // refresh
-                                } catch { showToast('❌ Transfer failed'); }
-                                e.target.value = '';
-                              }}
-                              className="text-[10px] bg-slate-700 border border-slate-600 rounded px-1.5 py-1 text-slate-300 shrink-0 max-w-[70px]"
-                            >
-                              <option value="">↗️</option>
-                              {team.members.filter((m) => m.email !== email).map((m) => (
-                                <option key={m.userId} value={m.email}>{displayNames[m.email] || m.email.split('@')[0]}</option>
-                              ))}
-                            </select>
-                          )}
+                          <p className="text-[10px] text-slate-500 mt-0.5">{lead.sourcePlatform} · {new Date(lead.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                         </div>
-                      ))}
-                    </div>
-                  </details>
-                );
-              });
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${lead.status === 'converted' ? 'bg-green-900/40 text-green-400 border border-green-500/20' : lead.status === 'followed_up' ? 'bg-yellow-900/40 text-yellow-400 border border-yellow-500/20' : 'bg-blue-900/40 text-blue-400 border border-blue-500/20'}`}>
+                          {lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New'}
+                        </span>
+                        {/* Transfer */}
+                        {team && team.members.length > 1 && (
+                          <select
+                            defaultValue=""
+                            onChange={async (e) => {
+                              const targetEmail = e.target.value;
+                              if (!targetEmail) return;
+                              try {
+                                const client = await buildClient();
+                                await client.request('PUT', `/opportunities/${lead.id}/status`, { assignedTo: targetEmail });
+                                showToast(`✓ Transferred to ${displayNames[targetEmail] || targetEmail.split('@')[0]}`);
+                                fetchTeamLeads();
+                              } catch { showToast('❌ Transfer failed'); }
+                              e.target.value = '';
+                            }}
+                            className="text-[10px] bg-slate-700 border border-slate-600 rounded px-1.5 py-1 text-slate-300 shrink-0 max-w-[70px]"
+                          >
+                            <option value="">↗️</option>
+                            {team.members.filter((m) => m.email !== lead.addedByEmail).map((m) => (
+                              <option key={m.userId} value={m.email}>{displayNames[m.email] || m.email.split('@')[0]}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
             })()}
-          </div>
+          </>
         )}
       </div>
 

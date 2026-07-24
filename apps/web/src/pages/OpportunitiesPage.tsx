@@ -75,6 +75,14 @@ export default function OpportunitiesPage() {
     return localStorage.getItem(`hawkeye_flight_enabled_${user?.sub}`) !== 'false';
   });
 
+  // Re-read flight projection setting once user.sub is available
+  useEffect(() => {
+    if (user?.sub) {
+      const saved = localStorage.getItem(`hawkeye_flight_enabled_${user.sub}`);
+      if (saved === 'false') setFlightProjectionEnabled(false);
+    }
+  }, [user?.sub]);
+
   // Buckets (persisted in localStorage)
   const bucketsKey = `hawkeye_lead_buckets_${user?.sub || 'default'}`;
   const [buckets, setBuckets] = useState<string[]>(() => {

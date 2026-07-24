@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import { TRADES, ApiClient } from '@social-lead-gen/shared';
 import type { ScheduledPost } from '@social-lead-gen/shared';
 import TradeSelector from '../components/TradeSelector';
+import { useTeamData } from '../hooks/useTeamData';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function DashboardPage() {
   const { getToken, user } = useAuth();
   const { events, toggleComplete, removeEvent, updateEvent, refreshEvents, addEvent, removeAllByTitle } = useCalendar();
   const { showToast } = useToast();
+  const { isInTeam } = useTeamData();
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [futurePosts, setFuturePosts] = useState<ScheduledPost[]>([]);
   const [leadStats, setLeadStats] = useState({ total: 0, new: 0, followedUp: 0, converted: 0 });

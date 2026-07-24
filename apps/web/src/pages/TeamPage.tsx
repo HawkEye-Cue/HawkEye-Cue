@@ -452,28 +452,52 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* 🎯 Team Leads */}
+      {/* 🪹 Lead Nests by Member */}
       <div className="glass-card space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-white">🎯 Team Leads</h3>
+          <h3 className="font-semibold text-white">🪹 Lead Nests</h3>
           <span className="text-xs text-slate-500">{teamLeads.length} leads</span>
         </div>
         {leadsLoading ? (
           <p className="text-xs text-slate-500">Loading...</p>
         ) : teamLeads.length === 0 ? (
-          <p className="text-xs text-slate-500">No team leads yet</p>
+          <p className="text-xs text-slate-500">No leads yet — leads added by any team member show here</p>
         ) : (
-          <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
-            {teamLeads.slice(0, 15).map((lead) => {
-              const colorIdx = getMemberColorIndex(lead.addedByEmail);
-              return (
-                <div key={lead.id} className="flex items-center gap-2 bg-slate-700 px-3 py-2 rounded-lg">
-                  <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
-                  <span className="text-xs text-white flex-1 truncate">{lead.name}</span>
-                  <span className="text-[10px] text-slate-400">{lead.addedBy}</span>
-                </div>
-              );
-            })}
+          <div className="space-y-2">
+            {(() => {
+              // Group leads by member
+              const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+              const byMember: Record<string, typeof teamLeads> = {};
+              teamLeads.forEach((lead) => {
+                const key = lead.addedByEmail || 'unknown';
+                if (!byMember[key]) byMember[key] = [];
+                byMember[key].push(lead);
+              });
+              return Object.entries(byMember).map(([email, leads]) => {
+                const colorIdx = getMemberColorIndex(email);
+                const name = displayNames[email] || email.split('@')[0];
+                return (
+                  <details key={email} className={`rounded-lg border-2 border-white/20 bg-slate-700/50 overflow-hidden`} open>
+                    <summary className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-white/5">
+                      <div className={`w-3 h-3 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
+                      <span className="text-sm font-semibold text-white flex-1">{name}</span>
+                      <span className="text-xs text-slate-400">{leads.length} lead{leads.length !== 1 ? 's' : ''}</span>
+                    </summary>
+                    <div className="px-3 pb-3 space-y-1.5 border-t border-white/10 pt-2">
+                      {leads.map((lead) => (
+                        <div key={lead.id} className="flex items-center gap-2 bg-slate-800 px-3 py-2 rounded-lg">
+                          <span className="text-xs text-white flex-1 truncate">{lead.name}</span>
+                          {lead.policyType && <span className="text-[10px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">{lead.policyType}</span>}
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${lead.status === 'converted' ? 'bg-green-900/40 text-green-400' : lead.status === 'followed_up' ? 'bg-yellow-900/40 text-yellow-400' : 'bg-blue-900/40 text-blue-400'}`}>
+                            {lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                );
+              });
+            })()}
           </div>
         )}
       </div>

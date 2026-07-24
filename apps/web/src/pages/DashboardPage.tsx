@@ -397,7 +397,8 @@ export default function DashboardPage() {
             {(() => {
               const posts = todayEvents.filter((e) => e.type === 'post');
               const meetings = todayEvents.filter((e) => e.type === 'meeting');
-              const reminders = todayEvents.filter((e) => e.type === 'reminder' || e.type === 'task');
+              const flightOff = localStorage.getItem(`hawkeye_flight_enabled_${user?.sub}`) === 'false';
+              const reminders = todayEvents.filter((e) => (e.type === 'reminder' || e.type === 'task') && !(flightOff && (e.title.startsWith('📞') || e.title.startsWith('💬') || e.title.startsWith('✉️'))));
 
               return (
                 <>
@@ -653,7 +654,8 @@ export default function DashboardPage() {
                   if (dayEvts.length === 0) return <p className="text-xs text-slate-500 text-center py-4">No events — tap + to add</p>;
                   const posts = dayEvts.filter((e) => e.type === 'post');
                   const meetings = dayEvts.filter((e) => e.type === 'meeting');
-                  const reminders = dayEvts.filter((e) => e.type === 'reminder' || e.type === 'task');
+                  const flightOffModal = localStorage.getItem(`hawkeye_flight_enabled_${user?.sub}`) === 'false';
+                  const reminders = dayEvts.filter((e) => (e.type === 'reminder' || e.type === 'task') && !(flightOffModal && (e.title.startsWith('📞') || e.title.startsWith('💬') || e.title.startsWith('✉️'))));
 
                   const renderEvt = (evt: any) => (
                     <div key={evt.id} className="p-2 rounded-lg bg-white/5">

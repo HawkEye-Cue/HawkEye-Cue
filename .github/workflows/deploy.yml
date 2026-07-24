@@ -19,6 +19,13 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -30,9 +37,6 @@ jobs:
 
       - name: Deploy CDK stack (Lambdas + API + EventBridge)
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-1
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: us-east-1
         run: cd packages/cdk && npx cdk deploy --all --require-approval never || echo "CDK deploy failed - continuing with web deploy"
@@ -46,13 +50,6 @@ jobs:
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
           VITE_MEDIA_BUCKET_URL: ${{ secrets.VITE_MEDIA_BUCKET_URL }}
         run: pnpm --filter @social-lead-gen/web run build
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
 
       - name: Deploy to S3
         run: aws s3 sync apps/web/dist s3://${{ secrets.S3_BUCKET_NAME }} --delete

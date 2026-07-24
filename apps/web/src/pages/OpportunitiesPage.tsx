@@ -75,13 +75,23 @@ export default function OpportunitiesPage() {
     return localStorage.getItem(`hawkeye_flight_enabled_${user?.sub}`) !== 'false';
   });
 
-  // Re-read flight projection setting once user.sub is available
+  // Re-read flight projection setting once user.sub is available + load from server
   useEffect(() => {
     if (user?.sub) {
       const saved = localStorage.getItem(`hawkeye_flight_enabled_${user.sub}`);
       if (saved === 'false') setFlightProjectionEnabled(false);
+      // Also load from server for cross-device persistence
+      buildClient().then((client) => client.request<any>('GET', '/profile/preferences')).then((prefs) => {
+        if (prefs.flightProjectionEnabled === false) {
+          setFlightProjectionEnabled(false);
+          localStorage.setItem(`hawkeye_flight_enabled_${user.sub}`, 'false');
+        } else if (prefs.flightProjectionEnabled === true) {
+          setFlightProjectionEnabled(true);
+          localStorage.setItem(`hawkeye_flight_enabled_${user.sub}`, 'true');
+        }
+      }).catch(() => {});
     }
-  }, [user?.sub]);
+  }, [user?.sub]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Buckets (persisted in localStorage)
   const bucketsKey = `hawkeye_lead_buckets_${user?.sub || 'default'}`;
@@ -940,7 +950,7 @@ export default function OpportunitiesPage() {
           <h3 className="text-sm font-semibold text-white">🦅 Flight Projection</h3>
           <div className="flex items-center gap-2">
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const next = !flightProjectionEnabled; setFlightProjectionEnabled(next); localStorage.setItem(`hawkeye_flight_enabled_${user?.sub}`, String(next)); showToast(next ? '✓ Cadence enabled' : '✓ Cadence disabled'); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const next = !flightProjectionEnabled; setFlightProjectionEnabled(next); localStorage.setItem(`hawkeye_flight_enabled_${user?.sub}`, String(next)); buildClient().then((client) => client.request('PUT', '/profile/preferences', { flightProjectionEnabled: next })).catch(() => {}); showToast(next ? '✓ Cadence enabled' : '✓ Cadence disabled'); }}
               className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-all ${flightProjectionEnabled ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-red-600/20 text-red-400 border border-red-500/30'}`}
             >
               {flightProjectionEnabled ? 'On' : 'Off'}

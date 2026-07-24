@@ -52,6 +52,7 @@ export default function ContentCreatorPage() {
   const [engagementNote, setEngagementNote] = useState('');
   const [engageIndex, setEngageIndex] = useState(0);
   const [flocksTab, setFlocksTab] = useState<'today' | 'missed'>('today');
+  const [showReturnBanner, setShowReturnBanner] = useState(false);
 
   // Cleanup image preview URL on unmount to prevent memory leaks
   useEffect(() => {
@@ -198,6 +199,20 @@ export default function ContentCreatorPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-[fadeInOut_1.2s_ease-in-out_forwards]">
             <p className="text-2xl font-bold text-amber-400 text-center drop-shadow-lg">Nailed it! 🔥</p>
           </div>
+        </div>
+      )}
+
+      {/* Return Banner — shows after user opens a group tab */}
+      {showReturnBanner && (
+        <div className="sticky top-0 z-40 -mx-3 sm:-mx-4 px-3 sm:px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-500 text-black flex items-center justify-between rounded-b-xl shadow-lg shadow-amber-500/20">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🦅</span>
+            <div>
+              <p className="text-sm font-bold">You're back! Ready for the next flock?</p>
+              <p className="text-xs opacity-80">Scroll down to "Copy & Open" your next group</p>
+            </div>
+          </div>
+          <button onClick={() => setShowReturnBanner(false)} className="text-xs font-bold bg-black/20 px-3 py-1.5 rounded-lg hover:bg-black/30">✕ Dismiss</button>
         </div>
       )}
 
@@ -848,6 +863,7 @@ export default function ContentCreatorPage() {
                         setShowHawkSwoop(true);
                         setTimeout(() => setShowHawkSwoop(false), 1400);
                         window.open(next.link!, '_blank');
+                        setShowReturnBanner(true);
                         // Track usage for Nest users
                         if (isNestTier) {
                           const used = parseInt(localStorage.getItem(nestUsedKey) || '0') + 1;

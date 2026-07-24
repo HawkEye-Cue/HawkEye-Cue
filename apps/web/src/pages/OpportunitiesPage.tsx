@@ -867,7 +867,7 @@ export default function OpportunitiesPage() {
                 const completedSteps = steps.filter((s: any) => s.completed).length;
                 const totalSteps = steps.length;
                 const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
-                const leadColor = localStorage.getItem(`hawkeye_lead_color_${lead.id}`) || '';
+                const leadColor = (lead as any).leadColor || localStorage.getItem(`hawkeye_lead_color_${lead.id}`) || '';
                 const colorBorder = leadColor === 'yellow' ? 'border-l-4 border-l-yellow-400' : leadColor === 'green' ? 'border-l-4 border-l-green-400' : leadColor === 'red' ? 'border-l-4 border-l-red-400' : '';
                 const colorBg = leadColor === 'yellow' ? 'bg-yellow-500/5' : leadColor === 'green' ? 'bg-green-500/5' : leadColor === 'red' ? 'bg-red-500/5' : '';
 
@@ -921,7 +921,7 @@ export default function OpportunitiesPage() {
                         {['yellow', 'green', 'red'].map((c) => (
                           <button
                             key={c}
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); setLeads((prev) => [...prev]); }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); buildClient().then((client) => client.request('PUT', `/opportunities/${lead.id}/status`, { leadColor: newColor })).catch(() => {}); setLeads((prev) => [...prev]); }}
                             className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${c === 'yellow' ? 'bg-yellow-400 border-yellow-300' : c === 'green' ? 'bg-green-400 border-green-300' : 'bg-red-400 border-red-300'} ${leadColor === c ? 'ring-2 ring-white scale-150 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-125'}`}
                           />
                         ))}

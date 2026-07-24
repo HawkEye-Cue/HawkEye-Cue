@@ -80,6 +80,8 @@ async function handleGetOpportunities(userId) {
     assignedTo: item.assignedTo || null,
     bucket: item.bucket || null,
     expectedPremium: item.expectedPremium || null,
+    leadNotes: item.leadNotes || null,
+    leadColor: item.leadColor || null,
     status: item.status,
     createdAt: item.createdAt,
   }));
@@ -220,6 +222,14 @@ async function handleUpdateStatus(userId, opportunityId, body) {
   if (bucket !== undefined) {
     updates.push('bucket = :bucket');
     values[':bucket'] = bucket || null;
+  }
+  if (body.leadNotes !== undefined) {
+    updates.push('leadNotes = :leadNotes');
+    values[':leadNotes'] = body.leadNotes || null;
+  }
+  if (body.leadColor !== undefined) {
+    updates.push('leadColor = :leadColor');
+    values[':leadColor'] = body.leadColor || null;
   }
 
   await dynamo.send(

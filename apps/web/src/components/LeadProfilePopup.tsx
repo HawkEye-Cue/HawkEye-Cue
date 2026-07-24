@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Opportunity, OpportunityStatus } from '@social-lead-gen/shared';
+import { ApiClient } from '@social-lead-gen/shared';
 import { MEMBER_COLORS } from '../hooks/useTeamData';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -55,7 +56,14 @@ interface ActivityNote {
   date: string;
 }
 
-function readNotes(leadId: string): ActivityNote[] {
+function readNotes(leadId: string, leadObj?: any): ActivityNote[] {
+  // Prefer server-stored notes
+  if (leadObj?.leadNotes) {
+    try {
+      const parsed = JSON.parse(leadObj.leadNotes);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* fall through */ }
+  }
   try {
     const raw = localStorage.getItem(`hawkeye_lead_notes_${leadId}`);
     if (!raw) return [];
@@ -78,16 +86,16 @@ export default function LeadProfilePopup({
   onEdit,
   updatingId,
 }: LeadProfilePopupProps) {
-  const { user } = useAuth();
+  const { user, getToken } = useAuth();
   const { showToast } = useToast();
-  const [notes, setNotes] = useState<ActivityNote[]>(() => readNotes(lead.id));
+  const [notes, setNotes] = useState<ActivityNote[]>(() => readNotes(lead.id, lead));
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
   // Re-read notes when a different lead is selected
   useEffect(() => {
-    setNotes(readNotes(lead.id));
+    setNotes(readNotes(lead.id, lead));
   }, [lead.id]);
 
   // Focus management: capture previously focused element and focus close button on open
@@ -261,6 +269,12 @@ export default function LeadProfilePopup({
                 } catch { /* ignore */ }
                 setNotes(updated);
                 input.value = '';
+                // Sync notes to server
+                getToken().then((token) => {
+                  if (!token) return;
+                  const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                  client.request('PUT', `/opportunities/${lead.id}/status`, { leadNotes: JSON.stringify(updated) }).catch(() => {});
+                });
                 showToast('✓ Note saved');
               }}
               className="self-end px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"

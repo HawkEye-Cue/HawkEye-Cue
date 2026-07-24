@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { ApiClient } from '@social-lead-gen/shared';
 import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
 import SetupWizard from './SetupWizard';
@@ -17,7 +18,23 @@ const navItems = [
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, getToken } = useAuth();
+
+  // Load display names from server on startup (cross-device persistence)
+  useEffect(() => {
+    if (!user?.sub) return;
+    async function loadNames() {
+      try {
+        const token = await getToken();
+        const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+        const prefs = await client.request<any>('GET', '/profile/preferences');
+        if (prefs.displayNames && typeof prefs.displayNames === 'object') {
+          localStorage.setItem('hawkeye_display_names', JSON.stringify(prefs.displayNames));
+        }
+      } catch { /* ignore */ }
+    }
+    loadNames();
+  }, [user?.sub]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showTour, setShowTour] = useState(() => {
     const key = user?.sub ? `hawkeye_tour_done_${user.sub}` : 'hawkeye_tour_done';
     return !localStorage.getItem(key);

@@ -146,6 +146,23 @@ export default function TeamPage() {
     fetchTeam();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Load display names from server on mount (cross-device sync)
+  useEffect(() => {
+    async function loadDisplayNames() {
+      try {
+        const client = await buildClient();
+        const prefs = await client.request<any>('GET', '/profile/preferences');
+        if (prefs.displayNames && typeof prefs.displayNames === 'object') {
+          // Merge server names into localStorage (server wins)
+          const existing = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+          const merged = { ...existing, ...prefs.displayNames };
+          localStorage.setItem('hawkeye_display_names', JSON.stringify(merged));
+        }
+      } catch { /* ignore */ }
+    }
+    loadDisplayNames();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fetch tab-specific data when tab changes
   useEffect(() => {
     if (!team) return;
@@ -406,6 +423,10 @@ export default function TeamPage() {
               }
             });
             localStorage.setItem('hawkeye_display_names', JSON.stringify(names));
+            // Save to server for cross-device persistence
+            buildClient().then((client) => {
+              client.request('PUT', '/profile/preferences', { displayNames: names }).catch(() => {});
+            });
             showToast('✓ Display names saved');
           }}
           className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95"

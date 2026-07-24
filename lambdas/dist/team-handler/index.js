@@ -638,10 +638,10 @@ exports.handler = async (event) => {
         const result = await dynamo.send(new QueryCommand({
           TableName: TABLE_NAME,
           KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'OPPORTUNITY#' },
+          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'OPP#' },
         }));
         const memberLeads = (result.Items || []).map((l) => ({
-          id: l.SK.replace('OPPORTUNITY#', ''),
+          id: l.opportunityId || l.SK.replace('OPP#', '').split('#').pop() || l.SK,
           name: l.name || l.authorName || l.sourceAuthor || 'Unknown Lead',
           sourcePlatform: l.sourcePlatform || l.platform || 'unknown',
           status: l.status || 'new',

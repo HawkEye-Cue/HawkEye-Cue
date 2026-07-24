@@ -853,6 +853,8 @@ export default function ContentCreatorPage() {
                           const used = parseInt(localStorage.getItem(nestUsedKey) || '0') + 1;
                           localStorage.setItem(nestUsedKey, String(used));
                         }
+                        // Refresh events to ensure next click picks up the correct next group
+                        setTimeout(() => refreshEvents(), 500);
                         showToast(`✓ Copied & opened — ${remaining.length - 1} flock${remaining.length - 1 !== 1 ? 's' : ''} left`);
                       }
                     }}

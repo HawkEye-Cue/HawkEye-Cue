@@ -15,7 +15,7 @@ export default function CalendarPage() {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const { events, addEvent, removeEvent, removeAllByTitle, updateEvent, refreshEvents } = useCalendar();
+  const { events, addEvent, removeEvent, removeAllByTitle, updateEvent, refreshEvents, toggleComplete } = useCalendar();
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
@@ -637,6 +637,12 @@ export default function CalendarPage() {
               <>
                 {/* Add Event Form */}
                 <button onClick={() => setShowAddForm(false)} className="text-xs text-blue-400 hover:text-blue-300 mb-2 mt-2">← Back to schedule</button>
+                {isInTeam && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 mb-2">
+                    <span className="text-xs">📢</span>
+                    <span className="text-[11px] text-purple-300">Visible to your team on Summit</span>
+                  </div>
+                )}
                 <div className="space-y-3">
                   <input
                     type="text"

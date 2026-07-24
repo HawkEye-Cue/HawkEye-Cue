@@ -487,7 +487,7 @@ export default function TeamPage() {
                       {leads.map((lead) => (
                         <div key={lead.id} className="flex items-center gap-2 bg-slate-800 px-3 py-2 rounded-lg">
                           <span className="text-xs text-white flex-1 truncate">{lead.name}</span>
-                          {lead.policyType && <span className="text-[10px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">{lead.policyType}</span>}
+                          {(lead as any).policyType && <span className="text-[10px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">{(lead as any).policyType}</span>}
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${lead.status === 'converted' ? 'bg-green-900/40 text-green-400' : lead.status === 'followed_up' ? 'bg-yellow-900/40 text-yellow-400' : 'bg-blue-900/40 text-blue-400'}`}>
                             {lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New'}
                           </span>

@@ -168,11 +168,11 @@ async function handleCreateOpportunity(userId, body) {
 
 // PUT /opportunities/{id}/status
 async function handleUpdateStatus(userId, opportunityId, body) {
-  const { status, assignedTo } = body || {};
+  const { status, assignedTo, policyType, expectedPremium, bucket } = body || {};
 
   // At least one field must be provided
-  if (!status && assignedTo === undefined) {
-    return respond(400, { error: { code: 'INVALID_INPUT', message: 'status or assignedTo is required' } });
+  if (!status && assignedTo === undefined && policyType === undefined && expectedPremium === undefined && bucket === undefined) {
+    return respond(400, { error: { code: 'INVALID_INPUT', message: 'At least one field is required' } });
   }
 
   if (status && !VALID_STATUSES.includes(status)) {
@@ -209,6 +209,18 @@ async function handleUpdateStatus(userId, opportunityId, body) {
     updates.push('assignedTo = :assignedTo');
     values[':assignedTo'] = assignedTo || null;
   }
+  if (policyType !== undefined) {
+    updates.push('policyType = :policyType');
+    values[':policyType'] = policyType || null;
+  }
+  if (expectedPremium !== undefined) {
+    updates.push('expectedPremium = :expectedPremium');
+    values[':expectedPremium'] = expectedPremium || null;
+  }
+  if (bucket !== undefined) {
+    updates.push('bucket = :bucket');
+    values[':bucket'] = bucket || null;
+  }
 
   await dynamo.send(
     new UpdateCommand({
@@ -220,7 +232,7 @@ async function handleUpdateStatus(userId, opportunityId, body) {
     })
   );
 
-  return respond(200, { id: opportunityId, status: status || item.status, assignedTo: assignedTo !== undefined ? assignedTo : item.assignedTo });
+  return respond(200, { id: opportunityId, status: status || item.status, assignedTo: assignedTo !== undefined ? assignedTo : item.assignedTo, policyType: policyType !== undefined ? policyType : item.policyType, expectedPremium: expectedPremium !== undefined ? expectedPremium : item.expectedPremium, bucket: bucket !== undefined ? bucket : item.bucket });
 }
 
 // DELETE /opportunities/{id}

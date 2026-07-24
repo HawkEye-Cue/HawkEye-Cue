@@ -713,7 +713,7 @@ export default function OpportunitiesPage() {
                   // Update status on server
                   try {
                     const client = await buildClient();
-                    await client.request('PUT', `/opportunities/${editingLead.id}/status`, { status, assignedTo: assignee });
+                    await client.request('PUT', `/opportunities/${editingLead.id}/status`, { status, assignedTo: assignee, policyType, expectedPremium: premium || null, bucket: bucket || null });
                   } catch { /* ignore if fails */ }
 
                   // Update local state

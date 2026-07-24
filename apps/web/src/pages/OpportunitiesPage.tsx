@@ -578,6 +578,8 @@ export default function OpportunitiesPage() {
                       expectedPremium: parseFloat((document.getElementById('newLeadPremium') as HTMLInputElement)?.value) || undefined,
                     });
                     showToast('🎯 Lead added!');
+                    // Refresh to get the lead with all server-stored fields
+                    fetchData();
 
                     // Save bucket locally as fallback (in case Lambda doesn't have bucket field yet)
                     if (newLeadBucket) {

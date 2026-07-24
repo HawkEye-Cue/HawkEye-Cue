@@ -54,6 +54,37 @@ export default function ContentCreatorPage() {
   const [flocksTab, setFlocksTab] = useState<'today' | 'missed'>('today');
   const [showReturnBanner, setShowReturnBanner] = useState(false);
 
+  // Post history — tracks which content was posted to which groups and when
+  interface PostRecord {
+    id: string;
+    content: string;
+    group: string;
+    groupLink: string;
+    postedAt: string; // ISO timestamp
+    timeOfDay: string; // e.g. "14:30"
+    dayOfWeek: string; // e.g. "Monday"
+  }
+  const postHistoryKey = `hawkeye_post_history_${user?.sub || 'default'}`;
+  const [postHistory, setPostHistory] = useState<PostRecord[]>(() => {
+    try { return JSON.parse(localStorage.getItem(postHistoryKey) || '[]'); } catch { return []; }
+  });
+
+  function savePostRecord(content: string, groupTitle: string, groupLink: string) {
+    const now = new Date();
+    const record: PostRecord = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      content: content.slice(0, 200),
+      group: groupTitle,
+      groupLink,
+      postedAt: now.toISOString(),
+      timeOfDay: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+      dayOfWeek: now.toLocaleDateString('en-US', { weekday: 'long' }),
+    };
+    const updated = [record, ...postHistory].slice(0, 200); // keep last 200
+    setPostHistory(updated);
+    localStorage.setItem(postHistoryKey, JSON.stringify(updated));
+  }
+
   // Cleanup image preview URL on unmount to prevent memory leaks
   useEffect(() => {
     return () => { if (imagePreview) URL.revokeObjectURL(imagePreview); };
@@ -809,6 +840,8 @@ export default function ContentCreatorPage() {
                         if (!next.completed) {
                           toggleComplete(next.id);
                         }
+                        // Save post record for analytics
+                        savePostRecord(content, next.title, next.link!);
                         setShowHawkSwoop(true);
                         setTimeout(() => setShowHawkSwoop(false), 1400);
                         window.open(next.link!, '_blank');
@@ -1102,6 +1135,53 @@ export default function ContentCreatorPage() {
         </>
         )}
       </div>
+
+      {/* Saved Posts History */}
+      {postHistory.length > 0 && (
+        <details className="glass-card">
+          <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
+            <span>📋 Saved Posts</span>
+            <span className="text-xs text-slate-400 font-normal">{postHistory.length} posts</span>
+          </summary>
+          <div className="mt-3 space-y-3">
+            {/* Group posts by content */}
+            {(() => {
+              const byContent: Record<string, typeof postHistory> = {};
+              postHistory.forEach((p) => {
+                const key = p.content.slice(0, 80);
+                if (!byContent[key]) byContent[key] = [];
+                byContent[key].push(p);
+              });
+              const entries = Object.entries(byContent).slice(0, 10);
+              return entries.map(([contentKey, records]) => (
+                <details key={contentKey} className="rounded-lg bg-white/5 border border-white/10 overflow-hidden">
+                  <summary className="flex items-start gap-2 p-2.5 cursor-pointer hover:bg-white/5">
+                    <span className="text-xs text-slate-200 flex-1 line-clamp-2">"{contentKey}..."</span>
+                    <span className="text-[10px] text-slate-500 shrink-0">{records.length} group{records.length !== 1 ? 's' : ''}</span>
+                  </summary>
+                  <div className="px-2.5 pb-2.5 space-y-1">
+                    {records.map((r) => (
+                      <div key={r.id} className="flex items-center gap-2 bg-slate-800 rounded px-2.5 py-1.5">
+                        <span className="text-[10px] text-amber-400 shrink-0">{r.timeOfDay}</span>
+                        <span className="text-xs text-slate-300 flex-1 truncate">{r.group}</span>
+                        <span className="text-[10px] text-slate-500">{new Date(r.postedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ));
+            })()}
+            {postHistory.length > 50 && (
+              <button
+                onClick={() => { setPostHistory([]); localStorage.removeItem(postHistoryKey); showToast('✓ History cleared'); }}
+                className="text-xs text-red-400 hover:text-red-300"
+              >
+                Clear all history
+              </button>
+            )}
+          </div>
+        </details>
+      )}
 
       {/* Engagement Log Modal */}
       {engagementCue && (

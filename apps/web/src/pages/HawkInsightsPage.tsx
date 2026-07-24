@@ -22,7 +22,7 @@ interface Opportunity {
 }
 
 export default function HawkInsightsPage() {
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const { events } = useCalendar();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [leads, setLeads] = useState<Opportunity[]>([]);
@@ -256,6 +256,89 @@ export default function HawkInsightsPage() {
           </div>
         </div>
       )}
+
+      {/* 📊 Post Timing & Group Performance */}
+      {(() => {
+        const postHistoryKey = `hawkeye_post_history_${user?.sub || 'default'}`;
+        let postHistory: { id: string; content: string; group: string; groupLink: string; postedAt: string; timeOfDay: string; dayOfWeek: string }[] = [];
+        try { postHistory = JSON.parse(localStorage.getItem(postHistoryKey) || '[]'); } catch { /* ignore */ }
+        if (postHistory.length === 0) return null;
+
+        // Best time of day
+        const byHour: Record<string, number> = {};
+        postHistory.forEach((p) => {
+          const hour = p.timeOfDay.split(':')[0];
+          const h = parseInt(hour);
+          const label = h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`;
+          byHour[label] = (byHour[label] || 0) + 1;
+        });
+        const sortedHours = Object.entries(byHour).sort((a, b) => b[1] - a[1]);
+        const maxHourCount = sortedHours[0]?.[1] || 1;
+
+        // Best day of week
+        const byDay: Record<string, number> = {};
+        postHistory.forEach((p) => { byDay[p.dayOfWeek] = (byDay[p.dayOfWeek] || 0) + 1; });
+        const sortedDays = Object.entries(byDay).sort((a, b) => b[1] - a[1]);
+
+        // Top groups
+        const byGroup: Record<string, number> = {};
+        postHistory.forEach((p) => { byGroup[p.group] = (byGroup[p.group] || 0) + 1; });
+        const sortedGroups = Object.entries(byGroup).sort((a, b) => b[1] - a[1]).slice(0, 8);
+        const maxGroupCount = sortedGroups[0]?.[1] || 1;
+
+        return (
+          <>
+            <div className="glass-card">
+              <h3 className="font-semibold text-white mb-3">🕐 Best Posting Times</h3>
+              <p className="text-xs text-slate-400 mb-3">Based on {postHistory.length} posts tracked</p>
+              <div className="space-y-1.5">
+                {sortedHours.slice(0, 6).map(([hour, count]) => (
+                  <div key={hour} className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400 w-12 shrink-0">{hour}</span>
+                    <div className="flex-1 h-4 bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full" style={{ width: `${(count / maxHourCount) * 100}%` }} />
+                    </div>
+                    <span className="text-xs text-slate-400 w-6 text-right">{count}</span>
+                  </div>
+                ))}
+              </div>
+              {sortedDays.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-white/10">
+                  <p className="text-xs text-slate-400 font-semibold mb-2">📅 Best Days</p>
+                  <div className="flex flex-wrap gap-2">
+                    {sortedDays.slice(0, 5).map(([day, count], i) => (
+                      <span key={day} className={`text-xs px-2.5 py-1 rounded-full ${i === 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-white/5 text-slate-300 border border-white/10'}`}>
+                        {day.slice(0, 3)} ({count})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="glass-card">
+              <h3 className="font-semibold text-white mb-3">🏆 Top Performing Groups</h3>
+              <p className="text-xs text-slate-400 mb-3">Groups you post in most frequently</p>
+              <div className="space-y-1.5">
+                {sortedGroups.map(([group, count], i) => (
+                  <div key={group} className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400 w-4 shrink-0">{i + 1}.</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-white truncate flex-1">{group}</span>
+                        <span className="text-[10px] text-slate-500 shrink-0">{count} posts</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden mt-1">
+                        <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" style={{ width: `${(count / maxGroupCount) * 100}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Flock Analytics */}
       <div className="glass-card">

@@ -534,10 +534,11 @@ export default function OpportunitiesPage() {
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Worked by</label>
                 <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
-                  <option value={user?.email || ''}>Me ({user?.email?.split('@')[0] || 'me'})</option>
-                  {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => (
-                    <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
-                  ))}
+                  <option value={user?.email || ''}>Me ({(() => { const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); return dn[user?.email || ''] || user?.email?.split('@')[0] || 'me'; })()})</option>
+                  {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => {
+                    const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                    return <option key={m.userId} value={m.email}>{dn[m.email] || m.email.split('@')[0]}</option>;
+                  })}
                 </select>
               </div>
               <button
@@ -655,10 +656,11 @@ export default function OpportunitiesPage() {
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Worked by</label>
                 <select defaultValue={editingLead._localAssignee || user?.email || ''} id="editLeadAssignee" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
-                  <option value={user?.email || ''}>Me ({user?.email?.split('@')[0] || 'me'})</option>
-                  {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => (
-                    <option key={m.userId} value={m.email}>{m.email.split('@')[0]}</option>
-                  ))}
+                  <option value={user?.email || ''}>Me ({(() => { const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); return dn[user?.email || ''] || user?.email?.split('@')[0] || 'me'; })()})</option>
+                  {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => {
+                    const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                    return <option key={m.userId} value={m.email}>{dn[m.email] || m.email.split('@')[0]}</option>;
+                  })}
                 </select>
               </div>
               <div>

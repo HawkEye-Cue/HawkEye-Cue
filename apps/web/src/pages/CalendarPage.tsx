@@ -442,7 +442,7 @@ export default function CalendarPage() {
                                     <div className="px-2 pb-2 space-y-1.5 border-t border-amber-500/20 pt-2 max-h-40 overflow-y-auto">
                                       {allMeetings.map((evt) => (
                                         <div key={evt.id} className="p-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                                          <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                                          <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '')}</span>
                                           <div className="flex justify-between mt-2">
                                             {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
                                             <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
@@ -704,7 +704,7 @@ export default function CalendarPage() {
             {/* Day Notes */}
             {selectedDay !== null && (
               <div className="mt-3 border-t border-white/10 pt-3">
-                <p className="text-xs text-slate-400 font-semibold mb-1.5">📝 Notes</p>
+                <p className="text-xs text-slate-400 font-semibold mb-1.5">📝 My Notes</p>
                 <textarea
                   defaultValue={localStorage.getItem(`hawkeye_notepad_${user?.sub}_${getDateStr(selectedDay)}`) || ''}
                   onBlur={(e) => {

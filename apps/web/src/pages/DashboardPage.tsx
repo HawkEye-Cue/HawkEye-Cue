@@ -895,7 +895,7 @@ export default function DashboardPage() {
 
             {/* Day Notes */}
             <div className="mt-3 border-t border-white/10 pt-3">
-              <p className="text-xs text-slate-400 font-semibold mb-1.5">📝 Notes for this day</p>
+              <p className="text-xs text-slate-400 font-semibold mb-1.5">📝 My Notes</p>
               <textarea
                 defaultValue={localStorage.getItem(`hawkeye_notepad_${user?.sub}_${dashCalDay}`) || ''}
                 onBlur={(e) => {

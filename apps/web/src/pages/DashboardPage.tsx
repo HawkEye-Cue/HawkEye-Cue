@@ -791,13 +791,61 @@ export default function DashboardPage() {
                         </div>
                       )}
                       {reminders.length > 0 && (
-                        <details className="rounded-xl border border-green-500/20 bg-green-500/5 overflow-hidden" open>
-                          <summary className="flex items-center justify-between p-2.5 cursor-pointer">
+                        <div className="rounded-xl border border-green-500/20 bg-green-500/5 overflow-hidden">
+                          <div className="flex items-center justify-between p-2.5">
                             <span className="text-xs font-bold text-green-400">🔔 Reminders</span>
                             <span className="text-xs text-slate-500">{reminders.length}</span>
-                          </summary>
-                          <div className="px-2.5 pb-2.5 space-y-1.5">{reminders.map(renderEvt)}</div>
-                        </details>
+                          </div>
+                          <div className="px-2.5 pb-2.5">
+                            {/* Untimed reminders at top */}
+                            {(() => {
+                              const untimed = reminders.filter((r: any) => !r.title.match(/^\[\d{1,2}:\d{2}\]/));
+                              if (untimed.length === 0) return null;
+                              return (
+                                <div className="mb-2 space-y-1">
+                                  <span className="text-[9px] text-slate-500">All Day</span>
+                                  {untimed.map((r: any) => (
+                                    <div key={r.id} className="flex items-center gap-2 bg-green-500/15 border border-green-500/30 rounded px-2 py-1.5">
+                                      <span className={`text-xs font-medium flex-1 truncate ${r.completed ? 'line-through text-slate-500' : 'text-green-200'}`}>{r.title}</span>
+                                      <button onClick={() => toggleComplete(r.id)} className={`text-[9px] px-1.5 py-0.5 rounded ${r.completed ? 'text-green-400' : 'text-slate-400 hover:text-green-400 bg-green-600/20'}`}>{r.completed ? '✓' : 'Done'}</button>
+                                      <button onClick={() => removeEvent(r.id)} className="text-[9px] text-slate-500 hover:text-red-400">✕</button>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                            {/* Hourly timeline */}
+                            <div className="relative border-l-2 border-green-500/30 ml-3 space-y-0">
+                              {Array.from({ length: 13 }, (_, i) => i + 7).map((hour) => {
+                                const hourReminders = reminders.filter((r: any) => {
+                                  const match = r.title.match(/^\[(\d{1,2}):(\d{2})\]/);
+                                  if (!match) return false; // untimed handled above
+                                  return parseInt(match[1]) === hour;
+                                });
+                                const hourLabel = hour === 0 ? '12a' : hour < 12 ? `${hour}a` : hour === 12 ? '12p' : `${hour - 12}p`;
+                                return (
+                                  <div key={hour} className={`flex items-start gap-2 min-h-[28px] ${hourReminders.length > 0 ? '' : 'opacity-30'}`}>
+                                    <span className="text-[9px] text-slate-500 w-7 shrink-0 pt-1 text-right">{hourLabel}</span>
+                                    <div className="flex-1 border-t border-white/10 pt-0.5">
+                                      <div className="flex gap-1 flex-wrap">
+                                        {hourReminders.map((r: any) => {
+                                          const cleanTitle = r.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
+                                          return (
+                                            <div key={r.id} className="flex items-center gap-1.5 bg-green-500/15 border border-green-500/30 rounded px-2 py-1.5 flex-1 min-w-[80px]">
+                                              <span className={`text-xs font-medium flex-1 truncate ${r.completed ? 'line-through text-slate-500' : 'text-green-200'}`}>{cleanTitle}</span>
+                                              <button onClick={() => toggleComplete(r.id)} className={`text-[9px] px-1.5 py-0.5 rounded ${r.completed ? 'text-green-400' : 'text-slate-400 hover:text-green-400 bg-green-600/20'}`}>{r.completed ? '✓' : 'Done'}</button>
+                                              <button onClick={() => removeEvent(r.id)} className="text-[9px] text-slate-500 hover:text-red-400">✕</button>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
                       )}
                       {posts.length > 0 && (
                         <details className="rounded-xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">

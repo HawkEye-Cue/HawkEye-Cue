@@ -71,6 +71,9 @@ export default function OpportunitiesPage() {
   const [newBucketName, setNewBucketName] = useState('');
   const [selectedLead, setSelectedLead] = useState<Opportunity | null>(null);
   const [selectedFollowUpDay, setSelectedFollowUpDay] = useState<string | null>(null);
+  const [flightProjectionEnabled, setFlightProjectionEnabled] = useState<boolean>(() => {
+    return localStorage.getItem(`hawkeye_flight_enabled_${user?.sub}`) !== 'false';
+  });
 
   // Buckets (persisted in localStorage)
   const bucketsKey = `hawkeye_lead_buckets_${user?.sub || 'default'}`;
@@ -926,6 +929,12 @@ export default function OpportunitiesPage() {
         <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5">
           <h3 className="text-sm font-semibold text-white">🦅 Flight Projection</h3>
           <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const next = !flightProjectionEnabled; setFlightProjectionEnabled(next); localStorage.setItem(`hawkeye_flight_enabled_${user?.sub}`, String(next)); showToast(next ? '✓ Cadence enabled' : '✓ Cadence disabled'); }}
+              className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-all ${flightProjectionEnabled ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-red-600/20 text-red-400 border border-red-500/30'}`}
+            >
+              {flightProjectionEnabled ? 'On' : 'Off'}
+            </button>
             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowProtocolEditor(!showProtocolEditor); }} className="text-xs text-blue-400 hover:text-blue-300">
               {showProtocolEditor ? 'Close' : 'Edit'}
             </button>
@@ -933,6 +942,14 @@ export default function OpportunitiesPage() {
           </div>
         </summary>
         <div className="px-4 pb-4">
+        {!flightProjectionEnabled ? (
+          <div className="text-center py-6">
+            <p className="text-2xl mb-2">🦅</p>
+            <p className="text-sm text-slate-400">Lead cadence is turned off</p>
+            <p className="text-xs text-slate-500 mt-1">New leads won't get auto-scheduled follow-up reminders. Tap "On" above to re-enable.</p>
+          </div>
+        ) : (
+        <>
         <p className="text-xs text-slate-400 mb-3">Your automated follow-up sequence. When you add a lead, these steps schedule as reminders on your calendar so every lead gets consistent outreach.</p>
 
         {/* Visual timeline */}
@@ -1086,6 +1103,8 @@ export default function OpportunitiesPage() {
             </div>
           );
         })()}
+      </>
+        )}
       </div>
       </details>
 

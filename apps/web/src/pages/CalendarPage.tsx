@@ -278,10 +278,13 @@ export default function CalendarPage() {
         {/* Month navigation */}
         <div className="flex items-center justify-between mb-4">
           <button onClick={prevMonth} className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors">←</button>
-          <h3 className="font-semibold text-white">{monthName}</h3>
+          <h3 className="font-semibold text-white">{viewMode === 'day' ? new Date(currentYear, currentMonth, today.getDate()).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : monthName}</h3>
           <button onClick={nextMonth} className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors">→</button>
         </div>
 
+        {/* MONTH VIEW */}
+        {viewMode === 'month' && (
+        <>
         {/* Day headers */}
         <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center text-xs text-slate-400 mb-2">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
@@ -357,6 +360,114 @@ export default function CalendarPage() {
             );
           })}
         </div>
+        </>
+        )}
+
+        {/* WEEK VIEW */}
+        {viewMode === 'week' && (() => {
+          const now = new Date();
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay());
+          const weekDays = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(startOfWeek);
+            d.setDate(startOfWeek.getDate() + i);
+            return d;
+          });
+          return (
+            <div className="space-y-1">
+              {weekDays.map((d) => {
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const dayEvents = events.filter((e) => e.date === dateStr);
+                const isToday = d.toDateString() === now.toDateString();
+                return (
+                  <div
+                    key={dateStr}
+                    onClick={() => { setSelectedDay(d.getDate()); setCurrentMonth(d.getMonth()); setCurrentYear(d.getFullYear()); setShowModal(true); }}
+                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isToday ? 'bg-blue-500/15 border border-blue-500/30' : 'bg-white/5 border border-transparent hover:bg-white/10'}`}
+                  >
+                    <div className="text-center w-10 shrink-0">
+                      <p className={`text-[10px] uppercase ${isToday ? 'text-blue-400' : 'text-slate-500'}`}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                      <p className={`text-lg font-bold ${isToday ? 'text-white' : 'text-slate-300'}`}>{d.getDate()}</p>
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {dayEvents.length === 0 && <p className="text-xs text-slate-600 italic">No events</p>}
+                      {dayEvents.slice(0, 4).map((evt) => {
+                        const icon = evt.type === 'post' ? '📤' : evt.type === 'meeting' ? '🤝' : '🔔';
+                        const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '');
+                        return (
+                          <div key={evt.id} className="flex items-center gap-1.5">
+                            <span className="text-[10px]">{icon}</span>
+                            <span className={`text-xs truncate ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{cleanTitle}</span>
+                          </div>
+                        );
+                      })}
+                      {dayEvents.length > 4 && <p className="text-[10px] text-slate-500">+{dayEvents.length - 4} more</p>}
+                    </div>
+                    <span className="text-xs text-slate-500 shrink-0">{dayEvents.length}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* DAY VIEW */}
+        {viewMode === 'day' && (() => {
+          const now = new Date();
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const dayEvents = events.filter((e) => e.date === todayStr);
+          const untimed = dayEvents.filter((e) => !e.title.match(/^\[\d{1,2}:\d{2}\]/));
+          const timed = dayEvents.filter((e) => e.title.match(/^\[\d{1,2}:\d{2}\]/));
+          return (
+            <div className="space-y-2">
+              {/* Untimed events at top */}
+              {untimed.length > 0 && (
+                <div className="space-y-1 mb-3 pb-3 border-b border-white/10">
+                  <p className="text-[10px] text-slate-500 uppercase font-medium">All Day</p>
+                  {untimed.map((evt) => {
+                    const icon = evt.type === 'post' ? '📤' : evt.type === 'meeting' ? '🤝' : '🔔';
+                    return (
+                      <div key={evt.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                        <span className="text-sm">{icon}</span>
+                        <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
+                        <button onClick={() => toggleComplete(evt.id)} className={`text-[10px] px-2 py-0.5 rounded ${evt.completed ? 'text-green-400' : 'bg-green-600/20 text-green-300'}`}>{evt.completed ? '✓' : 'Done'}</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {/* Hourly timeline */}
+              <div className="relative border-l-2 border-blue-500/30 ml-4 space-y-0">
+                {Array.from({ length: 14 }, (_, i) => i + 6).map((hour) => {
+                  const hourEvents = timed.filter((e) => {
+                    const match = e.title.match(/^\[(\d{1,2}):\d{2}\]/);
+                    return match && parseInt(match[1]) === hour;
+                  });
+                  const hourLabel = hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`;
+                  return (
+                    <div key={hour} className={`flex items-start gap-2 min-h-[36px] ${hourEvents.length > 0 ? '' : 'opacity-30'}`}>
+                      <span className="text-[10px] text-slate-500 w-10 shrink-0 pt-1.5 text-right">{hourLabel}</span>
+                      <div className="flex-1 border-t border-white/10 pt-1">
+                        {hourEvents.map((evt) => {
+                          const icon = evt.type === 'post' ? '📤' : evt.type === 'meeting' ? '🤝' : '🔔';
+                          const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '');
+                          return (
+                            <div key={evt.id} className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded px-2.5 py-1.5 mb-1">
+                              <span className="text-sm">{icon}</span>
+                              <span className={`text-xs flex-1 truncate ${evt.completed ? 'line-through text-slate-600' : 'text-white'}`}>{cleanTitle}</span>
+                              <button onClick={() => toggleComplete(evt.id)} className={`text-[10px] px-2 py-0.5 rounded ${evt.completed ? 'text-green-400' : 'bg-green-600/20 text-green-300'}`}>{evt.completed ? '✓' : 'Done'}</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Legend */}
         <div className="flex gap-3 mt-3 text-xs text-slate-400">
           <span className="flex items-center gap-1">📤 Post</span>

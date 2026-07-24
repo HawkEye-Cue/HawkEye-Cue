@@ -59,12 +59,9 @@ export default function ContentCreatorPage() {
     return () => { if (imagePreview) URL.revokeObjectURL(imagePreview); };
   }, [imagePreview]);
 
-  // Refresh calendar events when page loads or gets focus
+  // Refresh calendar events when page loads (but NOT on focus — avoids resetting in-progress flock flow)
   useEffect(() => {
     refreshEvents();
-    const handleFocus = () => refreshEvents();
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
   }, [refreshEvents]);
 
   const EMOJI_LIST = [
@@ -859,7 +856,10 @@ export default function ContentCreatorPage() {
                       const content = Object.values(platformContent)[0] || '';
                       navigator.clipboard.writeText(content);
                       if (next) {
-                        toggleComplete(next.id);
+                        // Only toggle if not already completed (prevent double-toggle)
+                        if (!next.completed) {
+                          toggleComplete(next.id);
+                        }
                         setShowHawkSwoop(true);
                         setTimeout(() => setShowHawkSwoop(false), 1400);
                         window.open(next.link!, '_blank');

@@ -140,13 +140,13 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleComplete = useCallback(async (id: string) => {
-    // Optimistic update
-    setEvents((prev) => prev.map((e) => e.id === id ? { ...e, completed: !e.completed } : e));
+    // Optimistic update — set completedAt so auto-reset logic doesn't undo it
+    const now = new Date().toISOString();
+    setEvents((prev) => prev.map((e) => e.id === id ? { ...e, completed: !e.completed, completedAt: !e.completed ? now : null } : e));
 
     try {
       const client = await buildClient();
       await client.request('PUT', `/calendar/events/${id}/toggle`);
-      showToast('✓ Saved');
     } catch { /* revert silently on failure */ }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 

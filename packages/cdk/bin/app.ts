@@ -10,8 +10,8 @@ import { MainStack } from '../lib/main-stack.js';
 const app = new cdk.App();
 
 const env = {
-  account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
+  account: process.env.CDK_DEFAULT_ACCOUNT || process.env.AWS_ACCOUNT_ID || undefined,
+  region: process.env.CDK_DEFAULT_REGION ?? process.env.AWS_DEFAULT_REGION ?? 'us-east-1',
 };
 
 const databaseStack = new DatabaseStack(app, 'SocialLeadGen-Database', { env });

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Opportunity, OpportunityStatus } from '@social-lead-gen/shared';
 import { MEMBER_COLORS } from '../hooks/useTeamData';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 export interface FollowupStep {
   idx: number;
@@ -78,10 +79,16 @@ export default function LeadProfilePopup({
   updatingId,
 }: LeadProfilePopupProps) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [notes, setNotes] = useState<ActivityNote[]>(() => readNotes(lead.id));
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  // Re-read notes when a different lead is selected
+  useEffect(() => {
+    setNotes(readNotes(lead.id));
+  }, [lead.id]);
 
   // Focus management: capture previously focused element and focus close button on open
   useEffect(() => {
@@ -254,6 +261,7 @@ export default function LeadProfilePopup({
                 } catch { /* ignore */ }
                 setNotes(updated);
                 input.value = '';
+                showToast('✓ Note saved');
               }}
               className="self-end px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >

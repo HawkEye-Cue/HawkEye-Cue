@@ -511,10 +511,18 @@ export default function TeamPage() {
             </div>
 
             {/* Filtered leads list */}
+            {leadFilter !== 'all' && (
+              <div className="flex items-center justify-between bg-slate-700/50 rounded-lg px-3 py-2">
+                <span className="text-xs text-white font-medium">
+                  {(() => { const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); return dn[leadFilter] || leadFilter.split('@')[0]; })()}'s Leads
+                </span>
+                <button onClick={() => setLeadFilter('all')} className="text-[10px] text-blue-400 hover:text-blue-300">Show all</button>
+              </div>
+            )}
             {(() => {
               const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
               const filtered = leadFilter === 'all' ? teamLeads : teamLeads.filter((l) => l.addedByEmail === leadFilter);
-              if (filtered.length === 0) return <p className="text-xs text-slate-500 text-center py-3">No leads in this nest</p>;
+              if (filtered.length === 0) return <p className="text-xs text-slate-500 text-center py-3">{leadFilter === 'all' ? 'No leads yet — leads added by any team member show here' : 'No leads in this nest yet'}</p>;
               return (
                 <div className="space-y-1.5 max-h-[350px] overflow-y-auto">
                   {filtered.map((lead) => {

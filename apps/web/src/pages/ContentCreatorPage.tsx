@@ -608,57 +608,6 @@ export default function ContentCreatorPage() {
             </div>
           ))}
 
-          {/* Post Preview */}
-          <details className="glass-card-strong" open>
-            <summary className="font-semibold text-white cursor-pointer flex items-center gap-2">
-              👁️ Post Preview
-            </summary>
-            <div className="mt-4 space-y-4">
-              {Object.entries(platformContent).map(([platform, content]) => (
-                <div key={`preview-${platform}`} className="rounded-xl border border-slate-600 overflow-hidden bg-white">
-                  {/* Platform header */}
-                  <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-                      {user?.email?.[0]?.toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-900">{currentTrade?.name || 'Your Business'}</p>
-                      <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                        {PLATFORM_ICONS[platform]} {platform.charAt(0).toUpperCase() + platform.slice(1)} · Just now
-                      </p>
-                    </div>
-                  </div>
-                  {/* Post content */}
-                  <div className="px-3 py-2">
-                    <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{content.slice(0, 300)}{content.length > 300 ? '...' : ''}</p>
-                  </div>
-                  {/* Media */}
-                  {imagePreview && (
-                    <div className="px-3 pb-2">
-                      <img src={imagePreview} alt="Post media" className="w-full rounded-lg object-cover max-h-64" />
-                    </div>
-                  )}
-                  {videoName && !imagePreview && (
-                    <div className="px-3 pb-2">
-                      <div className="w-full h-48 rounded-lg bg-slate-900 flex items-center justify-center">
-                        <div className="text-center">
-                          <span className="text-4xl">🎬</span>
-                          <p className="text-xs text-slate-400 mt-1">{videoName}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {/* Engagement bar */}
-                  <div className="px-3 py-2 border-t border-slate-200 flex items-center gap-4 text-slate-500 text-xs">
-                    <span>👍 Like</span>
-                    <span>💬 Comment</span>
-                    <span>↗️ Share</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </details>
-
           <div className="space-y-3">
             <div className="flex gap-2">
               <button

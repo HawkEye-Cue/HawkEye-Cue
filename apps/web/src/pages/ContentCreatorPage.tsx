@@ -244,6 +244,17 @@ export default function ContentCreatorPage() {
         </div>
       )}
 
+      {/* Flocks Done Banner */}
+      {todayCalendarEvents.filter((e) => e.type === 'post').length > 0 && todayCalendarEvents.filter((e) => e.type === 'post').every((e) => e.completed) && (
+        <div className="p-3 rounded-xl bg-gradient-to-r from-green-500/15 to-emerald-500/15 border border-green-500/30 flex items-center gap-3">
+          <span className="text-2xl">✅</span>
+          <div>
+            <p className="text-sm font-bold text-green-300">All flocks posted today!</p>
+            <p className="text-xs text-slate-400">{todayCalendarEvents.filter((e) => e.type === 'post').length} groups done — scroll down to engage or create more content</p>
+          </div>
+        </div>
+      )}
+
       {/* Mode Toggle */}
       <div className="flex gap-2 bg-slate-700/60 border-2 border-amber-500 rounded-xl p-2 shadow-xl shadow-amber-500/10">
         <button

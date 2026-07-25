@@ -92,7 +92,7 @@ export default function OpportunitiesPage() {
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const { selectedTrade } = useTrade();
-  const { events, addEvent, toggleComplete } = useCalendar();
+  const { events, addEvent, toggleComplete, removeAllByTitle } = useCalendar();
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
   const [groupBy, setGroupBy] = useState<'none' | 'platform' | 'keyword'>('none');
   const [leads, setLeads] = useState<Opportunity[]>([]);
@@ -323,6 +323,13 @@ export default function OpportunitiesPage() {
     try {
       const client = await buildClient();
       await client.updateOpportunityStatus(id, newStatus);
+      // If converted (won), remove all cadence reminders for this lead
+      if (newStatus === 'converted') {
+        const lead = leads.find((l) => l.id === id);
+        if (lead?.sourceAuthor) {
+          removeAllByTitle(lead.sourceAuthor);
+        }
+      }
       // Update local state
       setLeads((prev) => prev.map((l) => l.id === id ? { ...l, status: newStatus } : l));
       // Update stats
@@ -351,6 +358,10 @@ export default function OpportunitiesPage() {
       const client = await buildClient();
       await client.deleteOpportunity(id);
       const deleted = leads.find((l) => l.id === id);
+      // Remove all calendar reminders related to this lead
+      if (deleted?.sourceAuthor) {
+        removeAllByTitle(deleted.sourceAuthor);
+      }
       setLeads((prev) => prev.filter((l) => l.id !== id));
       setStats((prev) => {
         const updated = { ...prev, total: prev.total - 1 };

@@ -706,11 +706,16 @@ export default function TeamPage() {
                     const icon = evt.type === 'meeting' ? '🤝' : '🔔';
                     const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '');
                     const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]/);
+                    const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                    const memberName = displayNames[user?.email || ''] || user?.email?.split('@')[0] || 'You';
                     return (
                       <div key={evt.id} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2">
                         <span className="text-sm">{icon}</span>
-                        <span className="text-xs text-slate-200 flex-1 truncate">{cleanTitle}</span>
-                        {timeMatch && <span className="text-[10px] text-slate-500">{timeMatch[1]}</span>}
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs text-slate-200 block truncate">{cleanTitle}</span>
+                          <span className="text-[9px] text-blue-400">{memberName}</span>
+                        </div>
+                        {timeMatch && <span className="text-[10px] text-slate-500 shrink-0">{timeMatch[1]}</span>}
                       </div>
                     );
                   })}

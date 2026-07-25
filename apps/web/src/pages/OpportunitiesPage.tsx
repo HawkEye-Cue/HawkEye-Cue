@@ -30,15 +30,63 @@ const statusColors: Record<string, string> = {
   dismissed: 'bg-slate-900/40 text-slate-400 border-slate-500/20',
 };
 
-// Default lead follow-up protocol
-const DEFAULT_LEAD_PROTOCOL = [
-  { day: 0, type: 'call', task: 'Call the lead — introduce yourself, ask about their needs' },
-  { day: 1, type: 'sms', task: 'Send follow-up text if no answer yesterday' },
-  { day: 3, type: 'call', task: 'Call #2 — try a different time of day' },
-  { day: 5, type: 'email', task: 'Send a value email or quote if you have their info' },
-  { day: 7, type: 'call', task: 'Call #3 — one week check-in' },
-  { day: 14, type: 'sms', task: 'Two-week follow-up text: still here if you need help' },
-];
+// Default lead follow-up protocols by source type
+const LEAD_PROTOCOLS: Record<string, { label: string; description: string; steps: { day: number; type: string; task: string }[] }> = {
+  'internet-lead': {
+    label: '🔥 Internet Lead (Aggressive)',
+    description: 'Speed to lead — respond within minutes. 10+ touches in 21 days.',
+    steps: [
+      { day: 0, type: 'sms', task: 'Immediate text: Hi [Name], just got your request — when works to chat?' },
+      { day: 0, type: 'call', task: 'Call within 5 minutes — introduce yourself' },
+      { day: 0, type: 'email', task: 'Send welcome email with your info + scheduling link' },
+      { day: 1, type: 'call', task: 'Call #2 — follow up if no answer. Leave voicemail.' },
+      { day: 1, type: 'sms', task: 'Text: Just left you a voicemail — happy to help!' },
+      { day: 2, type: 'email', task: 'Send value email — helpful tips about their needs' },
+      { day: 3, type: 'call', task: 'Call #3 — try a different time of day' },
+      { day: 5, type: 'sms', task: 'Text: Still here if you need help. No pressure!' },
+      { day: 7, type: 'call', task: 'Call #4 — one week mark, circle back' },
+      { day: 10, type: 'email', task: 'Send "did you find what you needed?" re-engagement email' },
+      { day: 14, type: 'call', task: 'Call #5 — last strong push before spacing out' },
+      { day: 21, type: 'email', task: 'Final follow-up: I\'m here if you still need help!' },
+    ],
+  },
+  'social-media': {
+    label: '🔥 Social Media (Hot Lead)',
+    description: 'They already know you — light touch, build relationship.',
+    steps: [
+      { day: 0, type: 'call', task: 'Call — they engaged with your content, strike while hot' },
+      { day: 1, type: 'sms', task: 'Follow-up text if no answer' },
+      { day: 3, type: 'call', task: 'Call #2 — mention what they commented/liked' },
+      { day: 7, type: 'email', task: 'Send a helpful resource or quote' },
+      { day: 14, type: 'sms', task: 'Check-in text: still here when you\'re ready' },
+    ],
+  },
+  'referral': {
+    label: '🤝 Referral (Warm Lead)',
+    description: 'Trust is pre-built — connect quickly, be personal.',
+    steps: [
+      { day: 0, type: 'call', task: 'Call immediately — mention who referred them' },
+      { day: 1, type: 'sms', task: 'Text: Great connecting! Here\'s my info if you need me.' },
+      { day: 3, type: 'call', task: 'Call #2 — check if they have questions' },
+      { day: 7, type: 'email', task: 'Send quote or info they need' },
+      { day: 14, type: 'sms', task: 'Two-week check-in' },
+    ],
+  },
+  'default': {
+    label: '📋 Standard Cadence',
+    description: 'Balanced follow-up for general leads.',
+    steps: [
+      { day: 0, type: 'call', task: 'Call the lead — introduce yourself, ask about their needs' },
+      { day: 1, type: 'sms', task: 'Send follow-up text if no answer yesterday' },
+      { day: 3, type: 'call', task: 'Call #2 — try a different time of day' },
+      { day: 5, type: 'email', task: 'Send a value email or quote if you have their info' },
+      { day: 7, type: 'call', task: 'Call #3 — one week check-in' },
+      { day: 14, type: 'sms', task: 'Two-week follow-up text: still here if you need help' },
+    ],
+  },
+};
+
+const DEFAULT_LEAD_PROTOCOL = LEAD_PROTOCOLS['default'].steps;
 
 export default function OpportunitiesPage() {
   const { getToken, user } = useAuth();
@@ -1007,7 +1055,21 @@ export default function OpportunitiesPage() {
         {/* Protocol Editor */}
         {showProtocolEditor && (
           <div className="space-y-3">
-            <p className="text-xs text-slate-400">Customize your follow-up steps. These will auto-schedule on your calendar when you add a new lead.</p>
+            <p className="text-xs text-slate-400">Choose a template or customize your own follow-up steps.</p>
+            {/* Protocol Template Selector */}
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(LEAD_PROTOCOLS).map(([key, proto]) => (
+                <button
+                  key={key}
+                  onClick={() => setLeadProtocol([...proto.steps])}
+                  className="text-left px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-amber-500/40 hover:bg-amber-500/5 transition-all"
+                >
+                  <p className="text-xs font-medium text-white">{proto.label}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{proto.steps.length} steps · {proto.description}</p>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-500">Tap a template to load it, then customize below:</p>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {leadProtocol.map((step, i) => (
                 <div key={i} className="flex items-center gap-2">

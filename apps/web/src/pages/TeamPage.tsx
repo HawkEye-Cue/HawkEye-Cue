@@ -85,15 +85,23 @@ type Tab = 'manage' | 'calendar' | 'leads' | 'analytics' | 'notifications';
 
 const MEMBER_COLORS = [
   'bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500',
+  'bg-red-500', 'bg-cyan-500', 'bg-orange-500', 'bg-indigo-500', 'bg-lime-500',
 ];
 const MEMBER_TEXT_COLORS = [
   'text-blue-400', 'text-purple-400', 'text-emerald-400', 'text-amber-400', 'text-pink-400',
+  'text-red-400', 'text-cyan-400', 'text-orange-400', 'text-indigo-400', 'text-lime-400',
 ];
 const MEMBER_BORDER_COLORS = [
   'border-blue-500/30', 'border-purple-500/30', 'border-emerald-500/30', 'border-amber-500/30', 'border-pink-500/30',
+  'border-red-500/30', 'border-cyan-500/30', 'border-orange-500/30', 'border-indigo-500/30', 'border-lime-500/30',
 ];
 const MEMBER_BG_COLORS = [
   'bg-blue-500/10', 'bg-purple-500/10', 'bg-emerald-500/10', 'bg-amber-500/10', 'bg-pink-500/10',
+  'bg-red-500/10', 'bg-cyan-500/10', 'bg-orange-500/10', 'bg-indigo-500/10', 'bg-lime-500/10',
+];
+const COLOR_LABELS = [
+  'Blue', 'Purple', 'Emerald', 'Amber', 'Pink',
+  'Red', 'Cyan', 'Orange', 'Indigo', 'Lime',
 ];
 
 export default function TeamPage() {
@@ -128,6 +136,7 @@ export default function TeamPage() {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [notifications, setNotifications] = useState<DealNotification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [memberColors, setMemberColors] = useState<Record<string, number>>(() => JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}'));
 
   async function buildClient() {
     const token = await getToken();
@@ -164,6 +173,12 @@ export default function TeamPage() {
           const existing = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
           const merged = { ...existing, ...prefs.displayNames };
           localStorage.setItem('hawkeye_display_names', JSON.stringify(merged));
+        }
+        if (prefs.memberColors && typeof prefs.memberColors === 'object') {
+          const existing = JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}');
+          const merged = { ...existing, ...prefs.memberColors };
+          localStorage.setItem('hawkeye_member_colors', JSON.stringify(merged));
+          setMemberColors(merged);
         }
       } catch { /* ignore */ }
     }
@@ -310,6 +325,10 @@ export default function TeamPage() {
   }
 
   function getMemberColorIndex(email: string): number {
+    // Check user-assigned color first
+    const memberColors = JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}');
+    if (memberColors[email] !== undefined) return memberColors[email] % MEMBER_COLORS.length;
+    // Fallback: position in team array
     if (!team) return 0;
     const idx = team.members.findIndex((m) => m.email === email);
     return idx >= 0 ? idx % MEMBER_COLORS.length : 0;
@@ -399,15 +418,28 @@ export default function TeamPage() {
       {/* 👥 Team Members */}
       <div className="glass-card space-y-3">
         <h3 className="font-semibold text-white">👥 Team Members</h3>
-        <p className="text-xs text-slate-400">Edit display names below, then click Save</p>
+        <p className="text-xs text-slate-400">Edit display names and colors below, then click Save</p>
         <div className="space-y-2">
           {team.members.map((member, i) => {
             const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
             const displayName = displayNames[member.email] || '';
+            const colorIdx = getMemberColorIndex(member.email);
             return (
               <div key={member.userId} className="flex items-center justify-between bg-slate-700 px-3 py-2 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
+                  {/* Color picker — click to cycle through colors */}
+                  <div className="relative group">
+                    <button
+                      onClick={() => {
+                        const next = (colorIdx + 1) % MEMBER_COLORS.length;
+                        const updated = { ...memberColors, [member.email]: next };
+                        setMemberColors(updated);
+                        localStorage.setItem('hawkeye_member_colors', JSON.stringify(updated));
+                      }}
+                      className={`w-4 h-4 rounded-full ${MEMBER_COLORS[colorIdx]} border-2 border-white/30 hover:border-white/70 transition-all cursor-pointer`}
+                      title={`Color: ${COLOR_LABELS[colorIdx]} — click to change`}
+                    />
+                  </div>
                   <div>
                     <input type="text" id={`team-name-${member.userId}`} defaultValue={displayName || member.email.split('@')[0]} className="text-sm text-white bg-transparent border-b border-transparent hover:border-slate-500 focus:border-blue-500 outline-none w-full" />
                     <p className="text-xs text-slate-500">{member.role === 'admin' ? '👑 Admin' : '👤 Member'} · {member.email}</p>
@@ -435,15 +467,16 @@ export default function TeamPage() {
               }
             });
             localStorage.setItem('hawkeye_display_names', JSON.stringify(names));
-            // Save to server for cross-device persistence
+            // Save both names and colors to server for cross-device persistence
+            const colors = JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}');
             buildClient().then((client) => {
-              client.request('PUT', '/profile/preferences', { displayNames: names }).catch(() => {});
+              client.request('PUT', '/profile/preferences', { displayNames: names, memberColors: colors }).catch(() => {});
             });
-            showToast('✓ Display names saved');
+            showToast('✓ Names & colors saved');
           }}
           className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95"
         >
-          💾 Save Names
+          💾 Save Names & Colors
         </button>
         {/* Invite Form */}
         {team.role === 'admin' && team.members.length + team.invites.length < team.maxMembers && (

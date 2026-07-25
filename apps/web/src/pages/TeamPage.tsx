@@ -706,7 +706,7 @@ export default function TeamPage() {
         {selectedTeamDay && (() => {
           const dateLabel = new Date(selectedTeamDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
           const dayEvts = myEvents.filter((e) => e.date === selectedTeamDay && e.type === 'meeting');
-          const teamDayEvts = teamCalendar.filter((e) => e.date === selectedTeamDay);
+          const teamDayEvts = teamCalendar.filter((e) => e.date === selectedTeamDay && e.type === 'meeting');
 
           // Merge own meetings + team meetings with color coding
           const seen = new Set<string>();

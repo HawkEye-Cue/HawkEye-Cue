@@ -19,7 +19,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     selector: '[data-tour="calendar"]',
     title: 'Calendar',
-    description: 'Add daily cues — reminders to post in Facebook groups, follow up on leads, or tasks for your team. They show up on your Dashboard each morning.',
+    description: 'Tap any day to see your Cues (Posts, Meetings, Reminders) and hourly Schedule. Toggle between Month, Week, and Day views. Add flocks, meetings with invites, and reminders — they show up on your Dashboard each morning.',
     icon: '📅',
     position: 'top',
   },
@@ -42,6 +42,13 @@ const TOUR_STEPS: TourStep[] = [
     title: 'Collaborate',
     description: 'Connect with other trades in your area. Post referral requests, share opportunities, and build partnerships.',
     icon: '🤝',
+    position: 'top',
+  },
+  {
+    selector: '[data-tour="team"]',
+    title: 'Summit — Team',
+    description: 'Create or join a team. See everyone\'s meetings color-coded on a shared calendar, track team leads and stats, and pick your own member color.',
+    icon: '🏔️',
     position: 'top',
   },
   {

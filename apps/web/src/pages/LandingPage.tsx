@@ -97,8 +97,8 @@ export default function LandingPage() {
             </div>
             <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
               <div className="text-2xl mb-3">📅</div>
-              <h4 className="font-bold text-lg mb-2">Full Calendar & Scheduling</h4>
-              <p className="text-sm text-slate-400">Schedule posts, meetings, and reminders. Send meeting invites with calendar links (Google, Outlook, Apple). Daily notes save to each date automatically.</p>
+              <h4 className="font-bold text-lg mb-2">Unified Calendar & Scheduling</h4>
+              <p className="text-sm text-slate-400">Every calendar uses the same day view — Cues summary tiles (Posts, Meetings, Reminders) plus an hourly Schedule from 6 AM to 8 PM. Toggle between Month, Week, and Day views. Send meeting invites with Google and Outlook calendar links.</p>
             </div>
             <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
               <div className="text-2xl mb-3">🎯</div>
@@ -209,6 +209,8 @@ export default function LandingPage() {
               <li>👥 Team leaderboard & stats</li>
               <li>👥 Shared leads & calendar</li>
               <li>👥 Team analytics dashboard</li>
+              <li>🎨 Custom member colors on shared calendar</li>
+              <li>📅 Color-coded meeting dots per team member</li>
             </ul>
             <Link to="/register" className="block text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2.5 rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
               Reach the Summit

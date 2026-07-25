@@ -28,8 +28,8 @@ const STEPS = [
   {
     icon: '📅',
     title: 'Step 4: Use Your Calendar',
-    description: 'The calendar shows everything — flocks, meetings, and reminders. Tap any day to see what\'s scheduled, add new items, edit, or delete. Schedule meetings with invites that go straight to the client\'s calendar.',
-    tip: 'Meeting invites include "Add to Google Calendar" and "Add to Outlook Calendar" buttons.',
+    description: 'All calendars use the same day view — tap any day to see Cues (Posts, Meetings, Reminders counts) and an hourly Schedule from 6 AM to 8 PM. Switch between Month, Week, and Day views with the toggle.',
+    tip: 'Meeting invites include "Add to Google Calendar" and "Add to Outlook Calendar" buttons. Daily notes save to each date automatically.',
   },
   {
     icon: '🎯',
@@ -44,8 +44,14 @@ const STEPS = [
     tip: 'Available on the Soar plan. Upgrade from Settings when you need it.',
   },
   {
+    icon: '🏔️',
+    title: 'Step 7: Team Up on Summit',
+    description: 'Summit lets you create or join a team of up to 5 members. See everyone\'s meetings color-coded on a shared calendar, track team leads, view the leaderboard, and celebrate wins together.',
+    tip: 'Each member picks their own color — it shows on all team calendars. Available on the Summit plan ($99.99/mo).',
+  },
+  {
     icon: '🤝',
-    title: 'Step 7: Build Your Network',
+    title: 'Step 8: Build Your Network',
     description: 'The Network tab connects you with other trades in your area. Post referral requests, log appreciations from people who recommend you, and save your referral partners.',
     tip: 'Roofers meet insurance agents. Realtors meet contractors. Everyone wins.',
   },

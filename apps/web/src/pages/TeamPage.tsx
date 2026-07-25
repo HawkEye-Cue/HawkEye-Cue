@@ -637,37 +637,25 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* 📅 Team Calendar */}
+      {/* 📅 Team Calendar — syncs with Dashboard */}
       <div className="glass-card">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-white">📅 Team Calendar</h3>
-          <p className="text-xs text-slate-400">All members' schedules combined</p>
         </div>
-        {/* Member color legend */}
-        <div className="flex flex-wrap gap-3 mb-3">
-          {team.members.map((m, i) => {
-            const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
-            const name = displayNames[m.email] || m.email.split('@')[0];
-            return (
-              <div key={m.userId} className="flex items-center gap-1.5">
-                <div className={`w-2.5 h-2.5 rounded-full ${MEMBER_COLORS[i % MEMBER_COLORS.length]}`} />
-                <span className="text-xs text-slate-300">{name}</span>
-              </div>
-            );
-          })}
-        </div>
-        {calendarLoading ? <p className="text-xs text-slate-500">Loading...</p> : (() => {
-          const now = new Date();
+        {(() => {
           const year = teamCalYear;
           const month = teamCalMonth;
+          const now = new Date();
+          const todayDay = now.getMonth() === month && now.getFullYear() === year ? now.getDate() : -1;
           const daysInMonth = new Date(year, month + 1, 0).getDate();
           const firstDayOfWeek = new Date(year, month, 1).getDay();
-          const today = now.getMonth() === month && now.getFullYear() === year ? now.getDate() : -1;
+          const monthName = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
           return (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <button onClick={() => { if (month === 0) { setTeamCalMonth(11); setTeamCalYear(year - 1); } else { setTeamCalMonth(month - 1); } }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">←</button>
-                <p className="text-xs text-slate-400">{new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+                <p className="text-xs text-slate-400 font-medium">{monthName}</p>
                 <button onClick={() => { if (month === 11) { setTeamCalMonth(0); setTeamCalYear(year + 1); } else { setTeamCalMonth(month + 1); } }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">→</button>
               </div>
               <div className="grid grid-cols-7 gap-0.5 mb-1">
@@ -678,23 +666,20 @@ export default function TeamPage() {
                 {Array.from({ length: daysInMonth }, (_, i) => {
                   const day = i + 1;
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                  const dayEvents = [
-                    ...teamCalendar.filter((e) => e.date === dateStr && e.type !== 'post'),
-                    ...myEvents.filter((e) => e.date === dateStr && e.type !== 'post' && !teamCalendar.some((tc) => tc.date === dateStr && tc.title === e.title)).map((e) => ({ ...e, memberEmail: user?.email || '', memberName: user?.email?.split('@')[0] || '' })),
-                  ];
-                  const isToday = day === today;
+                  const dayEvts = myEvents.filter((e) => e.date === dateStr && e.type !== 'post');
+                  const isToday = day === todayDay;
                   const isSelected = selectedTeamDay === dateStr;
-                  const uniqueMembers = [...new Set(dayEvents.map((e) => e.memberEmail))];
                   return (
                     <div
                       key={day}
                       onClick={() => setSelectedTeamDay(isSelected ? null : dateStr)}
-                      className={`text-center py-2 sm:py-3 rounded-lg transition-colors cursor-pointer ${isSelected ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-400' : isToday ? 'bg-blue-600 text-white font-bold' : dayEvents.length > 0 ? 'bg-slate-700 text-white hover:bg-slate-600' : 'text-slate-500 hover:bg-white/5'}`}
+                      className={`text-center py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-400' : isToday ? 'bg-blue-600 text-white font-bold' : dayEvts.length > 0 ? 'bg-slate-700 text-white hover:bg-slate-600' : 'text-slate-500 hover:bg-white/5'}`}
                     >
-                      <span className="text-xs sm:text-sm">{day}</span>
-                      {uniqueMembers.length > 0 && (
+                      <span className="text-xs">{day}</span>
+                      {dayEvts.length > 0 && (
                         <div className="flex justify-center gap-0.5 mt-0.5">
-                          {uniqueMembers.slice(0, 4).map((email) => <div key={email} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[getMemberColorIndex(email)]}`} />)}
+                          {dayEvts.some((e) => e.type === 'meeting') && <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>}
+                          {dayEvts.some((e) => e.type === 'reminder' || e.type === 'task') && <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>}
                         </div>
                       )}
                     </div>
@@ -705,62 +690,39 @@ export default function TeamPage() {
           );
         })()}
 
-        {/* Day Detail — shows all members' events for selected day */}
+        {/* Day Detail */}
         {selectedTeamDay && (() => {
-          const dayEvents = [
-            ...teamCalendar.filter((e) => e.date === selectedTeamDay && e.type !== 'post'),
-            ...myEvents.filter((e) => e.date === selectedTeamDay && e.type !== 'post' && !teamCalendar.some((tc) => tc.date === selectedTeamDay && tc.title === e.title)).map((e) => ({ ...e, memberEmail: user?.email || '', memberName: user?.email?.split('@')[0] || '' })),
-          ];
           const dateLabel = new Date(selectedTeamDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-          // Group by member
-          const byMember: Record<string, TeamCalendarEvent[]> = {};
-          dayEvents.forEach((e) => {
-            if (!byMember[e.memberEmail]) byMember[e.memberEmail] = [];
-            byMember[e.memberEmail].push(e);
-          });
-          const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+          const dayEvts = myEvents.filter((e) => e.date === selectedTeamDay && e.type !== 'post');
           return (
-            <div className="mt-3 p-3 rounded-xl border border-blue-500/30 bg-slate-700/80 backdrop-blur-sm animate-scale-in">
-              <div className="flex items-center justify-between mb-3">
+            <div className="mt-3 p-3 rounded-xl border border-blue-500/30 bg-slate-700/80">
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-bold text-white">{dateLabel}</p>
                 <button onClick={() => setSelectedTeamDay(null)} className="text-xs text-slate-400 hover:text-white">✕</button>
               </div>
-              <div className="space-y-3">
-                {Object.entries(byMember).map(([email, events]) => {
-                  const colorIdx = getMemberColorIndex(email);
-                  const name = displayNames[email] || email.split('@')[0];
-                  return (
-                    <div key={email}>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <div className={`w-3 h-3 rounded-full ${MEMBER_COLORS[colorIdx]}`} />
-                        <span className="text-xs font-semibold text-white">{name}</span>
-                        <span className="text-[10px] text-slate-500">{events.length} event{events.length !== 1 ? 's' : ''}</span>
+              {dayEvts.length > 0 && (
+                <div className="space-y-1.5 mb-3">
+                  {dayEvts.map((evt) => {
+                    const icon = evt.type === 'meeting' ? '🤝' : '🔔';
+                    const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '');
+                    const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]/);
+                    return (
+                      <div key={evt.id} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2">
+                        <span className="text-sm">{icon}</span>
+                        <span className="text-xs text-slate-200 flex-1 truncate">{cleanTitle}</span>
+                        {timeMatch && <span className="text-[10px] text-slate-500">{timeMatch[1]}</span>}
                       </div>
-                      <div className="space-y-1 pl-5">
-                        {events.map((evt) => {
-                          const icon = evt.type === 'post' ? '📤' : evt.type === 'meeting' ? '🤝' : evt.type === 'reminder' ? '🔔' : '📋';
-                          const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
-                          const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]/);
-                          return (
-                            <div key={evt.id} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2">
-                              <span className="text-sm shrink-0">{icon}</span>
-                              <span className="text-xs text-slate-200 flex-1 truncate">{cleanTitle}</span>
-                              {timeMatch && <span className="text-[10px] text-slate-500 shrink-0">{timeMatch[1]}</span>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Add event to this day */}
+                    );
+                  })}
+                </div>
+              )}
+              {/* Add Event */}
               {!addingTeamEvent ? (
-                <button onClick={() => setAddingTeamEvent(true)} className="w-full mt-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all active:scale-95">
-                  + Add Event to This Day
+                <button onClick={() => setAddingTeamEvent(true)} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg active:scale-95">
+                  + Add to This Day
                 </button>
               ) : (
-                <div className="mt-3 space-y-2 pt-2 border-t border-white/10">
+                <div className="space-y-2 pt-2 border-t border-white/10">
                   <div className="flex gap-1">
                     {(['meeting', 'reminder'] as const).map((t) => (
                       <button key={t} onClick={() => setTeamEventType(t)} className={`flex-1 py-1.5 rounded text-[10px] font-bold ${teamEventType === t ? (t === 'meeting' ? 'bg-amber-500 text-black' : 'bg-green-600 text-white') : 'bg-slate-700 text-slate-400'}`}>
@@ -768,7 +730,7 @@ export default function TeamPage() {
                       </button>
                     ))}
                   </div>
-                  <input type="text" value={teamEventTitle} onChange={(e) => setTeamEventTitle(e.target.value)} placeholder="Event title..." className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs placeholder-slate-500" autoFocus />
+                  <input type="text" value={teamEventTitle} onChange={(e) => setTeamEventTitle(e.target.value)} placeholder="Event title..." className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs placeholder-slate-500" />
                   <div>
                     <p className="text-[10px] text-slate-400 mb-1">Time</p>
                     <div className="grid grid-cols-4 gap-1">
@@ -780,7 +742,7 @@ export default function TeamPage() {
                             document.querySelectorAll('[id^="team-time-"]').forEach((el) => el.classList.remove('!bg-blue-600', '!text-white'));
                             (ev.target as HTMLElement).classList.add('!bg-blue-600', '!text-white');
                             (document.getElementById('teamEventTimeHidden') as HTMLInputElement).value = t;
-                          }} className="py-1.5 rounded text-[10px] font-medium bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600 transition-all">
+                          }} className="py-1.5 rounded text-[10px] font-medium bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600">
                             {label}
                           </button>
                         );
@@ -796,21 +758,15 @@ export default function TeamPage() {
                         const timeVal = (document.getElementById('teamEventTimeHidden') as HTMLInputElement)?.value || '';
                         let title = teamEventTitle.trim();
                         if (timeVal) title = `[${timeVal}] ${title}`;
-                        try {
-                          const client = await buildClient();
-                          await client.request('POST', '/calendar/events', { date: selectedTeamDay, title, type: teamEventType });
-                          setTeamEventTitle('');
-                          setAddingTeamEvent(false);
-                          showToast('✓ Event added — visible to team');
-                          setTimeout(fetchTeamCalendar, 500);
-                        } catch (e) {
-                          showToast('❌ Failed to save event');
-                        }
+                        await addEvent({ date: selectedTeamDay, title, type: teamEventType });
+                        setTeamEventTitle('');
+                        setAddingTeamEvent(false);
+                        showToast('✓ Saved to calendar');
                       }}
                       disabled={!teamEventTitle.trim()}
                       className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold disabled:opacity-50"
                     >
-                      ✓ Add
+                      ✓ Save
                     </button>
                   </div>
                 </div>
@@ -818,28 +774,6 @@ export default function TeamPage() {
             </div>
           );
         })()}
-
-        {/* Upcoming events */}
-        {!selectedTeamDay && teamCalendar.filter((e) => e.type !== 'post').length > 0 && (
-          <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5 max-h-[200px] overflow-y-auto">
-            <p className="text-xs text-slate-400 font-semibold mb-1">Upcoming</p>
-            {teamCalendar.filter((e) => e.type !== 'post').slice(0, 10).map((event) => {
-              const colorIdx = getMemberColorIndex(event.memberEmail);
-              const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
-              const memberName = displayNames[event.memberEmail] || event.memberName;
-              const cleanTitle = event.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
-              const icon = event.type === 'post' ? '📤' : event.type === 'meeting' ? '🤝' : event.type === 'reminder' ? '🔔' : '📋';
-              return (
-                <div key={event.id} className="flex items-center gap-2 bg-slate-700 px-3 py-1.5 rounded-lg">
-                  <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
-                  <span className="text-xs shrink-0">{icon}</span>
-                  <span className="text-xs text-white flex-1 truncate">{cleanTitle}</span>
-                  <span className="text-[10px] text-slate-400 shrink-0">{memberName}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       </div>{/* end right column */}

@@ -603,11 +603,11 @@ exports.handler = async (event) => {
           ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'CAL#' },
         }));
         const memberEvents = (result.Items || [])
-          .filter((e) => e.date >= start && e.date <= end)
+          .filter((e) => (e.eventDate || e.date || '') >= start && (e.eventDate || e.date || '') <= end)
           .map((e) => ({
             id: e.eventId || e.SK.replace('CAL#', '').split('#').pop() || e.SK,
             title: e.title || 'Untitled',
-            date: e.date,
+            date: e.eventDate || e.date || '',
             type: e.type || 'post',
             memberEmail: member.email,
             memberName: member.email.split('@')[0],

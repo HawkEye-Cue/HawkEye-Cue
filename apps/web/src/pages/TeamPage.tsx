@@ -177,8 +177,8 @@ export default function TeamPage() {
     try {
       const client = await buildClient();
       const now = new Date();
-      const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
       const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
       const result = await client.request<{ events: TeamCalendarEvent[] }>('GET', `/team/calendar?start=${start}&end=${endStr}`);
       setTeamCalendar(result.events || []);

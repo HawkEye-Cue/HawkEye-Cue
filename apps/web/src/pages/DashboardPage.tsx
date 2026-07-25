@@ -612,10 +612,13 @@ export default function DashboardPage() {
                     >
                       <span className={`text-sm font-medium ${isFolioStart ? 'text-green-300' : isFolioEnd ? 'text-red-300' : isToday ? 'text-white' : ''}`}>{day}</span>
                       {dayEvents.length > 0 && (
-                        <div className="flex justify-center gap-0.5 mt-0.5">
-                          {dayEvents.some((e) => e.type === 'post') && <span className="w-1 h-1 rounded-full bg-blue-400"></span>}
-                          {dayEvents.some((e) => e.type === 'meeting') && <span className="w-1 h-1 rounded-full bg-amber-400"></span>}
-                          {dayEvents.some((e) => e.type === 'reminder' || e.type === 'task') && <span className="w-1 h-1 rounded-full bg-green-400"></span>}
+                        <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                          <div className="flex justify-center gap-0.5">
+                            {dayEvents.some((e) => e.type === 'post') && <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>}
+                            {dayEvents.some((e) => e.type === 'meeting') && <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>}
+                            {dayEvents.some((e) => e.type === 'reminder' || e.type === 'task') && <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>}
+                          </div>
+                          {dayEvents.length > 1 && <span className="text-[8px] text-slate-400">{dayEvents.length}</span>}
                         </div>
                       )}
                       {isFuture && (

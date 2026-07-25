@@ -678,7 +678,7 @@ export default function TeamPage() {
                 {Array.from({ length: daysInMonth }, (_, i) => {
                   const day = i + 1;
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                  const dayEvents = teamCalendar.filter((e) => e.date === dateStr);
+                  const dayEvents = teamCalendar.filter((e) => e.date === dateStr && e.type !== 'post');
                   const isToday = day === today;
                   const isSelected = selectedTeamDay === dateStr;
                   const uniqueMembers = [...new Set(dayEvents.map((e) => e.memberEmail))];
@@ -704,7 +704,7 @@ export default function TeamPage() {
 
         {/* Day Detail — shows all members' events for selected day */}
         {selectedTeamDay && (() => {
-          const dayEvents = teamCalendar.filter((e) => e.date === selectedTeamDay);
+          const dayEvents = teamCalendar.filter((e) => e.date === selectedTeamDay && e.type !== 'post');
           const dateLabel = new Date(selectedTeamDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
           // Group by member
           const byMember: Record<string, TeamCalendarEvent[]> = {};
@@ -796,10 +796,10 @@ export default function TeamPage() {
         })()}
 
         {/* Upcoming events */}
-        {!selectedTeamDay && teamCalendar.length > 0 && (
+        {!selectedTeamDay && teamCalendar.filter((e) => e.type !== 'post').length > 0 && (
           <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5 max-h-[200px] overflow-y-auto">
             <p className="text-xs text-slate-400 font-semibold mb-1">Upcoming</p>
-            {teamCalendar.slice(0, 10).map((event) => {
+            {teamCalendar.filter((e) => e.type !== 'post').slice(0, 10).map((event) => {
               const colorIdx = getMemberColorIndex(event.memberEmail);
               const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
               const memberName = displayNames[event.memberEmail] || event.memberName;

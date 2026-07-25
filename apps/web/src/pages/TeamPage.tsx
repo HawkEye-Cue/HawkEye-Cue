@@ -756,22 +756,40 @@ export default function TeamPage() {
               ) : (
                 <div className="mt-3 space-y-2 pt-2 border-t border-white/10">
                   <div className="flex gap-1">
-                    {(['meeting', 'reminder', 'post'] as const).map((t) => (
-                      <button key={t} onClick={() => setTeamEventType(t)} className={`flex-1 py-1.5 rounded text-[10px] font-bold ${teamEventType === t ? (t === 'meeting' ? 'bg-amber-500 text-black' : t === 'reminder' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white') : 'bg-slate-700 text-slate-400'}`}>
-                        {t === 'meeting' ? '🤝' : t === 'reminder' ? '🔔' : '📤'} {t}
+                    {(['meeting', 'reminder'] as const).map((t) => (
+                      <button key={t} onClick={() => setTeamEventType(t)} className={`flex-1 py-1.5 rounded text-[10px] font-bold ${teamEventType === t ? (t === 'meeting' ? 'bg-amber-500 text-black' : 'bg-green-600 text-white') : 'bg-slate-700 text-slate-400'}`}>
+                        {t === 'meeting' ? '🤝 Meeting' : '🔔 Reminder'}
                       </button>
                     ))}
                   </div>
                   <input type="text" value={teamEventTitle} onChange={(e) => setTeamEventTitle(e.target.value)} placeholder="Event title..." className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs placeholder-slate-500" autoFocus />
-                  <input type="time" id="teamEventTime" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 mb-1">Time</p>
+                    <div className="grid grid-cols-4 gap-1">
+                      {['8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'].map((t) => {
+                        const h = parseInt(t.split(':')[0]);
+                        const label = h === 12 ? '12pm' : h > 12 ? `${h - 12}pm` : `${h}am`;
+                        return (
+                          <button key={t} id={`team-time-${t}`} onClick={(ev) => {
+                            document.querySelectorAll('[id^="team-time-"]').forEach((el) => el.classList.remove('!bg-blue-600', '!text-white'));
+                            (ev.target as HTMLElement).classList.add('!bg-blue-600', '!text-white');
+                            (document.getElementById('teamEventTimeHidden') as HTMLInputElement).value = t;
+                          }} className="py-1.5 rounded text-[10px] font-medium bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600 transition-all">
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <input type="hidden" id="teamEventTimeHidden" />
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={() => setAddingTeamEvent(false)} className="flex-1 py-2 bg-slate-700 text-slate-300 rounded-lg text-xs">Cancel</button>
                     <button
                       onClick={async () => {
                         if (!teamEventTitle.trim() || !selectedTeamDay) return;
-                        const timeInput = document.getElementById('teamEventTime') as HTMLInputElement;
+                        const timeVal = (document.getElementById('teamEventTimeHidden') as HTMLInputElement)?.value || '';
                         let title = teamEventTitle.trim();
-                        if (timeInput?.value) title = `[${timeInput.value}] ${title}`;
+                        if (timeVal) title = `[${timeVal}] ${title}`;
                         try {
                           const client = await buildClient();
                           await client.request('POST', '/calendar/events', { date: selectedTeamDay, title, type: teamEventType });

@@ -179,6 +179,12 @@ export default function TeamPage() {
     fetchNotifications();
   }, [team]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Refetch team calendar when month changes
+  useEffect(() => {
+    if (!team) return;
+    fetchTeamCalendar();
+  }, [teamCalMonth, teamCalYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function fetchTeamCalendar() {
     setCalendarLoading(true);
     try {
@@ -660,9 +666,9 @@ export default function TeamPage() {
           return (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <button onClick={() => { if (month === 0) { setTeamCalMonth(11); setTeamCalYear(year - 1); } else { setTeamCalMonth(month - 1); } setTimeout(fetchTeamCalendar, 100); }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">←</button>
+                <button onClick={() => { if (month === 0) { setTeamCalMonth(11); setTeamCalYear(year - 1); } else { setTeamCalMonth(month - 1); } }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">←</button>
                 <p className="text-xs text-slate-400">{new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
-                <button onClick={() => { if (month === 11) { setTeamCalMonth(0); setTeamCalYear(year + 1); } else { setTeamCalMonth(month + 1); } setTimeout(fetchTeamCalendar, 100); }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">→</button>
+                <button onClick={() => { if (month === 11) { setTeamCalMonth(0); setTeamCalYear(year + 1); } else { setTeamCalMonth(month + 1); } }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">→</button>
               </div>
               <div className="grid grid-cols-7 gap-0.5 mb-1">
                 {['S','M','T','W','T','F','S'].map((d, i) => <div key={i} className="text-center text-[10px] text-slate-500 font-medium py-1">{d}</div>)}

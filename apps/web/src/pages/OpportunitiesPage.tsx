@@ -1017,6 +1017,23 @@ export default function OpportunitiesPage() {
             <p className="text-2xl mb-2">🦅</p>
             <p className="text-sm text-slate-400">Lead cadence is turned off</p>
             <p className="text-xs text-slate-500 mt-1">New leads won't get auto-scheduled follow-up reminders. Tap "On" above to re-enable.</p>
+            <button
+              onClick={async () => {
+                // Remove all cadence reminders (📞, 💬, ✉️) from calendar
+                const cadenceEvents = events.filter((e) => (e.type === 'reminder' || e.type === 'task') && (e.title.startsWith('📞') || e.title.startsWith('💬') || e.title.startsWith('✉️')));
+                if (cadenceEvents.length === 0) { showToast('No cadence reminders to remove'); return; }
+                if (!confirm(`Remove ${cadenceEvents.length} cadence reminders from your calendar?`)) return;
+                const client = await buildClient();
+                for (const evt of cadenceEvents) {
+                  try { await client.request('DELETE', `/calendar/events/${evt.id}`); } catch { /* ignore */ }
+                }
+                showToast(`✓ Removed ${cadenceEvents.length} cadence reminders`);
+                window.location.reload();
+              }}
+              className="mt-3 px-4 py-2 bg-red-600/20 border border-red-500/30 text-red-300 rounded-lg text-xs font-medium hover:bg-red-600/30"
+            >
+              🗑 Clear All Cadence Reminders
+            </button>
           </div>
         ) : (
         <>

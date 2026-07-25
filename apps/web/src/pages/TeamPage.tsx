@@ -666,7 +666,7 @@ export default function TeamPage() {
                 {Array.from({ length: daysInMonth }, (_, i) => {
                   const day = i + 1;
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                  const dayEvts = myEvents.filter((e) => e.date === dateStr && e.type !== 'post');
+                  const dayEvts = myEvents.filter((e) => e.date === dateStr && e.type === 'meeting');
                   const isToday = day === todayDay;
                   const isSelected = selectedTeamDay === dateStr;
                   return (
@@ -693,7 +693,7 @@ export default function TeamPage() {
         {/* Day Detail */}
         {selectedTeamDay && (() => {
           const dateLabel = new Date(selectedTeamDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-          const dayEvts = myEvents.filter((e) => e.date === selectedTeamDay && e.type !== 'post');
+          const dayEvts = myEvents.filter((e) => e.date === selectedTeamDay && e.type === 'meeting');
           return (
             <div className="mt-3 p-3 rounded-xl border border-blue-500/30 bg-slate-700/80">
               <div className="flex items-center justify-between mb-2">
@@ -785,3 +785,4 @@ export default function TeamPage() {
     </div>
   );
 }
+

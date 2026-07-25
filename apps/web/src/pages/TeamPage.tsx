@@ -97,9 +97,9 @@ const MEMBER_BG_COLORS = [
 ];
 
 export default function TeamPage() {
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const { showToast } = useToast();
-  const { addEvent } = useCalendar();
+  const { addEvent, events: myEvents } = useCalendar();
   const [tab, setTab] = useState<Tab>('manage');
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
@@ -678,7 +678,10 @@ export default function TeamPage() {
                 {Array.from({ length: daysInMonth }, (_, i) => {
                   const day = i + 1;
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                  const dayEvents = teamCalendar.filter((e) => e.date === dateStr && e.type !== 'post');
+                  const dayEvents = [
+                    ...teamCalendar.filter((e) => e.date === dateStr && e.type !== 'post'),
+                    ...myEvents.filter((e) => e.date === dateStr && e.type !== 'post' && !teamCalendar.some((tc) => tc.date === dateStr && tc.title === e.title)).map((e) => ({ ...e, memberEmail: user?.email || '', memberName: user?.email?.split('@')[0] || '' })),
+                  ];
                   const isToday = day === today;
                   const isSelected = selectedTeamDay === dateStr;
                   const uniqueMembers = [...new Set(dayEvents.map((e) => e.memberEmail))];
@@ -704,7 +707,10 @@ export default function TeamPage() {
 
         {/* Day Detail — shows all members' events for selected day */}
         {selectedTeamDay && (() => {
-          const dayEvents = teamCalendar.filter((e) => e.date === selectedTeamDay && e.type !== 'post');
+          const dayEvents = [
+            ...teamCalendar.filter((e) => e.date === selectedTeamDay && e.type !== 'post'),
+            ...myEvents.filter((e) => e.date === selectedTeamDay && e.type !== 'post' && !teamCalendar.some((tc) => tc.date === selectedTeamDay && tc.title === e.title)).map((e) => ({ ...e, memberEmail: user?.email || '', memberName: user?.email?.split('@')[0] || '' })),
+          ];
           const dateLabel = new Date(selectedTeamDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
           // Group by member
           const byMember: Record<string, TeamCalendarEvent[]> = {};

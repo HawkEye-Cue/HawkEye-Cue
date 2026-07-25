@@ -8,6 +8,10 @@ import { TRADES, ApiClient } from '@social-lead-gen/shared';
 import type { ScheduledPost } from '@social-lead-gen/shared';
 import TradeSelector from '../components/TradeSelector';
 import { useTeamData } from '../hooks/useTeamData';
+import HourlyTimeline from '../components/HourlyTimeline';
+import type { TimelineEvent } from '../components/HourlyTimeline';
+import ViewModeToggle from '../components/ViewModeToggle';
+import type { ViewMode } from '../components/ViewModeToggle';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -44,6 +48,7 @@ export default function DashboardPage() {
   const [dashCalTime, setDashCalTime] = useState('');
   const [dashCalLink, setDashCalLink] = useState('');
   const [dashCalInviteEmail, setDashCalInviteEmail] = useState('');
+  const [dashViewMode, setDashViewMode] = useState<ViewMode>('month');
   const [teamWins, setTeamWins] = useState<{ id: string; memberName: string; dealName: string; dealValue: number; closedAt: string }[]>([]);
 
   // Refetch when page becomes visible (user navigates back)
@@ -567,8 +572,9 @@ export default function DashboardPage() {
       <div className="glass-card">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-white text-sm">📅 Calendar</h3>
+          <ViewModeToggle value={dashViewMode} onChange={setDashViewMode} />
         </div>
-        {(() => {
+        {dashViewMode === 'month' && (() => {
           const now = new Date();
           const year = dashCalYear;
           const month = dashCalMonth;
@@ -642,6 +648,76 @@ export default function DashboardPage() {
             </div>
           );
         })()}
+
+        {/* Week View */}
+        {dashViewMode === 'week' && (() => {
+          const now = new Date();
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay());
+          return (
+            <div className="space-y-1.5">
+              {Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(startOfWeek);
+                d.setDate(startOfWeek.getDate() + i);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const dayEvents = events.filter((e) => e.date === dateStr);
+                const isToday = d.toDateString() === now.toDateString();
+                return (
+                  <div
+                    key={dateStr}
+                    onClick={() => { setDashCalDay(dateStr); setDashCalAdd(false); }}
+                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isToday ? 'bg-blue-500/15 border border-blue-500/30' : 'bg-white/5 border border-transparent hover:bg-white/10'}`}
+                  >
+                    <div className="text-center w-10 shrink-0">
+                      <p className={`text-[10px] uppercase ${isToday ? 'text-blue-400' : 'text-slate-500'}`}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                      <p className={`text-lg font-bold ${isToday ? 'text-white' : 'text-slate-300'}`}>{d.getDate()}</p>
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {dayEvents.length === 0 && <p className="text-xs text-slate-600 italic">No events</p>}
+                      {dayEvents.slice(0, 3).map((evt) => {
+                        const icon = evt.type === 'post' ? '📤' : evt.type === 'meeting' ? '🤝' : '🔔';
+                        const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '');
+                        return (
+                          <div key={evt.id} className="flex items-center gap-1.5">
+                            <span className="text-[10px]">{icon}</span>
+                            <span className={`text-xs truncate ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{cleanTitle}</span>
+                          </div>
+                        );
+                      })}
+                      {dayEvents.length > 3 && <p className="text-[10px] text-slate-500">+{dayEvents.length - 3} more</p>}
+                    </div>
+                    <span className="text-xs text-slate-500 shrink-0">{dayEvents.length}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* Day View */}
+        {dashViewMode === 'day' && (() => {
+          const now = new Date();
+          const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const dayEvents = events.filter((e) => e.date === todayDateStr);
+          const timelineEvents: TimelineEvent[] = dayEvents.map((evt) => ({
+            id: evt.id,
+            title: evt.title,
+            type: evt.type as TimelineEvent['type'],
+            completed: evt.completed,
+            link: evt.link,
+          }));
+          return (
+            <div>
+              <p className="text-xs text-slate-400 mb-2">{now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+              <HourlyTimeline
+                events={timelineEvents}
+                onToggleComplete={toggleComplete}
+                onDelete={removeEvent}
+                showActions={true}
+              />
+            </div>
+          );
+        })()}
       </div>
 
       {/* Dashboard Calendar Day Modal */}
@@ -657,222 +733,135 @@ export default function DashboardPage() {
 
             {!dashCalAdd ? (
               <>
-                {/* Day events organized by category */}
+                {/* Day Overview — matching CalendarPage format */}
                 {(() => {
                   const dayEvts = events.filter((e) => e.date === dashCalDay);
-                  if (dayEvts.length === 0) return <p className="text-xs text-slate-500 text-center py-4">No events — tap + to add</p>;
-                  const posts = dayEvts.filter((e) => e.type === 'post');
-                  const meetings = dayEvts.filter((e) => e.type === 'meeting');
-                  const flightOffModal = localStorage.getItem(`hawkeye_flight_enabled_${user?.sub}`) === 'false';
-                  const reminders = dayEvts.filter((e) => (e.type === 'reminder' || e.type === 'task') && !(flightOffModal && (e.title.startsWith('📞') || e.title.startsWith('💬') || e.title.startsWith('✉️'))));
+                  const timedEvents: Record<number, typeof dayEvts> = {};
+                  const untimedEvents: typeof dayEvts = [];
+                  for (const evt of dayEvts) {
+                    const timeMatch = evt.title.match(/^\[(\d{1,2}):(\d{2})\]/);
+                    if (timeMatch) {
+                      const hour = parseInt(timeMatch[1]);
+                      if (!timedEvents[hour]) timedEvents[hour] = [];
+                      timedEvents[hour].push(evt);
+                    } else {
+                      untimedEvents.push(evt);
+                    }
+                  }
+                  const hours = Array.from({ length: 15 }, (_, i) => i + 6);
 
-                  const renderEvt = (evt: any) => (
-                    <div key={evt.id} className="p-2 rounded-lg bg-white/5">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '')}</span>
-                        {evt.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full">✓</span>}
-                      </div>
-                      <div className="flex justify-between mt-2">
-                        {evt.link ? <a href={evt.link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
-                        <button onClick={() => {
-                          const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
-                          const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/);
-                          let cleanTitle = evt.title;
-                          if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], '');
-                          if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, '');
-                          const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/);
-                          if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], '');
-                          setEditingEvent(evt);
-                          setEditTitle(cleanTitle.trim());
-                          setEditTime(timeMatch ? timeMatch[1] : '');
-                          setEditLocation(locationMatch ? locationMatch[1].trim() : '');
-                          setEditLink(evt.link || '');
-                          setEditDate(evt.date);
-                        }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
-                        <button onClick={() => removeEvent(evt.id)} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
-                      </div>
-                    </div>
-                  );
-
-                  const renderMeeting = (evt: any) => {
-                    const notesInTitle = evt.title.match(/\|\s*(.+)$/)?.[1] || '';
-                    const savedNotes = evt.notes || '';
-                    const displayNotes = savedNotes || notesInTitle;
-                    return (
-                      <details key={evt.id} className="p-2 rounded-lg bg-white/5">
-                        <summary className="flex items-center gap-2 cursor-pointer">
-                          <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '')}</span>
-                          {evt.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full">✓</span>}
-                          {displayNotes && <span className="text-[9px] text-amber-400">📝</span>}
-                        </summary>
-                        <div className="mt-2 space-y-2">
-                          {displayNotes && <p className="text-[11px] text-slate-400 italic bg-amber-500/5 border border-amber-500/10 rounded p-2">📝 {displayNotes}</p>}
-                          <textarea
-                            defaultValue={savedNotes}
-                            onBlur={(e) => {
-                              const val = e.target.value;
-                              if (val !== savedNotes) {
-                                updateEvent(evt.id, { title: evt.title });
-                                // Save notes via updateNotes endpoint
-                                getToken().then((token) => {
-                                  if (!token) return;
-                                  const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-                                  client.request('PUT', `/calendar/events/${evt.id}/notes`, { notes: val }).catch(() => {});
-                                });
-                                // Update local state
-                                evt.notes = val;
-                              }
-                            }}
-                            placeholder="Add meeting notes..."
-                            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-[11px] text-white placeholder-slate-600 resize-none h-14 focus:border-amber-500/50 focus:outline-none"
-                          />
-                          <div className="flex justify-between">
-                            {evt.link ? <a href={evt.link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
-                            <button onClick={() => {
-                              const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/);
-                              const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/);
-                              let cleanTitle = evt.title;
-                              if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], '');
-                              if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, '');
-                              const nm = cleanTitle.match(/\s*\|\s*(.+)$/);
-                              if (nm) cleanTitle = cleanTitle.replace(nm[0], '');
-                              setEditingEvent(evt);
-                              setEditTitle(cleanTitle.trim());
-                              setEditTime(timeMatch ? timeMatch[1] : '');
-                              setEditLocation(locationMatch ? locationMatch[1].trim() : '');
-                              setEditLink(evt.link || '');
-                              setEditDate(evt.date);
-                            }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
-                            <button onClick={() => removeEvent(evt.id)} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
-                          </div>
-                        </div>
-                      </details>
-                    );
-                  };
+                  const allPosts = dayEvts.filter((e) => e.type === 'post');
+                  const allMeetings = dayEvts.filter((e) => e.type === 'meeting' || e.type === 'task');
+                  const allReminders = dayEvts.filter((e) => e.type === 'reminder');
 
                   return (
-                    <div className="space-y-2 mb-3">
-                      {meetings.length > 0 && (
-                        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 overflow-hidden">
-                          <div className="flex items-center justify-between p-2.5">
-                            <span className="text-xs font-bold text-amber-400">🤝 Meetings</span>
-                            <span className="text-xs text-slate-500">{meetings.length}</span>
-                          </div>
-                          {/* Hourly calendar view */}
-                          <div className="px-2.5 pb-2.5">
-                            <div className="relative border-l-2 border-amber-500/30 ml-3 space-y-0">
-                              {Array.from({ length: 13 }, (_, i) => i + 7).map((hour) => {
-                                const hourMeetings = meetings.filter((m: any) => {
-                                  const match = m.title.match(/^\[(\d{1,2}):(\d{2})\]/);
-                                  if (!match) return hour === 9; // default unscheduled to 9am
-                                  return parseInt(match[1]) === hour;
-                                });
-                                const hourLabel = hour === 0 ? '12a' : hour < 12 ? `${hour}a` : hour === 12 ? '12p' : `${hour - 12}p`;
-                                return (
-                                  <div key={hour} className={`flex items-start gap-2 min-h-[32px] ${hourMeetings.length > 0 ? '' : 'opacity-30'}`}>
-                                    <span className="text-[9px] text-slate-500 w-7 shrink-0 pt-1 text-right">{hourLabel}</span>
-                                    <div className="flex-1 border-t border-white/10 pt-0.5">
-                                      {/* Stack overlapping meetings side by side */}
-                                      <div className="flex gap-1 flex-wrap">
-                                        {hourMeetings.map((m: any) => {
-                                          const cleanTitle = m.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*—\s*📍.*$/, '').replace(/\s*\|.*$/, '');
-                                          // Team member color (if event has memberEmail from team calendar)
-                                          const memberColors = ['bg-blue-500/20 border-blue-400/40', 'bg-purple-500/20 border-purple-400/40', 'bg-emerald-500/20 border-emerald-400/40', 'bg-amber-500/20 border-amber-400/40', 'bg-pink-500/20 border-pink-400/40'];
-                                          const memberTextColors = ['text-blue-200', 'text-purple-200', 'text-emerald-200', 'text-amber-200', 'text-pink-200'];
-                                          const memberDots = ['bg-blue-400', 'bg-purple-400', 'bg-emerald-400', 'bg-amber-400', 'bg-pink-400'];
-                                          const memberIdx = m.memberEmail ? Math.abs([...m.memberEmail].reduce((a: number, c: string) => a + c.charCodeAt(0), 0)) % 5 : -1;
-                                          const bgColor = memberIdx >= 0 ? memberColors[memberIdx] : 'bg-amber-500/15 border-amber-500/30';
-                                          const textColor = memberIdx >= 0 ? memberTextColors[memberIdx] : 'text-amber-200';
-                                          const dotColor = memberIdx >= 0 ? memberDots[memberIdx] : '';
+                    <div>
+                      {/* Cues tiles */}
+                      <div className="mb-4">
+                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Cues</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <details className="rounded-xl border border-blue-500/30 bg-blue-500/10 overflow-hidden">
+                            <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                              <span className="text-2xl">📤</span>
+                              <span className="text-lg font-bold text-blue-400">{allPosts.length}</span>
+                              <span className="text-[10px] text-slate-400">Posts</span>
+                            </summary>
+                            {allPosts.length > 0 && (
+                              <div className="px-2 pb-2 space-y-1.5 border-t border-blue-500/20 pt-2 max-h-40 overflow-y-auto">
+                                {allPosts.map((evt) => (
+                                  <div key={evt.id} className="p-1.5 rounded-lg bg-blue-500/5 border border-blue-500/10">
+                                    <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                                    <div className="flex justify-between mt-2">
+                                      <button onClick={() => { const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingEvent(evt); setEditTitle(cleanTitle.trim()); setEditTime(timeMatch ? timeMatch[1] : ''); setEditLocation(''); setEditLink(evt.link || ''); setEditDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                      <button onClick={() => removeEvent(evt.id)} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </details>
 
-                                          return (
-                                            <div key={m.id} className={`flex items-center gap-1.5 ${bgColor} border rounded px-2 py-1.5 flex-1 min-w-[80px]`}>
-                                              {dotColor && <div className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} />}
-                                              <span className={`text-xs font-medium flex-1 truncate ${m.completed ? 'line-through text-slate-500' : textColor}`}>{cleanTitle}</span>
-                                              {m.inviteStatus === 'confirmed' && <span className="text-[8px] text-green-400">✓</span>}
-                                              <button onClick={() => { removeEvent(m.id); }} className="text-[9px] text-slate-500 hover:text-red-400">✕</button>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
+                          <details className="rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
+                            <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                              <span className="text-2xl">🤝</span>
+                              <span className="text-lg font-bold text-amber-400">{allMeetings.length}</span>
+                              <span className="text-[10px] text-slate-400">Meetings</span>
+                            </summary>
+                            {allMeetings.length > 0 && (
+                              <div className="px-2 pb-2 space-y-1.5 border-t border-amber-500/20 pt-2 max-h-40 overflow-y-auto">
+                                {allMeetings.map((evt) => (
+                                  <div key={evt.id} className="p-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                                    <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '')}</span>
+                                    <div className="flex justify-between mt-2">
+                                      {evt.link ? <a href={evt.link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                                      <button onClick={() => { const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingEvent(evt); setEditTitle(cleanTitle.trim()); setEditTime(timeMatch ? timeMatch[1] : ''); setEditLocation(locationMatch ? locationMatch[1].trim() : ''); setEditLink(evt.link || ''); setEditDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                      <button onClick={() => removeEvent(evt.id)} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
                                     </div>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {reminders.length > 0 && (
-                        <div className="rounded-xl border border-green-500/20 bg-green-500/5 overflow-hidden">
-                          <div className="flex items-center justify-between p-2.5">
-                            <span className="text-xs font-bold text-green-400">🔔 Reminders</span>
-                            <span className="text-xs text-slate-500">{reminders.length}</span>
-                          </div>
-                          <div className="px-2.5 pb-2.5">
-                            {/* Untimed reminders at top */}
-                            {(() => {
-                              const untimed = reminders.filter((r: any) => !r.title.match(/^\[\d{1,2}:\d{2}\]/));
-                              if (untimed.length === 0) return null;
-                              return (
-                                <div className="mb-2 space-y-1">
-                                  <span className="text-[9px] text-slate-500">All Day</span>
-                                  {untimed.map((r: any) => (
-                                    <div key={r.id} className="flex items-center gap-2 bg-green-500/15 border border-green-500/30 rounded px-2 py-1.5">
-                                      <span className={`text-xs font-medium flex-1 truncate ${r.completed ? 'line-through text-slate-500' : 'text-green-200'}`}>{r.title}</span>
-                                      <button onClick={() => toggleComplete(r.id)} className={`text-[9px] px-1.5 py-0.5 rounded ${r.completed ? 'text-green-400' : 'text-slate-400 hover:text-green-400 bg-green-600/20'}`}>{r.completed ? '✓' : 'Done'}</button>
-                                      <button onClick={() => removeEvent(r.id)} className="text-[9px] text-slate-500 hover:text-red-400">✕</button>
+                                ))}
+                              </div>
+                            )}
+                          </details>
+
+                          <details className="rounded-xl border border-green-500/30 bg-green-500/10 overflow-hidden">
+                            <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
+                              <span className="text-2xl">🔔</span>
+                              <span className="text-lg font-bold text-green-400">{allReminders.length}</span>
+                              <span className="text-[10px] text-slate-400">Reminders</span>
+                            </summary>
+                            {allReminders.length > 0 && (
+                              <div className="px-2 pb-2 space-y-1.5 border-t border-green-500/20 pt-2 max-h-40 overflow-y-auto">
+                                {allReminders.map((evt) => (
+                                  <div key={evt.id} className="p-1.5 rounded-lg bg-green-500/5 border border-green-500/10">
+                                    <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                                    <div className="flex justify-between mt-2">
+                                      <button onClick={() => { const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingEvent(evt); setEditTitle(cleanTitle.trim()); setEditTime(timeMatch ? timeMatch[1] : ''); setEditLocation(''); setEditLink(evt.link || ''); setEditDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                      <button onClick={() => removeEvent(evt.id)} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
                                     </div>
-                                  ))}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </details>
+                        </div>
+                      </div>
+
+                      {/* Schedule — hourly time slots */}
+                      <div>
+                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Schedule</p>
+                        <div className="space-y-0 max-h-[300px] overflow-y-auto">
+                          {hours.map((hour) => {
+                            const evts = timedEvents[hour] || [];
+                            const timeLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+                            return (
+                              <div key={hour} className={`flex gap-3 py-1.5 border-b border-white/5`}>
+                                <span className={`text-[11px] w-14 shrink-0 pt-0.5 ${evts.length > 0 ? 'text-white font-medium' : 'text-slate-600'}`}>{timeLabel}</span>
+                                <div className="flex-1">
+                                  {evts.length > 0 ? evts.map((evt) => {
+                                    const color = evt.type === 'post' ? 'border-blue-500/30 bg-blue-500/5' : (evt.type === 'meeting' || evt.type === 'task') ? 'border-amber-500/30 bg-amber-500/5' : 'border-green-500/30 bg-green-500/5';
+                                    return (
+                                      <div key={evt.id} className={`p-2 rounded-lg border ${color} mb-1`}>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm shrink-0">{evt.type === 'post' ? '📤' : (evt.type === 'meeting' || evt.type === 'task') ? '🤝' : '🔔'}</span>
+                                          <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-white'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  }) : (
+                                    <div className="h-4"></div>
+                                  )}
                                 </div>
-                              );
-                            })()}
-                            {/* Hourly timeline */}
-                            <div className="relative border-l-2 border-green-500/30 ml-3 space-y-0">
-                              {Array.from({ length: 13 }, (_, i) => i + 7).map((hour) => {
-                                const hourReminders = reminders.filter((r: any) => {
-                                  const match = r.title.match(/^\[(\d{1,2}):(\d{2})\]/);
-                                  if (!match) return false; // untimed handled above
-                                  return parseInt(match[1]) === hour;
-                                });
-                                const hourLabel = hour === 0 ? '12a' : hour < 12 ? `${hour}a` : hour === 12 ? '12p' : `${hour - 12}p`;
-                                return (
-                                  <div key={hour} className={`flex items-start gap-2 min-h-[28px] ${hourReminders.length > 0 ? '' : 'opacity-30'}`}>
-                                    <span className="text-[9px] text-slate-500 w-7 shrink-0 pt-1 text-right">{hourLabel}</span>
-                                    <div className="flex-1 border-t border-white/10 pt-0.5">
-                                      <div className="flex gap-1 flex-wrap">
-                                        {hourReminders.map((r: any) => {
-                                          const cleanTitle = r.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
-                                          return (
-                                            <div key={r.id} className="flex items-center gap-1.5 bg-green-500/15 border border-green-500/30 rounded px-2 py-1.5 flex-1 min-w-[80px]">
-                                              <span className={`text-xs font-medium flex-1 truncate ${r.completed ? 'line-through text-slate-500' : 'text-green-200'}`}>{cleanTitle}</span>
-                                              <button onClick={() => toggleComplete(r.id)} className={`text-[9px] px-1.5 py-0.5 rounded ${r.completed ? 'text-green-400' : 'text-slate-400 hover:text-green-400 bg-green-600/20'}`}>{r.completed ? '✓' : 'Done'}</button>
-                                              <button onClick={() => removeEvent(r.id)} className="text-[9px] text-slate-500 hover:text-red-400">✕</button>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      )}
-                      {posts.length > 0 && (
-                        <details className="rounded-xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">
-                          <summary className="flex items-center justify-between p-2.5 cursor-pointer">
-                            <span className="text-xs font-bold text-blue-400">📤 Posts</span>
-                            <span className="text-xs text-slate-500">{posts.length}</span>
-                          </summary>
-                          <div className="px-2.5 pb-2.5 space-y-1.5">{posts.map(renderEvt)}</div>
-                        </details>
-                      )}
+                      </div>
+
+                      {dayEvts.length === 0 && <p className="text-xs text-slate-500 text-center pt-2">No cues — click + to add</p>}
                     </div>
                   );
                 })()}
-                <button onClick={() => setDashCalAdd(true)} className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95">
+                <button onClick={() => setDashCalAdd(true)} className="w-full mt-3 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-lg transition-all active:scale-95">
                   + Add to this day
                 </button>
               </>

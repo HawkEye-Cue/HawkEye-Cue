@@ -678,8 +678,20 @@ export default function TeamPage() {
                       <span className="text-xs">{day}</span>
                       {dayEvts.length > 0 && (
                         <div className="flex justify-center gap-0.5 mt-0.5">
-                          {dayEvts.some((e) => e.type === 'meeting') && <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>}
-                          {dayEvts.some((e) => e.type === 'reminder' || e.type === 'task') && <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>}
+                          {(() => {
+                            // Get unique member emails for this day's team events
+                            const teamDayEvts = teamCalendar.filter((e) => e.date === dateStr);
+                            const uniqueEmails = [...new Set(teamDayEvts.map((e) => e.memberEmail))];
+                            if (uniqueEmails.length > 0 && uniqueEmails.some((e) => e !== user?.email)) {
+                              // Team API is working — show per-member dots
+                              return uniqueEmails.slice(0, 3).map((email) => {
+                                const colorIdx = getMemberColorIndex(email);
+                                return <span key={email} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[colorIdx]}`}></span>;
+                              });
+                            }
+                            // Fallback: amber dot (only own events)
+                            return <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>;
+                          })()}
                         </div>
                       )}
                     </div>
@@ -694,40 +706,122 @@ export default function TeamPage() {
         {selectedTeamDay && (() => {
           const dateLabel = new Date(selectedTeamDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
           const dayEvts = myEvents.filter((e) => e.date === selectedTeamDay && e.type === 'meeting');
+          const teamDayEvts = teamCalendar.filter((e) => e.date === selectedTeamDay);
+
+          // Merge own meetings + team meetings with color coding
+          const seen = new Set<string>();
+          const myColorIdx = getMemberColorIndex(user?.email || '');
+          const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+
+          interface MergedMeeting { id: string; title: string; completed: boolean; link?: string; memberName: string; colorIdx: number; }
+          const merged: MergedMeeting[] = [];
+
+          // Own meetings first
+          for (const m of dayEvts) {
+            const key = `${m.title}|${m.date}`;
+            seen.add(key);
+            merged.push({ id: m.id, title: m.title, completed: m.completed, link: m.link, memberName: 'You', colorIdx: myColorIdx });
+          }
+
+          // Team meetings (skip duplicates)
+          for (const tm of teamDayEvts) {
+            if (tm.memberEmail === user?.email) continue;
+            const titleWithTime = tm.startTime ? `[${tm.startTime}] ${tm.title}` : tm.title;
+            const key = `${titleWithTime}|${tm.date}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            const colorIdx = getMemberColorIndex(tm.memberEmail);
+            merged.push({ id: tm.id, title: titleWithTime, completed: false, memberName: tm.memberName || displayNames[tm.memberEmail] || tm.memberEmail.split('@')[0], colorIdx });
+          }
+
+          // Separate timed vs untimed
+          const timedEvents: Record<number, MergedMeeting[]> = {};
+          const untimedEvents: MergedMeeting[] = [];
+          for (const evt of merged) {
+            const timeMatch = evt.title.match(/^\[(\d{1,2}):(\d{2})\]/);
+            if (timeMatch) {
+              const hour = parseInt(timeMatch[1]);
+              if (!timedEvents[hour]) timedEvents[hour] = [];
+              timedEvents[hour].push(evt);
+            } else {
+              untimedEvents.push(evt);
+            }
+          }
+          const hours = Array.from({ length: 15 }, (_, i) => i + 6);
+
           return (
             <div className="mt-3 p-3 rounded-xl border border-blue-500/30 bg-slate-700/80">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-bold text-white">{dateLabel}</p>
                 <button onClick={() => setSelectedTeamDay(null)} className="text-xs text-slate-400 hover:text-white">✕</button>
               </div>
-              {dayEvts.length > 0 && (
-                <div className="space-y-1.5 mb-3">
-                  {dayEvts.map((evt) => {
-                    const icon = evt.type === 'meeting' ? '🤝' : '🔔';
-                    const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '');
-                    const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]/);
-                    const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
-                    const memberName = displayNames[user?.email || ''] || user?.email?.split('@')[0] || 'You';
+
+              {/* Cues — meetings count */}
+              <div className="mb-3">
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Cues</p>
+                <div className="flex justify-center">
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-center w-24">
+                    <span className="text-2xl">🤝</span>
+                    <span className="text-lg font-bold text-amber-400 block">{merged.length}</span>
+                    <span className="text-[10px] text-slate-400">Meetings</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Schedule — hourly time slots with member colors */}
+              <div>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Schedule</p>
+                <div className="space-y-0 max-h-[250px] overflow-y-auto">
+                  {hours.map((hour) => {
+                    const evts = timedEvents[hour] || [];
+                    const timeLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
                     return (
-                      <div key={evt.id} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2">
-                        <span className="text-sm">{icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-xs text-slate-200 block truncate">{cleanTitle}</span>
-                          <span className="text-[9px] text-blue-400">{memberName}</span>
+                      <div key={hour} className={`flex gap-3 py-1.5 border-b border-white/5`}>
+                        <span className={`text-[11px] w-14 shrink-0 pt-0.5 ${evts.length > 0 ? 'text-white font-medium' : 'text-slate-600'}`}>{timeLabel}</span>
+                        <div className="flex-1">
+                          {evts.length > 0 ? evts.map((evt) => (
+                            <div key={evt.id} className={`p-2 rounded-lg border ${MEMBER_BORDER_COLORS[evt.colorIdx]} ${MEMBER_BG_COLORS[evt.colorIdx]} mb-1`}>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[evt.colorIdx]} shrink-0`} />
+                                <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-white'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
+                              </div>
+                              <span className="text-[9px] text-slate-400 ml-4">{evt.memberName}</span>
+                            </div>
+                          )) : (
+                            <div className="h-4"></div>
+                          )}
                         </div>
-                        {timeMatch && <span className="text-[10px] text-slate-500 shrink-0">{timeMatch[1]}</span>}
                       </div>
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Untimed meetings */}
+              {untimedEvents.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-[10px] text-slate-500 uppercase">Unscheduled</p>
+                  {untimedEvents.map((evt) => (
+                    <div key={evt.id} className={`p-2 rounded-lg border ${MEMBER_BORDER_COLORS[evt.colorIdx]} ${MEMBER_BG_COLORS[evt.colorIdx]}`}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${MEMBER_COLORS[evt.colorIdx]} shrink-0`} />
+                        <span className="text-xs text-white flex-1">{evt.title}</span>
+                      </div>
+                      <span className="text-[9px] text-slate-400 ml-4">{evt.memberName}</span>
+                    </div>
+                  ))}
+                </div>
               )}
+
+              {merged.length === 0 && <p className="text-xs text-slate-500 text-center py-2">No meetings this day</p>}
+
               {/* Add Event */}
               {!addingTeamEvent ? (
-                <button onClick={() => setAddingTeamEvent(true)} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg active:scale-95">
+                <button onClick={() => setAddingTeamEvent(true)} className="w-full mt-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg active:scale-95">
                   + Add to This Day
                 </button>
               ) : (
-                <div className="space-y-2 pt-2 border-t border-white/10">
+                <div className="space-y-2 pt-2 border-t border-white/10 mt-3">
                   <div className="flex gap-1">
                     {(['meeting', 'reminder'] as const).map((t) => (
                       <button key={t} onClick={() => setTeamEventType(t)} className={`flex-1 py-1.5 rounded text-[10px] font-bold ${teamEventType === t ? (t === 'meeting' ? 'bg-amber-500 text-black' : 'bg-green-600 text-white') : 'bg-slate-700 text-slate-400'}`}>

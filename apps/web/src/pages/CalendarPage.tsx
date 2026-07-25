@@ -7,6 +7,8 @@ import type { ScheduledPost } from '@social-lead-gen/shared';
 import type { CalendarEvent } from '../contexts/CalendarContext';
 import { useTeamData, MEMBER_COLORS } from '../hooks/useTeamData';
 import type { TeamCalendarEvent } from '../hooks/useTeamData';
+import HourlyTimeline from '../components/HourlyTimeline';
+import type { TimelineEvent } from '../components/HourlyTimeline';
 
 type ViewMode = 'month' | 'week' | 'day';
 
@@ -416,55 +418,19 @@ export default function CalendarPage() {
           const now = new Date();
           const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
           const dayEvents = events.filter((e) => e.date === todayStr);
-          const untimed = dayEvents.filter((e) => !e.title.match(/^\[\d{1,2}:\d{2}\]/));
-          const timed = dayEvents.filter((e) => e.title.match(/^\[\d{1,2}:\d{2}\]/));
+          const timelineEvents: TimelineEvent[] = dayEvents.map((evt) => ({
+            id: evt.id,
+            title: evt.title,
+            type: evt.type as TimelineEvent['type'],
+            completed: evt.completed,
+            link: evt.link,
+          }));
           return (
-            <div className="space-y-2">
-              {/* Untimed events at top */}
-              {untimed.length > 0 && (
-                <div className="space-y-1 mb-3 pb-3 border-b border-white/10">
-                  <p className="text-[10px] text-slate-500 uppercase font-medium">All Day</p>
-                  {untimed.map((evt) => {
-                    const icon = evt.type === 'post' ? '📤' : evt.type === 'meeting' ? '🤝' : '🔔';
-                    return (
-                      <div key={evt.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
-                        <span className="text-sm">{icon}</span>
-                        <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title}</span>
-                        <button onClick={() => toggleComplete(evt.id)} className={`text-[10px] px-2 py-0.5 rounded ${evt.completed ? 'text-green-400' : 'bg-green-600/20 text-green-300'}`}>{evt.completed ? '✓' : 'Done'}</button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {/* Hourly timeline */}
-              <div className="relative border-l-2 border-blue-500/30 ml-4 space-y-0">
-                {Array.from({ length: 14 }, (_, i) => i + 6).map((hour) => {
-                  const hourEvents = timed.filter((e) => {
-                    const match = e.title.match(/^\[(\d{1,2}):\d{2}\]/);
-                    return match && parseInt(match[1]) === hour;
-                  });
-                  const hourLabel = hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour - 12}pm`;
-                  return (
-                    <div key={hour} className={`flex items-start gap-2 min-h-[36px] ${hourEvents.length > 0 ? '' : 'opacity-30'}`}>
-                      <span className="text-[10px] text-slate-500 w-10 shrink-0 pt-1.5 text-right">{hourLabel}</span>
-                      <div className="flex-1 border-t border-white/10 pt-1">
-                        {hourEvents.map((evt) => {
-                          const icon = evt.type === 'post' ? '📤' : evt.type === 'meeting' ? '🤝' : '🔔';
-                          const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '');
-                          return (
-                            <div key={evt.id} className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded px-2.5 py-1.5 mb-1">
-                              <span className="text-sm">{icon}</span>
-                              <span className={`text-xs flex-1 truncate ${evt.completed ? 'line-through text-slate-600' : 'text-white'}`}>{cleanTitle}</span>
-                              <button onClick={() => toggleComplete(evt.id)} className={`text-[10px] px-2 py-0.5 rounded ${evt.completed ? 'text-green-400' : 'bg-green-600/20 text-green-300'}`}>{evt.completed ? '✓' : 'Done'}</button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <HourlyTimeline
+              events={timelineEvents}
+              onToggleComplete={toggleComplete}
+              showActions={true}
+            />
           );
         })()}
 

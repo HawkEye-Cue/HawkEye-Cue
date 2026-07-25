@@ -323,11 +323,16 @@ export default function OpportunitiesPage() {
     try {
       const client = await buildClient();
       await client.updateOpportunityStatus(id, newStatus);
-      // If converted (won), remove all cadence reminders for this lead
+      // If converted (won), remove all cadence reminders and set paperwork check reminder
       if (newStatus === 'converted') {
         const lead = leads.find((l) => l.id === id);
         if (lead?.sourceAuthor) {
           removeAllByTitle(lead.sourceAuthor);
+          // Auto-schedule paperwork check reminder 2 days from now
+          const twoDaysFromNow = new Date();
+          twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
+          const reminderDate = `${twoDaysFromNow.getFullYear()}-${String(twoDaysFromNow.getMonth() + 1).padStart(2, '0')}-${String(twoDaysFromNow.getDate()).padStart(2, '0')}`;
+          await addEvent({ date: reminderDate, title: `📋 ${lead.sourceAuthor} — Verify signed paperwork & documents`, type: 'reminder' });
         }
       }
       // Update local state

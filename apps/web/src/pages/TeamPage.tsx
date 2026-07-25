@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
 
 interface TeamMember {
@@ -98,6 +99,7 @@ const MEMBER_BG_COLORS = [
 export default function TeamPage() {
   const { getToken } = useAuth();
   const { showToast } = useToast();
+  const { addEvent } = useCalendar();
   const [tab, setTab] = useState<Tab>('manage');
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,6 +116,9 @@ export default function TeamPage() {
   const [teamCalendar, setTeamCalendar] = useState<TeamCalendarEvent[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [selectedTeamDay, setSelectedTeamDay] = useState<string | null>(null);
+  const [addingTeamEvent, setAddingTeamEvent] = useState(false);
+  const [teamEventTitle, setTeamEventTitle] = useState('');
+  const [teamEventType, setTeamEventType] = useState<'meeting' | 'reminder' | 'post'>('meeting');
   const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [leadFilter, setLeadFilter] = useState<string>('all');
@@ -669,8 +674,8 @@ export default function TeamPage() {
                   return (
                     <div
                       key={day}
-                      onClick={() => dayEvents.length > 0 ? setSelectedTeamDay(isSelected ? null : dateStr) : null}
-                      className={`text-center py-2 sm:py-3 rounded-lg transition-colors ${isSelected ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-400' : isToday ? 'bg-blue-600 text-white font-bold' : dayEvents.length > 0 ? 'bg-slate-700 text-white cursor-pointer hover:bg-slate-600' : 'text-slate-500'}`}
+                      onClick={() => setSelectedTeamDay(isSelected ? null : dateStr)}
+                      className={`text-center py-2 sm:py-3 rounded-lg transition-colors cursor-pointer ${isSelected ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-400' : isToday ? 'bg-blue-600 text-white font-bold' : dayEvents.length > 0 ? 'bg-slate-700 text-white hover:bg-slate-600' : 'text-slate-500 hover:bg-white/5'}`}
                     >
                       <span className="text-xs sm:text-sm">{day}</span>
                       {uniqueMembers.length > 0 && (
@@ -732,6 +737,40 @@ export default function TeamPage() {
                   );
                 })}
               </div>
+              {/* Add event to this day */}
+              {!addingTeamEvent ? (
+                <button onClick={() => setAddingTeamEvent(true)} className="w-full mt-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all active:scale-95">
+                  + Add Event to This Day
+                </button>
+              ) : (
+                <div className="mt-3 space-y-2 pt-2 border-t border-white/10">
+                  <div className="flex gap-1">
+                    {(['meeting', 'reminder', 'post'] as const).map((t) => (
+                      <button key={t} onClick={() => setTeamEventType(t)} className={`flex-1 py-1.5 rounded text-[10px] font-bold ${teamEventType === t ? (t === 'meeting' ? 'bg-amber-500 text-black' : t === 'reminder' ? 'bg-green-600 text-white' : 'bg-blue-600 text-white') : 'bg-slate-700 text-slate-400'}`}>
+                        {t === 'meeting' ? '🤝' : t === 'reminder' ? '🔔' : '📤'} {t}
+                      </button>
+                    ))}
+                  </div>
+                  <input type="text" value={teamEventTitle} onChange={(e) => setTeamEventTitle(e.target.value)} placeholder="Event title..." className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs placeholder-slate-500" autoFocus />
+                  <div className="flex gap-2">
+                    <button onClick={() => setAddingTeamEvent(false)} className="flex-1 py-2 bg-slate-700 text-slate-300 rounded-lg text-xs">Cancel</button>
+                    <button
+                      onClick={async () => {
+                        if (!teamEventTitle.trim() || !selectedTeamDay) return;
+                        await addEvent({ date: selectedTeamDay, title: teamEventTitle.trim(), type: teamEventType });
+                        setTeamEventTitle('');
+                        setAddingTeamEvent(false);
+                        showToast('✓ Event added — visible to team');
+                        fetchTeamCalendar();
+                      }}
+                      disabled={!teamEventTitle.trim()}
+                      className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold disabled:opacity-50"
+                    >
+                      ✓ Add
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}

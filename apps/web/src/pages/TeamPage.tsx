@@ -763,16 +763,25 @@ export default function TeamPage() {
                     ))}
                   </div>
                   <input type="text" value={teamEventTitle} onChange={(e) => setTeamEventTitle(e.target.value)} placeholder="Event title..." className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs placeholder-slate-500" autoFocus />
+                  <input type="time" id="teamEventTime" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs" />
                   <div className="flex gap-2">
                     <button onClick={() => setAddingTeamEvent(false)} className="flex-1 py-2 bg-slate-700 text-slate-300 rounded-lg text-xs">Cancel</button>
                     <button
                       onClick={async () => {
                         if (!teamEventTitle.trim() || !selectedTeamDay) return;
-                        await addEvent({ date: selectedTeamDay, title: teamEventTitle.trim(), type: teamEventType });
-                        setTeamEventTitle('');
-                        setAddingTeamEvent(false);
-                        showToast('✓ Event added — visible to team');
-                        fetchTeamCalendar();
+                        const timeInput = document.getElementById('teamEventTime') as HTMLInputElement;
+                        let title = teamEventTitle.trim();
+                        if (timeInput?.value) title = `[${timeInput.value}] ${title}`;
+                        try {
+                          const client = await buildClient();
+                          await client.request('POST', '/calendar/events', { date: selectedTeamDay, title, type: teamEventType });
+                          setTeamEventTitle('');
+                          setAddingTeamEvent(false);
+                          showToast('✓ Event added — visible to team');
+                          setTimeout(fetchTeamCalendar, 500);
+                        } catch (e) {
+                          showToast('❌ Failed to save event');
+                        }
                       }}
                       disabled={!teamEventTitle.trim()}
                       className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold disabled:opacity-50"

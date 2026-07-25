@@ -667,30 +667,30 @@ export default function TeamPage() {
                   const day = i + 1;
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                   const dayEvts = myEvents.filter((e) => e.date === dateStr && e.type === 'meeting');
+                  const teamDayMeetings = teamCalendar.filter((e) => e.date === dateStr && e.type === 'meeting');
+                  const hasMeetings = dayEvts.length > 0 || teamDayMeetings.length > 0;
                   const isToday = day === todayDay;
                   const isSelected = selectedTeamDay === dateStr;
                   return (
                     <div
                       key={day}
                       onClick={() => setSelectedTeamDay(isSelected ? null : dateStr)}
-                      className={`text-center py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-400' : isToday ? 'bg-blue-600 text-white font-bold' : dayEvts.length > 0 ? 'bg-slate-700 text-white hover:bg-slate-600' : 'text-slate-500 hover:bg-white/5'}`}
+                      className={`text-center py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-400' : isToday ? 'bg-blue-600 text-white font-bold' : hasMeetings ? 'bg-slate-700 text-white hover:bg-slate-600' : 'text-slate-500 hover:bg-white/5'}`}
                     >
                       <span className="text-xs">{day}</span>
-                      {dayEvts.length > 0 && (
+                      {hasMeetings && (
                         <div className="flex justify-center gap-0.5 mt-0.5">
                           {(() => {
-                            // Get unique member emails for this day's team events
-                            const teamDayEvts = teamCalendar.filter((e) => e.date === dateStr);
-                            const uniqueEmails = [...new Set(teamDayEvts.map((e) => e.memberEmail))];
-                            if (uniqueEmails.length > 0 && uniqueEmails.some((e) => e !== user?.email)) {
-                              // Team API is working — show per-member dots
-                              return uniqueEmails.slice(0, 3).map((email) => {
-                                const colorIdx = getMemberColorIndex(email);
-                                return <span key={email} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[colorIdx]}`}></span>;
-                              });
-                            }
-                            // Fallback: amber dot (only own events)
-                            return <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>;
+                            // Collect all unique member emails for this day
+                            const allEmails = new Set<string>();
+                            for (const e of dayEvts) { allEmails.add(user?.email || ''); }
+                            for (const e of teamDayMeetings) { allEmails.add(e.memberEmail); }
+                            const uniqueEmails = [...allEmails];
+                            // Show per-member colored dots
+                            return uniqueEmails.slice(0, 4).map((email) => {
+                              const colorIdx = getMemberColorIndex(email);
+                              return <span key={email} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[colorIdx]}`}></span>;
+                            });
                           })()}
                         </div>
                       )}

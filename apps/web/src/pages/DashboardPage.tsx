@@ -36,6 +36,8 @@ export default function DashboardPage() {
   const [rescheduleRepeat, setRescheduleRepeat] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly'>('weekly');
   const [rescheduleStartDate, setRescheduleStartDate] = useState('');
   const [dashCalDay, setDashCalDay] = useState<string | null>(null);
+  const [dashCalMonth, setDashCalMonth] = useState(new Date().getMonth());
+  const [dashCalYear, setDashCalYear] = useState(new Date().getFullYear());
   const [dashCalAdd, setDashCalAdd] = useState(false);
   const [dashCalTitle, setDashCalTitle] = useState('');
   const [dashCalType, setDashCalType] = useState<'post' | 'meeting' | 'reminder'>('post');
@@ -568,19 +570,23 @@ export default function DashboardPage() {
         </div>
         {(() => {
           const now = new Date();
-          const year = now.getFullYear();
-          const month = now.getMonth();
-          const today = now.getDate();
+          const year = dashCalYear;
+          const month = dashCalMonth;
+          const today = now.getMonth() === month && now.getFullYear() === year ? now.getDate() : -1;
           const daysInMonth = new Date(year, month + 1, 0).getDate();
           const firstDayOfWeek = new Date(year, month, 1).getDay();
-          const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          const monthName = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
           const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
           const folioStart = localStorage.getItem('hawkeye_folio_start') || '';
           const folioEnd = localStorage.getItem('hawkeye_folio_end') || '';
 
           return (
             <div>
-              <p className="text-xs text-slate-400 text-center mb-2">{monthName}</p>
+              <div className="flex items-center justify-between mb-2">
+                <button onClick={() => { if (month === 0) { setDashCalMonth(11); setDashCalYear(year - 1); } else { setDashCalMonth(month - 1); } }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">←</button>
+                <p className="text-xs text-slate-400">{monthName}</p>
+                <button onClick={() => { if (month === 11) { setDashCalMonth(0); setDashCalYear(year + 1); } else { setDashCalMonth(month + 1); } }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">→</button>
+              </div>
               <div className="grid grid-cols-7 gap-0.5">
                 {dayLabels.map((d, i) => (
                   <div key={i} className="text-center text-[9px] text-slate-500 font-medium py-0.5">{d}</div>

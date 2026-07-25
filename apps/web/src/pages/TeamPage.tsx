@@ -119,6 +119,8 @@ export default function TeamPage() {
   const [addingTeamEvent, setAddingTeamEvent] = useState(false);
   const [teamEventTitle, setTeamEventTitle] = useState('');
   const [teamEventType, setTeamEventType] = useState<'meeting' | 'reminder' | 'post'>('meeting');
+  const [teamCalMonth, setTeamCalMonth] = useState(new Date().getMonth());
+  const [teamCalYear, setTeamCalYear] = useState(new Date().getFullYear());
   const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [leadFilter, setLeadFilter] = useState<string>('all');
@@ -181,9 +183,8 @@ export default function TeamPage() {
     setCalendarLoading(true);
     try {
       const client = await buildClient();
-      const now = new Date();
-      const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-      const end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+      const start = `${teamCalYear}-${String(teamCalMonth + 1).padStart(2, '0')}-01`;
+      const end = new Date(teamCalYear, teamCalMonth + 1, 0);
       const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
       const result = await client.request<{ events: TeamCalendarEvent[] }>('GET', `/team/calendar?start=${start}&end=${endStr}`);
       setTeamCalendar(result.events || []);
@@ -651,14 +652,18 @@ export default function TeamPage() {
         </div>
         {calendarLoading ? <p className="text-xs text-slate-500">Loading...</p> : (() => {
           const now = new Date();
-          const year = now.getFullYear();
-          const month = now.getMonth();
+          const year = teamCalYear;
+          const month = teamCalMonth;
           const daysInMonth = new Date(year, month + 1, 0).getDate();
           const firstDayOfWeek = new Date(year, month, 1).getDay();
-          const today = now.getDate();
+          const today = now.getMonth() === month && now.getFullYear() === year ? now.getDate() : -1;
           return (
             <div>
-              <p className="text-xs text-slate-400 text-center mb-2">{now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+              <div className="flex items-center justify-between mb-2">
+                <button onClick={() => { if (month === 0) { setTeamCalMonth(11); setTeamCalYear(year - 1); } else { setTeamCalMonth(month - 1); } setTimeout(fetchTeamCalendar, 100); }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">←</button>
+                <p className="text-xs text-slate-400">{new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+                <button onClick={() => { if (month === 11) { setTeamCalMonth(0); setTeamCalYear(year + 1); } else { setTeamCalMonth(month + 1); } setTimeout(fetchTeamCalendar, 100); }} className="text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-white/5">→</button>
+              </div>
               <div className="grid grid-cols-7 gap-0.5 mb-1">
                 {['S','M','T','W','T','F','S'].map((d, i) => <div key={i} className="text-center text-[10px] text-slate-500 font-medium py-1">{d}</div>)}
               </div>

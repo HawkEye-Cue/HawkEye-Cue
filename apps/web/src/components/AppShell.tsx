@@ -12,6 +12,7 @@ const navItems = [
   { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
   { path: '/opportunities', label: 'Leads', icon: '🎯', tour: 'leads' },
   { path: '/sales', label: 'Sales', icon: '💰', tour: 'sales' },
+  { path: '/network', label: 'Network', icon: '🤝', tour: 'network' },
   { path: '/team', label: 'Summit', icon: '🏔️', tour: 'team' },
   { path: '/settings', label: 'More', icon: '⚙️', tour: 'settings' },
 ];

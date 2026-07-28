@@ -26,6 +26,7 @@ export default function HawkInsightsPage() {
   const { events } = useCalendar();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [leads, setLeads] = useState<Opportunity[]>([]);
+  const [appreciations, setAppreciations] = useState<{ taggerName: string; platform: string; detectedAt: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState('free');
   const { isInTeam, teamAnalytics, fetchAnalytics, getMemberColorIndex } = useTeamData();
@@ -46,12 +47,14 @@ export default function HawkInsightsPage() {
     async function fetchData() {
       try {
         const client = await buildClient();
-        const [dealsRes, leadsRes] = await Promise.all([
+        const [dealsRes, leadsRes, appRes] = await Promise.all([
           client.request<{ deals: Deal[] }>('GET', '/sales/deals'),
           client.request<{ opportunities: Opportunity[] }>('GET', '/opportunities'),
+          client.request<{ items: any[] }>('GET', '/appreciations'),
         ]);
         setDeals(dealsRes.deals || []);
         setLeads((leadsRes as any).opportunities || (leadsRes as any).items || []);
+        setAppreciations((appRes.items || []).map((a: any) => ({ taggerName: a.taggerName || 'Unknown', platform: a.platform || 'unknown', detectedAt: a.detectedAt || '' })));
       } catch { /* ignore */ }
       finally { setLoading(false); }
     }
@@ -498,6 +501,100 @@ export default function HawkInsightsPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Appreciations Insights */}
+      {appreciations.length > 0 && (
+        <div className="glass-card">
+          <h3 className="font-semibold text-white mb-3">🙏 Appreciation Insights</h3>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-slate-700 rounded-lg p-3 text-center">
+              <p className="text-xl font-bold text-purple-400">{appreciations.length}</p>
+              <p className="text-xs text-slate-400">Total</p>
+            </div>
+            <div className="bg-slate-700 rounded-lg p-3 text-center">
+              <p className="text-xl font-bold text-blue-400">{new Set(appreciations.map(a => a.taggerName)).size}</p>
+              <p className="text-xs text-slate-400">Advocates</p>
+            </div>
+            <div className="bg-slate-700 rounded-lg p-3 text-center">
+              <p className="text-xl font-bold text-green-400">{new Set(appreciations.map(a => a.platform)).size}</p>
+              <p className="text-xs text-slate-400">Platforms</p>
+            </div>
+          </div>
+
+          {/* Top Advocates */}
+          {(() => {
+            const advocateMap: Record<string, number> = {};
+            for (const a of appreciations) { advocateMap[a.taggerName] = (advocateMap[a.taggerName] || 0) + 1; }
+            const topAdvocates = Object.entries(advocateMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const maxCount = topAdvocates[0]?.[1] || 1;
+            return (
+              <div className="mb-4">
+                <p className="text-xs text-slate-400 font-semibold mb-2">Top Advocates</p>
+                <div className="space-y-1.5">
+                  {topAdvocates.map(([name, count]) => (
+                    <div key={name} className="flex items-center gap-2">
+                      <span className="text-xs text-white w-28 truncate">{name}</span>
+                      <div className="flex-1 bg-slate-700 rounded-full h-3 overflow-hidden">
+                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${(count / maxCount) * 100}%` }} />
+                      </div>
+                      <span className="text-xs text-slate-400 w-6 text-right">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Platform Breakdown */}
+          {(() => {
+            const platMap: Record<string, number> = {};
+            for (const a of appreciations) { platMap[a.platform] = (platMap[a.platform] || 0) + 1; }
+            const platEntries = Object.entries(platMap).sort((a, b) => b[1] - a[1]);
+            const platIcons: Record<string, string> = { facebook: '📘', instagram: '📷', linkedin: '💼', tiktok: '🎵' };
+            return (
+              <div className="mb-4">
+                <p className="text-xs text-slate-400 font-semibold mb-2">By Platform</p>
+                <div className="flex gap-3">
+                  {platEntries.map(([plat, count]) => (
+                    <div key={plat} className="text-center bg-slate-700 rounded-lg px-3 py-2">
+                      <span className="text-lg">{platIcons[plat] || '🌐'}</span>
+                      <p className="text-sm font-bold text-white">{count}</p>
+                      <p className="text-[10px] text-slate-400 capitalize">{plat}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Monthly Trend */}
+          {(() => {
+            const monthMap: Record<string, number> = {};
+            for (const a of appreciations) {
+              if (a.detectedAt) {
+                const month = a.detectedAt.slice(0, 7); // YYYY-MM
+                monthMap[month] = (monthMap[month] || 0) + 1;
+              }
+            }
+            const months = Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0])).slice(-6);
+            const maxMonth = Math.max(...months.map(m => m[1]), 1);
+            if (months.length < 2) return null;
+            return (
+              <div>
+                <p className="text-xs text-slate-400 font-semibold mb-2">Monthly Trend</p>
+                <div className="flex items-end gap-1 h-16">
+                  {months.map(([month, count]) => (
+                    <div key={month} className="flex-1 flex flex-col items-center">
+                      <div className="w-full bg-purple-500/60 rounded-t" style={{ height: `${(count / maxMonth) * 100}%` }} />
+                      <span className="text-[9px] text-slate-500 mt-1">{month.slice(5)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 

@@ -645,8 +645,8 @@ export default function ContentCreatorPage() {
                   {content.length} characters
                 </span>
                 <button
-                  onClick={() => navigator.clipboard.writeText(content)}
-                  className="text-xs text-blue-400 hover:text-blue-300"
+                  onClick={(e) => { navigator.clipboard.writeText(content); const btn = e.currentTarget; btn.textContent = '✓ Copied!'; btn.classList.add('text-green-400'); setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('text-green-400'); }, 2000); }}
+                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   Copy
                 </button>

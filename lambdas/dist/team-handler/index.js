@@ -496,6 +496,38 @@ exports.handler = async (event) => {
       return updateTeamName(teamRecord.teamId, userId, trimmedName);
     }
 
+    // PUT /team/colors — save member color assignments (any team member can update)
+    if (method === 'PUT' && path === '/team/colors') {
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      const body = event.body ? JSON.parse(event.body) : {};
+      const colors = body.memberColors || {};
+
+      // Save colors to team INFO record
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `TEAM#${teamRecord.teamId}`, SK: 'INFO' },
+        UpdateExpression: 'SET memberColors = :c',
+        ExpressionAttributeValues: { ':c': colors },
+      }));
+
+      return ok({ saved: true, memberColors: colors });
+    }
+
+    // GET /team/colors — get team member color assignments
+    if (method === 'GET' && path === '/team/colors') {
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      const teamInfo = await dynamo.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `TEAM#${teamRecord.teamId}`, SK: 'INFO' },
+      }));
+
+      return ok({ memberColors: teamInfo.Item?.memberColors || {} });
+    }
+
     // GET /team/stats — team performance dashboard (admin only)
     if (method === 'GET' && path === '/team/stats') {
       const teamRecord = await getUserTeam(userId);

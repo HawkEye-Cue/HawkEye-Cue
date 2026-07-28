@@ -138,6 +138,28 @@ export default function TeamPage() {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [memberColors, setMemberColors] = useState<Record<string, number>>(() => JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}'));
 
+  // Load team colors from server (shared across all team members)
+  async function fetchTeamColors() {
+    try {
+      const client = await buildClient();
+      const result = await client.request<{ memberColors: Record<string, number> }>('GET', '/team/colors');
+      if (result.memberColors && typeof result.memberColors === 'object') {
+        setMemberColors(result.memberColors);
+        localStorage.setItem('hawkeye_member_colors', JSON.stringify(result.memberColors));
+      }
+    } catch { /* ignore — user may not be in a team */ }
+  }
+
+  // Save colors to team (shared) immediately
+  async function saveTeamColors(colors: Record<string, number>) {
+    setMemberColors(colors);
+    localStorage.setItem('hawkeye_member_colors', JSON.stringify(colors));
+    try {
+      const client = await buildClient();
+      await client.request('PUT', '/team/colors', { memberColors: colors });
+    } catch { /* ignore */ }
+  }
+
   async function buildClient() {
     const token = await getToken();
     return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
@@ -174,12 +196,6 @@ export default function TeamPage() {
           const merged = { ...existing, ...prefs.displayNames };
           localStorage.setItem('hawkeye_display_names', JSON.stringify(merged));
         }
-        if (prefs.memberColors && typeof prefs.memberColors === 'object') {
-          const existing = JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}');
-          const merged = { ...existing, ...prefs.memberColors };
-          localStorage.setItem('hawkeye_member_colors', JSON.stringify(merged));
-          setMemberColors(merged);
-        }
       } catch { /* ignore */ }
     }
     loadDisplayNames();
@@ -192,6 +208,7 @@ export default function TeamPage() {
     fetchTeamLeads();
     fetchTeamAnalytics();
     fetchNotifications();
+    fetchTeamColors();
   }, [team]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refetch team calendar when month changes
@@ -433,8 +450,7 @@ export default function TeamPage() {
                       onClick={() => {
                         const next = (colorIdx + 1) % MEMBER_COLORS.length;
                         const updated = { ...memberColors, [member.email]: next };
-                        setMemberColors(updated);
-                        localStorage.setItem('hawkeye_member_colors', JSON.stringify(updated));
+                        saveTeamColors(updated);
                       }}
                       className={`w-4 h-4 rounded-full ${MEMBER_COLORS[colorIdx]} border-2 border-white/30 hover:border-white/70 transition-all cursor-pointer`}
                       title={`Color: ${COLOR_LABELS[colorIdx]} — click to change`}
@@ -470,7 +486,8 @@ export default function TeamPage() {
             // Save both names and colors to server for cross-device persistence
             const colors = JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}');
             buildClient().then((client) => {
-              client.request('PUT', '/profile/preferences', { displayNames: names, memberColors: colors }).catch(() => {});
+              client.request('PUT', '/profile/preferences', { displayNames: names }).catch(() => {});
+              client.request('PUT', '/team/colors', { memberColors: colors }).catch(() => {});
             });
             showToast('✓ Names & colors saved');
           }}

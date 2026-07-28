@@ -471,8 +471,17 @@ export default function DashboardPage() {
                               <div
                                 key={event.id}
                                 onClick={() => {
-                                  const nameMatch2 = event.title.match(/^[📞💬✉️🔔]\s*(.+?)(?:\s*—|$)/);
-                                  const leadName = nameMatch2 ? nameMatch2[1].trim() : '';
+                                  // Extract lead name from reminder title (formats: "📞 Name — task", "[HH:MM] 📞 Name — task", "🔔 Name — task")
+                                  let leadName = '';
+                                  const cleaned = event.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, ''); // strip time prefix
+                                  const nameMatch2 = cleaned.match(/^[📞💬✉️🔔📋]\s*(.+?)(?:\s*—|$)/);
+                                  if (nameMatch2) {
+                                    leadName = nameMatch2[1].trim();
+                                  } else {
+                                    // Fallback: use the first part before " — " or the whole title
+                                    const parts = cleaned.split('—');
+                                    leadName = parts[0].replace(/^[^\w]+/, '').trim();
+                                  }
                                   navigate(leadName ? `/opportunities?lead=${encodeURIComponent(leadName)}` : '/opportunities');
                                 }}
                                 className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-green-500/10 transition-colors ${event.completed ? 'opacity-50' : ''}`}

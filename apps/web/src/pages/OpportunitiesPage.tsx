@@ -324,13 +324,14 @@ export default function OpportunitiesPage() {
   useEffect(() => {
     const leadName = searchParams.get('lead');
     if (leadName && leads.length > 0 && !selectedLead) {
-      const match = leads.find((l) =>
-        (l.sourceAuthor || '').toLowerCase().includes(leadName.toLowerCase()) ||
-        (l.sourceAuthor || '').toLowerCase() === leadName.toLowerCase()
-      );
+      const nameLower = leadName.toLowerCase();
+      const match = leads.find((l) => {
+        const author = (l.sourceAuthor || '').toLowerCase();
+        return author === nameLower || author.includes(nameLower) || nameLower.includes(author);
+      });
       if (match) {
         setSelectedLead(match);
-        setSearchParams({}, { replace: true }); // clear the param
+        setSearchParams({}, { replace: true });
       }
     }
   }, [leads, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -116,6 +116,21 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     return true;
   }
 
+  if (message.type === 'SYNC_WINGMAN') {
+    var wmData = message.data || {};
+    var updates = {};
+    if (wmData.wingmanKeywords) updates.wingmanKeywords = wmData.wingmanKeywords;
+    if (wmData.wingmanName) updates.wingmanName = wmData.wingmanName;
+    if (Object.keys(updates).length > 0) {
+      chrome.storage.local.set(updates, function() {
+        sendResponse({ success: true });
+      });
+    } else {
+      sendResponse({ success: true });
+    }
+    return true;
+  }
+
   if (message.type === 'GET_STATS') {
     chrome.storage.local.get(['authToken'], function(authResult) {
       if (!authResult.authToken) { sendResponse({ leadsFound: 0, appreciations: 0 }); return; }

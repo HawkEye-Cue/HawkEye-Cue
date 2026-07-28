@@ -28,7 +28,7 @@
   // ─── Post Selectors Per Platform ──────────────────────────────────────────
 
   const POST_SELECTORS = {
-    facebook: '[data-ad-preview="message"], [data-ad-comet-preview="message"], div[dir="auto"][style*="text-align"], div[data-ad-rendering-role="story_message"], div.x1iorvi4[dir="auto"], div.xdj266r[dir="auto"]',
+    facebook: '[data-ad-preview="message"], [data-ad-comet-preview="message"], div[dir="auto"][style*="text-align"], div[data-ad-rendering-role="story_message"], div.x1iorvi4[dir="auto"], div.xdj266r[dir="auto"], div[data-ad-comet-preview="message-text"], div.x11i5rnm[dir="auto"], div.xz9dl7a[dir="auto"], span[dir="auto"] > div[dir="auto"]',
     instagram: 'article div span, article h1, article div._a9zs',
     linkedin: '.feed-shared-update-v2__description, .update-components-text, .feed-shared-text',
     tiktok: '[data-e2e="browse-video-desc"], .tiktok-1ejylhp-DivContainer, [data-e2e="video-desc"]',
@@ -112,45 +112,53 @@
     overlay.querySelector('.hawkeye-btn-lead').addEventListener('click', async (e) => {
       e.stopPropagation();
       const authorName = extractAuthorName(postElement) || 'Unknown';
-      const { authToken } = await chrome.storage.local.get(['authToken']);
-      if (!authToken) { showToast('Please sign in first'); return; }
+      const { authToken, tokenExpiry } = await chrome.storage.local.get(['authToken', 'tokenExpiry']);
+      if (!authToken || (tokenExpiry && Date.now() >= tokenExpiry)) { showToast('Please sign in — open the HawkEye-Cue extension popup'); return; }
 
       const btn = overlay.querySelector('.hawkeye-btn-lead');
       btn.textContent = 'Saving...';
       btn.disabled = true;
 
-      try {
-        // Wake service worker and send save request
-        await chrome.runtime.sendMessage({ type: 'PING' });
-      } catch { /* ignore wake failure */ }
+      // Retry logic for MV3 service worker wake
+      let attempts = 0;
+      function trySave() {
+        attempts++;
+        chrome.runtime.sendMessage({
+          type: 'SAVE_LEAD',
+          data: {
+            authToken,
+            platform,
+            authorName,
+            postContent: postText.slice(0, 500),
+            postUrl: extractPostUrl(postElement) || window.location.href,
+          },
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('[HawkEye] sendMessage error:', chrome.runtime.lastError);
+            if (attempts < 3) {
+              setTimeout(trySave, 500);
+              return;
+            }
+            btn.textContent = '💼 Save as Lead';
+            btn.disabled = false;
+            showToast('Extension error — try again');
+            return;
+          }
+          if (!response || !response.success) {
+            console.error('[HawkEye] Save failed:', response);
+            btn.textContent = '💼 Save as Lead';
+            btn.disabled = false;
+            showToast(response?.error || 'Failed to save lead');
+          } else {
+            showToast('Lead saved! 🦅');
+            btn.textContent = '✓ Saved';
+          }
+        });
+      }
 
-      chrome.runtime.sendMessage({
-        type: 'SAVE_LEAD',
-        data: {
-          authToken,
-          platform,
-          authorName,
-          postContent: postText.slice(0, 500),
-          postUrl: extractPostUrl(postElement) || window.location.href,
-        },
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('[HawkEye] sendMessage error:', chrome.runtime.lastError);
-          btn.textContent = '💼 Save as Lead';
-          btn.disabled = false;
-          showToast('Extension error — try again');
-          return;
-        }
-        if (!response || !response.success) {
-          console.error('[HawkEye] Save failed:', response);
-          btn.textContent = '💼 Save as Lead';
-          btn.disabled = false;
-          showToast('Failed to save lead');
-        } else {
-          showToast('Lead saved! 🦅');
-          btn.textContent = '✓ Saved';
-        }
-      });
+      // Wake service worker first, then save
+      try { await chrome.runtime.sendMessage({ type: 'PING' }); } catch { /* ignore */ }
+      trySave();
     });
 
     // Save Appreciation
@@ -319,6 +327,14 @@
     // Facebook fallback: if primary selectors find nothing, try broader approach
     if (platform === 'facebook' && elements.length === 0) {
       elements = document.querySelectorAll('div[dir="auto"]');
+    }
+
+    // Facebook individual post page: also scan comments and the main story container
+    if (platform === 'facebook' && window.location.pathname.includes('/posts/') || window.location.pathname.includes('/permalink/') || window.location.pathname.includes('/photo/') || window.location.pathname.includes('/reel/')) {
+      const extraElements = document.querySelectorAll('div[dir="auto"], span[dir="auto"]');
+      if (extraElements.length > elements.length) {
+        elements = extraElements;
+      }
     }
 
     elements.forEach((el) => {

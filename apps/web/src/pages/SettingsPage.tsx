@@ -31,6 +31,15 @@ export default function SettingsPage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showExtensionTour, setShowExtensionTour] = useState(false);
   const [showLeadExplainer, setShowLeadExplainer] = useState(false);
+  const [emailNotifs, setEmailNotifs] = useState({
+    dailyDigest: true,
+    weeklyRecap: true,
+    newLead: true,
+    teamWin: true,
+    meetingReminder: true,
+    leadGoingCold: true,
+  });
+  const [notifsLoading, setNotifsLoading] = useState(true);
 
   // Check for checkout success/cancelled in URL params
   const params = new URLSearchParams(window.location.search);
@@ -83,6 +92,21 @@ export default function SettingsPage() {
       }
     }
     fetchSocialAccounts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch email notification preferences
+  useEffect(() => {
+    async function fetchNotifPrefs() {
+      try {
+        const client = await buildClient();
+        const prefs = await client.request<any>('GET', '/profile/preferences');
+        if (prefs.emailNotifications && typeof prefs.emailNotifications === 'object') {
+          setEmailNotifs((prev) => ({ ...prev, ...prefs.emailNotifications }));
+        }
+      } catch { /* ignore */ }
+      finally { setNotifsLoading(false); }
+    }
+    fetchNotifPrefs();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch keywords
@@ -610,6 +634,56 @@ export default function SettingsPage() {
 
       {showExtensionTour && <ExtensionTour onClose={() => setShowExtensionTour(false)} />}
       {showLeadExplainer && <LeadDetectionExplainer onClose={() => setShowLeadExplainer(false)} />}
+
+      {/* Email Notification Preferences */}
+      <div className="glass-card">
+        <h3 className="font-semibold mb-3 text-white">📧 Email Notifications</h3>
+        <p className="text-xs text-slate-400 mb-4">Choose which email notifications you'd like to receive.</p>
+        <div className="space-y-3">
+          {([
+            { key: 'dailyDigest', label: 'Daily Morning Digest', desc: 'Meetings, follow-ups, and flocks for today (7am)' },
+            { key: 'weeklyRecap', label: 'Weekly Recap', desc: 'Posts, leads, and deals from the past week (Monday)' },
+            { key: 'newLead', label: 'New Lead Detected', desc: 'When the extension saves a new lead from social media' },
+            { key: 'teamWin', label: 'Team Deal Won', desc: 'When a teammate closes a deal (Summit only)' },
+            { key: 'meetingReminder', label: 'Meeting Reminder', desc: '15 minutes before a scheduled meeting' },
+            { key: 'leadGoingCold', label: 'Lead Going Cold', desc: 'When a lead hasn\'t been followed up in 3+ days' },
+          ] as const).map(({ key, label, desc }) => (
+            <label key={key} className="flex items-center justify-between p-3 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors">
+              <div>
+                <p className="text-sm text-white font-medium">{label}</p>
+                <p className="text-[10px] text-slate-400">{desc}</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={emailNotifs[key]}
+                onChange={async () => {
+                  const updated = { ...emailNotifs, [key]: !emailNotifs[key] };
+                  setEmailNotifs(updated);
+                  try {
+                    const client = await buildClient();
+                    await client.request('PUT', '/profile/preferences', { emailNotifications: updated });
+                  } catch { /* ignore */ }
+                }}
+                className="w-5 h-5 rounded accent-blue-500 shrink-0"
+              />
+            </label>
+          ))}
+        </div>
+        <button
+          onClick={async () => {
+            const allOff = { dailyDigest: false, weeklyRecap: false, newLead: false, teamWin: false, meetingReminder: false, leadGoingCold: false };
+            setEmailNotifs(allOff);
+            try {
+              const client = await buildClient();
+              await client.request('PUT', '/profile/preferences', { emailNotifications: allOff });
+              showToast('All email notifications turned off');
+            } catch { /* ignore */ }
+          }}
+          className="mt-3 text-xs text-red-400 hover:text-red-300"
+        >
+          Turn off all email notifications
+        </button>
+      </div>
 
       {/* Suggestion Box */}
       <details id="suggestion" className="glass-card" open={window.location.hash === '#suggestion'}>

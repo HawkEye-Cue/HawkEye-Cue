@@ -86,26 +86,11 @@
       e.stopPropagation();
       const isShowing = panel.style.display !== 'none';
       panel.style.display = isShowing ? 'none' : 'block';
-      // Add/remove backdrop
-      let backdrop = document.getElementById('hawkeye-backdrop');
-      if (!isShowing) {
-        if (!backdrop) {
-          backdrop = document.createElement('div');
-          backdrop.id = 'hawkeye-backdrop';
-          backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999998;';
-          backdrop.addEventListener('click', () => { panel.style.display = 'none'; backdrop.remove(); });
-          document.body.appendChild(backdrop);
-        }
-      } else if (backdrop) {
-        backdrop.remove();
-      }
     });
 
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       panel.style.display = 'none';
-      const backdrop = document.getElementById('hawkeye-backdrop');
-      if (backdrop) backdrop.remove();
     });
 
     // Save as Lead

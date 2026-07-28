@@ -32,9 +32,9 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto relative z-10">
           <div className="text-6xl mb-4 animate-fade-up">🦅</div>
           <h2 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight animate-fade-up" style={{ animationDelay: '0.1s', opacity: 0 }}>
-            Fully Customizable Social Media<br />
-            <span className="gradient-text">Creation and Tracking</span>
-            <br />for Trade Professionals
+            From Scroll to Sale<br />
+            <span className="gradient-text text-2xl md:text-3xl">Fully Customizable Social Media Creation & Tracking</span>
+            <br /><span className="text-2xl md:text-3xl">for Trade Professionals</span>
           </h2>
           <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto animate-fade-up" style={{ animationDelay: '0.2s', opacity: 0 }}>
             HawkEye-Cue helps roofers, contractors, agents, and tradespeople generate leads, create content, and track opportunities — all with the precision of a hawk.
@@ -48,6 +48,30 @@ export default function LandingPage() {
             </button>
           </div>
           <p className="text-sm text-amber-400 mt-6 animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>🦅 The CRM that connects your social media directly to your sales</p>
+        </div>
+      </section>
+
+      {/* Our Story */}
+      <section className="px-6 py-16 max-w-3xl mx-auto">
+        <div className="glass-card-strong gradient-border p-8 reveal">
+          <p className="text-sm text-slate-300 leading-relaxed mb-4">
+            HawkEye-Cue was built by two agency owners who understand what it's like to grow a business without a large marketing budget. Early on, buying internet leads wasn't an option, and we hadn't yet built a strong referral network. Instead, we focused on showing up consistently on social media, building relationships, and creating valuable content that generated real conversations and opportunities.
+          </p>
+          <p className="text-sm text-slate-300 leading-relaxed mb-4">
+            As we refined our process, those efforts helped us earn Toppers Club, become a Prime agency, and consistently rank among the top agencies in our district during our first two years in business.
+          </p>
+          <p className="text-sm text-slate-300 leading-relaxed mb-4">
+            The biggest challenge wasn't finding opportunities. It was staying organized enough to act on every one of them.
+          </p>
+          <p className="text-sm text-white font-semibold mb-4">
+            That's why we created HawkEye-Cue.
+          </p>
+          <p className="text-sm text-slate-300 leading-relaxed mb-4">
+            HawkEye-Cue combines content creation, scheduling, lead tracking, sales management, insights, and daily cues into one platform, giving trade professionals a clear, repeatable system instead of relying on memory, spreadsheets, or multiple apps.
+          </p>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            We built the platform we wished we had from day one, so other business owners can spend less time wondering what to do next and more time building relationships, serving customers, and growing their business.
+          </p>
         </div>
       </section>
 

@@ -1057,7 +1057,7 @@ export default function DashboardPage() {
             {/* Summit Tier Features */}
             <div className="p-3 rounded-xl bg-purple-500/5 border border-purple-500/15">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-purple-400">🏔️ Summit — $99.99/mo</span>
+                <span className="text-sm font-bold text-purple-400">🏔️ Summit — $99.99/mo (7-day free trial)</span>
                 <button onClick={() => navigate('/settings')} className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded-lg font-medium transition-colors">Upgrade</button>
               </div>
               <ul className="text-xs text-slate-300 space-y-1.5">

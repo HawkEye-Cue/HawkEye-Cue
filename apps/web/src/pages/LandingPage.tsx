@@ -203,6 +203,7 @@ export default function LandingPage() {
               <span className="text-3xl font-extrabold text-white">$99.99</span>
               <span className="text-slate-400 text-sm">/mo</span>
             </div>
+            <p className="text-xs text-purple-300 mb-3 font-medium">🎁 7-day free trial included</p>
             <ul className="text-sm text-slate-300 space-y-2 mb-6">
               <li>✓ Everything in Soar</li>
               <li>👥 Up to 5 team members</li>
@@ -213,7 +214,7 @@ export default function LandingPage() {
               <li>📅 Color-coded meeting dots per team member</li>
             </ul>
             <Link to="/register" className="block text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2.5 rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
-              Reach the Summit
+              Start 7-Day Free Trial
             </Link>
           </div>
         </div>

@@ -402,6 +402,7 @@ export default function SettingsPage() {
             <div className="mb-2">
               <span className="text-lg font-bold text-white">🏔️ Summit</span>
               <p className="text-sm text-purple-400">$99.99/mo</p>
+              <p className="text-xs text-purple-300 font-medium">🎁 7-day free trial</p>
             </div>
             {['team', 'summit'].includes(currentTier) && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
             <ul className="text-xs text-slate-300 space-y-1 mb-3">

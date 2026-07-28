@@ -161,6 +161,7 @@ async function handleCheckout(userId, body, origin) {
     metadata: { userId, tier },
     subscription_data: {
       metadata: { userId, tier },
+      trial_period_days: (tier === 'soar' || tier === 'team') ? 7 : undefined,
     },
     // Always allow the Stripe promo code field on checkout page
     allow_promotion_codes: true,

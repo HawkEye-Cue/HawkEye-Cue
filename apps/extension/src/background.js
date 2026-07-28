@@ -41,37 +41,76 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   if (message.type === 'SAVE_LEAD') {
     var d = message.data;
     
-    // Use fresh token from storage (may have been refreshed since page load)
-    chrome.storage.local.get(['authToken'], function(authResult) {
-      var token = authResult.authToken || d.authToken;
+    // Always get fresh token — refresh if needed
+    chrome.storage.local.get(['authToken', 'tokenExpiry', 'refreshToken'], function(authResult) {
+      var token = authResult.authToken;
       
-      fetch(API_BASE + '/opportunities', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          keywordId: 'extension-detected',
-          sourceContent: d.postContent || 'No content',
-          sourcePlatform: d.platform || 'facebook',
-          sourceUrl: d.postUrl || 'https://facebook.com',
-          sourceAuthor: d.authorName || 'Unknown'
+      function doSave(t) {
+        fetch(API_BASE + '/opportunities', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            keywordId: 'extension-detected',
+            sourceContent: d.postContent || 'No content',
+            sourcePlatform: d.platform || 'facebook',
+            sourceUrl: d.postUrl || 'https://facebook.com',
+            sourceAuthor: d.authorName || 'Unknown'
+          })
         })
-      })
-      .then(function(res) {
-        if (res.ok) {
-          return res.json().then(function(result) {
-            sendResponse({ success: true, result: result });
-          });
-        } else {
-          return res.text().then(function(text) {
-            console.error('[HawkEye BG] API error:', res.status, text);
-            sendResponse({ success: false, error: 'API ' + res.status });
-          });
-        }
-      })
-      .catch(function(err) {
-        console.error('[HawkEye BG] Fetch error:', err);
-        sendResponse({ success: false, error: err.message });
-      });
+        .then(function(res) {
+          if (res.status === 401 && authResult.refreshToken) {
+            // Token expired — try refresh
+            fetch('https://cognito-idp.us-east-1.amazonaws.com/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth' },
+              body: JSON.stringify({ AuthFlow: 'REFRESH_TOKEN_AUTH', ClientId: '2cr45bt815hr68i0j021murak', AuthParameters: { REFRESH_TOKEN: authResult.refreshToken } })
+            })
+            .then(function(rr) { return rr.json(); })
+            .then(function(rd) {
+              if (rd.AuthenticationResult && rd.AuthenticationResult.IdToken) {
+                var newToken = rd.AuthenticationResult.IdToken;
+                chrome.storage.local.set({ authToken: newToken, tokenExpiry: Date.now() + 3600000 });
+                // Retry with new token
+                fetch(API_BASE + '/opportunities', {
+                  method: 'POST',
+                  headers: { 'Authorization': 'Bearer ' + newToken, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ keywordId: 'extension-detected', sourceContent: d.postContent || 'No content', sourcePlatform: d.platform || 'facebook', sourceUrl: d.postUrl || 'https://facebook.com', sourceAuthor: d.authorName || 'Unknown' })
+                })
+                .then(function(r2) { return r2.ok ? r2.json().then(function(j) { sendResponse({ success: true, result: j }); }) : r2.text().then(function(t2) { sendResponse({ success: false, error: 'API ' + r2.status }); }); })
+                .catch(function(e2) { sendResponse({ success: false, error: e2.message }); });
+              } else {
+                sendResponse({ success: false, error: 'Token refresh failed — please re-login in extension popup' });
+              }
+            })
+            .catch(function() { sendResponse({ success: false, error: 'Token refresh failed' }); });
+          } else if (res.ok) {
+            return res.json().then(function(result) { sendResponse({ success: true, result: result }); });
+          } else {
+            return res.text().then(function(text) { sendResponse({ success: false, error: 'API ' + res.status }); });
+          }
+        })
+        .catch(function(err) { sendResponse({ success: false, error: err.message }); });
+      }
+      
+      // If token is expired, refresh first
+      if (authResult.tokenExpiry && Date.now() >= authResult.tokenExpiry && authResult.refreshToken) {
+        fetch('https://cognito-idp.us-east-1.amazonaws.com/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth' },
+          body: JSON.stringify({ AuthFlow: 'REFRESH_TOKEN_AUTH', ClientId: '2cr45bt815hr68i0j021murak', AuthParameters: { REFRESH_TOKEN: authResult.refreshToken } })
+        })
+        .then(function(rr) { return rr.json(); })
+        .then(function(rd) {
+          if (rd.AuthenticationResult && rd.AuthenticationResult.IdToken) {
+            var newToken = rd.AuthenticationResult.IdToken;
+            chrome.storage.local.set({ authToken: newToken, tokenExpiry: Date.now() + 3600000 });
+            doSave(newToken);
+          } else { doSave(token); }
+        })
+        .catch(function() { doSave(token); });
+      } else {
+        doSave(token);
+      }
     });
     return true;
   }
@@ -79,32 +118,60 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   if (message.type === 'SAVE_APPRECIATION') {
     var d2 = message.data;
     
-    // Use fresh token from storage
-    chrome.storage.local.get(['authToken'], function(authResult) {
+    chrome.storage.local.get(['authToken', 'tokenExpiry', 'refreshToken'], function(authResult) {
       var token2 = authResult.authToken || d2.authToken;
       
-      fetch(API_BASE + '/appreciations', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token2, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taggerName: d2.taggerName || 'Unknown',
-          platform: d2.platform || 'facebook',
-          postContent: d2.postContent || 'No content',
-          postUrl: d2.postUrl || ''
+      function doSaveAppreciation(t) {
+        fetch(API_BASE + '/appreciations', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taggerName: d2.taggerName || 'Unknown', platform: d2.platform || 'facebook', postContent: d2.postContent || 'No content', postUrl: d2.postUrl || '' })
         })
-      })
-      .then(function(res) {
-        if (res.ok) {
-          return res.json().then(function(result) {
-            sendResponse({ success: true, result: result });
-          });
-        } else {
-          sendResponse({ success: false, error: 'API ' + res.status });
-        }
-      })
-      .catch(function(err) {
-        sendResponse({ success: false, error: err.message });
-      });
+        .then(function(res) {
+          if (res.status === 401 && authResult.refreshToken) {
+            fetch('https://cognito-idp.us-east-1.amazonaws.com/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth' },
+              body: JSON.stringify({ AuthFlow: 'REFRESH_TOKEN_AUTH', ClientId: '2cr45bt815hr68i0j021murak', AuthParameters: { REFRESH_TOKEN: authResult.refreshToken } })
+            })
+            .then(function(rr) { return rr.json(); })
+            .then(function(rd) {
+              if (rd.AuthenticationResult && rd.AuthenticationResult.IdToken) {
+                var newToken = rd.AuthenticationResult.IdToken;
+                chrome.storage.local.set({ authToken: newToken, tokenExpiry: Date.now() + 3600000 });
+                fetch(API_BASE + '/appreciations', { method: 'POST', headers: { 'Authorization': 'Bearer ' + newToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ taggerName: d2.taggerName || 'Unknown', platform: d2.platform || 'facebook', postContent: d2.postContent || 'No content', postUrl: d2.postUrl || '' }) })
+                .then(function(r2) { return r2.ok ? r2.json().then(function(j) { sendResponse({ success: true, result: j }); }) : sendResponse({ success: false, error: 'API ' + r2.status }); })
+                .catch(function() { sendResponse({ success: false, error: 'Retry failed' }); });
+              } else { sendResponse({ success: false, error: 'Token refresh failed' }); }
+            })
+            .catch(function() { sendResponse({ success: false, error: 'Token refresh failed' }); });
+          } else if (res.ok) {
+            return res.json().then(function(result) { sendResponse({ success: true, result: result }); });
+          } else {
+            sendResponse({ success: false, error: 'API ' + res.status });
+          }
+        })
+        .catch(function(err) { sendResponse({ success: false, error: err.message }); });
+      }
+      
+      if (authResult.tokenExpiry && Date.now() >= authResult.tokenExpiry && authResult.refreshToken) {
+        fetch('https://cognito-idp.us-east-1.amazonaws.com/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth' },
+          body: JSON.stringify({ AuthFlow: 'REFRESH_TOKEN_AUTH', ClientId: '2cr45bt815hr68i0j021murak', AuthParameters: { REFRESH_TOKEN: authResult.refreshToken } })
+        })
+        .then(function(rr) { return rr.json(); })
+        .then(function(rd) {
+          if (rd.AuthenticationResult && rd.AuthenticationResult.IdToken) {
+            var newToken = rd.AuthenticationResult.IdToken;
+            chrome.storage.local.set({ authToken: newToken, tokenExpiry: Date.now() + 3600000 });
+            doSaveAppreciation(newToken);
+          } else { doSaveAppreciation(token2); }
+        })
+        .catch(function() { doSaveAppreciation(token2); });
+      } else {
+        doSaveAppreciation(token2);
+      }
     });
     return true;
   }

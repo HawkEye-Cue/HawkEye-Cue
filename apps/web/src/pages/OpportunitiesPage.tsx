@@ -1034,7 +1034,30 @@ export default function OpportunitiesPage() {
           <h3 className="text-sm font-semibold text-white">🦅 Flight Projection</h3>
           <div className="flex items-center gap-2">
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const next = !flightProjectionEnabled; setFlightProjectionEnabled(next); localStorage.setItem(`hawkeye_flight_enabled_${user?.sub}`, String(next)); buildClient().then((client) => client.request('PUT', '/profile/preferences', { flightProjectionEnabled: next })).catch(() => {}); showToast(next ? '✓ Cadence enabled' : '✓ Cadence disabled'); }}
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const next = !flightProjectionEnabled;
+                setFlightProjectionEnabled(next);
+                localStorage.setItem(`hawkeye_flight_enabled_${user?.sub}`, String(next));
+                buildClient().then((client) => client.request('PUT', '/profile/preferences', { flightProjectionEnabled: next })).catch(() => {});
+                if (!next) {
+                  // Turning OFF — delete all cadence reminders (past and future)
+                  const cadenceEvents = events.filter((ev) => (ev.type === 'reminder' || ev.type === 'task') && (ev.title.startsWith('📞') || ev.title.startsWith('💬') || ev.title.startsWith('✉️')));
+                  if (cadenceEvents.length > 0) {
+                    const client = await buildClient();
+                    for (const evt of cadenceEvents) {
+                      try { await client.request('DELETE', `/calendar/events/${evt.id}`); } catch { /* ignore */ }
+                    }
+                    showToast(`✓ Cadence off — removed ${cadenceEvents.length} reminders`);
+                    window.location.reload();
+                    return;
+                  }
+                  showToast('✓ Cadence disabled');
+                } else {
+                  showToast('✓ Cadence enabled');
+                }
+              }}
               className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-all ${flightProjectionEnabled ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-red-600/20 text-red-400 border border-red-500/30'}`}
             >
               {flightProjectionEnabled ? 'On' : 'Off'}

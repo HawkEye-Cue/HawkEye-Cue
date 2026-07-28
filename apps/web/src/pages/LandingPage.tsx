@@ -159,6 +159,43 @@ export default function LandingPage() {
         <p className="text-xl md:text-2xl font-semibold text-slate-200 italic max-w-xl mx-auto">"Know exactly what pipeline makes you the most money."</p>
       </div>
 
+      {/* Insurance Spotlight */}
+      <section className="px-6 py-16 max-w-3xl mx-auto reveal">
+        <div className="glass-card-strong p-8 border border-blue-500/20">
+          <div className="text-center mb-6">
+            <span className="text-4xl">🛡️</span>
+            <h3 className="text-xl font-bold text-white mt-2">Built for Insurance Agencies</h3>
+          </div>
+          <p className="text-sm text-slate-300 leading-relaxed mb-4">
+            Insurance agents face a unique challenge: you need to be everywhere at once. Posting in local Facebook groups, following up on quotes, tracking referrals from body shops and realtors, remembering who asked for a bundle review last month — all while writing policies and handling claims.
+          </p>
+          <p className="text-sm text-slate-300 leading-relaxed mb-4">
+            HawkEye-Cue was built by agency owners who lived this. Our keyword detection finds people asking about insurance in your local groups. The calendar schedules your daily group posts. The lead pipeline tracks every quote from first contact to bound policy. And the sales tracker shows you exactly which groups and referral partners generate the most revenue.
+          </p>
+          <p className="text-sm text-slate-300 leading-relaxed mb-4">
+            Whether you're a captive agent building your book, an independent agency scaling with multiple producers, or a team lead tracking performance across your office — HawkEye-Cue gives you the system to grow without hiring a marketing department.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+            <div className="text-center p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+              <p className="text-lg font-bold text-blue-400">📤</p>
+              <p className="text-xs text-slate-400">Post to groups daily</p>
+            </div>
+            <div className="text-center p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+              <p className="text-lg font-bold text-amber-400">🎯</p>
+              <p className="text-xs text-slate-400">Detect "need insurance" posts</p>
+            </div>
+            <div className="text-center p-3 bg-green-500/10 rounded-xl border border-green-500/20">
+              <p className="text-lg font-bold text-green-400">💰</p>
+              <p className="text-xs text-slate-400">Track quote to bound</p>
+            </div>
+            <div className="text-center p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
+              <p className="text-lg font-bold text-purple-400">🏔️</p>
+              <p className="text-xs text-slate-400">Team leaderboard</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section id="pricing" className="px-6 py-20 max-w-5xl mx-auto">
         <h3 className="text-2xl font-bold text-center mb-4 reveal">Pricing</h3>

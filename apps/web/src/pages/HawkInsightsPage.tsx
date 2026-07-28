@@ -573,7 +573,7 @@ export default function HawkInsightsPage() {
           {(() => {
             const monthMap: Record<string, number> = {};
             for (const a of appreciations) {
-              if (a.detectedAt) {
+              if (a.detectedAt && a.detectedAt.length >= 7) {
                 const month = a.detectedAt.slice(0, 7); // YYYY-MM
                 monthMap[month] = (monthMap[month] || 0) + 1;
               }

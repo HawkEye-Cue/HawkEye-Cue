@@ -64,10 +64,9 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
     if (el) {
       setTargetRect(el.getBoundingClientRect());
     } else {
-      // Element not found — skip to next step automatically
       setTargetRect(null);
       if (!isLast) {
-        setStep(step + 1);
+        setStep((s) => s + 1);
       } else {
         onComplete();
       }

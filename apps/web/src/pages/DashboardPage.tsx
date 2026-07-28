@@ -74,6 +74,7 @@ export default function DashboardPage() {
 
   // Show welcome banner after guided tour completes
   useEffect(() => {
+    if (showWelcomeBanner) return;
     function checkTourDone() {
       const tourKey = user?.sub ? `hawkeye_tour_done_${user.sub}` : 'hawkeye_tour_done';
       const dismissed = localStorage.getItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`);
@@ -83,8 +84,6 @@ export default function DashboardPage() {
     }
     window.addEventListener('focus', checkTourDone);
     const interval = setInterval(checkTourDone, 1000);
-    // Stop checking after banner is shown
-    if (showWelcomeBanner) { clearInterval(interval); }
     return () => { window.removeEventListener('focus', checkTourDone); clearInterval(interval); };
   }, [showWelcomeBanner, user?.sub]);
 

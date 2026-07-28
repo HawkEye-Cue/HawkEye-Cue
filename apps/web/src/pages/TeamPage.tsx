@@ -342,8 +342,7 @@ export default function TeamPage() {
   }
 
   function getMemberColorIndex(email: string): number {
-    // Check user-assigned color first
-    const memberColors = JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}');
+    // Use state variable directly (already synced with server)
     if (memberColors[email] !== undefined) return memberColors[email] % MEMBER_COLORS.length;
     // Fallback: position in team array
     if (!team) return 0;

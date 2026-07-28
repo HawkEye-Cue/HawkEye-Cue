@@ -47,6 +47,11 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Algorithm Tagline */}
+      <div className="text-center px-6 py-6 reveal">
+        <p className="text-lg md:text-xl font-semibold text-amber-300 max-w-xl mx-auto">🦅 Use HawkEye-Cue to train your algorithm to put more leads in front of you on social media</p>
+      </div>
+
       {/* Our Story */}
       <section className="px-6 py-10 max-w-3xl mx-auto">
         <details className="glass-card-strong gradient-border p-6 reveal cursor-pointer">

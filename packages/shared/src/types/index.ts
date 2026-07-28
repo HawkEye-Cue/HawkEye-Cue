@@ -74,6 +74,14 @@ export interface Opportunity {
   sourceAuthor: string;
   status: OpportunityStatus;
   detectedAt: string;
+  leadNotes?: string | null;
+  leadSource?: string | null;
+  leadSourceGroup?: string | null;
+  policyType?: string | null;
+  assignedTo?: string | null;
+  expectedPremium?: string | number | null;
+  bucket?: string | null;
+  leadColor?: string | null;
 }
 
 export interface OpportunityStats {

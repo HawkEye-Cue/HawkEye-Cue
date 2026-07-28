@@ -72,6 +72,9 @@ exports.handler = async () => {
       const emailNotifs = profile.emailNotifications || {};
       if (emailNotifs.meetingReminder === false) continue;
 
+      // Get user's timezone (default to America/Denver if not set)
+      const userTz = profile.timezone || 'America/Denver';
+
       // Get today's calendar events
       try {
         const calResult = await dynamo.send(new QueryCommand({
@@ -90,11 +93,19 @@ exports.handler = async () => {
           const meetingHour = parseInt(timeMatch[1]);
           const meetingMin = parseInt(timeMatch[2]);
 
-          // Convert to UTC for comparison (assume user is in US Mountain Time, UTC-6)
-          // This is a simplification — in production you'd store user timezone
-          const meetingUtcHour = (meetingHour + 6) % 24;
+          // Convert meeting time (in user's local timezone) to UTC
+          // Create a date in the user's timezone, then get UTC hours
+          const meetingDate = new Date(`${today}T${String(meetingHour).padStart(2,'0')}:${String(meetingMin).padStart(2,'0')}:00`);
+          // Calculate offset: get the difference between UTC and the user's timezone
+          const utcStr = meetingDate.toLocaleString('en-US', { timeZone: 'UTC', hour: 'numeric', minute: 'numeric', hour12: false });
+          const localStr = meetingDate.toLocaleString('en-US', { timeZone: userTz, hour: 'numeric', minute: 'numeric', hour12: false });
+          // Parse both to get offset
+          const [utcH] = utcStr.split(':').map(Number);
+          const [localH] = localStr.split(':').map(Number);
+          const offsetHours = utcH - localH; // simplified offset
+          const meetingUtcHour = (meetingHour + offsetHours + 24) % 24;
 
-          // Check if meeting is in the reminder window (15 min from now)
+          // Check if meeting is in the reminder window (10-20 min from now in UTC)
           if (meetingUtcHour === currentHour) {
             if (meetingMin >= reminderWindowStart && meetingMin < reminderWindowEnd) {
               const cleanTitle = meeting.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '');

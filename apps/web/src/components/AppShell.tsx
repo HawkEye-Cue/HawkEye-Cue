@@ -22,7 +22,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { user, logout, getToken } = useAuth();
 
-  // Load display names from server on startup (cross-device persistence)
+  // Load display names from server on startup + save user timezone
   useEffect(() => {
     if (!user?.sub) return;
     async function loadNames() {
@@ -32,6 +32,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
         const prefs = await client.request<any>('GET', '/profile/preferences');
         if (prefs.displayNames && typeof prefs.displayNames === 'object') {
           localStorage.setItem('hawkeye_display_names', JSON.stringify(prefs.displayNames));
+        }
+        // Auto-save user's timezone to profile (detected from browser)
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz && prefs.timezone !== tz) {
+          client.request('PUT', '/profile/preferences', { timezone: tz }).catch(() => {});
         }
       } catch { /* ignore */ }
     }

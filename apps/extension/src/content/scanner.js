@@ -167,26 +167,9 @@
           btn.textContent = '✓ Saved!';
           btn.style.background = '#16a34a';
           btn.style.opacity = '1';
-          status.textContent = authorName + ' saved as Wingman advocate (' + platform + ')';
+          status.textContent = authorName + ' saved to Appreciations (' + platform + ')';
           status.style.display = 'block';
           status.style.color = '#4ade80';
-          
-          // Also add this person's name as a Wingman keyword so we're cued to reciprocate
-          const tokenToUse = (await chrome.storage.local.get(['authToken'])).authToken || authToken;
-          try {
-            const prefsRes = await fetch(API + '/profile/preferences', { headers: { 'Authorization': 'Bearer ' + tokenToUse } });
-            if (prefsRes.ok) {
-              const prefs = await prefsRes.json();
-              const existingKeywords = prefs.wingmanKeywords || [];
-              const nameLower = authorName.toLowerCase();
-              if (!existingKeywords.some(function(kw) { return kw.toLowerCase() === nameLower; })) {
-                const updatedKeywords = [...existingKeywords, authorName];
-                await fetch(API + '/profile/preferences', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + tokenToUse, 'Content-Type': 'application/json' }, body: JSON.stringify({ wingmanKeywords: updatedKeywords }) });
-                // Also update local extension storage
-                await chrome.storage.local.set({ wingmanKeywords: updatedKeywords });
-              }
-            }
-          } catch (e) { /* ignore wingman save failure — appreciation was saved successfully */ }
         } else {
           btn.textContent = '🙏 Appreciation';
           btn.style.opacity = '1';

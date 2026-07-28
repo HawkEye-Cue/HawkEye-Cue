@@ -470,7 +470,11 @@ export default function DashboardPage() {
                             return (
                               <div
                                 key={event.id}
-                                onClick={() => navigate('/opportunities')}
+                                onClick={() => {
+                                  const nameMatch2 = event.title.match(/^[📞💬✉️🔔]\s*(.+?)(?:\s*—|$)/);
+                                  const leadName = nameMatch2 ? nameMatch2[1].trim() : '';
+                                  navigate(leadName ? `/opportunities?lead=${encodeURIComponent(leadName)}` : '/opportunities');
+                                }}
                                 className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-green-500/10 transition-colors ${event.completed ? 'opacity-50' : ''}`}
                               >
                                 <input type="checkbox" checked={event.completed} onChange={(e) => { e.stopPropagation(); toggleComplete(event.id); }} className="w-3 h-3 rounded shrink-0 accent-green-500" />

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useSearchParams } from 'react-router-dom';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
@@ -93,6 +94,7 @@ export default function OpportunitiesPage() {
   const { showToast } = useToast();
   const { selectedTrade } = useTrade();
   const { events, addEvent, toggleComplete, removeAllByTitle } = useCalendar();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
   const [groupBy, setGroupBy] = useState<'none' | 'platform' | 'keyword'>('none');
   const [leads, setLeads] = useState<Opportunity[]>([]);
@@ -317,6 +319,21 @@ export default function OpportunitiesPage() {
   useEffect(() => {
     fetchData();
   }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-open lead profile when navigated with ?lead=Name
+  useEffect(() => {
+    const leadName = searchParams.get('lead');
+    if (leadName && leads.length > 0 && !selectedLead) {
+      const match = leads.find((l) =>
+        (l.sourceAuthor || '').toLowerCase().includes(leadName.toLowerCase()) ||
+        (l.sourceAuthor || '').toLowerCase() === leadName.toLowerCase()
+      );
+      if (match) {
+        setSelectedLead(match);
+        setSearchParams({}, { replace: true }); // clear the param
+      }
+    }
+  }, [leads, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleUpdateStatus(id: string, newStatus: OpportunityStatus) {
     setUpdatingId(id);

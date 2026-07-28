@@ -583,8 +583,9 @@ export default function TeamPage() {
             )}
             {(() => {
               const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
-              const filtered = leadFilter === 'all' ? teamLeads : teamLeads.filter((l) => l.addedByEmail === leadFilter);
-              if (filtered.length === 0) return <p className="text-xs text-slate-500 text-center py-3">{leadFilter === 'all' ? 'No leads yet — leads added by any team member show here' : 'No leads in this nest yet'}</p>;
+              if (leadFilter === 'all') return null;
+              const filtered = teamLeads.filter((l) => l.addedByEmail === leadFilter);
+              if (filtered.length === 0) return <p className="text-xs text-slate-500 text-center py-3">No leads in this nest yet</p>;
               return (
                 <div className="space-y-1.5 max-h-[350px] overflow-y-auto">
                   {filtered.map((lead) => {

@@ -8,8 +8,8 @@ export default function HawkAnimations() {
         alt=""
         className="absolute inset-0 w-full h-full object-cover object-center"
         style={{
-          filter: 'brightness(0.25) contrast(1.15) saturate(0.6)',
-          opacity: 0.55,
+          filter: 'brightness(0.4) contrast(1.2) saturate(0.7)',
+          opacity: 0.7,
         }}
       />
     </div>

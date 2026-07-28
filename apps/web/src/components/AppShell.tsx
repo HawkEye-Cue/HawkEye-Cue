@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
@@ -51,6 +52,44 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setShowTour(false);
   }
 
+  // ─── Notifications ───
+  const { events } = useCalendar();
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [teamNotifs, setTeamNotifs] = useState<{ id: string; message: string; time: string }[]>([]);
+
+  // Build today's notifications from calendar events + team
+  const todayStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; })();
+  const todayEvents = events.filter((e) => e.date === todayStr && !e.completed);
+  const meetings = todayEvents.filter((e) => e.type === 'meeting');
+  const reminders = todayEvents.filter((e) => e.type === 'reminder' || e.type === 'task');
+  const posts = todayEvents.filter((e) => e.type === 'post');
+
+  const notifications: { id: string; icon: string; text: string; type: string }[] = [];
+  if (meetings.length > 0) notifications.push({ id: 'meetings', icon: '🤝', text: `${meetings.length} meeting${meetings.length !== 1 ? 's' : ''} today`, type: 'info' });
+  if (reminders.length > 0) notifications.push({ id: 'reminders', icon: '🔔', text: `${reminders.length} follow-up${reminders.length !== 1 ? 's' : ''} due today`, type: 'action' });
+  if (posts.length > 0) notifications.push({ id: 'posts', icon: '📤', text: `${posts.length} flock${posts.length !== 1 ? 's' : ''} to post`, type: 'action' });
+  for (const tn of teamNotifs) notifications.push({ id: tn.id, icon: '🏆', text: tn.message, type: 'team' });
+
+  // Fetch team notifications on mount
+  useEffect(() => {
+    async function fetchTeamNotifs() {
+      try {
+        const token = await getToken();
+        const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+        const result = await client.request<{ notifications: any[] }>('GET', '/team/notifications');
+        const recent = (result.notifications || []).filter((n: any) => !n.dismissed).slice(0, 3).map((n: any) => ({
+          id: n.id,
+          message: `${n.memberName || 'Teammate'} closed ${n.dealName || 'a deal'}!`,
+          time: n.closedAt || '',
+        }));
+        setTeamNotifs(recent);
+      } catch { /* ignore */ }
+    }
+    fetchTeamNotifs();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const unreadCount = notifications.length;
+
   return (
     <div className="min-h-screen bg-slate-950">
       <HawkAnimations />
@@ -67,6 +106,38 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-white/20 px-3 sm:px-4 py-3 flex flex-col items-center gap-1" style={{ background: 'rgba(30, 41, 59, 0.95)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-wider uppercase gradient-text">HawkEye-Cue</h1>
         <div className="flex items-center gap-3">
+          {/* Notification Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifs(!showNotifs)}
+              className="relative text-slate-400 hover:text-white transition-colors p-1"
+            >
+              <span className="text-lg">🔔</span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{unreadCount > 9 ? '9+' : unreadCount}</span>
+              )}
+            </button>
+            {showNotifs && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Notifications</span>
+                  <button onClick={() => setShowNotifs(false)} className="text-xs text-slate-400 hover:text-white">✕</button>
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-xs text-slate-500">All caught up! 🦅</div>
+                ) : (
+                  <div className="max-h-60 overflow-y-auto">
+                    {notifications.map((n) => (
+                      <div key={n.id} className="px-3 py-2.5 border-b border-white/5 flex items-center gap-2 hover:bg-white/5">
+                        <span className="text-base">{n.icon}</span>
+                        <span className="text-xs text-slate-300">{n.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <Link to="/profile" className="text-sm text-slate-400 hover:text-blue-400 transition-colors">
             {user?.email}
           </Link>

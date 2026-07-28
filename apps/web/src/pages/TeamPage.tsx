@@ -700,7 +700,7 @@ export default function TeamPage() {
                   const day = i + 1;
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                   const dayEvts = myEvents.filter((e) => e.date === dateStr && e.type === 'meeting');
-                  const teamDayMeetings = teamCalendar.filter((e) => e.date === dateStr && e.type === 'meeting');
+                  const teamDayMeetings = teamCalendar.filter((e) => e.date === dateStr);
                   const hasMeetings = dayEvts.length > 0 || teamDayMeetings.length > 0;
                   const isToday = day === todayDay;
                   const isSelected = selectedTeamDay === dateStr;
@@ -738,8 +738,8 @@ export default function TeamPage() {
         {/* Day Detail */}
         {selectedTeamDay && (() => {
           const dateLabel = new Date(selectedTeamDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-          const dayEvts = myEvents.filter((e) => e.date === selectedTeamDay && e.type === 'meeting');
-          const teamDayEvts = teamCalendar.filter((e) => e.date === selectedTeamDay && e.type === 'meeting');
+          const dayEvts = myEvents.filter((e) => e.date === selectedTeamDay && (e.type === 'meeting' || e.type === 'task'));
+          const teamDayEvts = teamCalendar.filter((e) => e.date === selectedTeamDay && (e.type === 'meeting' || e.type === 'task'));
 
           // Merge own meetings + team meetings with color coding
           const seen = new Set<string>();

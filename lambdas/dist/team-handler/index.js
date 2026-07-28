@@ -609,7 +609,7 @@ exports.handler = async (event) => {
             id: e.eventId || e.SK.replace('CAL#', '').split('#').pop() || e.SK,
             title: e.title || 'Untitled',
             date: e.eventDate || e.date || '',
-            type: e.type || 'post',
+            type: e.eventType || e.type || 'post',
             memberEmail: member.email,
             memberName: member.email.split('@')[0],
             startTime: e.startTime || null,

@@ -553,7 +553,7 @@ export default function TeamPage() {
                 return members.map((member, i) => {
                   const memberLeads = teamLeads.filter((l) => l.addedByEmail === member.email);
                   const name = displayNames[member.email] || member.email.split('@')[0];
-                  const colorIdx = i % MEMBER_COLORS.length;
+                  const colorIdx = getMemberColorIndex(member.email);
                   const isActive = leadFilter === member.email;
                   return (
                     <button

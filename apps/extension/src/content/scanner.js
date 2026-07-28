@@ -69,7 +69,7 @@
 
     if (type === 'wingman') return;
 
-    // Save as Lead button
+    // Save as Lead button — calls API directly from content script
     document.getElementById('hawkeye-save-lead').addEventListener('click', async function() {
       const btn = document.getElementById('hawkeye-save-lead');
       const status = document.getElementById('hawkeye-panel-status');
@@ -77,7 +77,7 @@
       btn.style.opacity = '0.6';
 
       const authorName = extractAuthorName(postElement) || 'Unknown';
-      const { authToken } = await chrome.storage.local.get(['authToken']);
+      const { authToken, refreshToken } = await chrome.storage.local.get(['authToken', 'refreshToken']);
       if (!authToken) {
         status.textContent = 'Not signed in — open extension popup to log in';
         status.style.display = 'block';
@@ -87,30 +87,49 @@
         return;
       }
 
-      try { await chrome.runtime.sendMessage({ type: 'PING' }); } catch {}
+      const API = 'https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com';
+      const body = JSON.stringify({ keywordId: 'extension-detected', sourceContent: postText.slice(0, 500), sourcePlatform: platform, sourceUrl: extractPostUrl(postElement) || window.location.href, sourceAuthor: authorName });
 
-      chrome.runtime.sendMessage({
-        type: 'SAVE_LEAD',
-        data: { authToken: authToken, platform: platform, authorName: authorName, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
-      }, function(response) {
-        if (chrome.runtime.lastError || !response || !response.success) {
-          btn.textContent = '💼 Save as Lead';
-          btn.style.opacity = '1';
-          status.textContent = 'Failed: ' + (response && response.error ? response.error : (chrome.runtime.lastError ? chrome.runtime.lastError.message : 'Unknown error'));
-          status.style.display = 'block';
-          status.style.color = '#f87171';
-        } else {
+      try {
+        let res = await fetch(API + '/opportunities', { method: 'POST', headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: body });
+        
+        // If 401, try to refresh token and retry
+        if (res.status === 401 && refreshToken) {
+          const refreshRes = await fetch('https://cognito-idp.us-east-1.amazonaws.com/', { method: 'POST', headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth' }, body: JSON.stringify({ AuthFlow: 'REFRESH_TOKEN_AUTH', ClientId: '2cr45bt815hr68i0j021murak', AuthParameters: { REFRESH_TOKEN: refreshToken } }) });
+          const refreshData = await refreshRes.json();
+          if (refreshData.AuthenticationResult && refreshData.AuthenticationResult.IdToken) {
+            const newToken = refreshData.AuthenticationResult.IdToken;
+            await chrome.storage.local.set({ authToken: newToken, tokenExpiry: Date.now() + 3600000 });
+            res = await fetch(API + '/opportunities', { method: 'POST', headers: { 'Authorization': 'Bearer ' + newToken, 'Content-Type': 'application/json' }, body: body });
+          }
+        }
+
+        if (res.ok) {
+          const result = await res.json();
           btn.textContent = '✓ Lead Saved!';
           btn.style.background = '#16a34a';
           btn.style.opacity = '1';
-          status.textContent = 'Saved to your Leads tab on HawkEye-Cue';
+          status.textContent = authorName + ' saved to Leads (' + platform + ')';
           status.style.display = 'block';
           status.style.color = '#4ade80';
+        } else {
+          const errText = await res.text();
+          btn.textContent = '💼 Save as Lead';
+          btn.style.opacity = '1';
+          status.textContent = 'Error ' + res.status + ': ' + errText.slice(0, 60);
+          status.style.display = 'block';
+          status.style.color = '#f87171';
         }
-      });
+      } catch (err) {
+        btn.textContent = '💼 Save as Lead';
+        btn.style.opacity = '1';
+        status.textContent = 'Network error: ' + err.message;
+        status.style.display = 'block';
+        status.style.color = '#f87171';
+      }
     });
 
-    // Save Appreciation button
+    // Save Appreciation button — calls API directly from content script
     document.getElementById('hawkeye-save-appreciate').addEventListener('click', async function() {
       const btn = document.getElementById('hawkeye-save-appreciate');
       const status = document.getElementById('hawkeye-panel-status');
@@ -118,7 +137,7 @@
       btn.style.opacity = '0.6';
 
       const authorName = extractAuthorName(postElement) || 'Unknown';
-      const { authToken } = await chrome.storage.local.get(['authToken']);
+      const { authToken, refreshToken } = await chrome.storage.local.get(['authToken', 'refreshToken']);
       if (!authToken) {
         status.textContent = 'Not signed in — open extension popup';
         status.style.display = 'block';
@@ -128,27 +147,43 @@
         return;
       }
 
-      try { await chrome.runtime.sendMessage({ type: 'PING' }); } catch {}
+      const API = 'https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com';
+      const body = JSON.stringify({ taggerName: authorName, platform: platform, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href });
 
-      chrome.runtime.sendMessage({
-        type: 'SAVE_APPRECIATION',
-        data: { authToken: authToken, taggerName: authorName, platform: platform, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
-      }, function(response) {
-        if (chrome.runtime.lastError || !response || !response.success) {
-          btn.textContent = '🙏 Appreciation';
-          btn.style.opacity = '1';
-          status.textContent = 'Failed: ' + (response && response.error ? response.error : 'Unknown error');
-          status.style.display = 'block';
-          status.style.color = '#f87171';
-        } else {
+      try {
+        let res = await fetch(API + '/appreciations', { method: 'POST', headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: body });
+        
+        if (res.status === 401 && refreshToken) {
+          const refreshRes = await fetch('https://cognito-idp.us-east-1.amazonaws.com/', { method: 'POST', headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth' }, body: JSON.stringify({ AuthFlow: 'REFRESH_TOKEN_AUTH', ClientId: '2cr45bt815hr68i0j021murak', AuthParameters: { REFRESH_TOKEN: refreshToken } }) });
+          const refreshData = await refreshRes.json();
+          if (refreshData.AuthenticationResult && refreshData.AuthenticationResult.IdToken) {
+            const newToken = refreshData.AuthenticationResult.IdToken;
+            await chrome.storage.local.set({ authToken: newToken, tokenExpiry: Date.now() + 3600000 });
+            res = await fetch(API + '/appreciations', { method: 'POST', headers: { 'Authorization': 'Bearer ' + newToken, 'Content-Type': 'application/json' }, body: body });
+          }
+        }
+
+        if (res.ok) {
           btn.textContent = '✓ Saved!';
           btn.style.background = '#16a34a';
           btn.style.opacity = '1';
-          status.textContent = 'Saved to Appreciations';
+          status.textContent = 'Appreciation saved (' + platform + ')';
           status.style.display = 'block';
           status.style.color = '#4ade80';
+        } else {
+          btn.textContent = '🙏 Appreciation';
+          btn.style.opacity = '1';
+          status.textContent = 'Error ' + res.status;
+          status.style.display = 'block';
+          status.style.color = '#f87171';
         }
-      });
+      } catch (err) {
+        btn.textContent = '🙏 Appreciation';
+        btn.style.opacity = '1';
+        status.textContent = 'Network error: ' + err.message;
+        status.style.display = 'block';
+        status.style.color = '#f87171';
+      }
     });
   }
 
@@ -204,7 +239,7 @@
 
   function extractAuthorName(postElement) {
     const selectors = {
-      facebook: 'a[role="link"] strong, h3 a span, h4 a span',
+      facebook: 'a[role="link"] strong, h3 a span, h4 a span, a[role="link"] span strong, strong a, a.x1i10hfl span, span.xt0psk2, a[aria-label] span',
       instagram: 'a.x1i10hfl header a, article header a',
       linkedin: '.update-components-actor__name span, .feed-shared-actor__name span',
       tiktok: '[data-e2e="browse-username"], a[data-e2e="video-author-uniqueid"]',
@@ -212,11 +247,25 @@
     const sel = selectors[platform];
     if (!sel) return null;
     let container = postElement;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 8; i++) {
       if (!container.parentElement) break;
       container = container.parentElement;
       const author = container.querySelector(sel);
-      if (author) return author.textContent.trim();
+      if (author && author.textContent.trim().length > 1 && author.textContent.trim().length < 60) {
+        return author.textContent.trim();
+      }
+    }
+    // Facebook fallback: look for any strong tag inside a link near the post
+    if (platform === 'facebook') {
+      let c = postElement;
+      for (let i = 0; i < 10; i++) {
+        if (!c.parentElement) break;
+        c = c.parentElement;
+        const strong = c.querySelector('strong');
+        if (strong && strong.closest('a') && strong.textContent.trim().length > 1 && strong.textContent.trim().length < 50) {
+          return strong.textContent.trim();
+        }
+      }
     }
     return null;
   }

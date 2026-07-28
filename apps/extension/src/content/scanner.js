@@ -49,23 +49,22 @@
 
     const overlay = document.createElement('div');
     overlay.className = 'hawkeye-overlay';
+    overlay.style.cssText = 'position:absolute;top:8px;right:8px;z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
     overlay.innerHTML = `
-      <div class="hawkeye-badge">
-        <span class="hawkeye-icon">🦅</span>
-        <span class="hawkeye-count">${matchedKeywords.length}</span>
+      <div class="hawkeye-badge" style="display:flex;align-items:center;gap:4px;background:linear-gradient(135deg,#1a1a2e,#16213e);border:2px solid #3b82f6;border-radius:20px;padding:6px 12px;cursor:pointer;box-shadow:0 2px 8px rgba(59,130,246,0.4);user-select:none;">
+        <span style="font-size:18px;">🦅</span>
+        <span style="font-size:12px;font-weight:700;color:#3b82f6;">${matchedKeywords.length}</span>
       </div>
-      <div class="hawkeye-panel" style="display:none;">
-        <div class="hawkeye-panel-header">
-          <span>🦅 HawkEye Match</span>
-          <button class="hawkeye-close">&times;</button>
+      <div class="hawkeye-panel" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;width:300px;background:#0f172a;border:1px solid #3b82f6;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.7);padding:14px;z-index:2147483647;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;font-weight:600;color:#3b82f6;">🦅 HawkEye Match</span>
+          <button class="hawkeye-close" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:4px;">&times;</button>
         </div>
-        <div class="hawkeye-panel-body">
-          <p class="hawkeye-keywords">Keywords: <strong>${matchedKeywords.join(', ')}</strong></p>
-          <p class="hawkeye-preview">"${postText.slice(0, 300)}${postText.length > 300 ? '...' : ''}"</p>
-          <div class="hawkeye-actions">
-            <button class="hawkeye-btn hawkeye-btn-lead">💼 Save as Lead</button>
-            <button class="hawkeye-btn hawkeye-btn-appreciate">🙏 Save Appreciation</button>
-          </div>
+        <p style="font-size:11px;color:#94a3b8;margin:0 0 6px 0;">Keywords: <strong style="color:#3b82f6;">${matchedKeywords.join(', ')}</strong></p>
+        <p style="font-size:11px;color:#cbd5e1;margin:0 0 12px 0;max-height:60px;overflow:hidden;">"${postText.slice(0, 200)}${postText.length > 200 ? '...' : ''}"</p>
+        <div style="display:flex;gap:8px;">
+          <button class="hawkeye-btn-lead" style="flex:1;padding:8px;background:#1e40af;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">💼 Save as Lead</button>
+          <button class="hawkeye-btn-appreciate" style="flex:1;padding:8px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🙏 Appreciation</button>
         </div>
       </div>
     `;
@@ -77,25 +76,30 @@
     postElement.style.boxShadow = '0 0 12px rgba(59, 130, 246, 0.3)';
     postElement.appendChild(overlay);
 
-    // Toggle panel on badge click
+    // Use mousedown instead of click to bypass Facebook's event interception
     const badge = overlay.querySelector('.hawkeye-badge');
     const panel = overlay.querySelector('.hawkeye-panel');
     const closeBtn = overlay.querySelector('.hawkeye-close');
 
-    badge.addEventListener('click', (e) => {
+    badge.addEventListener('mousedown', (e) => {
       e.stopPropagation();
-      const isShowing = panel.style.display !== 'none';
-      panel.style.display = isShowing ? 'none' : 'block';
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
     });
 
-    closeBtn.addEventListener('click', (e) => {
+    closeBtn.addEventListener('mousedown', (e) => {
       e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
       panel.style.display = 'none';
     });
 
     // Save as Lead
-    overlay.querySelector('.hawkeye-btn-lead').addEventListener('click', async (e) => {
+    overlay.querySelector('.hawkeye-btn-lead').addEventListener('mousedown', async (e) => {
       e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
       const authorName = extractAuthorName(postElement) || 'Unknown';
       const { authToken, tokenExpiry } = await chrome.storage.local.get(['authToken', 'tokenExpiry']);
       if (!authToken || (tokenExpiry && Date.now() >= tokenExpiry)) { showToast('Please sign in — open the HawkEye-Cue extension popup'); return; }
@@ -137,6 +141,7 @@
           } else {
             showToast('Lead saved! 🦅');
             btn.textContent = '✓ Saved';
+            btn.style.background = '#16a34a';
           }
         });
       }
@@ -147,19 +152,19 @@
     });
 
     // Save Appreciation
-    overlay.querySelector('.hawkeye-btn-appreciate').addEventListener('click', async (e) => {
+    overlay.querySelector('.hawkeye-btn-appreciate').addEventListener('mousedown', async (e) => {
       e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
       const authorName = extractAuthorName(postElement) || 'Unknown';
       const { authToken } = await chrome.storage.local.get(['authToken']);
-      if (!authToken) { showToast('Please sign in first'); return; }
+      if (!authToken) { showToast('Please sign in — open extension popup'); return; }
 
       const btn = overlay.querySelector('.hawkeye-btn-appreciate');
       btn.textContent = 'Saving...';
       btn.disabled = true;
 
-      try {
-        await chrome.runtime.sendMessage({ type: 'PING' });
-      } catch { /* ignore */ }
+      try { await chrome.runtime.sendMessage({ type: 'PING' }); } catch { /* ignore */ }
 
       chrome.runtime.sendMessage({
         type: 'SAVE_APPRECIATION',
@@ -172,18 +177,19 @@
         },
       }, (response) => {
         if (chrome.runtime.lastError) {
-          btn.textContent = '🙏 Save Appreciation';
+          btn.textContent = '🙏 Appreciation';
           btn.disabled = false;
           showToast('Extension error — try again');
           return;
         }
         if (!response || !response.success) {
-          btn.textContent = '🙏 Save Appreciation';
+          btn.textContent = '🙏 Appreciation';
           btn.disabled = false;
           showToast('Failed to save');
         } else {
           showToast('Appreciation saved! 🙏');
           btn.textContent = '✓ Saved';
+          btn.style.background = '#16a34a';
         }
       });
     });

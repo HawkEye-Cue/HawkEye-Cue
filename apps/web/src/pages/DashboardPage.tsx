@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const [currentTier, setCurrentTier] = useState<string>('free');
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string>('none');
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => !localStorage.getItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`));
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editLink, setEditLink] = useState('');
@@ -239,6 +239,12 @@ export default function DashboardPage() {
               className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-xl text-sm transition-all active:scale-95"
             >
               Got it — Let's Go! 🚀
+            </button>
+            <button
+              onClick={() => { setShowWelcomeBanner(false); localStorage.setItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`, 'true'); }}
+              className="w-full mt-2 py-2 text-slate-500 hover:text-slate-300 text-xs transition-colors"
+            >
+              Do not show again
             </button>
           </div>
         </div>

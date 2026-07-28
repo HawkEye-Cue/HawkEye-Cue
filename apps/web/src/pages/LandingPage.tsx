@@ -167,8 +167,8 @@ export default function LandingPage() {
         {/* 7-Day Trial Banner */}
         <div className="text-center mb-10 reveal">
           <div className="inline-block bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-2 border-amber-500/40 rounded-2xl px-8 py-5">
-            <p className="text-xl font-bold text-amber-300 mb-1">🎁 7-Day Free Soar Trial</p>
-            <p className="text-sm text-white mb-2">Every new user gets full Soar access free for 7 days</p>
+            <p className="text-xl font-bold text-amber-300 mb-1">🎁 7-Day Free Trial</p>
+            <p className="text-sm text-white mb-2">Every new user gets a free 7-day trial on Soar and Summit</p>
             <p className="text-xs text-slate-400">After your trial, you return to Nest (free) automatically. No charge unless you choose to upgrade.</p>
           </div>
         </div>

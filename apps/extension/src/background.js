@@ -40,63 +40,71 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 
   if (message.type === 'SAVE_LEAD') {
     var d = message.data;
-    var token = d.authToken;
     
-    fetch(API_BASE + '/opportunities', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        keywordId: 'extension-detected',
-        sourceContent: d.postContent || 'No content',
-        sourcePlatform: d.platform || 'facebook',
-        sourceUrl: d.postUrl || 'https://facebook.com',
-        sourceAuthor: d.authorName || 'Unknown'
+    // Use fresh token from storage (may have been refreshed since page load)
+    chrome.storage.local.get(['authToken'], function(authResult) {
+      var token = authResult.authToken || d.authToken;
+      
+      fetch(API_BASE + '/opportunities', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywordId: 'extension-detected',
+          sourceContent: d.postContent || 'No content',
+          sourcePlatform: d.platform || 'facebook',
+          sourceUrl: d.postUrl || 'https://facebook.com',
+          sourceAuthor: d.authorName || 'Unknown'
+        })
       })
-    })
-    .then(function(res) {
-      if (res.ok) {
-        return res.json().then(function(result) {
-          sendResponse({ success: true, result: result });
-        });
-      } else {
-        return res.text().then(function(text) {
-          console.error('[HawkEye BG] API error:', res.status, text);
-          sendResponse({ success: false, error: 'API ' + res.status });
-        });
-      }
-    })
-    .catch(function(err) {
-      console.error('[HawkEye BG] Fetch error:', err);
-      sendResponse({ success: false, error: err.message });
+      .then(function(res) {
+        if (res.ok) {
+          return res.json().then(function(result) {
+            sendResponse({ success: true, result: result });
+          });
+        } else {
+          return res.text().then(function(text) {
+            console.error('[HawkEye BG] API error:', res.status, text);
+            sendResponse({ success: false, error: 'API ' + res.status });
+          });
+        }
+      })
+      .catch(function(err) {
+        console.error('[HawkEye BG] Fetch error:', err);
+        sendResponse({ success: false, error: err.message });
+      });
     });
     return true;
   }
 
   if (message.type === 'SAVE_APPRECIATION') {
     var d2 = message.data;
-    var token2 = d2.authToken;
     
-    fetch(API_BASE + '/appreciations', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token2, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        taggerName: d2.taggerName || 'Unknown',
-        platform: d2.platform || 'facebook',
-        postContent: d2.postContent || 'No content',
-        postUrl: d2.postUrl || ''
+    // Use fresh token from storage
+    chrome.storage.local.get(['authToken'], function(authResult) {
+      var token2 = authResult.authToken || d2.authToken;
+      
+      fetch(API_BASE + '/appreciations', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token2, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taggerName: d2.taggerName || 'Unknown',
+          platform: d2.platform || 'facebook',
+          postContent: d2.postContent || 'No content',
+          postUrl: d2.postUrl || ''
+        })
       })
-    })
-    .then(function(res) {
-      if (res.ok) {
-        return res.json().then(function(result) {
-          sendResponse({ success: true, result: result });
-        });
-      } else {
-        sendResponse({ success: false, error: 'API ' + res.status });
-      }
-    })
-    .catch(function(err) {
-      sendResponse({ success: false, error: err.message });
+      .then(function(res) {
+        if (res.ok) {
+          return res.json().then(function(result) {
+            sendResponse({ success: true, result: result });
+          });
+        } else {
+          sendResponse({ success: false, error: 'API ' + res.status });
+        }
+      })
+      .catch(function(err) {
+        sendResponse({ success: false, error: err.message });
+      });
     });
     return true;
   }
@@ -112,10 +120,11 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     chrome.storage.local.get(['authToken'], function(authResult) {
       if (!authResult.authToken) { sendResponse({ leadsFound: 0, appreciations: 0 }); return; }
       Promise.all([
-        fetch(API_BASE + '/opportunities/stats', { headers: { 'Authorization': 'Bearer ' + authResult.authToken } }).then(function(r) { return r.json(); }).catch(function() { return { total: 0 }; }),
+        fetch(API_BASE + '/opportunities/stats', { headers: { 'Authorization': 'Bearer ' + authResult.authToken } }).then(function(r) { return r.json(); }).catch(function() { return {}; }),
         fetch(API_BASE + '/appreciations', { headers: { 'Authorization': 'Bearer ' + authResult.authToken } }).then(function(r) { return r.json(); }).catch(function() { return { items: [] }; })
       ]).then(function(results) {
-        sendResponse({ leadsFound: results[0].total || 0, appreciations: (results[1].items || []).length });
+        var stats = results[0].stats || results[0];
+        sendResponse({ leadsFound: stats.total || 0, appreciations: (results[1].items || []).length });
       });
     });
     return true;
@@ -134,11 +143,28 @@ chrome.alarms.onAlarm.addListener(function(alarm) {
   if (alarm.name === 'refreshKeywords') {
     chrome.storage.local.get(['authToken'], function(result) {
       if (!result.authToken) return;
+      // Refresh regular keywords
       fetch(API_BASE + '/keywords', { headers: { 'Authorization': 'Bearer ' + result.authToken } })
       .then(function(res) { return res.json(); })
       .then(function(data) {
         var keywords = (Array.isArray(data) ? data : data.keywords || []).map(function(k) { return k.keyword || k; });
         chrome.storage.local.set({ keywords: keywords });
+      })
+      .catch(function() {});
+      // Refresh wingman keywords from profile preferences
+      fetch(API_BASE + '/profile/preferences', { headers: { 'Authorization': 'Bearer ' + result.authToken } })
+      .then(function(res) { return res.json(); })
+      .then(function(prefs) {
+        var updates = {};
+        if (prefs.wingmanKeywords && Array.isArray(prefs.wingmanKeywords)) {
+          updates.wingmanKeywords = prefs.wingmanKeywords;
+        }
+        if (prefs.wingmanName) {
+          updates.wingmanName = prefs.wingmanName;
+        }
+        if (Object.keys(updates).length > 0) {
+          chrome.storage.local.set(updates);
+        }
       })
       .catch(function() {});
     });
@@ -212,12 +238,28 @@ chrome.runtime.onMessageExternal.addListener(function(message, sender, sendRespo
       tokenExpiry: Date.now() + (3600 * 1000), // 1 hour
       userEmail: message.email || '',
     }, function() {
-      // Also fetch keywords immediately
+      // Fetch keywords immediately
       fetch(API_BASE + '/keywords', { headers: { 'Authorization': 'Bearer ' + message.token } })
       .then(function(res) { return res.json(); })
       .then(function(data) {
         var keywords = (Array.isArray(data) ? data : data.keywords || []).map(function(k) { return k.keyword || k; });
         chrome.storage.local.set({ keywords: keywords });
+      })
+      .catch(function() {});
+      // Fetch wingman keywords from profile preferences
+      fetch(API_BASE + '/profile/preferences', { headers: { 'Authorization': 'Bearer ' + message.token } })
+      .then(function(res) { return res.json(); })
+      .then(function(prefs) {
+        var updates = {};
+        if (prefs.wingmanKeywords && Array.isArray(prefs.wingmanKeywords)) {
+          updates.wingmanKeywords = prefs.wingmanKeywords;
+        }
+        if (prefs.wingmanName) {
+          updates.wingmanName = prefs.wingmanName;
+        }
+        if (Object.keys(updates).length > 0) {
+          chrome.storage.local.set(updates);
+        }
       })
       .catch(function() {});
       sendResponse({ success: true });

@@ -30,13 +30,13 @@ export default function ContentCreatorPage() {
     try { return new Set(JSON.parse(localStorage.getItem('hawkeye_personal_cues') || '[]')); } catch { return new Set(); }
   });
   const [createMode, setCreateMode] = useState<'ai' | 'own'>('own');
-  const [ownContent, setOwnContent] = useState('');
+  const [ownContent, setOwnContent] = useState(() => localStorage.getItem('hawkeye_draft_ownContent') || '');
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postLength, setPostLength] = useState<'short' | 'medium' | 'long'>('medium');
   const [userTier, setUserTier] = useState<string>('free');
   const [postType, setPostType] = useState('');
   const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
-  const [baseText, setBaseText] = useState('');
+  const [baseText, setBaseText] = useState(() => localStorage.getItem('hawkeye_draft_baseText') || '');
   const [platformContent, setPlatformContent] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
   const [scheduling, setScheduling] = useState(false);
@@ -84,6 +84,10 @@ export default function ContentCreatorPage() {
     setPostHistory(updated);
     localStorage.setItem(postHistoryKey, JSON.stringify(updated));
   }
+
+  // Persist draft content to localStorage so it survives navigation
+  useEffect(() => { localStorage.setItem('hawkeye_draft_ownContent', ownContent); }, [ownContent]);
+  useEffect(() => { localStorage.setItem('hawkeye_draft_baseText', baseText); }, [baseText]);
 
   // Cleanup image preview URL on unmount to prevent memory leaks
   useEffect(() => {

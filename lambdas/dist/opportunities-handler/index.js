@@ -136,6 +136,10 @@ async function handleCreateOpportunity(userId, body) {
       const steps = template.steps.map((s, i) => {
         const eventDate = new Date(startDate);
         eventDate.setDate(eventDate.getDate() + (s.day || 0));
+        // Skip Sundays — push to Monday
+        if (eventDate.getDay() === 0) {
+          eventDate.setDate(eventDate.getDate() + 1);
+        }
         const scheduledDate = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
         return {
           idx: i,

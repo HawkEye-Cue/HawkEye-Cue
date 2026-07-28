@@ -349,6 +349,8 @@ export default function OpportunitiesPage() {
           // Auto-schedule paperwork check reminder 2 days from now
           const twoDaysFromNow = new Date();
           twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
+          // Skip Sundays — push to Monday
+          if (twoDaysFromNow.getDay() === 0) twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 1);
           const reminderDate = `${twoDaysFromNow.getFullYear()}-${String(twoDaysFromNow.getMonth() + 1).padStart(2, '0')}-${String(twoDaysFromNow.getDate()).padStart(2, '0')}`;
           await addEvent({ date: reminderDate, title: `📋 ${lead.sourceAuthor} — Verify signed paperwork & documents`, type: 'reminder' });
         }
@@ -687,12 +689,14 @@ export default function OpportunitiesPage() {
                     setNewLeadBucket('');
                     fetchData();
 
-                    // Auto-schedule follow-up protocol on calendar (linked to lead)
-                    if (leadProtocol.length > 0) {
+                    // Auto-schedule follow-up protocol on calendar (only if cadence is enabled)
+                    if (leadProtocol.length > 0 && flightProjectionEnabled) {
                       const startDate = new Date();
                       for (const step of leadProtocol) {
                         const eventDate = new Date(startDate);
                         eventDate.setDate(eventDate.getDate() + step.day);
+                        // Skip Sundays — push to Monday
+                        if (eventDate.getDay() === 0) eventDate.setDate(eventDate.getDate() + 1);
                         const dateStr = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
                         const icon = step.type === 'call' ? '📞' : step.type === 'sms' ? '💬' : '✉️';
                         addEvent({

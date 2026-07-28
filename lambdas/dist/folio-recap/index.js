@@ -329,7 +329,120 @@ exports.handler = async () => {
       console.error('[digest] Error:', e.message);
     }
 
-    return { statusCode: 200, body: `Sent ${emailsSent} recap emails, ${digestsSent} daily digests` };
+    // ─── Lead Going Cold Emails ───────────────────────────────────────────
+    let coldLeadsSent = 0;
+    try {
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const cutoff = threeDaysAgo.toISOString();
+
+      for (const profile of allProfiles) {
+        const userId = profile.PK.replace('USER#', '');
+        const email = profile.email;
+        if (!email) continue;
+        const emailNotifs = profile.emailNotifications || {};
+        if (emailNotifs.leadGoingCold === false) continue;
+
+        try {
+          const leadsResult = await dynamo.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+            ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'OPP#' },
+          }));
+          const coldLeads = (leadsResult.Items || []).filter((l) =>
+            l.status === 'new' && l.createdAt && l.createdAt < cutoff
+          );
+          if (coldLeads.length === 0) continue;
+
+          const names = coldLeads.slice(0, 5).map((l) => l.sourceAuthor || 'Unknown').join(', ');
+          const subject = `⚠️ ${coldLeads.length} lead${coldLeads.length !== 1 ? 's' : ''} going cold`;
+          const html = `
+            <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
+              <h2 style="color:#dc2626;margin:0 0 16px 0;">⚠️ Leads Going Cold</h2>
+              <p style="font-size:14px;color:#334155;margin:0 0 12px 0;">You have <strong>${coldLeads.length}</strong> lead${coldLeads.length !== 1 ? 's' : ''} that haven't been followed up in 3+ days:</p>
+              <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;margin-bottom:16px;">
+                <p style="margin:0;font-size:13px;color:#991b1b;">${names}${coldLeads.length > 5 ? ` (+${coldLeads.length - 5} more)` : ''}</p>
+              </div>
+              <a href="https://hawkeyecue.com/opportunities" style="display:inline-block;background:#dc2626;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">Follow Up Now →</a>
+              <p style="font-size:11px;color:#94a3b8;margin:16px 0 0 0;">Manage notifications in Settings → Email Notifications.</p>
+            </div>
+          `;
+          await sendEmail(email, subject, html);
+          coldLeadsSent++;
+        } catch (e) {
+          console.error(`[cold-leads] Error for user ${userId}:`, e.message);
+        }
+      }
+      console.log(`Cold lead emails sent: ${coldLeadsSent}`);
+    } catch (e) {
+      console.error('[cold-leads] Error:', e.message);
+    }
+
+    // ─── Weekly Recap (Mondays only) ──────────────────────────────────────
+    let weeklyRecapsSent = 0;
+    const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon
+    if (dayOfWeek === 1) {
+      try {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const weekStart = weekAgo.toISOString().slice(0, 10);
+
+        for (const profile of allProfiles) {
+          const userId = profile.PK.replace('USER#', '');
+          const email = profile.email;
+          if (!email) continue;
+          const emailNotifs = profile.emailNotifications || {};
+          if (emailNotifs.weeklyRecap === false) continue;
+
+          try {
+            // Count leads created this week
+            const leadsResult = await dynamo.send(new QueryCommand({
+              TableName: TABLE_NAME,
+              KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+              ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'OPP#' },
+            }));
+            const weekLeads = (leadsResult.Items || []).filter((l) => l.createdAt && l.createdAt >= weekStart);
+            const wonLeads = weekLeads.filter((l) => l.status === 'converted');
+
+            // Count deals closed this week
+            const dealsResult = await dynamo.send(new QueryCommand({
+              TableName: TABLE_NAME,
+              KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+              ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'DEAL#' },
+            }));
+            const weekDeals = (dealsResult.Items || []).filter((d) => d.stage === 'won' && d.updatedAt && d.updatedAt >= weekStart);
+            const weekRevenue = weekDeals.reduce((s, d) => s + (d.dealValue || 0), 0);
+
+            if (weekLeads.length === 0 && weekDeals.length === 0) continue;
+
+            const subject = `📊 Your Week: ${weekLeads.length} leads, ${weekDeals.length} deals, $${weekRevenue.toLocaleString()} revenue`;
+            const html = `
+              <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
+                <h2 style="color:#1e40af;margin:0 0 16px 0;">📊 Weekly Recap</h2>
+                <p style="font-size:14px;color:#334155;margin:0 0 16px 0;">Here's how your week went:</p>
+                <div style="background:#f1f5f9;border-radius:12px;padding:16px;margin-bottom:16px;">
+                  <p style="margin:0 0 8px 0;font-size:14px;">🎯 <strong>${weekLeads.length}</strong> new lead${weekLeads.length !== 1 ? 's' : ''}</p>
+                  <p style="margin:0 0 8px 0;font-size:14px;">✓ <strong>${wonLeads.length}</strong> converted</p>
+                  <p style="margin:0 0 8px 0;font-size:14px;">💰 <strong>${weekDeals.length}</strong> deal${weekDeals.length !== 1 ? 's' : ''} closed</p>
+                  <p style="margin:0;font-size:14px;">💵 <strong>$${weekRevenue.toLocaleString()}</strong> revenue</p>
+                </div>
+                <a href="https://hawkeyecue.com/hawk-insights" style="display:inline-block;background:#1e40af;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">View Full Insights →</a>
+                <p style="font-size:11px;color:#94a3b8;margin:16px 0 0 0;">Manage notifications in Settings → Email Notifications.</p>
+              </div>
+            `;
+            await sendEmail(email, subject, html);
+            weeklyRecapsSent++;
+          } catch (e) {
+            console.error(`[weekly] Error for user ${userId}:`, e.message);
+          }
+        }
+        console.log(`Weekly recaps sent: ${weeklyRecapsSent}`);
+      } catch (e) {
+        console.error('[weekly] Error:', e.message);
+      }
+    }
+
+    return { statusCode: 200, body: `Folio: ${emailsSent}, Digests: ${digestsSent}, Cold: ${coldLeadsSent}, Weekly: ${weeklyRecapsSent}` };
   } catch (e) {
     console.error('Folio Recap error:', e);
     return { statusCode: 500, body: e.message };

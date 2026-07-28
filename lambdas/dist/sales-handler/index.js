@@ -20,12 +20,15 @@ async function getResendKey() {
   return resendApiKey;
 }
 
-async function sendEmail(to, subject, text) {
+async function sendEmail(to, subject, textOrHtml) {
   const apiKey = await getResendKey();
+  const isHtml = textOrHtml.includes('<');
+  const payload = { from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject };
+  if (isHtml) { payload.html = textOrHtml; } else { payload.text = textOrHtml; }
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject, text }),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const err = await response.text();
@@ -91,7 +94,7 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
   const now = new Date().toISOString();
   const notifId = randomUUID();
 
-  // Create a notification for each teammate
+  // Create a notification for each teammate + send email
   for (const mate of teammates) {
     await dynamo.send(new PutCommand({
       TableName: TABLE_NAME,
@@ -107,6 +110,35 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
         createdAt: now,
       },
     }));
+
+    // Send email notification if teammate has it enabled
+    try {
+      const mateProfile = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${mate.userId}`, ':sk': 'PROFILE' },
+      }));
+      const mateEmail = (mateProfile.Items || [])[0]?.email;
+      const mateNotifs = (mateProfile.Items || [])[0]?.emailNotifications || {};
+      if (mateEmail && mateNotifs.teamWin !== false) {
+        const displayName = userEmail.split('@')[0];
+        const html = `
+          <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
+            <h2 style="color:#16a34a;margin:0 0 16px 0;">🏆 Team Win!</h2>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-bottom:16px;">
+              <p style="margin:0 0 8px 0;font-size:16px;font-weight:600;color:#166534;">${displayName} closed a deal!</p>
+              <p style="margin:0 0 4px 0;font-size:14px;color:#334155;"><strong>Deal:</strong> ${dealName || 'Deal'}</p>
+              <p style="margin:0;font-size:14px;color:#334155;"><strong>Value:</strong> $${(dealValue || 0).toLocaleString()}</p>
+            </div>
+            <a href="https://hawkeyecue.com/team" style="display:inline-block;background:#16a34a;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">View Team →</a>
+            <p style="font-size:11px;color:#94a3b8;margin:16px 0 0 0;">Manage notifications in Settings → Email Notifications.</p>
+          </div>
+        `;
+        await sendEmail(mateEmail, `🏆 ${displayName} closed "${dealName}" — $${(dealValue || 0).toLocaleString()}!`, html);
+      }
+    } catch (e) {
+      console.error(`[team-win-email] Failed for mate ${mate.userId}:`, e.message);
+    }
   }
 }
 

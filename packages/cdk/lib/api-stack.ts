@@ -414,6 +414,34 @@ export class ApiStack extends cdk.Stack {
       new cdk.aws_events_targets.LambdaFunction(leadScannerFn)
     );
 
+    // ─── Meeting Reminder (EventBridge scheduled, runs every 5 min) ───────
+    const meetingReminderFn = new lambda.Function(this, 'MeetingReminderFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-MeetingReminder',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/meeting-reminder'),
+      description: 'Sends email reminders 15 min before meetings',
+      timeout: cdk.Duration.seconds(60),
+    } as lambda.FunctionProps);
+
+    table.grantReadData(meetingReminderFn);
+    meetingReminderFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: ['*'],
+      })
+    );
+
+    const meetingReminderRule = new cdk.aws_events.Rule(this, 'MeetingReminderSchedule', {
+      ruleName: 'SocialLeadGen-MeetingReminderSchedule',
+      schedule: cdk.aws_events.Schedule.rate(cdk.Duration.minutes(5)),
+      description: 'Triggers meeting reminder check every 5 minutes',
+    });
+    meetingReminderRule.addTarget(
+      new cdk.aws_events_targets.LambdaFunction(meetingReminderFn)
+    );
+
     // ─── EventBridge Scheduler IAM Role ───────────────────────────────────
     const schedulerRole = new iam.Role(this, 'EventBridgeSchedulerRole', {
       roleName: 'SocialLeadGen-EventBridgeSchedulerRole',

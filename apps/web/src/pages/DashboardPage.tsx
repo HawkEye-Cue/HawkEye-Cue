@@ -30,7 +30,14 @@ export default function DashboardPage() {
   const [currentTier, setCurrentTier] = useState<string>('free');
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string>('none');
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => !localStorage.getItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`));
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => {
+    // Don't show welcome banner if guided tour hasn't been completed yet (tour shows first)
+    const tourKey = user?.sub ? `hawkeye_tour_done_${user.sub}` : 'hawkeye_tour_done';
+    const tourDone = localStorage.getItem(tourKey);
+    if (!tourDone) return false;
+    // Show unless user permanently dismissed it
+    return !localStorage.getItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`);
+  });
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editLink, setEditLink] = useState('');
@@ -64,6 +71,22 @@ export default function DashboardPage() {
       navigate('/onboarding', { replace: true });
     }
   }, [navigate]);
+
+  // Show welcome banner after guided tour completes
+  useEffect(() => {
+    function checkTourDone() {
+      const tourKey = user?.sub ? `hawkeye_tour_done_${user.sub}` : 'hawkeye_tour_done';
+      const dismissed = localStorage.getItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`);
+      if (localStorage.getItem(tourKey) && !dismissed) {
+        setShowWelcomeBanner(true);
+      }
+    }
+    window.addEventListener('focus', checkTourDone);
+    const interval = setInterval(checkTourDone, 1000);
+    // Stop checking after banner is shown
+    if (showWelcomeBanner) { clearInterval(interval); }
+    return () => { window.removeEventListener('focus', checkTourDone); clearInterval(interval); };
+  }, [showWelcomeBanner, user?.sub]);
 
   useEffect(() => {
     async function fetchTodayPosts() {

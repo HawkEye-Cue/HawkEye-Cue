@@ -19,12 +19,15 @@ async function getResendKey() {
   return resendApiKey;
 }
 
-async function sendEmail(to, subject, text) {
+async function sendEmail(to, subject, textOrHtml) {
   const apiKey = await getResendKey();
+  const isHtml = textOrHtml.includes('<');
+  const payload = { from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject };
+  if (isHtml) { payload.html = textOrHtml; } else { payload.text = textOrHtml; }
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject, text }),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const err = await response.text();
@@ -259,7 +262,74 @@ exports.handler = async () => {
     }
 
     console.log(`Folio Recap complete. ${emailsSent} emails sent.`);
-    return { statusCode: 200, body: `Sent ${emailsSent} recap emails` };
+
+    // ─── Daily Morning Digest Emails ──────────────────────────────────────
+    let digestsSent = 0;
+    try {
+      const today = getTodayStr();
+      // Scan all users who have profiles
+      let lastKey = undefined;
+      const allProfiles = [];
+      do {
+        const scanResult = await dynamo.send(new ScanCommand({
+          TableName: TABLE_NAME,
+          FilterExpression: 'begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':sk': 'PROFILE' },
+          ExclusiveStartKey: lastKey,
+        }));
+        allProfiles.push(...(scanResult.Items || []));
+        lastKey = scanResult.LastEvaluatedKey;
+      } while (lastKey);
+
+      for (const profile of allProfiles) {
+        const userId = profile.PK.replace('USER#', '');
+        const email = profile.email;
+        if (!email) continue;
+
+        // Check notification preferences
+        const emailNotifs = profile.emailNotifications || {};
+        if (emailNotifs.dailyDigest === false) continue;
+
+        // Get today's calendar events
+        try {
+          const calResult = await dynamo.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+            ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': `CAL#${today}` },
+          }));
+          const events = calResult.Items || [];
+          if (events.length === 0) continue; // No events today — skip
+
+          const meetings = events.filter((e) => e.eventType === 'meeting');
+          const reminders = events.filter((e) => e.eventType === 'reminder' || e.eventType === 'task');
+          const posts = events.filter((e) => e.eventType === 'post');
+
+          const subject = `🦅 Today: ${meetings.length} meeting${meetings.length !== 1 ? 's' : ''}, ${posts.length} flock${posts.length !== 1 ? 's' : ''}, ${reminders.length} follow-up${reminders.length !== 1 ? 's' : ''}`;
+          const html = `
+            <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
+              <h2 style="color:#1e40af;margin:0 0 16px 0;">🦅 Good Morning!</h2>
+              <p style="font-size:14px;color:#334155;margin:0 0 16px 0;">Here's what's on your plate today:</p>
+              <div style="background:#f1f5f9;border-radius:12px;padding:16px;margin-bottom:16px;">
+                ${meetings.length > 0 ? `<p style="margin:0 0 8px 0;font-size:14px;">🤝 <strong>${meetings.length}</strong> meeting${meetings.length !== 1 ? 's' : ''}</p>` : ''}
+                ${posts.length > 0 ? `<p style="margin:0 0 8px 0;font-size:14px;">📤 <strong>${posts.length}</strong> flock${posts.length !== 1 ? 's' : ''} to post</p>` : ''}
+                ${reminders.length > 0 ? `<p style="margin:0 0 8px 0;font-size:14px;">🔔 <strong>${reminders.length}</strong> follow-up${reminders.length !== 1 ? 's' : ''}</p>` : ''}
+              </div>
+              <a href="https://hawkeyecue.com/" style="display:inline-block;background:#1e40af;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">Open HawkEye-Cue →</a>
+              <p style="font-size:11px;color:#94a3b8;margin:16px 0 0 0;">Manage notifications in Settings → Email Notifications.</p>
+            </div>
+          `;
+          await sendEmail(email, subject, html);
+          digestsSent++;
+        } catch (e) {
+          console.error(`[digest] Error for user ${userId}:`, e.message);
+        }
+      }
+      console.log(`Daily digests sent: ${digestsSent}`);
+    } catch (e) {
+      console.error('[digest] Error:', e.message);
+    }
+
+    return { statusCode: 200, body: `Sent ${emailsSent} recap emails, ${digestsSent} daily digests` };
   } catch (e) {
     console.error('Folio Recap error:', e);
     return { statusCode: 500, body: e.message };

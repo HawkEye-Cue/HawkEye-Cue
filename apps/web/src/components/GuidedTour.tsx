@@ -1,92 +1,78 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 interface TourStep {
-  selector: string; // CSS selector for the element to highlight
+  selector: string;
   title: string;
   description: string;
   icon: string;
-  position: 'top' | 'bottom'; // tooltip position relative to element
 }
 
 const TOUR_STEPS: TourStep[] = [
   {
     selector: '[data-tour="home"]',
     title: 'Dashboard',
-    description: 'Your daily cues, lead stats, and scheduled posts all in one place. This is your home base.',
+    description: 'Your home base. See today\'s cues, lead stats, meetings, and your calendar at a glance.',
     icon: '🏠',
-    position: 'top',
-  },
-  {
-    selector: '[data-tour="calendar"]',
-    title: 'Calendar',
-    description: 'Tap any day to see your Cues (Posts, Meetings, Reminders) and hourly Schedule. Toggle between Month, Week, and Day views. Add flocks, meetings with invites, and reminders — they show up on your Dashboard each morning.',
-    icon: '📅',
-    position: 'top',
   },
   {
     selector: '[data-tour="create"]',
-    title: 'Create Content',
-    description: 'AI generates professional posts tailored for each platform in seconds. Schedule them or post instantly.',
+    title: 'Create & Post',
+    description: 'Write posts or let AI generate them. Use "Copy & Open Next Flock" to fly through your Facebook groups.',
     icon: '✨',
-    position: 'top',
   },
   {
     selector: '[data-tour="leads"]',
-    title: 'Lead Cues',
-    description: 'When the browser extension detects someone asking for your services, it saves here. Track each lead from new → followed up → converted.',
+    title: 'Leads',
+    description: 'Track leads from any source. The browser extension auto-detects people asking for your services.',
     icon: '🎯',
-    position: 'top',
+  },
+  {
+    selector: '[data-tour="sales"]',
+    title: 'Sales',
+    description: 'Your deal pipeline. Track from prospect to close and see which lead sources make you the most money.',
+    icon: '💰',
   },
   {
     selector: '[data-tour="network"]',
-    title: 'Collaborate',
-    description: 'Connect with other trades in your area. Post referral requests, share opportunities, and build partnerships.',
+    title: 'Network',
+    description: 'Connect with other trades, post referrals, save appreciations, and manage your Wingman contacts.',
     icon: '🤝',
-    position: 'top',
   },
   {
     selector: '[data-tour="team"]',
-    title: 'Summit — Team',
-    description: 'Create or join a team. See everyone\'s meetings color-coded on a shared calendar, track team leads and stats, and pick your own member color.',
+    title: 'Summit',
+    description: 'Team features. Shared calendar with color-coded meetings, team leads, leaderboard, and wins.',
     icon: '🏔️',
-    position: 'top',
-  },
-  {
-    selector: '[data-tour="thanks"]',
-    title: 'Appreciations',
-    description: 'Track when someone recommends your business on social media. See your top advocates and thank them.',
-    icon: '🙏',
-    position: 'top',
   },
   {
     selector: '[data-tour="settings"]',
-    title: 'Settings',
-    description: 'Set your keywords, connect social accounts, install the Chrome extension, and manage your subscription.',
+    title: 'Settings & More',
+    description: 'Pick your trade, set keywords, install the Chrome extension, manage your subscription, and more.',
     icon: '⚙️',
-    position: 'top',
   },
 ];
 
 export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
   const current = TOUR_STEPS[step];
   const isLast = step === TOUR_STEPS.length - 1;
 
   useEffect(() => {
-    // Find and highlight the current element
     const el = document.querySelector(current.selector);
     if (el) {
-      const rect = el.getBoundingClientRect();
-      setTargetRect(rect);
-      // Scroll into view if needed
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setTargetRect(el.getBoundingClientRect());
     } else {
+      // Element not found — skip to next step automatically
       setTargetRect(null);
+      if (!isLast) {
+        setStep(step + 1);
+      } else {
+        onComplete();
+      }
     }
-  }, [step, current.selector]);
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleNext() {
     if (isLast) {
@@ -96,81 +82,68 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
     }
   }
 
-  function handleSkip() {
-    onComplete();
-  }
+  // If no target found, don't render anything (auto-advancing)
+  if (!targetRect) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999]">
-      {/* Dark overlay with hole for highlighted element */}
-      <div className="absolute inset-0 bg-black/70" onClick={handleNext} />
+    <div className="fixed inset-0 z-[9999]" onClick={handleNext}>
+      {/* Spotlight on the nav item */}
+      <div
+        className="absolute border-2 border-blue-400 rounded-xl pointer-events-none"
+        style={{
+          top: targetRect.top - 4,
+          left: targetRect.left - 4,
+          width: targetRect.width + 8,
+          height: targetRect.height + 8,
+          boxShadow: '0 0 0 9999px rgba(0,0,0,0.75), 0 0 20px rgba(59,130,246,0.5)',
+        }}
+      />
 
-      {/* Highlighted element spotlight */}
-      {targetRect && (
-        <div
-          className="absolute border-2 border-blue-400 rounded-xl shadow-lg shadow-blue-500/30 pointer-events-none"
-          style={{
-            top: targetRect.top - 4,
-            left: targetRect.left - 4,
-            width: targetRect.width + 8,
-            height: targetRect.height + 8,
-            boxShadow: '0 0 0 9999px rgba(0,0,0,0.7), 0 0 20px rgba(59,130,246,0.5)',
-          }}
-        />
-      )}
-
-      {/* Tooltip */}
-      {targetRect && (
-        <div
-          ref={tooltipRef}
-          className="absolute animate-scale-in"
-          style={{
-            left: Math.max(16, Math.min(targetRect.left + targetRect.width / 2 - 150, window.innerWidth - 316)),
-            ...(current.position === 'top'
-              ? { bottom: window.innerHeight - targetRect.top + 16 }
-              : { top: targetRect.bottom + 16 }
-            ),
-            width: 300,
-          }}
-        >
-          <div className="bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-2xl">
-            {/* Progress */}
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-2xl">{current.icon}</span>
-              <span className="text-xs text-slate-500">{step + 1} / {TOUR_STEPS.length}</span>
-            </div>
-
-            <h3 className="font-bold text-white text-lg mb-1">{current.title}</h3>
-            <p className="text-sm text-slate-400 leading-relaxed mb-4">{current.description}</p>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleNext}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-500 transition-colors"
-              >
-                {isLast ? 'Get Started!' : 'Next'}
-              </button>
-              {!isLast && (
-                <button
-                  onClick={handleSkip}
-                  className="px-3 py-2 text-slate-500 text-sm hover:text-white transition-colors"
-                >
-                  Skip
-                </button>
-              )}
-            </div>
+      {/* Tooltip card — positioned above the nav bar */}
+      <div
+        className="absolute animate-scale-in"
+        style={{
+          left: Math.max(12, Math.min(targetRect.left + targetRect.width / 2 - 150, window.innerWidth - 312)),
+          bottom: window.innerHeight - targetRect.top + 12,
+          width: 300,
+        }}
+      >
+        <div className="bg-slate-800 border border-blue-500/30 rounded-xl p-4 shadow-2xl shadow-blue-500/20">
+          {/* Progress bar */}
+          <div className="w-full bg-slate-700 rounded-full h-1 mb-3">
+            <div className="bg-blue-500 h-1 rounded-full transition-all" style={{ width: `${((step + 1) / TOUR_STEPS.length) * 100}%` }} />
           </div>
 
-          {/* Arrow pointing to element */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-800 border-slate-600 rotate-45"
-            style={current.position === 'top'
-              ? { bottom: -6, borderRight: '1px solid', borderBottom: '1px solid' }
-              : { top: -6, borderLeft: '1px solid', borderTop: '1px solid' }
-            }
-          />
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">{current.icon}</span>
+            <h3 className="font-bold text-white text-lg">{current.title}</h3>
+          </div>
+
+          <p className="text-sm text-slate-300 leading-relaxed mb-4">{current.description}</p>
+
+          <div className="flex gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); handleNext(); }}
+              className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-blue-500 transition-colors active:scale-95"
+            >
+              {isLast ? 'Done — Let\'s Go! 🦅' : 'Next →'}
+            </button>
+            {!isLast && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onComplete(); }}
+                className="px-3 py-2.5 text-slate-500 text-sm hover:text-white transition-colors"
+              >
+                Skip
+              </button>
+            )}
+          </div>
+
+          <p className="text-[10px] text-slate-600 text-center mt-2">{step + 1} of {TOUR_STEPS.length} · Tap anywhere to continue</p>
         </div>
-      )}
+
+        {/* Arrow */}
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-slate-800 border-r border-b border-blue-500/30 rotate-45" />
+      </div>
     </div>
   );
 }

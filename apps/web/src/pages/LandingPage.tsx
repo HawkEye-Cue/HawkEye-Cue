@@ -15,7 +15,7 @@ export default function LandingPage() {
       <HawkAnimations />
 
       {/* Nav */}
-      <nav className="flex flex-col items-center px-6 py-6 max-w-2xl mx-auto gap-3 animate-fade-in">
+      <nav className="flex flex-col items-center px-6 py-4 max-w-2xl mx-auto gap-2 animate-fade-in">
         <h1 className="text-3xl font-extrabold tracking-wider uppercase gradient-text">HawkEye-Cue</h1>
         <div className="flex gap-3">
           <Link to="/login" className="text-sm text-slate-300 hover:text-white px-4 py-2 transition-colors">Log In</Link>
@@ -24,22 +24,19 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative text-center px-6 py-24 overflow-hidden">
-        {/* Animated gradient orbs behind hero */}
+      <section className="relative text-center px-6 py-16 overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-blue-600/10 blur-3xl animate-pulse-glow pointer-events-none"></div>
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-purple-600/8 blur-3xl animate-pulse-glow pointer-events-none" style={{ animationDelay: '1.5s' }}></div>
-
         <div className="max-w-2xl mx-auto relative z-10">
-          <div className="text-6xl mb-4 animate-fade-up">🦅</div>
-          <h2 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight animate-fade-up" style={{ animationDelay: '0.1s', opacity: 0 }}>
+          <div className="text-5xl mb-3 animate-fade-up">🦅</div>
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-3 leading-tight animate-fade-up" style={{ animationDelay: '0.1s', opacity: 0 }}>
             From Scroll to Sale<br />
-            <span className="gradient-text text-2xl md:text-3xl">Fully Customizable Social Media Creation & Tracking</span>
-            <br /><span className="text-2xl md:text-3xl">for Trade Professionals</span>
+            <span className="gradient-text text-xl md:text-2xl">Fully Customizable Social Media Creation & Tracking</span>
+            <br /><span className="text-xl md:text-2xl">for Trade Professionals</span>
           </h2>
-          <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto animate-fade-up" style={{ animationDelay: '0.2s', opacity: 0 }}>
-            HawkEye-Cue helps roofers, contractors, agents, and tradespeople generate leads, create content, and track opportunities — all with the precision of a hawk.
+          <p className="text-base text-slate-400 mb-6 max-w-xl mx-auto animate-fade-up" style={{ animationDelay: '0.2s', opacity: 0 }}>
+            Generate leads, create content, and track opportunities — all with the precision of a hawk.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up" style={{ animationDelay: '0.3s', opacity: 0 }}>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center animate-fade-up" style={{ animationDelay: '0.3s', opacity: 0 }}>
             <Link to="/register" className="btn-primary px-8 py-3 text-lg font-bold shadow-lg shadow-blue-600/25 btn-shimmer">
               Get Started Free
             </Link>
@@ -47,296 +44,201 @@ export default function LandingPage() {
               ▶ See How It Works
             </button>
           </div>
-          <p className="text-sm text-amber-400 mt-6 animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>🦅 The CRM that connects your social media directly to your sales</p>
         </div>
       </section>
 
       {/* Our Story */}
-      <section className="px-6 py-16 max-w-3xl mx-auto">
-        <div className="glass-card-strong gradient-border p-8 reveal">
-          <p className="text-sm text-slate-300 leading-relaxed mb-4">
-            HawkEye-Cue was built by two agency owners who understand what it's like to grow a business without a large marketing budget. Early on, buying internet leads wasn't an option, and we hadn't yet built a strong referral network. Instead, we focused on showing up consistently on social media, building relationships, and creating valuable content that generated real conversations and opportunities.
-          </p>
-          <p className="text-sm text-slate-300 leading-relaxed mb-4">
-            As we refined our process, those efforts helped us earn Toppers Club, become a Prime agency, and consistently rank among the top agencies in our district during our first two years in business.
-          </p>
-          <p className="text-sm text-slate-300 leading-relaxed mb-4">
-            The biggest challenge wasn't finding opportunities. It was staying organized enough to act on every one of them.
-          </p>
-          <p className="text-sm text-white font-semibold mb-4">
-            That's why we created HawkEye-Cue.
-          </p>
-          <p className="text-sm text-slate-300 leading-relaxed mb-4">
-            HawkEye-Cue combines content creation, scheduling, lead tracking, sales management, insights, and daily cues into one platform, giving trade professionals a clear, repeatable system instead of relying on memory, spreadsheets, or multiple apps.
-          </p>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            We built the platform we wished we had from day one, so other business owners can spend less time wondering what to do next and more time building relationships, serving customers, and growing their business.
-          </p>
-        </div>
+      <section className="px-6 py-10 max-w-3xl mx-auto">
+        <details className="glass-card-strong gradient-border p-6 reveal cursor-pointer">
+          <summary className="font-bold text-white text-center">Our Story — Built by Agency Owners</summary>
+          <div className="mt-4 space-y-3">
+            <p className="text-sm text-slate-300 leading-relaxed">HawkEye-Cue was built by two agency owners who understand what it's like to grow a business without a large marketing budget. We focused on showing up consistently on social media, building relationships, and creating content that generated real conversations and opportunities.</p>
+            <p className="text-sm text-slate-300 leading-relaxed">Those efforts helped us earn Toppers Club, become a Prime agency, and consistently rank among the top in our district during our first two years. The biggest challenge wasn't finding opportunities — it was staying organized enough to act on every one of them.</p>
+            <p className="text-sm text-white font-semibold">That's why we created HawkEye-Cue.</p>
+            <p className="text-sm text-slate-300 leading-relaxed">We built the platform we wished we had from day one, so other business owners can spend less time wondering what to do next and more time building relationships, serving customers, and growing their business.</p>
+          </div>
+        </details>
       </section>
 
       {/* How It Works */}
-      <section className="px-6 py-20 max-w-2xl mx-auto">
-        <h3 className="text-2xl font-bold text-center mb-12 reveal">How It Works</h3>
-        <div className="grid md:grid-cols-3 gap-8 stagger-children">
-          <div className="text-center glass-card hover:-translate-y-1 transition-transform duration-300">
-            <div className="text-4xl mb-4">1️⃣</div>
-            <h4 className="font-bold text-lg mb-2">Select Your Trade</h4>
-            <p className="text-sm text-slate-400">Choose from 57 trades — roofing, HVAC, real estate, insurance, travel agents, and more. Everything gets tailored to your industry.</p>
+      <section className="px-6 py-10 max-w-2xl mx-auto">
+        <h3 className="text-2xl font-bold text-center mb-8 reveal">How It Works</h3>
+        <div className="grid md:grid-cols-3 gap-6 stagger-children">
+          <div className="text-center glass-card p-4">
+            <div className="text-3xl mb-2">1️⃣</div>
+            <h4 className="font-bold mb-1">Select Your Trade</h4>
+            <p className="text-xs text-slate-400">Choose from 57 trades. Everything tailors to your industry.</p>
           </div>
-          <div className="text-center glass-card hover:-translate-y-1 transition-transform duration-300">
-            <div className="text-4xl mb-4">2️⃣</div>
-            <h4 className="font-bold text-lg mb-2">Add Your Flocks</h4>
-            <p className="text-sm text-slate-400">Add your Facebook groups to the calendar. Set them to repeat daily or weekly. Each morning, your flocks are ready to go.</p>
+          <div className="text-center glass-card p-4">
+            <div className="text-3xl mb-2">2️⃣</div>
+            <h4 className="font-bold mb-1">Add Your Flocks</h4>
+            <p className="text-xs text-slate-400">Add Facebook groups to your calendar. They repeat daily or weekly.</p>
           </div>
-          <div className="text-center glass-card hover:-translate-y-1 transition-transform duration-300">
-            <div className="text-4xl mb-4">3️⃣</div>
-            <h4 className="font-bold text-lg mb-2">Post, Engage, Track</h4>
-            <p className="text-sm text-slate-400">Write or generate a post, fly through your flocks with one tap each, then come back to engage. Track leads, meetings, and sales all in one place.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Tagline */}
-      <div className="text-center px-6 py-10 reveal">
-        <p className="text-xl md:text-2xl font-semibold text-slate-200 italic max-w-xl mx-auto">"Know what to post tomorrow because you know what made you money yesterday."</p>
-      </div>
-
-      {/* Features */}
-      <section className="px-6 py-20 relative">
-        {/* Subtle section background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/0 via-slate-900/50 to-slate-900/0 pointer-events-none"></div>
-        <div className="max-w-4xl mx-auto relative z-10">
-          <h3 className="text-2xl font-bold text-center mb-12 reveal">Features</h3>
-          <div className="grid md:grid-cols-2 gap-6 stagger-children">
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">🦅</div>
-              <h4 className="font-bold text-lg mb-2">Flocks — Group Posting Made Easy</h4>
-              <p className="text-sm text-slate-400">Add your Facebook groups to the calendar, then use "Copy & Open Next Flock" to fly through each one. One tap copies your post and opens the group. Done in minutes.</p>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">✨</div>
-              <h4 className="font-bold text-lg mb-2">AI Content Creation</h4>
-              <p className="text-sm text-slate-400">Write your own post or let AI generate trade-specific content for Facebook, Instagram, LinkedIn, and TikTok. Different versions for each platform, right tone for your industry.</p>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">📅</div>
-              <h4 className="font-bold text-lg mb-2">Unified Calendar & Scheduling</h4>
-              <p className="text-sm text-slate-400">Every calendar uses the same day view — Cues summary tiles (Posts, Meetings, Reminders) plus an hourly Schedule from 6 AM to 8 PM. Toggle between Month, Week, and Day views. Send meeting invites with Google and Outlook calendar links.</p>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">🎯</div>
-              <h4 className="font-bold text-lg mb-2">Lead Management</h4>
-              <p className="text-sm text-slate-400">Add leads from any source — Facebook groups, cold calls, referrals, internet lead vendors. Track them from prospect to converted. See what's working.</p>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">💰</div>
-              <h4 className="font-bold text-lg mb-2">Sales Tracker & Analytics</h4>
-              <p className="text-sm text-slate-400">Full pipeline from prospect to close. Track lead sources, see which groups generate the most business, and get flock completion analytics.</p>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">🤝</div>
-              <h4 className="font-bold text-lg mb-2">Network & Appreciations</h4>
-              <p className="text-sm text-slate-400">Connect with trades in your area. Post referrals, log appreciations from people who recommend you, build partnerships that generate business.</p>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">📊</div>
-              <h4 className="font-bold text-lg mb-2">Hawk Insights</h4>
-              <p className="text-sm text-slate-400">See your flock completion rate, which groups you miss most, peak posting times, lead source breakdown, and deal attribution — all in one dashboard.</p>
-            </div>
-            <div className="glass-card-strong gradient-border hover:-translate-y-1 transition-transform duration-300">
-              <div className="text-2xl mb-3">🔑</div>
-              <h4 className="font-bold text-lg mb-2">Keyword Tracking</h4>
-              <p className="text-sm text-slate-400">Our browser extension scans social media while you scroll. When someone posts about needing your services, a hawk icon appears and you save them as a lead.</p>
-              <button onClick={() => setShowExplainer(true)} className="text-xs text-blue-400 hover:text-blue-300 mt-2">How does this work? →</button>
-            </div>
+          <div className="text-center glass-card p-4">
+            <div className="text-3xl mb-2">3️⃣</div>
+            <h4 className="font-bold mb-1">Post, Engage, Track</h4>
+            <p className="text-xs text-slate-400">Fly through groups with one tap each. Track leads and sales.</p>
           </div>
         </div>
       </section>
 
-      {/* Tagline */}
-      <div className="text-center px-6 py-10 reveal">
-        <p className="text-xl md:text-2xl font-semibold text-slate-200 italic max-w-xl mx-auto">"Know exactly what pipeline makes you the most money."</p>
-      </div>
-
-      {/* Insurance Spotlight */}
-      <section className="px-6 py-16 max-w-3xl mx-auto reveal">
-        <div className="glass-card-strong p-8 border border-blue-500/20">
-          <div className="text-center mb-6">
-            <span className="text-4xl">🛡️</span>
-            <h3 className="text-xl font-bold text-white mt-2">Built for Insurance Agencies</h3>
+      {/* Features — condensed 2x4 grid */}
+      <section className="px-6 py-10 max-w-4xl mx-auto">
+        <h3 className="text-2xl font-bold text-center mb-8 reveal">Features</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 stagger-children">
+          <div className="glass-card p-4 text-center">
+            <span className="text-2xl">🦅</span>
+            <p className="text-xs font-bold text-white mt-2">Flocks</p>
+            <p className="text-[10px] text-slate-400 mt-1">Copy & Open groups in one tap</p>
           </div>
-          <p className="text-sm text-slate-300 leading-relaxed mb-4">
-            Insurance agents face a unique challenge: you need to be everywhere at once. Posting in local Facebook groups, following up on quotes, tracking referrals from body shops and realtors, remembering who asked for a bundle review last month — all while writing policies and handling claims.
-          </p>
-          <p className="text-sm text-slate-300 leading-relaxed mb-4">
-            HawkEye-Cue was built by agency owners who lived this. Our keyword detection finds people asking about insurance in your local groups. The calendar schedules your daily group posts. The lead pipeline tracks every quote from first contact to bound policy. And the sales tracker shows you exactly which groups and referral partners generate the most revenue.
-          </p>
-          <p className="text-sm text-slate-300 leading-relaxed mb-4">
-            Whether you're a captive agent building your book, an independent agency scaling with multiple producers, or a team lead tracking performance across your office — HawkEye-Cue gives you the system to grow without hiring a marketing department.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
-            <div className="text-center p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-              <p className="text-lg font-bold text-blue-400">📤</p>
-              <p className="text-xs text-slate-400">Post to groups daily</p>
-            </div>
-            <div className="text-center p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-              <p className="text-lg font-bold text-amber-400">🎯</p>
-              <p className="text-xs text-slate-400">Detect "need insurance" posts</p>
-            </div>
-            <div className="text-center p-3 bg-green-500/10 rounded-xl border border-green-500/20">
-              <p className="text-lg font-bold text-green-400">💰</p>
-              <p className="text-xs text-slate-400">Track quote to bound</p>
-            </div>
-            <div className="text-center p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
-              <p className="text-lg font-bold text-purple-400">🏔️</p>
-              <p className="text-xs text-slate-400">Team leaderboard</p>
-            </div>
+          <div className="glass-card p-4 text-center">
+            <span className="text-2xl">✨</span>
+            <p className="text-xs font-bold text-white mt-2">AI Content</p>
+            <p className="text-[10px] text-slate-400 mt-1">Trade-specific posts for every platform</p>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <span className="text-2xl">📅</span>
+            <p className="text-xs font-bold text-white mt-2">Calendar</p>
+            <p className="text-[10px] text-slate-400 mt-1">Hourly schedule + meeting invites</p>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <span className="text-2xl">🎯</span>
+            <p className="text-xs font-bold text-white mt-2">Leads</p>
+            <p className="text-[10px] text-slate-400 mt-1">Track from any source to converted</p>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <span className="text-2xl">💰</span>
+            <p className="text-xs font-bold text-white mt-2">Sales Pipeline</p>
+            <p className="text-[10px] text-slate-400 mt-1">Prospect to close with attribution</p>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <span className="text-2xl">🔑</span>
+            <p className="text-xs font-bold text-white mt-2">Keywords</p>
+            <p className="text-[10px] text-slate-400 mt-1">Auto-detect leads while scrolling</p>
+            <button onClick={() => setShowExplainer(true)} className="text-[9px] text-blue-400 mt-1">How? →</button>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <span className="text-2xl">📊</span>
+            <p className="text-xs font-bold text-white mt-2">Insights</p>
+            <p className="text-[10px] text-slate-400 mt-1">Analytics on what makes you money</p>
+          </div>
+          <div className="glass-card p-4 text-center">
+            <span className="text-2xl">🤝</span>
+            <p className="text-xs font-bold text-white mt-2">Network</p>
+            <p className="text-[10px] text-slate-400 mt-1">Referrals, Wingman, appreciations</p>
           </div>
         </div>
+      </section>
+
+      {/* Insurance Spotlight — condensed */}
+      <section className="px-6 py-10 max-w-3xl mx-auto reveal">
+        <details className="glass-card-strong p-6 border border-blue-500/20 cursor-pointer">
+          <summary className="font-bold text-white text-center">🛡️ Built for Insurance Agencies</summary>
+          <div className="mt-4 space-y-3">
+            <p className="text-sm text-slate-300 leading-relaxed">Insurance agents need to be everywhere at once — posting in groups, following up on quotes, tracking referrals, all while writing policies. HawkEye-Cue was built by agency owners who lived this.</p>
+            <p className="text-sm text-slate-300 leading-relaxed">Keyword detection finds "need insurance" posts. The calendar schedules daily group posts. The pipeline tracks every quote to bound policy. Whether you're captive, independent, or a team lead — this is the system to grow without a marketing department.</p>
+            <div className="grid grid-cols-4 gap-2 mt-4">
+              <div className="text-center p-2 bg-blue-500/10 rounded-lg"><p className="text-sm">📤</p><p className="text-[9px] text-slate-400">Post daily</p></div>
+              <div className="text-center p-2 bg-amber-500/10 rounded-lg"><p className="text-sm">🎯</p><p className="text-[9px] text-slate-400">Detect leads</p></div>
+              <div className="text-center p-2 bg-green-500/10 rounded-lg"><p className="text-sm">💰</p><p className="text-[9px] text-slate-400">Quote → Bound</p></div>
+              <div className="text-center p-2 bg-purple-500/10 rounded-lg"><p className="text-sm">🏔️</p><p className="text-[9px] text-slate-400">Team stats</p></div>
+            </div>
+          </div>
+        </details>
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="px-6 py-20 max-w-5xl mx-auto">
-        <h3 className="text-2xl font-bold text-center mb-4 reveal">Pricing</h3>
-        <p className="text-center text-slate-400 mb-6 reveal">Simple plans that grow with your business</p>
-
-        {/* 7-Day Trial Banner */}
-        <div className="text-center mb-10 reveal">
-          <div className="inline-block bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-2 border-amber-500/40 rounded-2xl px-8 py-5">
-            <p className="text-xl font-bold text-amber-300 mb-1">🎁 7-Day Free Trial</p>
-            <p className="text-sm text-white mb-2">Every new user gets a free 7-day trial on Soar and Summit</p>
-            <p className="text-xs text-slate-400">After your trial, you return to Nest (free) automatically. No charge unless you choose to upgrade.</p>
+      <section id="pricing" className="px-6 py-12 max-w-5xl mx-auto">
+        <h3 className="text-2xl font-bold text-center mb-3 reveal">Pricing</h3>
+        <div className="text-center mb-8 reveal">
+          <div className="inline-block bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 rounded-xl px-6 py-3">
+            <p className="text-base font-bold text-amber-300">🎁 7-Day Free Trial on Soar & Summit</p>
+            <p className="text-xs text-slate-400">No charge unless you upgrade. Returns to Nest (free) automatically.</p>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 stagger-children items-start max-w-4xl mx-auto">
-          {/* Nest (Free) */}
-          <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
-            <h4 className="text-xl font-bold text-white">🪺 Nest</h4>
-            <div className="mt-2 mb-4">
-              <span className="text-3xl font-extrabold text-white">Free</span>
-            </div>
-            <ul className="text-sm text-slate-300 space-y-2 mb-6">
-              <li>✓ AI-powered post creation (2/month)</li>
-              <li>✓ Full calendar with scheduling</li>
-              <li>✓ Flocks — 3 Copy & Open per day</li>
-              <li>✓ Meeting invites with calendar links</li>
-              <li>✓ Daily notes & reminders</li>
-              <li>✓ Network board & contacts</li>
+        <div className="grid md:grid-cols-3 gap-4 stagger-children items-start max-w-4xl mx-auto">
+          {/* Nest */}
+          <div className="glass-card-strong p-5">
+            <h4 className="text-lg font-bold text-white">🪺 Nest</h4>
+            <p className="text-2xl font-extrabold text-white mt-1">Free</p>
+            <ul className="text-xs text-slate-300 space-y-1.5 my-4">
+              <li>✓ AI posts (2/month)</li>
+              <li>✓ Calendar & scheduling</li>
+              <li>✓ 3 Copy & Open per day</li>
+              <li>✓ Meeting invites</li>
+              <li>✓ Network board</li>
             </ul>
-            <Link to="/register" className="block text-center btn-primary py-2.5 btn-shimmer">
-              Get Started Free
-            </Link>
+            <Link to="/register" className="block text-center btn-primary py-2 text-sm btn-shimmer">Get Started Free</Link>
           </div>
 
           {/* Soar */}
-          <div className="glass-card-strong gradient-border relative hover:-translate-y-2 transition-transform duration-300">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-amber-500/20">MOST POPULAR</div>
-            <h4 className="text-xl font-bold text-white mt-2">🚀 Soar</h4>
-            <div className="mt-2 mb-4">
-              <span className="text-3xl font-extrabold text-white">$24.99</span>
-              <span className="text-slate-400 text-sm">/mo</span>
-            </div>
-            <p className="text-xs text-amber-300 mb-3 font-medium">🎁 7-day free trial included</p>
-            <ul className="text-sm text-slate-300 space-y-2 mb-6">
+          <div className="glass-card-strong gradient-border p-5 relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-[10px] font-bold px-3 py-0.5 rounded-full">MOST POPULAR</div>
+            <h4 className="text-lg font-bold text-white mt-1">🚀 Soar</h4>
+            <p className="text-2xl font-extrabold text-white mt-1">$24.99<span className="text-sm text-slate-400 font-normal">/mo</span></p>
+            <p className="text-[10px] text-amber-300 font-medium">🎁 7-day free trial</p>
+            <ul className="text-xs text-slate-300 space-y-1.5 my-4">
               <li>✓ Everything in Nest</li>
-              <li>🦅 Unlimited Flocks (Copy & Open)</li>
-              <li>🦅 Keyword tracking & browser extension</li>
-              <li>🎯 Lead detection & management</li>
-              <li>💰 Sales Tracker & Pipeline</li>
-              <li>📊 Hawk Insights & Flock Analytics</li>
-              <li>🙏 Appreciations & AI thank-you replies</li>
-              <li>🤝 Wingman — relationship builder</li>
-              <li>🔗 Linked accounts & partner notifications</li>
-              <li>💰 Lead source attribution & folio recaps</li>
+              <li>🦅 Unlimited Flocks</li>
+              <li>🔑 Keyword tracking</li>
+              <li>🎯 Lead management</li>
+              <li>💰 Sales pipeline</li>
+              <li>📊 Hawk Insights</li>
+              <li>🙏 Appreciations</li>
+              <li>🤝 Wingman</li>
             </ul>
-            <Link to="/register" className="block text-center bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2.5 rounded-lg font-bold hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
-              Start 7-Day Free Trial
-            </Link>
+            <Link to="/register" className="block text-center bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-sm font-bold btn-shimmer">Start Free Trial</Link>
           </div>
 
           {/* Summit */}
-          <div className="glass-card-strong relative hover:-translate-y-2 transition-transform duration-300">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-purple-500/20">FOR TEAMS</div>
-            <h4 className="text-xl font-bold text-white mt-2">🏔️ Summit</h4>
-            <div className="mt-2 mb-4">
-              <span className="text-3xl font-extrabold text-white">$99.99</span>
-              <span className="text-slate-400 text-sm">/mo</span>
-            </div>
-            <p className="text-xs text-purple-300 mb-3 font-medium">🎁 7-day free trial included</p>
-            <ul className="text-sm text-slate-300 space-y-2 mb-6">
+          <div className="glass-card-strong p-5 relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[10px] font-bold px-3 py-0.5 rounded-full">FOR TEAMS</div>
+            <h4 className="text-lg font-bold text-white mt-1">🏔️ Summit</h4>
+            <p className="text-2xl font-extrabold text-white mt-1">$99.99<span className="text-sm text-slate-400 font-normal">/mo</span></p>
+            <p className="text-[10px] text-purple-300 font-medium">🎁 7-day free trial</p>
+            <ul className="text-xs text-slate-300 space-y-1.5 my-4">
               <li>✓ Everything in Soar</li>
               <li>👥 Up to 5 team members</li>
-              <li>👥 Team leaderboard & stats</li>
-              <li>👥 Shared leads & calendar</li>
-              <li>👥 Team analytics dashboard</li>
-              <li>🎨 Custom member colors on shared calendar</li>
-              <li>📅 Color-coded meeting dots per team member</li>
+              <li>👥 Shared calendar & leads</li>
+              <li>👥 Team leaderboard</li>
+              <li>🎨 Custom member colors</li>
             </ul>
-            <Link to="/register" className="block text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2.5 rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 btn-shimmer">
-              Start 7-Day Free Trial
-            </Link>
+            <Link to="/register" className="block text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-sm font-medium btn-shimmer">Start Free Trial</Link>
           </div>
         </div>
       </section>
 
-      {/* Tagline */}
-      <div className="text-center px-6 py-10 reveal">
-        <p className="text-xl md:text-2xl font-semibold text-slate-200 italic max-w-xl mx-auto">"You already know how many sales you made. HawkEye-Cue tells you exactly why you made them."</p>
-      </div>
-
-      {/* Testimonials */}
-      <section className="px-6 py-20 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/0 via-slate-900/50 to-slate-900/0 pointer-events-none"></div>
-        <div className="max-w-2xl mx-auto relative z-10">
-          <h3 className="text-2xl font-bold text-center mb-6 reveal">Reviews</h3>
-          <p className="text-center text-slate-400 mb-12 reveal">Check back soon for reviews!</p>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="px-6 py-20 max-w-2xl mx-auto">
-        <h3 className="text-2xl font-bold text-center mb-12 reveal">FAQ</h3>
-        <div className="space-y-4 stagger-children">
-          <details className="glass-card group cursor-pointer">
-            <summary className="font-semibold text-white flex items-center justify-between">
-              What trades does HawkEye-Cue support?
-              <span className="text-slate-500 group-open:rotate-45 transition-transform duration-200 text-xl">+</span>
-            </summary>
-            <p className="text-sm text-slate-400 mt-3">We support 57 trades including Roofing, General Contractor, Insurance Agent, Real Estate Agent, HVAC, Electrician, Plumber, Landscaper, Pool Service, Auto Repair, Painter, Travel Agent, Fence Company, Pressure Washer, Handyman, and many more. Select your trade in Settings to see the full list.</p>
+      {/* FAQ — condensed */}
+      <section className="px-6 py-10 max-w-2xl mx-auto">
+        <h3 className="text-xl font-bold text-center mb-6 reveal">FAQ</h3>
+        <div className="space-y-3 stagger-children">
+          <details className="glass-card group cursor-pointer p-3">
+            <summary className="font-medium text-white text-sm flex items-center justify-between">What trades are supported?<span className="text-slate-500 group-open:rotate-45 transition-transform text-lg">+</span></summary>
+            <p className="text-xs text-slate-400 mt-2">57 trades including Roofing, Insurance, Real Estate, HVAC, Electrician, Plumber, Landscaper, Travel Agent, and many more.</p>
           </details>
-          <details className="glass-card group cursor-pointer">
-            <summary className="font-semibold text-white flex items-center justify-between">
-              How does keyword tracking work?
-              <span className="text-slate-500 group-open:rotate-45 transition-transform duration-200 text-xl">+</span>
-            </summary>
-            <p className="text-sm text-slate-400 mt-3">Our browser extension scans Facebook, Instagram, LinkedIn, and TikTok while you scroll. When someone posts about needing your services, a hawk icon appears and you can save them as a lead with one click.</p>
+          <details className="glass-card group cursor-pointer p-3">
+            <summary className="font-medium text-white text-sm flex items-center justify-between">How does keyword tracking work?<span className="text-slate-500 group-open:rotate-45 transition-transform text-lg">+</span></summary>
+            <p className="text-xs text-slate-400 mt-2">Our Chrome extension scans Facebook, Instagram, LinkedIn, and TikTok while you scroll. A hawk icon appears when someone needs your services — save them as a lead with one click.</p>
           </details>
-          <details className="glass-card group cursor-pointer">
-            <summary className="font-semibold text-white flex items-center justify-between">
-              Can I cancel anytime?
-              <span className="text-slate-500 group-open:rotate-45 transition-transform duration-200 text-xl">+</span>
-            </summary>
-            <p className="text-sm text-slate-400 mt-3">Yes. Cancel anytime and you'll keep access until the end of your billing period. No contracts, no hidden fees.</p>
+          <details className="glass-card group cursor-pointer p-3">
+            <summary className="font-medium text-white text-sm flex items-center justify-between">Can I cancel anytime?<span className="text-slate-500 group-open:rotate-45 transition-transform text-lg">+</span></summary>
+            <p className="text-xs text-slate-400 mt-2">Yes. Cancel anytime, keep access until end of billing period. No contracts.</p>
           </details>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-20 text-center relative reveal">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[200px] rounded-full bg-blue-600/10 blur-3xl pointer-events-none"></div>
-        <div className="relative z-10">
-          <h3 className="text-3xl font-extrabold mb-4">Ready to Hunt for Leads?</h3>
-          <p className="text-slate-400 mb-8">Join HawkEye-Cue and let AI do the heavy lifting while you focus on your craft.</p>
-          <Link to="/register" className="btn-primary px-10 py-4 text-lg font-bold shadow-lg shadow-blue-600/25 inline-block btn-shimmer">
-            Get Started Now
-          </Link>
-        </div>
+      <section className="px-6 py-12 text-center reveal">
+        <h3 className="text-2xl font-extrabold mb-3">Ready to Hunt for Leads?</h3>
+        <p className="text-slate-400 mb-6 text-sm">Join HawkEye-Cue and let AI do the heavy lifting.</p>
+        <Link to="/register" className="btn-primary px-10 py-3 text-lg font-bold shadow-lg shadow-blue-600/25 inline-block btn-shimmer">
+          Get Started Now
+        </Link>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/50 px-6 py-8 text-center text-sm text-slate-500">
+      <footer className="border-t border-slate-800/50 px-6 py-6 text-center text-sm text-slate-500">
         <p>© 2026 HawkEye-Cue. All rights reserved.</p>
         <div className="flex justify-center gap-4 mt-2">
           <a href="/privacy.html" className="text-slate-500 hover:text-slate-300 transition-colors">Privacy Policy</a>

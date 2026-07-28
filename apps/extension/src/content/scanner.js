@@ -25,7 +25,7 @@
   const platform = detectPlatform();
 
   const POST_SELECTORS = {
-    facebook: '[data-ad-preview="message"], [data-ad-comet-preview="message"], div[dir="auto"][style*="text-align"], div[data-ad-rendering-role="story_message"], div.x1iorvi4[dir="auto"], div.xdj266r[dir="auto"], div.x11i5rnm[dir="auto"], div.xz9dl7a[dir="auto"]',
+    facebook: 'div[data-ad-preview="message"], div[data-ad-comet-preview="message"], div[dir="auto"], span[dir="auto"], div.xdj266r, div.x11i5rnm, div.x1iorvi4, div.xz9dl7a, div.x1yc453h, span.x193iq5w, span.xdj266r',
     instagram: 'article div span, article h1, article div._a9zs',
     linkedin: '.feed-shared-update-v2__description, .update-components-text, .feed-shared-text',
     tiktok: '[data-e2e="browse-video-desc"], .tiktok-1ejylhp-DivContainer, [data-e2e="video-desc"]',
@@ -259,22 +259,24 @@
     let elements = document.querySelectorAll(selector);
 
     // Facebook fallback
-    if (platform === 'facebook' && elements.length === 0) {
-      elements = document.querySelectorAll('div[dir="auto"]');
+    if (platform === 'facebook' && elements.length < 5) {
+      elements = document.querySelectorAll('div[dir="auto"], span[dir="auto"], div.xdj266r, span.x193iq5w, div.x11i5rnm');
     }
 
-    // Individual post pages
+    // Individual post pages — use broadest scan
     if (platform === 'facebook') {
       const path = window.location.pathname;
       if (path.includes('/posts/') || path.includes('/permalink/') || path.includes('/photo/') || path.includes('/reel/')) {
-        const extra = document.querySelectorAll('div[dir="auto"], span[dir="auto"]');
+        const extra = document.querySelectorAll('div[dir="auto"], span[dir="auto"], div.xdj266r, span.x193iq5w');
         if (extra.length > elements.length) elements = extra;
       }
     }
 
     elements.forEach(function(el) {
-      const text = el.textContent ? el.textContent.trim() : '';
-      if (!text || text.length < 10) return;
+      const text = el.innerText ? el.innerText.trim() : (el.textContent ? el.textContent.trim() : '');
+      if (!text || text.length < 20) return;
+      // Skip navigation/UI elements
+      if (text.startsWith('Create a post') || text.startsWith('What\'s on your mind') || text.includes('Write a comment')) return;
 
       const postId = text.slice(0, 100);
       if (processedPosts.has(postId)) return;

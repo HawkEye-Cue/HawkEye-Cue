@@ -611,60 +611,6 @@ export default function SettingsPage() {
       {showExtensionTour && <ExtensionTour onClose={() => setShowExtensionTour(false)} />}
       {showLeadExplainer && <LeadDetectionExplainer onClose={() => setShowLeadExplainer(false)} />}
 
-      {/* Delete Account */}
-      <div className="glass-card border-red-500/20">
-        <h3 className="font-semibold mb-2 text-red-400">Delete Account</h3>
-        <p className="text-sm text-slate-400 mb-3">
-          Permanently delete your account and all data. This cannot be undone.
-        </p>
-        {!showDeleteConfirm ? (
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="text-sm text-red-400 hover:text-red-300 border border-red-500/30 px-4 py-2 rounded-lg hover:bg-red-950/30 transition-colors"
-          >
-            Delete My Account
-          </button>
-        ) : (
-          <div className="space-y-3 p-3 rounded-lg bg-red-950/20 border border-red-500/30">
-            <p className="text-sm text-red-300 font-medium">Are you sure? This will:</p>
-            <ul className="text-xs text-slate-400 space-y-1">
-              <li>• Delete all your posts, keywords, and calendar data</li>
-              <li>• Remove your connected social accounts</li>
-              <li>• Cancel any active subscription</li>
-              <li>• Permanently delete your login</li>
-            </ul>
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  setDeletingAccount(true);
-                  try {
-                    const client = await buildClient();
-                    await client.deleteAccount();
-                    // Log out after deletion
-                    logout();
-                  } catch (e) {
-                    console.error('Delete failed:', e);
-                    setCheckoutError('Failed to delete account. Please try again or contact support.');
-                    setDeletingAccount(false);
-                    setShowDeleteConfirm(false);
-                  }
-                }}
-                disabled={deletingAccount}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-500 disabled:opacity-50"
-              >
-                {deletingAccount ? 'Deleting...' : 'Yes, Delete Everything'}
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-slate-600"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Suggestion Box */}
       <details id="suggestion" className="glass-card" open={window.location.hash === '#suggestion'}>
         <summary className="font-semibold text-white cursor-pointer flex items-center gap-2">

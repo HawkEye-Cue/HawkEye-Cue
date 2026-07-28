@@ -283,13 +283,6 @@ export default function LandingPage() {
             </summary>
             <p className="text-sm text-slate-400 mt-3">Yes. Cancel anytime and you'll keep access until the end of your billing period. No contracts, no hidden fees.</p>
           </details>
-          <details className="glass-card group cursor-pointer">
-            <summary className="font-semibold text-white flex items-center justify-between">
-              Does it work on mobile?
-              <span className="text-slate-500 group-open:rotate-45 transition-transform duration-200 text-xl">+</span>
-            </summary>
-            <p className="text-sm text-slate-400 mt-3">Yes! HawkEye-Cue is available as a web app, iOS app, and Android app. Create content, check leads, and manage your schedule from anywhere.</p>
-          </details>
         </div>
       </section>
 

@@ -123,7 +123,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               )}
             </button>
             {showNotifs && (
-              <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+              <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-16 sm:top-full sm:mt-2 w-auto sm:w-72 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                 <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
                   <span className="text-xs font-bold text-white">Notifications</span>
                   <button onClick={() => setShowNotifs(false)} className="text-xs text-slate-400 hover:text-white">✕</button>

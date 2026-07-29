@@ -69,7 +69,7 @@
 
     if (type === 'wingman') return;
 
-    // Save as Lead button — calls API directly from content script
+    // Save as Lead button — routes through background service worker (avoids Facebook CSP blocking)
     document.getElementById('hawkeye-save-lead').addEventListener('click', async function() {
       const btn = document.getElementById('hawkeye-save-lead');
       const status = document.getElementById('hawkeye-panel-status');
@@ -77,7 +77,7 @@
       btn.style.opacity = '0.6';
 
       const authorName = extractAuthorName(postElement) || 'Unknown';
-      const { authToken, refreshToken } = await chrome.storage.local.get(['authToken', 'refreshToken']);
+      const { authToken } = await chrome.storage.local.get(['authToken']);
       if (!authToken) {
         status.textContent = 'Not signed in — open extension popup to log in';
         status.style.display = 'block';
@@ -87,49 +87,30 @@
         return;
       }
 
-      const API = 'https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com';
-      const body = JSON.stringify({ keywordId: 'extension-detected', sourceContent: postText.slice(0, 500), sourcePlatform: platform, sourceUrl: extractPostUrl(postElement) || window.location.href, sourceAuthor: authorName });
+      try { await chrome.runtime.sendMessage({ type: 'PING' }); } catch {}
 
-      try {
-        let res = await fetch(API + '/opportunities', { method: 'POST', headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: body });
-        
-        // If 401, try to refresh token and retry
-        if (res.status === 401 && refreshToken) {
-          const refreshRes = await fetch('https://cognito-idp.us-east-1.amazonaws.com/', { method: 'POST', headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth' }, body: JSON.stringify({ AuthFlow: 'REFRESH_TOKEN_AUTH', ClientId: '2cr45bt815hr68i0j021murak', AuthParameters: { REFRESH_TOKEN: refreshToken } }) });
-          const refreshData = await refreshRes.json();
-          if (refreshData.AuthenticationResult && refreshData.AuthenticationResult.IdToken) {
-            const newToken = refreshData.AuthenticationResult.IdToken;
-            await chrome.storage.local.set({ authToken: newToken, tokenExpiry: Date.now() + 3600000 });
-            res = await fetch(API + '/opportunities', { method: 'POST', headers: { 'Authorization': 'Bearer ' + newToken, 'Content-Type': 'application/json' }, body: body });
-          }
-        }
-
-        if (res.ok) {
-          const result = await res.json();
+      chrome.runtime.sendMessage({
+        type: 'SAVE_LEAD',
+        data: { authToken: authToken, platform: platform, authorName: authorName, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
+      }, function(response) {
+        if (chrome.runtime.lastError || !response || !response.success) {
+          btn.textContent = '💼 Save as Lead';
+          btn.style.opacity = '1';
+          status.textContent = 'Failed: ' + (response?.error || chrome.runtime.lastError?.message || 'Unknown error — try again');
+          status.style.display = 'block';
+          status.style.color = '#f87171';
+        } else {
           btn.textContent = '✓ Lead Saved!';
           btn.style.background = '#16a34a';
           btn.style.opacity = '1';
           status.textContent = authorName + ' saved to Leads (' + platform + ')';
           status.style.display = 'block';
           status.style.color = '#4ade80';
-        } else {
-          const errText = await res.text();
-          btn.textContent = '💼 Save as Lead';
-          btn.style.opacity = '1';
-          status.textContent = 'Error ' + res.status + ': ' + errText.slice(0, 60);
-          status.style.display = 'block';
-          status.style.color = '#f87171';
         }
-      } catch (err) {
-        btn.textContent = '💼 Save as Lead';
-        btn.style.opacity = '1';
-        status.textContent = 'Network error: ' + err.message;
-        status.style.display = 'block';
-        status.style.color = '#f87171';
-      }
+      });
     });
 
-    // Save Appreciation button — calls API directly from content script
+    // Save Appreciation button — routes through background service worker
     document.getElementById('hawkeye-save-appreciate').addEventListener('click', async function() {
       const btn = document.getElementById('hawkeye-save-appreciate');
       const status = document.getElementById('hawkeye-panel-status');
@@ -137,7 +118,7 @@
       btn.style.opacity = '0.6';
 
       const authorName = extractAuthorName(postElement) || 'Unknown';
-      const { authToken, refreshToken } = await chrome.storage.local.get(['authToken', 'refreshToken']);
+      const { authToken } = await chrome.storage.local.get(['authToken']);
       if (!authToken) {
         status.textContent = 'Not signed in — open extension popup';
         status.style.display = 'block';
@@ -147,43 +128,27 @@
         return;
       }
 
-      const API = 'https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com';
-      const body = JSON.stringify({ taggerName: authorName, platform: platform, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href });
+      try { await chrome.runtime.sendMessage({ type: 'PING' }); } catch {}
 
-      try {
-        let res = await fetch(API + '/appreciations', { method: 'POST', headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: body });
-        
-        if (res.status === 401 && refreshToken) {
-          const refreshRes = await fetch('https://cognito-idp.us-east-1.amazonaws.com/', { method: 'POST', headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth' }, body: JSON.stringify({ AuthFlow: 'REFRESH_TOKEN_AUTH', ClientId: '2cr45bt815hr68i0j021murak', AuthParameters: { REFRESH_TOKEN: refreshToken } }) });
-          const refreshData = await refreshRes.json();
-          if (refreshData.AuthenticationResult && refreshData.AuthenticationResult.IdToken) {
-            const newToken = refreshData.AuthenticationResult.IdToken;
-            await chrome.storage.local.set({ authToken: newToken, tokenExpiry: Date.now() + 3600000 });
-            res = await fetch(API + '/appreciations', { method: 'POST', headers: { 'Authorization': 'Bearer ' + newToken, 'Content-Type': 'application/json' }, body: body });
-          }
-        }
-
-        if (res.ok) {
+      chrome.runtime.sendMessage({
+        type: 'SAVE_APPRECIATION',
+        data: { authToken: authToken, taggerName: authorName, platform: platform, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
+      }, function(response) {
+        if (chrome.runtime.lastError || !response || !response.success) {
+          btn.textContent = '🙏 Appreciation';
+          btn.style.opacity = '1';
+          status.textContent = 'Failed: ' + (response?.error || chrome.runtime.lastError?.message || 'Unknown error — try again');
+          status.style.display = 'block';
+          status.style.color = '#f87171';
+        } else {
           btn.textContent = '✓ Saved!';
           btn.style.background = '#16a34a';
           btn.style.opacity = '1';
           status.textContent = authorName + ' saved to Appreciations (' + platform + ')';
           status.style.display = 'block';
           status.style.color = '#4ade80';
-        } else {
-          btn.textContent = '🙏 Appreciation';
-          btn.style.opacity = '1';
-          status.textContent = 'Error ' + res.status;
-          status.style.display = 'block';
-          status.style.color = '#f87171';
         }
-      } catch (err) {
-        btn.textContent = '🙏 Appreciation';
-        btn.style.opacity = '1';
-        status.textContent = 'Network error: ' + err.message;
-        status.style.display = 'block';
-        status.style.color = '#f87171';
-      }
+      });
     });
   }
 

@@ -228,7 +228,7 @@ async function handleCreateDeal(userId, body) {
   if (!name || !name.trim()) return err(400, 'INVALID_INPUT', 'Deal name is required');
 
   const dealId = randomUUID();
-  const now = new Date().toISOString();
+  const now = body.createdAt || new Date().toISOString();
 
   // For bundles, auto-sum the value from bundle items
   const dealValue = (policyType === 'Bundle' && Array.isArray(bundleItems))

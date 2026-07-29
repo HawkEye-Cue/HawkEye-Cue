@@ -384,6 +384,7 @@ export default function SalesPage() {
   const [leadSource, setLeadSource] = useState('');
   const [leadSourceNote, setLeadSourceNote] = useState('');
   const [soldBy, setSoldBy] = useState('');
+  const [dealDate, setDealDate] = useState('');
   const [bundleItems, setBundleItems] = useState<{ type: string; value: string }[]>([]);
   const [adding, setAdding] = useState(false);
   const [folioFilter, setFolioFilter] = useState('all');
@@ -475,6 +476,7 @@ export default function SalesPage() {
         name: name.trim(), value: policyType === 'Bundle' ? bundleItems.reduce((s, i) => s + (parseFloat(i.value) || 0), 0) : (parseFloat(value) || 0), stage,
         policyType, folio: (defaultFolioStart && defaultFolioEnd) ? `${defaultFolioStart} to ${defaultFolioEnd}` : '', contactName: name.trim(), contactEmail, contactPhone, notes, leadSource, leadSourceNote, soldBy,
         bundleItems: policyType === 'Bundle' ? bundleItems.filter((i) => i.type && i.value) : undefined,
+        createdAt: dealDate ? new Date(dealDate + 'T12:00:00').toISOString() : undefined,
       });
       setDeals([result, ...deals]);
       localStorage.setItem(`hawkeye_first_deal_${user?.sub}`, 'true');
@@ -566,7 +568,7 @@ export default function SalesPage() {
   function resetForm() {
     setName(''); setValue(''); setStage('prospect'); setPolicyType('');
     setContactName(''); setContactEmail(''); setContactPhone(''); setNotes('');
-    setLeadSource(''); setLeadSourceNote(''); setSoldBy(''); setBundleItems([]);
+    setLeadSource(''); setLeadSourceNote(''); setSoldBy(''); setDealDate(''); setBundleItems([]);
   }
 
   const filtered = (() => {
@@ -987,6 +989,11 @@ export default function SalesPage() {
             </div>
           </div>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-16" />
+          {/* Deal Date (optional — backdate if needed) */}
+          <div>
+            <label className="text-[10px] text-slate-400 block mb-1">Date (leave blank for today)</label>
+            <input type="date" value={dealDate} onChange={(e) => setDealDate(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+          </div>
           <button onClick={handleAdd} disabled={adding || !name.trim()} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50">
             {adding ? 'Saving...' : 'Save Deal'}
           </button>

@@ -556,6 +556,8 @@ export default function TeamPage() {
                   const name = displayNames[member.email] || member.email.split('@')[0];
                   const colorIdx = getMemberColorIndex(member.email);
                   const isActive = leadFilter === member.email;
+                  const memberStat = stats?.members?.find((m) => m.email === member.email);
+                  const wonDeals = memberStat?.wonDeals || 0;
                   return (
                     <button
                       key={member.userId}
@@ -567,6 +569,10 @@ export default function TeamPage() {
                         <span className="text-xs font-bold text-white">{memberLeads.length}</span>
                       </div>
                       <span className="text-xs text-white mt-1 font-medium text-center leading-tight">{name}</span>
+                      <div className="flex gap-2 mt-1">
+                        <span className="text-[9px] text-slate-400">{memberLeads.length} leads</span>
+                        <span className="text-[9px] text-green-400">{wonDeals} sales</span>
+                      </div>
                     </button>
                   );
                 });

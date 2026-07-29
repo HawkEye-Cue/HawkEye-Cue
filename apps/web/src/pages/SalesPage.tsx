@@ -963,7 +963,7 @@ export default function SalesPage() {
             <div className="flex gap-2">
               <select value={soldBy} onChange={(e) => setSoldBy(e.target.value)} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
                 <option value="">Who sold this?</option>
-                {salespeople.map((sp) => (
+                {[...salespeople].sort((a, b) => a.localeCompare(b)).map((sp) => (
                   <option key={sp} value={sp}>{sp}</option>
                 ))}
               </select>

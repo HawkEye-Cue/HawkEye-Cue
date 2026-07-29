@@ -448,7 +448,7 @@ export default function NetworkPage() {
                   <span className="text-xs text-slate-400">{filter.length === 0 ? 'All' : `${filter.length} selected`}</span>
                 </summary>
                 <div className="mt-3 flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
-                  {TRADES.map((t) => (
+                  {[...TRADES].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
                     <button
                       key={t.id}
                       onClick={() => setFilter((prev) => prev.includes(t.name) ? prev.filter((f) => f !== t.name) : [...prev, t.name])}
@@ -497,7 +497,7 @@ export default function NetworkPage() {
                     className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
                   >
                     <option value="all">Visible to All</option>
-                    {TRADES.map((t) => (
+                    {[...TRADES].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
                       <option key={t.id} value={t.name}>{t.name}</option>
                     ))}
                   </select>
@@ -623,7 +623,7 @@ export default function NetworkPage() {
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
                   >
                     <option value="">Select their trade...</option>
-                    {TRADES.map((t) => (
+                    {[...TRADES].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
                       <option key={t.id} value={t.name}>{t.name}</option>
                     ))}
                   </select>

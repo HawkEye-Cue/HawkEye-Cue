@@ -9,8 +9,8 @@ export default function TradeSelector({ onDone }: { onDone?: () => void } = {}) 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const filtered = search.trim()
-    ? TRADES.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()))
-    : TRADES;
+    ? TRADES.filter((t) => t.name.toLowerCase().includes(search.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name))
+    : [...TRADES].sort((a, b) => a.name.localeCompare(b.name));
 
   function handleDone() {
     setSelectedTrades(selectedTrades);

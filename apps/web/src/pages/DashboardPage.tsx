@@ -31,12 +31,15 @@ export default function DashboardPage() {
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string>('none');
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => {
-    // Don't show welcome banner if guided tour hasn't been completed yet (tour shows first)
+    // Never show if user dismissed permanently
+    if (localStorage.getItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`)) return false;
+    // Don't show if guided tour hasn't completed yet
     const tourKey = user?.sub ? `hawkeye_tour_done_${user.sub}` : 'hawkeye_tour_done';
-    const tourDone = localStorage.getItem(tourKey);
-    if (!tourDone) return false;
-    // Show unless user permanently dismissed it
-    return !localStorage.getItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`);
+    if (!localStorage.getItem(tourKey)) return false;
+    // Show once this session (sessionStorage tracks if already shown this tab)
+    if (sessionStorage.getItem('hawkeye_welcome_shown')) return false;
+    sessionStorage.setItem('hawkeye_welcome_shown', 'true');
+    return true;
   });
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -71,21 +74,6 @@ export default function DashboardPage() {
       navigate('/onboarding', { replace: true });
     }
   }, [navigate]);
-
-  // Show welcome banner after guided tour completes
-  useEffect(() => {
-    if (showWelcomeBanner) return;
-    function checkTourDone() {
-      const tourKey = user?.sub ? `hawkeye_tour_done_${user.sub}` : 'hawkeye_tour_done';
-      const dismissed = localStorage.getItem(`hawkeye_welcome_dismissed_${user?.sub || 'anon'}`);
-      if (localStorage.getItem(tourKey) && !dismissed) {
-        setShowWelcomeBanner(true);
-      }
-    }
-    window.addEventListener('focus', checkTourDone);
-    const interval = setInterval(checkTourDone, 1000);
-    return () => { window.removeEventListener('focus', checkTourDone); clearInterval(interval); };
-  }, [showWelcomeBanner, user?.sub]);
 
   useEffect(() => {
     async function fetchTodayPosts() {

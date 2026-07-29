@@ -611,7 +611,12 @@ export default function TeamPage() {
                               if (!targetEmail) return;
                               try {
                                 const client = await buildClient();
-                                await client.request('PUT', `/opportunities/${lead.id}/status`, { assignedTo: targetEmail });
+                                // Update the lead with transferredTo (moves it between nests)
+                                await client.request('PUT', `/opportunities/${lead.id}/status`, { assignedTo: targetEmail, transferredTo: targetEmail });
+                                // Send email notification to receiving team member
+                                try {
+                                  await client.request('POST', '/team/notify-transfer', { leadId: lead.id, leadName: lead.name, targetEmail, fromName: displayNames[user?.email || ''] || user?.email?.split('@')[0] || 'Teammate' });
+                                } catch { /* email notification is best-effort */ }
                                 showToast(`✓ Transferred to ${displayNames[targetEmail] || targetEmail.split('@')[0]}`);
                                 fetchTeamLeads();
                               } catch { showToast('❌ Transfer failed'); }

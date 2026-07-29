@@ -679,8 +679,8 @@ exports.handler = async (event) => {
           sourcePlatform: l.sourcePlatform || l.platform || 'unknown',
           status: l.status || 'new',
           createdAt: l.createdAt || l.detectedAt || '',
-          addedBy: member.email.split('@')[0],
-          addedByEmail: member.email,
+          addedBy: (l.transferredTo || member.email).split('@')[0],
+          addedByEmail: l.transferredTo || member.email,
           policyType: l.policyType || null,
         }));
         allLeads.push(...memberLeads);
@@ -702,6 +702,49 @@ exports.handler = async (event) => {
       const nextCursor = hasMore ? Buffer.from(JSON.stringify({ createdAt: page[page.length - 1].createdAt, id: page[page.length - 1].id })).toString('base64') : undefined;
 
       return ok({ leads: page, nextCursor });
+    }
+
+    // POST /team/notify-transfer — send email notification when a lead is transferred
+    if (method === 'POST' && path === '/team/notify-transfer') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const { leadName, targetEmail, fromName } = body;
+      if (!targetEmail) return ok({ sent: false });
+
+      try {
+        // Get target user's profile to check notification preferences
+        const teamRecord = await getUserTeam(userId);
+        if (!teamRecord) return ok({ sent: false });
+        const members = await getTeamMembers(teamRecord.teamId);
+        const targetMember = members.find((m) => m.email === targetEmail);
+        if (!targetMember) return ok({ sent: false });
+
+        // Check notification preferences
+        const targetProfile = await dynamo.send(new GetCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: `USER#${targetMember.userId}`, SK: 'PROFILE' },
+        }));
+        const emailNotifs = targetProfile.Item?.emailNotifications || {};
+        if (emailNotifs.newLead === false) return ok({ sent: false, reason: 'opted-out' });
+
+        const subject = `🎯 New Lead Transferred: ${leadName || 'A lead'}`;
+        const html = `
+          <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
+            <h2 style="color:#1e40af;margin:0 0 16px 0;">🎯 Lead Transferred to You</h2>
+            <div style="background:#f1f5f9;border-radius:12px;padding:16px;margin-bottom:16px;">
+              <p style="margin:0 0 8px 0;font-size:14px;"><strong>Lead:</strong> ${leadName || 'Unknown'}</p>
+              <p style="margin:0;font-size:14px;"><strong>From:</strong> ${fromName || 'A teammate'}</p>
+            </div>
+            <p style="font-size:13px;color:#64748b;margin:0 0 16px 0;">This lead has been transferred to your nest. Check your Leads tab to follow up.</p>
+            <a href="https://hawkeyecue.com/opportunities" style="display:inline-block;background:#1e40af;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">View Lead →</a>
+            <p style="font-size:11px;color:#94a3b8;margin:16px 0 0 0;">Manage notifications in Settings → Email Notifications.</p>
+          </div>
+        `;
+        await sendEmail(targetEmail, subject, html);
+        return ok({ sent: true });
+      } catch (e) {
+        console.error('[notify-transfer] Error:', e.message);
+        return ok({ sent: false, error: e.message });
+      }
     }
 
     // GET /team/analytics — merged team analytics

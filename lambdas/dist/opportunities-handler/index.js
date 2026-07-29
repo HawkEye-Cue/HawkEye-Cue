@@ -235,6 +235,10 @@ async function handleUpdateStatus(userId, opportunityId, body) {
     updates.push('leadColor = :leadColor');
     values[':leadColor'] = body.leadColor || null;
   }
+  if (body.transferredTo !== undefined) {
+    updates.push('transferredTo = :transferredTo');
+    values[':transferredTo'] = body.transferredTo || null;
+  }
 
   await dynamo.send(
     new UpdateCommand({

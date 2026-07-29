@@ -724,7 +724,7 @@ export default function TeamPage() {
                   const day = i + 1;
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                   const dayEvts = myEvents.filter((e) => e.date === dateStr && e.type === 'meeting');
-                  const teamDayMeetings = teamCalendar.filter((e) => e.date === dateStr);
+                  const teamDayMeetings = teamCalendar.filter((e) => e.date === dateStr && (e.type === 'meeting' || e.type === 'task'));
                   const hasMeetings = dayEvts.length > 0 || teamDayMeetings.length > 0;
                   const isToday = day === todayDay;
                   const isSelected = selectedTeamDay === dateStr;

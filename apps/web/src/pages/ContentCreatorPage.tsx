@@ -73,7 +73,7 @@ export default function ContentCreatorPage() {
     const now = new Date();
     const record: PostRecord = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      content: content.slice(0, 200),
+      content: content.slice(0, 2000),
       group: groupTitle,
       groupLink,
       postedAt: now.toISOString(),
@@ -1174,9 +1174,21 @@ export default function ContentCreatorPage() {
                     <span className="text-xs text-slate-200 flex-1 line-clamp-2">"{contentKey}..."</span>
                     <span className="text-[10px] text-slate-500 shrink-0">{records.length} group{records.length !== 1 ? 's' : ''}</span>
                   </summary>
-                  <div className="px-2.5 pb-2.5 space-y-1">
+                  <div className="px-2.5 pb-2.5 space-y-2">
+                    {/* Full post content */}
+                    <div className="bg-slate-800 rounded-lg p-3 border border-white/5">
+                      <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">{records[0].content}</p>
+                      <button
+                        onClick={(e) => { navigator.clipboard.writeText(records[0].content); const btn = e.currentTarget; btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy Post'; }, 2000); }}
+                        className="mt-2 text-[10px] text-blue-400 hover:text-blue-300 bg-blue-500/10 px-2.5 py-1 rounded font-medium"
+                      >
+                        📋 Copy Post
+                      </button>
+                    </div>
+                    {/* Groups it was posted to */}
+                    <p className="text-[10px] text-slate-500 font-medium">Posted to:</p>
                     {records.map((r) => (
-                      <div key={r.id} className="flex items-center gap-2 bg-slate-800 rounded px-2.5 py-1.5">
+                      <div key={r.id} className="flex items-center gap-2 bg-slate-800/50 rounded px-2.5 py-1.5">
                         <span className="text-[10px] text-amber-400 shrink-0">{r.timeOfDay}</span>
                         <span className="text-xs text-slate-300 flex-1 truncate">{r.group}</span>
                         <span className="text-[10px] text-slate-500">{new Date(r.postedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>

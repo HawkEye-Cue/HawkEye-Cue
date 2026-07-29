@@ -344,10 +344,10 @@ export default function TeamPage() {
   function getMemberColorIndex(email: string): number {
     // Use state variable directly (already synced with server)
     if (memberColors[email] !== undefined) return memberColors[email] % MEMBER_COLORS.length;
-    // Fallback: position in team array
-    if (!team) return 0;
+    // Fallback: position in team array (starts at index 0 = blue, 1 = purple, etc.)
+    if (!team) return 3; // amber default when no team loaded
     const idx = team.members.findIndex((m) => m.email === email);
-    return idx >= 0 ? idx % MEMBER_COLORS.length : 0;
+    return idx >= 0 ? idx % MEMBER_COLORS.length : 3;
   }
 
   if (loading) return <p className="text-sm text-slate-500">Loading...</p>;
@@ -443,8 +443,8 @@ export default function TeamPage() {
             return (
               <div key={member.userId} className="flex items-center justify-between bg-slate-700 px-3 py-2 rounded-lg">
                 <div className="flex items-center gap-2">
-                  {/* Color picker — click to cycle through colors */}
-                  <div className="relative group">
+                  {/* Color dot — only admin can click to change */}
+                  {team.role === 'admin' ? (
                     <button
                       onClick={() => {
                         const next = (colorIdx + 1) % MEMBER_COLORS.length;
@@ -454,7 +454,9 @@ export default function TeamPage() {
                       className={`w-4 h-4 rounded-full ${MEMBER_COLORS[colorIdx]} border-2 border-white/30 hover:border-white/70 transition-all cursor-pointer`}
                       title={`Color: ${COLOR_LABELS[colorIdx]} — click to change`}
                     />
-                  </div>
+                  ) : (
+                    <div className={`w-4 h-4 rounded-full ${MEMBER_COLORS[colorIdx]}`} />
+                  )}
                   <div>
                     <input type="text" id={`team-name-${member.userId}`} defaultValue={displayName || member.email.split('@')[0]} className="text-sm text-white bg-transparent border-b border-transparent hover:border-slate-500 focus:border-blue-500 outline-none w-full" />
                     <p className="text-xs text-slate-500">{member.role === 'admin' ? '👑 Admin' : '👤 Member'} · {member.email}</p>

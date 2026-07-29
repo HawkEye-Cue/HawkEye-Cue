@@ -504,6 +504,73 @@ export default function HawkInsightsPage() {
         </div>
       )}
 
+      {/* Policy Type Breakdown */}
+      {leads.length > 0 && (() => {
+        const typeMap: Record<string, { total: number; converted: number }> = {};
+        for (const lead of leads) {
+          const pt = (lead as any).policyType || 'Unassigned';
+          if (!typeMap[pt]) typeMap[pt] = { total: 0, converted: 0 };
+          typeMap[pt].total++;
+          if (lead.status === 'converted') typeMap[pt].converted++;
+        }
+        const entries = Object.entries(typeMap).sort((a, b) => b[1].total - a[1].total);
+        const maxCount = entries[0]?.[1].total || 1;
+        const totalLeadsCount = leads.length;
+        const colors: Record<string, string> = { 'Bundle': 'bg-purple-500', 'Auto': 'bg-blue-500', 'Home': 'bg-green-500', 'Life': 'bg-amber-500', 'Commercial': 'bg-red-500', 'Renters': 'bg-cyan-500', 'Umbrella': 'bg-indigo-500', 'Motorcycle': 'bg-pink-500' };
+
+        return (
+          <div className="glass-card">
+            <h3 className="font-semibold text-white mb-3">📋 Policy Type Breakdown</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              {entries.slice(0, 8).map(([type, data]) => (
+                <div key={type} className="bg-slate-700 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-white">{data.total}</p>
+                  <p className="text-[10px] text-slate-400">{type}</p>
+                  <p className="text-[9px] text-green-400">{data.converted} won</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Bar chart */}
+            <div className="space-y-2">
+              {entries.map(([type, data]) => {
+                const pct = (data.total / totalLeadsCount) * 100;
+                const barColor = colors[type] || 'bg-blue-500';
+                return (
+                  <div key={type} className="flex items-center gap-2">
+                    <span className="text-xs text-slate-300 w-20 truncate text-right">{type}</span>
+                    <div className="flex-1 bg-slate-700 rounded-full h-4 overflow-hidden">
+                      <div className={`h-full ${barColor} rounded-full flex items-center justify-end pr-1`} style={{ width: `${(data.total / maxCount) * 100}%` }}>
+                        <span className="text-[9px] text-white font-bold">{data.total}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-slate-500 w-10">{pct.toFixed(0)}%</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Conversion rate by type */}
+            {entries.some(([_, d]) => d.converted > 0) && (
+              <div className="mt-4 pt-3 border-t border-white/10">
+                <p className="text-xs text-slate-400 font-semibold mb-2">Conversion Rate by Type</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {entries.filter(([_, d]) => d.total >= 2).map(([type, data]) => {
+                    const rate = data.total > 0 ? Math.round((data.converted / data.total) * 100) : 0;
+                    return (
+                      <div key={type} className="text-center bg-slate-700 rounded-lg p-2">
+                        <p className="text-sm font-bold text-white">{rate}%</p>
+                        <p className="text-[9px] text-slate-400">{type}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Appreciations Insights */}
       {appreciations.length > 0 && (
         <div className="glass-card">

@@ -35,7 +35,7 @@ export default function ContentCreatorPage() {
   const [postLength, setPostLength] = useState<'short' | 'medium' | 'long'>('medium');
   const [userTier, setUserTier] = useState<string>('free');
   const [postType, setPostType] = useState('');
-  const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
+  const [platforms, setPlatforms] = useState<SocialPlatform[]>(['facebook']);
   const [baseText, setBaseText] = useState(() => localStorage.getItem('hawkeye_draft_baseText') || '');
   const [platformContent, setPlatformContent] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -335,7 +335,7 @@ export default function ContentCreatorPage() {
       </div>
 
       <div className="glass-card">
-        <label className="block text-sm font-medium text-slate-300 mb-2">Platforms</label>
+        <label className="block text-sm font-medium text-slate-300 mb-2">Generate for (tap to select/deselect)</label>
         <div className="flex flex-wrap gap-2">
           {SOCIAL_PLATFORMS.map((p) => (
             <button
@@ -496,7 +496,7 @@ export default function ContentCreatorPage() {
 
         {/* Platforms */}
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-2">Post to:</label>
+          <label className="block text-xs font-medium text-slate-400 mb-2">Post to (tap to select/deselect):</label>
           <div className="flex flex-wrap gap-2">
             {SOCIAL_PLATFORMS.map((p) => (
               <button

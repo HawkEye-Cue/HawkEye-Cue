@@ -69,11 +69,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const reminders = todayEvents.filter((e) => e.type === 'reminder' || e.type === 'task');
   const posts = todayEvents.filter((e) => e.type === 'post');
 
-  const notifications: { id: string; icon: string; text: string; type: string }[] = [];
-  if (meetings.length > 0) notifications.push({ id: 'meetings', icon: '🤝', text: `${meetings.length} meeting${meetings.length !== 1 ? 's' : ''} today`, type: 'info' });
-  if (reminders.length > 0) notifications.push({ id: 'reminders', icon: '🔔', text: `${reminders.length} follow-up${reminders.length !== 1 ? 's' : ''} due today`, type: 'action' });
-  if (posts.length > 0) notifications.push({ id: 'posts', icon: '📤', text: `${posts.length} flock${posts.length !== 1 ? 's' : ''} to post`, type: 'action' });
-  for (const tn of teamNotifs) notifications.push({ id: tn.id, icon: '🏆', text: tn.message, type: 'team' });
+  const notifications: { id: string; icon: string; text: string; type: string; path: string }[] = [];
+  if (meetings.length > 0) notifications.push({ id: 'meetings', icon: '🤝', text: `${meetings.length} meeting${meetings.length !== 1 ? 's' : ''} today`, type: 'info', path: '/' });
+  if (reminders.length > 0) notifications.push({ id: 'reminders', icon: '🔔', text: `${reminders.length} follow-up${reminders.length !== 1 ? 's' : ''} due today`, type: 'action', path: '/opportunities' });
+  if (posts.length > 0) notifications.push({ id: 'posts', icon: '📤', text: `${posts.length} flock${posts.length !== 1 ? 's' : ''} to post`, type: 'action', path: '/create' });
+  for (const tn of teamNotifs) notifications.push({ id: tn.id, icon: '🏆', text: tn.message, type: 'team', path: '/team' });
+
+  const [dismissedNotifs, setDismissedNotifs] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(sessionStorage.getItem('hawkeye_dismissed_notifs') || '[]')); } catch { return new Set(); }
+  });
+  const visibleNotifications = notifications.filter((n) => !dismissedNotifs.has(n.id));
+  const unreadCount = visibleNotifications.length;
 
   // Fetch team notifications on mount
   useEffect(() => {
@@ -92,8 +98,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
     fetchTeamNotifs();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const unreadCount = notifications.length;
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -128,14 +132,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   <span className="text-xs font-bold text-white">Notifications</span>
                   <button onClick={() => setShowNotifs(false)} className="text-xs text-slate-400 hover:text-white">✕</button>
                 </div>
-                {notifications.length === 0 ? (
+                {visibleNotifications.length === 0 ? (
                   <div className="px-3 py-4 text-center text-xs text-slate-500">All caught up! 🦅</div>
                 ) : (
                   <div className="max-h-60 overflow-y-auto">
-                    {notifications.map((n) => (
-                      <div key={n.id} className="px-3 py-2.5 border-b border-white/5 flex items-center gap-2 hover:bg-white/5">
-                        <span className="text-base">{n.icon}</span>
-                        <span className="text-xs text-slate-300">{n.text}</span>
+                    {visibleNotifications.map((n) => (
+                      <div key={n.id} className="px-3 py-2.5 border-b border-white/5 flex items-center gap-2 hover:bg-white/5 group">
+                        <Link to={n.path} onClick={() => setShowNotifs(false)} className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-base">{n.icon}</span>
+                          <span className="text-xs text-slate-300 truncate">{n.text}</span>
+                        </Link>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); const updated = new Set(dismissedNotifs); updated.add(n.id); setDismissedNotifs(updated); sessionStorage.setItem('hawkeye_dismissed_notifs', JSON.stringify([...updated])); }}
+                          className="text-slate-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        >✕</button>
                       </div>
                     ))}
                   </div>

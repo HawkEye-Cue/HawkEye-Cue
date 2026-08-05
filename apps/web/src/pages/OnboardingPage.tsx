@@ -73,14 +73,12 @@ const STEPS = [
   {
     icon: '🚀',
     title: 'You\'re Ready',
-    description: 'Here\'s your first-day checklist:',
+    description: 'You\'re on the Soar plan with a 7-day free trial. Want to try Summit for your team instead?',
     bullets: [
-      '1. Pick your trade in Settings (⚙️ More)',
-      '2. Add a few Facebook groups to your calendar',
-      '3. Create your first post',
-      '4. Fly through your flocks',
+      '🚀 Soar (current) — leads, sales, insights, flocks, wingman',
+      '🏔️ Summit — everything in Soar + team calendar, leaderboard, shared leads, 5 members',
     ],
-    tip: 'That\'s it. Everything else you\'ll pick up as you go.',
+    tip: 'Both have a 7-day free trial. You can always change later in Settings.',
   },
 ];
 
@@ -144,7 +142,7 @@ export default function OnboardingPage() {
         {/* Buttons */}
         <div className="space-y-3 mt-4">
           <div className="flex gap-3">
-            {step > 0 && (
+            {step > 0 && !isLast && (
               <button
                 onClick={handleBack}
                 className="flex-1 bg-slate-700 text-slate-300 py-3 rounded-lg font-medium hover:bg-slate-600 transition-colors"
@@ -152,12 +150,29 @@ export default function OnboardingPage() {
                 Back
               </button>
             )}
-            <button
-              onClick={handleNext}
-              className={`${step > 0 ? 'flex-1' : 'w-full'} bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-500 transition-colors`}
-            >
-              {isLast ? 'Let\'s Go! 🦅' : 'Next'}
-            </button>
+            {isLast ? (
+              <div className="w-full space-y-2">
+                <button
+                  onClick={handleNext}
+                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-500 transition-colors"
+                >
+                  Continue with Soar 🚀
+                </button>
+                <button
+                  onClick={() => { localStorage.setItem('hawkeye_onboarded', 'true'); navigate('/settings'); }}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all"
+                >
+                  Try Summit Free (7 days) 🏔️
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleNext}
+                className={`${step > 0 ? 'flex-1' : 'w-full'} bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-500 transition-colors`}
+              >
+                Next
+              </button>
+            )}
           </div>
           {!isLast && (
             <button

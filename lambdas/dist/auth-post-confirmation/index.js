@@ -75,7 +75,7 @@ exports.handler = async (event) => {
 
     // Send notification email to admin
     try {
-      await sendEmail(NOTIFY_TO, `🦅 New HawkEye-Cue Signup: ${email}`, `A new user just signed up for HawkEye-Cue!\n\nEmail: ${email}\nUser ID: ${sub}\nTime: ${now}\n\n— HawkEye-Cue`);
+      await sendEmail(NOTIFY_TO, `🦅 New HawkEye-Cue Signup: ${email}`, `A new user just signed up for HawkEye-Cue!\n\nEmail: ${email}\nUser ID: ${sub}\nAccount: Soar (7-day free trial)\nTime: ${now}\n\n— HawkEye-Cue`);
       console.log('Admin notification sent');
     } catch (emailErr) {
       console.error('Failed to send admin notification (non-fatal):', emailErr.message);

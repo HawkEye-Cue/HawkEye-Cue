@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
@@ -21,6 +22,7 @@ const navItems = [
 export default function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { user, logout, getToken } = useAuth();
+  const { showToast } = useToast();
 
   // Load display names from server on startup + save user timezone
   useEffect(() => {
@@ -80,6 +82,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   });
   const visibleNotifications = notifications.filter((n) => !dismissedNotifs.has(n.id));
   const unreadCount = visibleNotifications.length;
+
+  // Quick Add Lead state
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickName, setQuickName] = useState('');
+  const [quickSource, setQuickSource] = useState('facebook');
+  const [quickSaving, setQuickSaving] = useState(false);
 
   // Fetch team notifications on mount
   useEffect(() => {
@@ -191,6 +199,71 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </Link>
         ))}
       </nav>
+
+      {/* Quick Add Lead — floating button (mobile-friendly) */}
+      <button
+        onClick={() => setShowQuickAdd(true)}
+        className="fixed bottom-20 right-4 w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-500 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center z-40 active:scale-90 transition-transform"
+        title="Quick add a lead"
+      >
+        <span className="text-xl">🎯</span>
+      </button>
+
+      {showQuickAdd && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-[9998] px-3 pb-3 sm:pb-0" onClick={() => setShowQuickAdd(false)}>
+          <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-white text-base">🎯 Quick Save Lead</h3>
+              <button onClick={() => setShowQuickAdd(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                placeholder="Person's name *"
+                className="w-full px-3 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                autoFocus
+              />
+              <select value={quickSource} onChange={(e) => setQuickSource(e.target.value)} className="w-full px-3 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="referral">Referral</option>
+                <option value="cold-call">Cold Call</option>
+                <option value="other">Other</option>
+              </select>
+              <button
+                onClick={async () => {
+                  if (!quickName.trim()) return;
+                  setQuickSaving(true);
+                  try {
+                    const token = await getToken();
+                    const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+                    await client.request('POST', '/opportunities', {
+                      sourceAuthor: quickName.trim(),
+                      sourceContent: `Quick-saved from mobile (${quickSource})`,
+                      sourcePlatform: quickSource === 'referral' || quickSource === 'cold-call' ? 'other' : quickSource,
+                      sourceUrl: '',
+                      keywordId: 'manual-entry',
+                      leadSource: quickSource,
+                    });
+                    setQuickName('');
+                    setShowQuickAdd(false);
+                    showToast('✓ Lead saved — ' + quickName.trim());
+                  } catch {
+                    showToast('❌ Failed to save lead');
+                  } finally { setQuickSaving(false); }
+                }}
+                disabled={quickSaving || !quickName.trim()}
+                className="w-full py-3 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 active:scale-95 transition-all"
+              >
+                {quickSaving ? 'Saving...' : '✓ Save Lead'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

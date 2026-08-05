@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
@@ -364,6 +365,18 @@ export default function SalesPage() {
   }
 
   const [showAdd, setShowAdd] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-open add form when redirected from "Mark Converted" with ?newDeal=Name
+  useEffect(() => {
+    const newDeal = searchParams.get('newDeal');
+    if (newDeal) {
+      setName(newDeal);
+      setShowAdd(true);
+      setStage('won');
+      setSearchParams({}, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [filter, setFilter] = useState('all');
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
 

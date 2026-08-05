@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
@@ -92,6 +92,7 @@ const DEFAULT_LEAD_PROTOCOL = LEAD_PROTOCOLS['default'].steps;
 export default function OpportunitiesPage() {
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const { selectedTrade } = useTrade();
   const { events, addEvent, toggleComplete, removeAllByTitle } = useCalendar();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -476,7 +477,7 @@ export default function OpportunitiesPage() {
             </button>
           )}
           {(lead.status === 'new' || lead.status === 'followed_up') && (
-            <button onClick={() => handleUpdateStatus(lead.id, 'converted')} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">
+            <button onClick={async () => { await handleUpdateStatus(lead.id, 'converted'); navigate(`/sales?newDeal=${encodeURIComponent(lead.sourceAuthor)}`); }} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">
               {updatingId === lead.id ? '...' : '✓ Mark Converted'}
             </button>
           )}
@@ -1291,7 +1292,11 @@ export default function OpportunitiesPage() {
           onClose={() => setSelectedLead(null)}
           onStatusUpdate={async (leadId, status) => {
             await handleUpdateStatus(leadId, status);
+            const lead = leads.find((l) => l.id === leadId);
             setSelectedLead(null);
+            if (status === 'converted' && lead?.sourceAuthor) {
+              navigate(`/sales?newDeal=${encodeURIComponent(lead.sourceAuthor)}`);
+            }
           }}
           onFollowupComplete={async (leadId, stepIdx) => {
             try {

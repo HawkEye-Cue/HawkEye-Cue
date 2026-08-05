@@ -558,6 +558,7 @@ export default function TeamPage() {
                   const isActive = leadFilter === member.email;
                   const memberStat = stats?.members?.find((m) => m.email === member.email);
                   const wonDeals = memberStat?.wonDeals || 0;
+                  const wonValue = memberStat?.wonValue || 0;
                   return (
                     <button
                       key={member.userId}
@@ -569,9 +570,12 @@ export default function TeamPage() {
                         <span className="text-xs font-bold text-white">{memberLeads.length}</span>
                       </div>
                       <span className="text-xs text-white mt-1 font-medium text-center leading-tight">{name}</span>
-                      <div className="flex gap-2 mt-1">
-                        <span className="text-[9px] text-slate-400">{memberLeads.length} leads</span>
-                        <span className="text-[9px] text-green-400">{wonDeals} sales</span>
+                      <div className="flex flex-col items-center gap-0.5 mt-1">
+                        <div className="flex gap-2">
+                          <span className="text-[9px] text-slate-400">{memberLeads.length} leads</span>
+                          <span className="text-[9px] text-green-400">{wonDeals} sales</span>
+                        </div>
+                        {wonValue > 0 && <span className="text-[9px] text-green-300 font-medium">${wonValue.toLocaleString()}</span>}
                       </div>
                     </button>
                   );

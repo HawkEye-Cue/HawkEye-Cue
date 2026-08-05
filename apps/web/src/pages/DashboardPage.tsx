@@ -434,7 +434,7 @@ export default function DashboardPage() {
                             <div key={event.id} className="p-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
                               <div className="flex items-center gap-2">
                                 <input type="checkbox" checked={event.completed} onChange={() => toggleComplete(event.id)} className="w-3.5 h-3.5 rounded shrink-0 accent-amber-500" />
-                                <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{event.title}</span>
+                                <span className={`text-xs flex-1 ${event.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{(() => { const tm = event.title.match(/^\[(\d{1,2}):(\d{2})\]\s*/); if (tm) { const h = parseInt(tm[1]); const ampm = `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${tm[2]} ${h >= 12 ? 'PM' : 'AM'}`; return ampm + ' ' + event.title.replace(tm[0], ''); } return event.title; })()}</span>
                                 {event.inviteStatus === 'confirmed' && <span className="text-[8px] bg-green-600/30 text-green-300 px-1 py-0.5 rounded-full shrink-0">✓</span>}
                                 {event.inviteStatus === 'pending' && <span className="text-[8px] bg-amber-600/30 text-amber-300 px-1 py-0.5 rounded-full shrink-0">⏳</span>}
                               </div>

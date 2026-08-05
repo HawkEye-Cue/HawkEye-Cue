@@ -87,6 +87,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickName, setQuickName] = useState('');
   const [quickSource, setQuickSource] = useState('facebook');
+  const [quickLink, setQuickLink] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
 
   // Fetch team notifications on mount
@@ -233,6 +234,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <option value="cold-call">Cold Call</option>
                 <option value="other">Other</option>
               </select>
+              <input
+                type="url"
+                value={quickLink}
+                onChange={(e) => setQuickLink(e.target.value)}
+                placeholder="+ Link to post (optional)"
+                className="w-full px-3 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+              />
               <button
                 onClick={async () => {
                   if (!quickName.trim()) return;
@@ -244,11 +252,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
                       sourceAuthor: quickName.trim(),
                       sourceContent: `Quick-saved from mobile (${quickSource})`,
                       sourcePlatform: quickSource === 'referral' || quickSource === 'cold-call' ? 'other' : quickSource,
-                      sourceUrl: '',
+                      sourceUrl: quickLink.trim() || '',
                       keywordId: 'manual-entry',
                       leadSource: quickSource,
                     });
                     setQuickName('');
+                    setQuickLink('');
                     setShowQuickAdd(false);
                     showToast('✓ Lead saved — ' + quickName.trim());
                   } catch {

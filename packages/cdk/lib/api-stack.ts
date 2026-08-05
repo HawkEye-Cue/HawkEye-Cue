@@ -983,11 +983,11 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
-    // EventBridge rule: run daily at 8:00 AM UTC to check each user's folio end date
+    // EventBridge rule: run daily at 2:00 PM UTC (8:00 AM Mountain Time)
     const folioRecapRule = new cdk.aws_events.Rule(this, 'FolioRecapSchedule', {
       ruleName: 'SocialLeadGen-FolioRecapSchedule',
-      schedule: cdk.aws_events.Schedule.cron({ minute: '0', hour: '8' }),
-      description: 'Triggers folio recap daily — Lambda checks if today is first day of any users new folio',
+      schedule: cdk.aws_events.Schedule.cron({ minute: '0', hour: '14' }),
+      description: 'Triggers folio recap + daily digest at 8am MT (2pm UTC)',
     });
     folioRecapRule.addTarget(
       new cdk.aws_events_targets.LambdaFunction(folioRecapFn)

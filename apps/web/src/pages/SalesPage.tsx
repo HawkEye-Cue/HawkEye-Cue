@@ -375,7 +375,7 @@ export default function SalesPage() {
   // Form state
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
-  const [stage, setStage] = useState('prospect');
+  const [stage, setStage] = useState('won');
   const [policyType, setPolicyType] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -566,7 +566,7 @@ export default function SalesPage() {
   }
 
   function resetForm() {
-    setName(''); setValue(''); setStage('prospect'); setPolicyType('');
+    setName(''); setValue(''); setStage('won'); setPolicyType('');
     setContactName(''); setContactEmail(''); setContactPhone(''); setNotes('');
     setLeadSource(''); setLeadSourceNote(''); setSoldBy(''); setDealDate(''); setBundleItems([]);
   }
@@ -897,7 +897,7 @@ export default function SalesPage() {
               <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder={`${tradeConfig.valueLabel} ($)`} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
             )}
             <select value={stage} onChange={(e) => setStage(e.target.value)} className={`px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm ${policyType === 'Bundle' ? 'flex-1' : ''}`}>
-              {STAGES.filter((s) => s.id !== 'won' && s.id !== 'lost').map((s) => (
+              {STAGES.map((s) => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>

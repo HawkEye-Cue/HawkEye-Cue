@@ -50,6 +50,9 @@ const STEPS = [
     title: 'Leads & Sales',
     description: 'Track leads from any source — Facebook groups, cold calls, referrals, or internet vendors. Move them through your pipeline and see exactly what\'s making you money.',
     bullets: [
+      '🎯 Floating Quick Save button — tap from any page to save a lead in seconds',
+      'On desktop: browser extension auto-detects leads while you scroll',
+      'On mobile: tap the 🎯 button, type a name, pick the source, save',
       'Leads tab: New → Followed Up → Converted',
       'Sales tab: Pipeline from prospect to close',
       'Activity log on each lead saves notes forever',

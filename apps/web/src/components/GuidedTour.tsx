@@ -23,7 +23,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     selector: '[data-tour="leads"]',
     title: 'Leads',
-    description: 'Track leads from any source. The browser extension auto-detects people asking for your services.',
+    description: 'Track leads from any source. The 🎯 button in the bottom-right lets you quick-save a lead from any page — perfect for mobile.',
     icon: '🎯',
   },
   {

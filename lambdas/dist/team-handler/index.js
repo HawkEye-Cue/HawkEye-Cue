@@ -778,9 +778,9 @@ exports.handler = async (event) => {
           KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
           ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'CAL#' },
         }));
-        const calEvents = (calResult.Items || []).filter((e) => e.type === 'post');
+        const calEvents = (calResult.Items || []).filter((e) => (e.eventType || e.type) === 'post');
         const today = new Date().toISOString().split('T')[0];
-        const pastPosts = calEvents.filter((e) => e.date < today);
+        const pastPosts = calEvents.filter((e) => (e.eventDate || e.date) <= today);
         const completedPosts = pastPosts.filter((e) => e.completed);
 
         totalFlockScheduled += pastPosts.length;

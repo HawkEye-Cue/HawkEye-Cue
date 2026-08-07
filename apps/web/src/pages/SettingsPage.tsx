@@ -44,6 +44,27 @@ export default function SettingsPage() {
   // Check for checkout success/cancelled in URL params
   const params = new URLSearchParams(window.location.search);
   const checkoutStatus = params.get('checkout');
+  const oauthProvider = params.get('oauth');
+
+  // Handle OAuth callback from email integration
+  useEffect(() => {
+    if (oauthProvider && (oauthProvider === 'google' || oauthProvider === 'microsoft')) {
+      const code = params.get('code');
+      if (code) {
+        // Exchange code for token via backend
+        buildClient().then((client) =>
+          client.request('POST', '/email/oauth/callback', { provider: oauthProvider, code, redirect: window.location.origin + '/settings?oauth=' + oauthProvider })
+        ).then(() => {
+          localStorage.setItem('hawkeye_connected_email_provider', oauthProvider);
+          showToast(`✓ ${oauthProvider === 'google' ? 'Gmail' : 'Outlook'} connected!`);
+          window.history.replaceState({}, '', '/settings');
+        }).catch(() => {
+          showToast('❌ Failed to connect. Try again.');
+          window.history.replaceState({}, '', '/settings');
+        });
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll to suggestion box if hash is #suggestion
   useEffect(() => {
@@ -683,6 +704,76 @@ export default function SettingsPage() {
         >
           Turn off all email notifications
         </button>
+      </div>
+
+      {/* Email Automation — Gmail/Outlook Integration */}
+      <div className="glass-card">
+        <h3 className="font-semibold mb-3 text-white">✉️ Email Automation</h3>
+        <p className="text-xs text-slate-400 mb-4">Connect your email to auto-send follow-up emails to leads based on your cadence schedule.</p>
+
+        {/* Connected status */}
+        {(() => {
+          const connectedEmail = localStorage.getItem('hawkeye_connected_email_provider');
+          if (connectedEmail) {
+            return (
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg mb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-green-300 font-medium">✓ Connected: {connectedEmail === 'google' ? 'Gmail' : 'Outlook'}</p>
+                    <p className="text-[10px] text-slate-400">Cadence emails will send from your account</p>
+                  </div>
+                  <button onClick={async () => { try { const client = await buildClient(); await client.request('DELETE', '/email/disconnect'); localStorage.removeItem('hawkeye_connected_email_provider'); showToast('✓ Disconnected'); window.location.reload(); } catch { showToast('❌ Failed'); } }} className="text-xs text-red-400 hover:text-red-300">Disconnect</button>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div className="space-y-2 mb-4">
+              <button
+                onClick={() => { window.location.href = `https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com/email/oauth/google?redirect=${encodeURIComponent(window.location.origin + '/settings?oauth=google')}`; }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white hover:bg-white/10 transition-colors"
+              >
+                <span>📧</span> Connect Gmail
+              </button>
+              <button
+                onClick={() => { window.location.href = `https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com/email/oauth/microsoft?redirect=${encodeURIComponent(window.location.origin + '/settings?oauth=microsoft')}`; }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white hover:bg-white/10 transition-colors"
+              >
+                <span>📬</span> Connect Outlook
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Email Templates */}
+        <details className="mt-3">
+          <summary className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium">📝 Edit Cadence Email Templates</summary>
+          <div className="mt-3 space-y-3">
+            <p className="text-[10px] text-slate-400">These emails auto-send to leads on their scheduled cadence days. Use {'{name}'} for the lead's name.</p>
+            {['Day 1: Introduction', 'Day 3: Follow Up', 'Day 7: Check In', 'Day 14: Final Touch'].map((label, i) => (
+              <div key={i}>
+                <label className="text-[10px] text-slate-500 block mb-1">{label}</label>
+                <textarea
+                  defaultValue={localStorage.getItem(`hawkeye_email_template_${i}`) || ''}
+                  onBlur={(e) => {
+                    localStorage.setItem(`hawkeye_email_template_${i}`, e.target.value);
+                    buildClient().then((client) => client.request('PUT', '/profile/preferences', { [`emailTemplate${i}`]: e.target.value })).catch(() => {});
+                  }}
+                  placeholder={i === 0 ? 'Hi {name}, I saw your post and wanted to reach out...' : i === 1 ? 'Hi {name}, just following up on my previous message...' : i === 2 ? 'Hi {name}, checking in to see if you had any questions...' : 'Hi {name}, I wanted to touch base one more time...'}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16"
+                />
+              </div>
+            ))}
+            <button
+              onClick={async () => {
+                showToast('✓ Templates saved');
+              }}
+              className="text-xs text-green-400 bg-green-600/20 px-3 py-1.5 rounded-lg"
+            >
+              💾 Save Templates
+            </button>
+          </div>
+        </details>
       </div>
 
       {/* Suggestion Box */}

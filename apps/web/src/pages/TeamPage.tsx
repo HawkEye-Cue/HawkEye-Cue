@@ -674,8 +674,8 @@ export default function TeamPage() {
               <p className="text-xs text-slate-400">Won</p>
             </div>
             <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-purple-400">{teamAnalytics.totalDeals}</p>
-              <p className="text-xs text-slate-400">Total Deals</p>
+              <p className="text-xl font-bold text-purple-400">{teamLeads.length}</p>
+              <p className="text-xs text-slate-400">Total Leads</p>
             </div>
             <div className="bg-slate-700 rounded-lg p-3 text-center">
               <p className="text-xl font-bold text-amber-400">{teamAnalytics.flockCompletionRate}%</p>

@@ -135,23 +135,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Insurance Spotlight — condensed */}
-      <section className="px-6 py-10 max-w-3xl mx-auto reveal">
-        <details className="glass-card-strong p-6 border border-blue-500/20 cursor-pointer">
-          <summary className="font-bold text-white text-center">🛡️ Built for Insurance Agencies</summary>
-          <div className="mt-4 space-y-3">
-            <p className="text-sm text-slate-300 leading-relaxed">Insurance agents need to be everywhere at once — posting in groups, following up on quotes, tracking referrals, all while writing policies. HawkEye-Cue was built by agency owners who lived this.</p>
-            <p className="text-sm text-slate-300 leading-relaxed">Keyword detection finds "need insurance" posts. The calendar schedules daily group posts. The pipeline tracks every quote to bound policy. Whether you're captive, independent, or a team lead — this is the system to grow without a marketing department.</p>
-            <div className="grid grid-cols-4 gap-2 mt-4">
-              <div className="text-center p-2 bg-blue-500/10 rounded-lg"><p className="text-sm">📤</p><p className="text-[9px] text-slate-400">Post daily</p></div>
-              <div className="text-center p-2 bg-amber-500/10 rounded-lg"><p className="text-sm">🎯</p><p className="text-[9px] text-slate-400">Detect leads</p></div>
-              <div className="text-center p-2 bg-green-500/10 rounded-lg"><p className="text-sm">💰</p><p className="text-[9px] text-slate-400">Quote → Bound</p></div>
-              <div className="text-center p-2 bg-purple-500/10 rounded-lg"><p className="text-sm">🏔️</p><p className="text-[9px] text-slate-400">Team stats</p></div>
-            </div>
-          </div>
-        </details>
-      </section>
-
       {/* Pricing */}
       <section id="pricing" className="px-6 py-12 max-w-5xl mx-auto">
         <h3 className="text-2xl font-bold text-center mb-3 reveal">Pricing</h3>
@@ -240,6 +223,23 @@ export default function LandingPage() {
         <Link to="/register" className="btn-primary px-10 py-3 text-lg font-bold shadow-lg shadow-blue-600/25 inline-block btn-shimmer">
           Get Started Now
         </Link>
+      </section>
+
+      {/* Built for Your Trade */}
+      <section className="px-6 py-10 max-w-3xl mx-auto reveal">
+        <details className="glass-card-strong p-6 border border-blue-500/20 cursor-pointer">
+          <summary className="font-bold text-white text-center">🦅 Built for Trade Professionals — Insurance, Roofing, Real Estate & 54 More</summary>
+          <div className="mt-4 space-y-3">
+            <p className="text-sm text-slate-300 leading-relaxed">Whether you're an insurance agent, roofer, contractor, realtor, or any of our 57 supported trades — HawkEye-Cue was built by business owners who understand the daily grind of growing without a large marketing budget.</p>
+            <p className="text-sm text-slate-300 leading-relaxed">Keyword detection finds people asking for your services. The calendar schedules daily group posts. The pipeline tracks every lead from first contact to close. Whether you're a solo operator or running a team — this is the system to grow without hiring a marketing department.</p>
+            <div className="grid grid-cols-4 gap-2 mt-4">
+              <div className="text-center p-2 bg-blue-500/10 rounded-lg"><p className="text-sm">📤</p><p className="text-[9px] text-slate-400">Post daily</p></div>
+              <div className="text-center p-2 bg-amber-500/10 rounded-lg"><p className="text-sm">🎯</p><p className="text-[9px] text-slate-400">Detect leads</p></div>
+              <div className="text-center p-2 bg-green-500/10 rounded-lg"><p className="text-sm">💰</p><p className="text-[9px] text-slate-400">Track to close</p></div>
+              <div className="text-center p-2 bg-purple-500/10 rounded-lg"><p className="text-sm">🏔️</p><p className="text-[9px] text-slate-400">Team stats</p></div>
+            </div>
+          </div>
+        </details>
       </section>
 
       {/* Footer */}

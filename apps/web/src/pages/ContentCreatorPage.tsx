@@ -6,6 +6,7 @@ import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
 import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
 import type { SocialPlatform, ScheduledPost, Trade } from '@social-lead-gen/shared';
+import FlockGroupManager from '../components/FlockGroupManager';
 
 const TONES = ['professional', 'casual', 'educational', 'urgent'] as const;
 
@@ -52,6 +53,7 @@ export default function ContentCreatorPage() {
   const [engagementNote, setEngagementNote] = useState('');
   const [engageIndex, setEngageIndex] = useState(0);
   const [flocksTab, setFlocksTab] = useState<'today' | 'missed'>('today');
+  const [showFlockManager, setShowFlockManager] = useState(false);
   const [showReturnBanner, setShowReturnBanner] = useState(false);
 
   // Post history — tracks which content was posted to which groups and when
@@ -814,6 +816,14 @@ export default function ContentCreatorPage() {
           </button>
         </div>
 
+        {/* Manage Groups Button */}
+        <button
+          onClick={() => setShowFlockManager(true)}
+          className="w-full mb-3 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-slate-300 hover:bg-white/10 hover:text-white transition-colors flex items-center justify-center gap-2"
+        >
+          ⚙️ Manage Groups — Set posting days & jumble schedule
+        </button>
+
         {flocksTab === 'today' && (
         <>
         <div className="flex items-center justify-between mb-2">
@@ -1270,6 +1280,9 @@ export default function ContentCreatorPage() {
           </div>
         </div>
       )}
+
+      {/* Flock Group Manager Modal */}
+      {showFlockManager && <FlockGroupManager onClose={() => setShowFlockManager(false)} />}
     </div>
   );
 }

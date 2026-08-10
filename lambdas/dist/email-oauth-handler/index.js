@@ -22,6 +22,7 @@ function getUserId(event) { return event.requestContext?.authorizer?.jwt?.claims
 /**
  * Email OAuth Handler
  * Manages Gmail/Outlook OAuth flows and sends emails via connected accounts.
+ * Supports: Google (Gmail API) and Microsoft (Graph API sendMail)
  */
 exports.handler = async (event) => {
   try {

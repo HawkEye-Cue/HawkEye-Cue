@@ -70,6 +70,8 @@ export default function CalendarPage() {
   const [newEventInviteEmail, setNewEventInviteEmail] = useState('');
   const [newEventTime, setNewEventTime] = useState('');
   const [repeatOption, setRepeatOption] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly'>('none');
+  const [flockPostingDays, setFlockPostingDays] = useState<number[]>([]);
+  const [flockAnyday, setFlockAnyday] = useState(false);
 
   // Folio dates for calendar highlighting
   const folioStart = localStorage.getItem('hawkeye_folio_start') || '';
@@ -161,8 +163,43 @@ export default function CalendarPage() {
     const baseDate = new Date(currentYear, currentMonth, selectedDay);
     const dates: string[] = [];
 
-    // Generate dates based on repeat option
-    if (repeatOption === 'none') {
+    // For post-type with posting days selected, schedule on those weekdays for the next year
+    if (newEventType === 'post' && (flockPostingDays.length > 0 || flockAnyday)) {
+      const targetDays = flockAnyday ? [1, 2, 3, 4, 5, 6] : flockPostingDays; // Mon-Sat if anyday
+      const weeksAhead = 52; // schedule a year out
+      const startDate = new Date(baseDate);
+      
+      for (let week = 0; week < weeksAhead; week++) {
+        for (const dayOfWeek of targetDays) {
+          const d = new Date(startDate);
+          // Find the next occurrence of this dayOfWeek from start
+          const diff = (dayOfWeek - startDate.getDay() + 7) % 7;
+          d.setDate(startDate.getDate() + diff + (week * 7));
+          // Skip if in the past
+          if (d < new Date(new Date().setHours(0, 0, 0, 0))) continue;
+          // Skip Sundays
+          if (d.getDay() === 0) continue;
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          dates.push(`${d.getFullYear()}-${mm}-${dd}`);
+        }
+      }
+
+      // Save to flock groups list in localStorage
+      const storageKey = `hawkeye_flock_groups_${user?.sub}`;
+      try {
+        const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const newGroup = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: newEventTitle.trim(),
+          link: newEventLink.trim(),
+          postingDays: flockAnyday ? [] : [...flockPostingDays].sort(),
+          anyday: flockAnyday,
+        };
+        existing.push(newGroup);
+        localStorage.setItem(storageKey, JSON.stringify(existing));
+      } catch { /* ignore */ }
+    } else if (repeatOption === 'none') {
       dates.push(getDateStr(selectedDay));
     } else {
       const count = repeatOption === 'daily' ? 365 : repeatOption === 'weekly' ? 260 : repeatOption === 'biweekly' ? 130 : repeatOption === 'monthly' ? 120 : 50;
@@ -221,6 +258,10 @@ export default function CalendarPage() {
       }
     }
 
+    if (newEventType === 'post' && (flockPostingDays.length > 0 || flockAnyday)) {
+      showToast(`✓ Flock scheduled on ${flockAnyday ? 'any weekday' : flockPostingDays.map((d) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}`);
+    }
+
     localStorage.setItem(`hawkeye_first_event_${user?.sub}`, 'true');
     setNewEventTitle('');
     setNewEventLink('');
@@ -229,6 +270,8 @@ export default function CalendarPage() {
     setNewEventInviteEmail('');
     setNewEventTime('');
     setRepeatOption('none');
+    setFlockPostingDays([]);
+    setFlockAnyday(false);
   };
 
   const todayStr = (() => {
@@ -702,6 +745,43 @@ export default function CalendarPage() {
                     />
                   </div>
                   )}
+                  {/* Posting Day Picker — for post/flock type */}
+                  {newEventType === 'post' && (
+                    <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2">
+                      <p className="text-[10px] text-amber-300 font-medium">📅 Which days does this group allow business posts?</p>
+                      <div className="flex gap-1">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              if (flockAnyday) return;
+                              setFlockPostingDays((prev) => prev.includes(i) ? prev.filter((d) => d !== i) : [...prev, i]);
+                            }}
+                            disabled={flockAnyday}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                              flockAnyday
+                                ? 'bg-slate-700 text-slate-600 cursor-not-allowed'
+                                : flockPostingDays.includes(i)
+                                  ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30'
+                                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <label className="flex items-center justify-between p-2 bg-slate-800 rounded-lg cursor-pointer">
+                        <span className="text-xs text-slate-300">Any Day — post whenever</span>
+                        <input
+                          type="checkbox"
+                          checked={flockAnyday}
+                          onChange={(e) => { setFlockAnyday(e.target.checked); if (e.target.checked) setFlockPostingDays([]); }}
+                          className="w-5 h-5 rounded accent-amber-500"
+                        />
+                      </label>
+                      <p className="text-[10px] text-slate-500">Pick days or toggle "Any Day" to auto-schedule this flock on your calendar.</p>
+                    </div>
+                  )}}
                   {/* Meeting-specific fields */}
                   {newEventType === 'meeting' && (
                     <>

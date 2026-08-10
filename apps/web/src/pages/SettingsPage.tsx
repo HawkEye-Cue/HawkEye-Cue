@@ -6,6 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import TradeSelector from '../components/TradeSelector';
 import ExtensionTour from '../components/ExtensionTour';
 import LeadDetectionExplainer from '../components/LeadDetectionExplainer';
+import HowToGuide from '../components/HowToGuide';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Subscription, SocialAccount } from '@social-lead-gen/shared';
 
@@ -31,6 +32,7 @@ export default function SettingsPage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showExtensionTour, setShowExtensionTour] = useState(false);
   const [showLeadExplainer, setShowLeadExplainer] = useState(false);
+  const [showHowTo, setShowHowTo] = useState(false);
   const [emailNotifs, setEmailNotifs] = useState({
     dailyDigest: true,
     weeklyRecap: true,
@@ -254,6 +256,15 @@ export default function SettingsPage() {
         </div>
         <span className="text-slate-500">→</span>
       </Link>
+
+      {/* How To Use Guide */}
+      <button onClick={() => setShowHowTo(true)} className="glass-card w-full flex items-center justify-between hover:bg-white/5 transition-colors text-left">
+        <div>
+          <p className="text-sm font-medium text-white">📖 How to Use HawkEye-Cue</p>
+          <p className="text-xs text-slate-400">Full walkthrough of every feature — step by step</p>
+        </div>
+        <span className="text-slate-500">→</span>
+      </button>
 
       {/* Checkout success/cancel banners */}
       {checkoutStatus === 'success' && (
@@ -655,6 +666,7 @@ export default function SettingsPage() {
 
       {showExtensionTour && <ExtensionTour onClose={() => setShowExtensionTour(false)} />}
       {showLeadExplainer && <LeadDetectionExplainer onClose={() => setShowLeadExplainer(false)} />}
+      {showHowTo && <HowToGuide onClose={() => setShowHowTo(false)} />}
 
       {/* Email Notification Preferences */}
       <div className="glass-card">

@@ -114,8 +114,8 @@ export default function HowToGuide({ onClose }: { onClose: () => void }) {
   const [expandedSection, setExpandedSection] = useState<number | null>(0);
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] px-3" onClick={onClose}>
-      <div className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center z-[9999] px-3 py-4 overflow-y-auto" onClick={onClose}>
+      <div className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between shrink-0">
           <div>

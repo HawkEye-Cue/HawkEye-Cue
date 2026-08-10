@@ -353,8 +353,8 @@ export default function NetworkPage() {
 
       {/* Region Picker Modal */}
       {showRegionPicker && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="glass-card-strong w-full max-w-md animate-scale-in max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto">
+          <div className="glass-card-strong w-full max-w-md animate-scale-in max-h-[calc(100vh-2rem)] overflow-y-auto">
             <h3 className="font-bold text-white mb-2">Select Your State(s)</h3>
             <p className="text-sm text-slate-400 mb-4">Choose all states you're licensed to operate in. You'll see posts from other trades in those areas.</p>
 

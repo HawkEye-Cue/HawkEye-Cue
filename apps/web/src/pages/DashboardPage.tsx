@@ -745,8 +745,8 @@ export default function DashboardPage() {
 
       {/* Dashboard Calendar Day Modal */}
       {dashCalDay && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-5 shadow-2xl max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto">
+          <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-5 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-white text-lg">
                 {new Date(dashCalDay + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}

@@ -141,11 +141,11 @@ export default function LeadProfilePopup({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="glass-card-strong w-full max-w-md max-h-[90vh] overflow-y-auto animate-scale-in relative"
+        className="glass-card-strong w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto animate-scale-in relative"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

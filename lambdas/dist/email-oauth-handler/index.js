@@ -10,6 +10,10 @@ const TABLE_NAME = process.env.TABLE_NAME;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
+// Microsoft OAuth credentials
+const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID;
+const MICROSOFT_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET;
+
 function ok(body) { return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 function redirect(url) { return { statusCode: 302, headers: { Location: url }, body: '' }; }
 function err(status, code, message) { return { statusCode: status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: { code, message } }) }; }
@@ -44,6 +48,26 @@ exports.handler = async (event) => {
         `&state=${state}`;
 
       return redirect(googleAuthUrl);
+    }
+
+    // GET /email/oauth/microsoft — redirect user to Microsoft consent screen
+    if (method === 'GET' && path === '/email/oauth/microsoft') {
+      if (!userId) return err(401, 'UNAUTHORIZED', 'Not authenticated');
+      const params = event.queryStringParameters || {};
+      const redirectUri = params.redirect || 'https://hawkeyecue.com/settings';
+
+      const state = Buffer.from(JSON.stringify({ userId, redirect: redirectUri })).toString('base64');
+
+      const msAuthUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
+        `client_id=${MICROSOFT_CLIENT_ID}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent('openid profile email Mail.Send offline_access')}` +
+        `&response_mode=query` +
+        `&prompt=consent` +
+        `&state=${state}`;
+
+      return redirect(msAuthUrl);
     }
 
     // POST /email/oauth/callback — exchange code for token and store
@@ -100,10 +124,53 @@ exports.handler = async (event) => {
         return ok({ connected: true, provider: 'google', email: gmailAddress });
       }
 
-      // Microsoft OAuth would go here (similar pattern)
+      // Microsoft OAuth token exchange
       if (provider === 'microsoft') {
-        // TODO: Implement Microsoft token exchange
-        return err(501, 'NOT_IMPLEMENTED', 'Microsoft OAuth coming soon');
+        const tokenRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: MICROSOFT_CLIENT_ID,
+            client_secret: MICROSOFT_CLIENT_SECRET,
+            code,
+            grant_type: 'authorization_code',
+            redirect_uri: redirectUri || 'https://hawkeyecue.com/settings',
+            scope: 'openid profile email Mail.Send offline_access',
+          }).toString(),
+        });
+
+        const tokenData = await tokenRes.json();
+        if (!tokenData.access_token) {
+          console.error('[email-oauth] Microsoft token exchange failed:', tokenData);
+          return err(400, 'TOKEN_EXCHANGE_FAILED', tokenData.error_description || 'Failed to get token from Microsoft');
+        }
+
+        // Get user's email address from Microsoft Graph
+        let outlookAddress = '';
+        try {
+          const profileRes = await fetch('https://graph.microsoft.com/v1.0/me', {
+            headers: { 'Authorization': `Bearer ${tokenData.access_token}` },
+          });
+          const profile = await profileRes.json();
+          outlookAddress = profile.mail || profile.userPrincipalName || '';
+        } catch { /* ignore */ }
+
+        // Store tokens in DynamoDB
+        await dynamo.send(new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            PK: `USER#${userId}`,
+            SK: 'EMAIL_OAUTH#microsoft',
+            provider: 'microsoft',
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token || null,
+            expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null,
+            emailAddress: outlookAddress,
+            connectedAt: new Date().toISOString(),
+          },
+        }));
+
+        return ok({ connected: true, provider: 'microsoft', email: outlookAddress });
       }
 
       return err(400, 'INVALID_PROVIDER', 'Provider must be google or microsoft');
@@ -117,90 +184,184 @@ exports.handler = async (event) => {
 
       if (!to || !subject || !emailBody) return err(400, 'INVALID_INPUT', 'to, subject, and body are required');
 
-      // Get stored OAuth tokens
-      const tokenResult = await dynamo.send(new GetCommand({
+      // Check for Microsoft token first, then Google
+      let tokenRecord = null;
+      let provider = null;
+
+      const msResult = await dynamo.send(new GetCommand({
         TableName: TABLE_NAME,
-        Key: { PK: `USER#${userId}`, SK: 'EMAIL_OAUTH#google' },
+        Key: { PK: `USER#${userId}`, SK: 'EMAIL_OAUTH#microsoft' },
       }));
-      const tokenRecord = tokenResult.Item;
-      if (!tokenRecord) return err(400, 'NOT_CONNECTED', 'No email account connected. Connect Gmail in Settings.');
+      if (msResult.Item) {
+        tokenRecord = msResult.Item;
+        provider = 'microsoft';
+      } else {
+        const googleResult = await dynamo.send(new GetCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: `USER#${userId}`, SK: 'EMAIL_OAUTH#google' },
+        }));
+        if (googleResult.Item) {
+          tokenRecord = googleResult.Item;
+          provider = 'google';
+        }
+      }
+
+      if (!tokenRecord) return err(400, 'NOT_CONNECTED', 'No email account connected. Connect Gmail or Outlook in Settings.');
 
       let accessToken = tokenRecord.accessToken;
 
       // Check if token is expired and refresh if needed
       if (tokenRecord.expiresAt && new Date(tokenRecord.expiresAt) < new Date() && tokenRecord.refreshToken) {
-        const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            client_id: GOOGLE_CLIENT_ID,
-            client_secret: GOOGLE_CLIENT_SECRET,
-            refresh_token: tokenRecord.refreshToken,
-            grant_type: 'refresh_token',
-          }).toString(),
-        });
-        const refreshData = await refreshRes.json();
-        if (refreshData.access_token) {
-          accessToken = refreshData.access_token;
-          // Update stored token
-          await dynamo.send(new PutCommand({
-            TableName: TABLE_NAME,
-            Item: { ...tokenRecord, accessToken, expiresAt: new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString() },
-          }));
-        } else {
-          return err(401, 'TOKEN_EXPIRED', 'Gmail token expired and could not be refreshed. Please reconnect in Settings.');
+        if (provider === 'google') {
+          const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              client_id: GOOGLE_CLIENT_ID,
+              client_secret: GOOGLE_CLIENT_SECRET,
+              refresh_token: tokenRecord.refreshToken,
+              grant_type: 'refresh_token',
+            }).toString(),
+          });
+          const refreshData = await refreshRes.json();
+          if (refreshData.access_token) {
+            accessToken = refreshData.access_token;
+            await dynamo.send(new PutCommand({
+              TableName: TABLE_NAME,
+              Item: { ...tokenRecord, accessToken, expiresAt: new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString() },
+            }));
+          } else {
+            return err(401, 'TOKEN_EXPIRED', 'Gmail token expired and could not be refreshed. Please reconnect in Settings.');
+          }
+        } else if (provider === 'microsoft') {
+          const refreshRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              client_id: MICROSOFT_CLIENT_ID,
+              client_secret: MICROSOFT_CLIENT_SECRET,
+              refresh_token: tokenRecord.refreshToken,
+              grant_type: 'refresh_token',
+              scope: 'openid profile email Mail.Send offline_access',
+            }).toString(),
+          });
+          const refreshData = await refreshRes.json();
+          if (refreshData.access_token) {
+            accessToken = refreshData.access_token;
+            await dynamo.send(new PutCommand({
+              TableName: TABLE_NAME,
+              Item: { ...tokenRecord, accessToken, refreshToken: refreshData.refresh_token || tokenRecord.refreshToken, expiresAt: new Date(Date.now() + (refreshData.expires_in || 3600) * 1000).toISOString() },
+            }));
+          } else {
+            return err(401, 'TOKEN_EXPIRED', 'Outlook token expired and could not be refreshed. Please reconnect in Settings.');
+          }
         }
       }
 
-      // Send email via Gmail API
-      const rawEmail = [
-        `To: ${to}`,
-        `Subject: ${subject}`,
-        'Content-Type: text/html; charset=utf-8',
-        '',
-        emailBody,
-      ].join('\r\n');
+      // Send email based on provider
+      if (provider === 'google') {
+        const rawEmail = [
+          `To: ${to}`,
+          `Subject: ${subject}`,
+          'Content-Type: text/html; charset=utf-8',
+          '',
+          emailBody,
+        ].join('\r\n');
 
-      const encodedEmail = Buffer.from(rawEmail).toString('base64url');
+        const encodedEmail = Buffer.from(rawEmail).toString('base64url');
 
-      const sendRes = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ raw: encodedEmail }),
-      });
+        const sendRes = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ raw: encodedEmail }),
+        });
 
-      if (!sendRes.ok) {
-        const sendErr = await sendRes.text();
-        console.error('[email-send] Gmail API error:', sendErr);
-        return err(500, 'SEND_FAILED', 'Failed to send email via Gmail');
+        if (!sendRes.ok) {
+          const sendErr = await sendRes.text();
+          console.error('[email-send] Gmail API error:', sendErr);
+          return err(500, 'SEND_FAILED', 'Failed to send email via Gmail');
+        }
+
+        const sendResult = await sendRes.json();
+        return ok({ sent: true, messageId: sendResult.id, provider: 'google' });
+      } else if (provider === 'microsoft') {
+        // Send via Microsoft Graph API
+        const graphPayload = {
+          message: {
+            subject: subject,
+            body: {
+              contentType: 'HTML',
+              content: emailBody,
+            },
+            toRecipients: [
+              {
+                emailAddress: { address: to },
+              },
+            ],
+          },
+          saveToSentItems: true,
+        };
+
+        const sendRes = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(graphPayload),
+        });
+
+        if (!sendRes.ok) {
+          const sendErr = await sendRes.text();
+          console.error('[email-send] Microsoft Graph error:', sendErr);
+          return err(500, 'SEND_FAILED', 'Failed to send email via Outlook');
+        }
+
+        // Microsoft Graph sendMail returns 202 with no body on success
+        return ok({ sent: true, messageId: null, provider: 'microsoft' });
       }
 
-      const sendResult = await sendRes.json();
-      return ok({ sent: true, messageId: sendResult.id });
+      return err(500, 'SEND_FAILED', 'Unknown provider');
     }
 
     // GET /email/status — check if user has a connected email
     if (method === 'GET' && path === '/email/status') {
       if (!userId) return err(401, 'UNAUTHORIZED', 'Not authenticated');
-      const tokenResult = await dynamo.send(new GetCommand({
+
+      // Check Microsoft first, then Google
+      const msResult = await dynamo.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: 'EMAIL_OAUTH#microsoft' },
+      }));
+      if (msResult.Item) {
+        return ok({ connected: true, provider: 'microsoft', email: msResult.Item.emailAddress });
+      }
+
+      const googleResult = await dynamo.send(new GetCommand({
         TableName: TABLE_NAME,
         Key: { PK: `USER#${userId}`, SK: 'EMAIL_OAUTH#google' },
       }));
-      if (tokenResult.Item) {
-        return ok({ connected: true, provider: 'google', email: tokenResult.Item.emailAddress });
+      if (googleResult.Item) {
+        return ok({ connected: true, provider: 'google', email: googleResult.Item.emailAddress });
       }
+
       return ok({ connected: false });
     }
 
-    // DELETE /email/disconnect — remove connected email
+    // DELETE /email/disconnect — remove connected email (both providers)
     if (method === 'DELETE' && path === '/email/disconnect') {
       if (!userId) return err(401, 'UNAUTHORIZED', 'Not authenticated');
+      // Delete both providers if they exist
       await dynamo.send(new DeleteCommand({
         TableName: TABLE_NAME,
         Key: { PK: `USER#${userId}`, SK: 'EMAIL_OAUTH#google' },
+      }));
+      await dynamo.send(new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: 'EMAIL_OAUTH#microsoft' },
       }));
       return ok({ disconnected: true });
     }

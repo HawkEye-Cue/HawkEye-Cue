@@ -454,6 +454,8 @@ export class ApiStack extends cdk.Stack {
         ...lambdaDefaults.environment,
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
         GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+        MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID || '',
+        MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET || '',
       },
     } as lambda.FunctionProps);
 
@@ -1126,6 +1128,12 @@ export class ApiStack extends cdk.Stack {
     );
     this.httpApi.addRoutes({
       path: '/email/oauth/google',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: emailOAuthIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/email/oauth/microsoft',
       methods: [apigatewayv2.HttpMethod.GET],
       integration: emailOAuthIntegration,
       authorizer,

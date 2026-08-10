@@ -41,6 +41,8 @@ jobs:
           CDK_DEFAULT_REGION: us-east-1
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
         run: cd packages/cdk && npx cdk deploy --all --require-approval never --hotswap-fallback || echo "CDK deploy failed - continuing with web deploy"
 
       - name: Build web app

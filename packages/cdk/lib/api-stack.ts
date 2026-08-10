@@ -442,6 +442,23 @@ export class ApiStack extends cdk.Stack {
       new cdk.aws_events_targets.LambdaFunction(meetingReminderFn)
     );
 
+    // ─── Email OAuth Handler (Gmail/Outlook integration) ──────────────────
+    const emailOAuthFn = new lambda.Function(this, 'EmailOAuthFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-EmailOAuth',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/email-oauth-handler'),
+      description: 'Handles Gmail/Outlook OAuth flows and sends emails via connected accounts',
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        ...lambdaDefaults.environment,
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+      },
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(emailOAuthFn);
+
     // ─── EventBridge Scheduler IAM Role ───────────────────────────────────
     const schedulerRole = new iam.Role(this, 'EventBridgeSchedulerRole', {
       roleName: 'SocialLeadGen-EventBridgeSchedulerRole',
@@ -1099,6 +1116,42 @@ export class ApiStack extends cdk.Stack {
       path: '/team/notifications/{notifId}/dismiss',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: teamIntegration,
+      authorizer,
+    });
+
+    // ─── Email OAuth Routes ───────────────────────────────────────────────
+    const emailOAuthIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'EmailOAuthIntegration',
+      emailOAuthFn
+    );
+    this.httpApi.addRoutes({
+      path: '/email/oauth/google',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: emailOAuthIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/email/oauth/callback',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: emailOAuthIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/email/send',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: emailOAuthIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/email/status',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: emailOAuthIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/email/disconnect',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: emailOAuthIntegration,
       authorizer,
     });
 

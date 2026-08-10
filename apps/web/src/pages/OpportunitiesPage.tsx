@@ -638,6 +638,11 @@ export default function OpportunitiesPage() {
                 <input type="number" id="newLeadPremium" placeholder="e.g. 1200" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
               </div>
               <div>
+                <label className="block text-xs text-slate-400 mb-1">Lead's Email (for auto-emails)</label>
+                <input type="email" id="newLeadContactEmail" placeholder="lead@example.com" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <p className="text-[10px] text-slate-500 mt-1">If provided, cadence emails will auto-send on scheduled days</p>
+              </div>
+              <div>
                 <label className="block text-xs text-slate-400 mb-1">Worked by</label>
                 <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
                   <option value={user?.email || ''}>Me ({(() => { const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); return dn[user?.email || ''] || user?.email?.split('@')[0] || 'me'; })()})</option>
@@ -664,6 +669,7 @@ export default function OpportunitiesPage() {
                       assignedTo: newLeadAssignee || user?.email || undefined,
                       bucket: newLeadBucket || undefined,
                       expectedPremium: parseFloat((document.getElementById('newLeadPremium') as HTMLInputElement)?.value) || undefined,
+                      contactEmail: (document.getElementById('newLeadContactEmail') as HTMLInputElement)?.value?.trim() || undefined,
                     });
                     showToast('🎯 Lead added!');
                     // Refresh to get the lead with all server-stored fields
@@ -781,6 +787,11 @@ export default function OpportunitiesPage() {
                   <option value="converted">Converted</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Lead's Email (for auto-emails)</label>
+                <input type="email" defaultValue={(editingLead as any).contactEmail || ''} id="editLeadContactEmail" placeholder="lead@example.com" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <p className="text-[10px] text-slate-500 mt-1">Cadence emails auto-send to this address</p>
+              </div>
               <button
                 onClick={async () => {
                   const name = (document.getElementById('editLeadName') as HTMLInputElement).value.trim();
@@ -789,6 +800,7 @@ export default function OpportunitiesPage() {
                   const bucket = (document.getElementById('editLeadBucket') as HTMLSelectElement).value;
                   const assignee = (document.getElementById('editLeadAssignee') as HTMLSelectElement).value;
                   const status = (document.getElementById('editLeadStatus') as HTMLSelectElement).value;
+                  const contactEmail = (document.getElementById('editLeadContactEmail') as HTMLInputElement)?.value?.trim() || '';
 
                   // Save to localStorage
                   const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
@@ -805,7 +817,7 @@ export default function OpportunitiesPage() {
                   // Update status on server
                   try {
                     const client = await buildClient();
-                    await client.request('PUT', `/opportunities/${editingLead.id}/status`, { status, assignedTo: assignee, policyType, expectedPremium: premium || null, bucket: bucket || null });
+                    await client.request('PUT', `/opportunities/${editingLead.id}/status`, { status, assignedTo: assignee, policyType, expectedPremium: premium || null, bucket: bucket || null, contactEmail: contactEmail || null });
                   } catch { /* ignore if fails */ }
 
                   // Update local state

@@ -117,6 +117,7 @@ async function handleCreateOpportunity(userId, body) {
         assignedTo: body.assignedTo || null,
         bucket: body.bucket || null,
         expectedPremium: body.expectedPremium || null,
+        contactEmail: body.contactEmail || null,
         status: 'new',
         createdAt: now,
       },
@@ -174,10 +175,10 @@ async function handleCreateOpportunity(userId, body) {
 
 // PUT /opportunities/{id}/status
 async function handleUpdateStatus(userId, opportunityId, body) {
-  const { status, assignedTo, policyType, expectedPremium, bucket } = body || {};
+  const { status, assignedTo, policyType, expectedPremium, bucket, contactEmail } = body || {};
 
   // At least one field must be provided
-  if (!status && assignedTo === undefined && policyType === undefined && expectedPremium === undefined && bucket === undefined) {
+  if (!status && assignedTo === undefined && policyType === undefined && expectedPremium === undefined && bucket === undefined && contactEmail === undefined) {
     return respond(400, { error: { code: 'INVALID_INPUT', message: 'At least one field is required' } });
   }
 
@@ -238,6 +239,10 @@ async function handleUpdateStatus(userId, opportunityId, body) {
   if (body.transferredTo !== undefined) {
     updates.push('transferredTo = :transferredTo');
     values[':transferredTo'] = body.transferredTo || null;
+  }
+  if (body.contactEmail !== undefined) {
+    updates.push('contactEmail = :contactEmail');
+    values[':contactEmail'] = body.contactEmail || null;
   }
 
   await dynamo.send(

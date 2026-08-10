@@ -461,6 +461,35 @@ export class ApiStack extends cdk.Stack {
 
     table.grantReadWriteData(emailOAuthFn);
 
+    // ─── Cadence Email Sender (EventBridge scheduled, daily at 2pm UTC / 8am MT) ─
+    const cadenceEmailFn = new lambda.Function(this, 'CadenceEmailSenderFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-CadenceEmailSender',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/cadence-email-sender'),
+      description: 'Daily scheduled Lambda — sends cadence emails to leads via connected Gmail/Outlook',
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      environment: {
+        ...lambdaDefaults.environment,
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+        MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID || '',
+        MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET || '',
+      },
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(cadenceEmailFn);
+
+    const cadenceEmailRule = new cdk.aws_events.Rule(this, 'CadenceEmailSchedule', {
+      ruleName: 'SocialLeadGen-CadenceEmailSchedule',
+      schedule: cdk.aws_events.Schedule.cron({ minute: '0', hour: '14', day: '*', month: '*', year: '*' }),
+      description: 'Triggers cadence email sender daily at 2pm UTC (8am Mountain)',
+    });
+    cadenceEmailRule.addTarget(
+      new cdk.aws_events_targets.LambdaFunction(cadenceEmailFn)
+    );
+
     // ─── EventBridge Scheduler IAM Role ───────────────────────────────────
     const schedulerRole = new iam.Role(this, 'EventBridgeSchedulerRole', {
       roleName: 'SocialLeadGen-EventBridgeSchedulerRole',

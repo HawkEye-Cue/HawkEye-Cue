@@ -163,13 +163,17 @@ async function handlePaymentFailed(invoice) {
 exports.handler = async (event) => {
   try {
     const secrets = await getSecrets();
-    const stripe = new Stripe(secrets.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
+    const stripe = new Stripe(secrets.STRIPE_SECRET_KEY);
 
-    // API Gateway HTTP API v2 passes raw body as string
-    const rawBody = event.body;
-    const signature = event.headers?.['stripe-signature'] ?? event.headers?.['Stripe-Signature'];
+    // API Gateway HTTP API v2 may base64-encode the body
+    let rawBody = event.body;
+    if (event.isBase64Encoded && rawBody) {
+      rawBody = Buffer.from(rawBody, 'base64').toString('utf-8');
+    }
+    const signature = event.headers?.['stripe-signature'] ?? event.headers?.['Stripe-Signature'] ?? event.headers?.['STRIPE-SIGNATURE'];
 
     if (!rawBody || !signature) {
+      console.error('Missing body or signature. Headers:', JSON.stringify(event.headers || {}));
       return respond(400, { error: 'Missing body or stripe-signature header' });
     }
 
@@ -211,7 +215,7 @@ exports.handler = async (event) => {
 
     return respond(200, { received: true });
   } catch (e) {
-    console.error('stripe-webhook handler error:', e);
+    console.error('stripe-webhook handler error:', e.message, e.stack);
     return respond(500, { error: 'Internal server error' });
   }
 };

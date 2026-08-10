@@ -461,6 +461,17 @@ export class ApiStack extends cdk.Stack {
 
     table.grantReadWriteData(emailOAuthFn);
 
+    // Grant Bedrock for AI email template generation
+    emailOAuthFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [
+          `arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0`,
+        ],
+      })
+    );
+
     // ─── Cadence Email Sender (EventBridge scheduled, daily at 2pm UTC / 8am MT) ─
     const cadenceEmailFn = new lambda.Function(this, 'CadenceEmailSenderFn', {
       ...lambdaDefaults,
@@ -1188,6 +1199,12 @@ export class ApiStack extends cdk.Stack {
     this.httpApi.addRoutes({
       path: '/email/disconnect',
       methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: emailOAuthIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/email/generate-templates',
+      methods: [apigatewayv2.HttpMethod.POST],
       integration: emailOAuthIntegration,
       authorizer,
     });

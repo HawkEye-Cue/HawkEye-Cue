@@ -367,6 +367,73 @@ exports.handler = async (event) => {
       return ok({ disconnected: true });
     }
 
+    // POST /email/generate-templates — AI-generate cadence email templates
+    if (method === 'POST' && path === '/email/generate-templates') {
+      if (!userId) return err(401, 'UNAUTHORIZED', 'Not authenticated');
+      const body = event.body ? JSON.parse(event.body) : {};
+      const { trade, tone, context } = body;
+
+      const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
+      const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
+
+      const prompt = `You are an email copywriting expert for a ${trade || 'local business'} professional. Generate 4 follow-up email templates for a lead nurturing cadence.
+
+Tone: ${tone || 'friendly and professional'}
+${context ? `Context: ${context}` : ''}
+
+Generate exactly 4 emails for these touchpoints:
+1. Day 1 — Introduction (first contact after seeing their post/inquiry)
+2. Day 3 — Follow Up (gentle nudge)
+3. Day 7 — Check In (add value, show expertise)
+4. Day 14 — Final Touch (last outreach, leave door open)
+
+Rules:
+- Use {name} as a placeholder for the lead's name
+- Keep each email under 150 words
+- Be warm, personal, not salesy
+- Include a clear call-to-action in each
+- Make them feel like a real person wrote them
+- Tailor language to the ${trade || 'local business'} industry
+
+Return ONLY a JSON array of 4 objects with "subject" and "body" fields. The body should be plain text (no HTML tags). Example format:
+[{"subject":"...", "body":"..."},{"subject":"...", "body":"..."},{"subject":"...", "body":"..."},{"subject":"...", "body":"..."}]`;
+
+      try {
+        const command = new InvokeModelCommand({
+          modelId: 'amazon.nova-lite-v1:0',
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: JSON.stringify({
+            inferenceConfig: { maxTokens: 2000, temperature: 0.7 },
+            messages: [{ role: 'user', content: [{ text: prompt }] }],
+          }),
+        });
+
+        const response = await bedrock.send(command);
+        const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+        const aiText = responseBody.output.message.content[0].text.trim();
+
+        // Parse the JSON array from AI response
+        let templates;
+        try {
+          // Find the JSON array in the response
+          const jsonMatch = aiText.match(/\[[\s\S]*\]/);
+          templates = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+        } catch {
+          templates = null;
+        }
+
+        if (!templates || templates.length !== 4) {
+          return ok({ templates: null, raw: aiText, error: 'Could not parse templates — showing raw text' });
+        }
+
+        return ok({ templates });
+      } catch (e) {
+        console.error('[email-generate] AI generation failed:', e);
+        return err(500, 'AI_GENERATION_FAILED', 'Failed to generate templates. Please try again.');
+      }
+    }
+
     return err(404, 'NOT_FOUND', `No route for ${method} ${path}`);
   } catch (e) {
     console.error('[email-oauth-handler] Error:', e);

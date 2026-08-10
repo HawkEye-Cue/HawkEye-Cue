@@ -750,27 +750,85 @@ export default function SettingsPage() {
           <summary className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium">📝 Edit Cadence Email Templates</summary>
           <div className="mt-3 space-y-3">
             <p className="text-[10px] text-slate-400">These emails auto-send to leads on their scheduled cadence days. Use {'{name}'} for the lead's name.</p>
+
+            {/* AI Generate + Write Your Own buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    const client = await buildClient();
+                    showToast('🤖 Generating templates...');
+                    const result = await client.request<any>('POST', '/email/generate-templates', {
+                      trade: selectedTrade?.name || 'local business',
+                      tone: 'friendly and professional',
+                    });
+                    if (result.templates && result.templates.length === 4) {
+                      result.templates.forEach((t: any, i: number) => {
+                        const textarea = document.getElementById(`emailTemplate${i}`) as HTMLTextAreaElement;
+                        if (textarea) {
+                          textarea.value = t.body;
+                          localStorage.setItem(`hawkeye_email_template_${i}`, t.body);
+                          buildClient().then((c) => c.request('PUT', '/profile/preferences', { [`emailTemplate${i}`]: t.body })).catch(() => {});
+                        }
+                      });
+                      showToast('✓ AI templates generated! Review and customize below.');
+                    } else {
+                      showToast('❌ Could not generate. Try again.');
+                    }
+                  } catch {
+                    showToast('❌ AI generation failed. Try again.');
+                  }
+                }}
+                className="flex-1 py-2 bg-purple-600/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 font-medium hover:bg-purple-600/30 transition-colors"
+              >
+                🤖 AI Generate Templates
+              </button>
+              <button
+                onClick={() => {
+                  ['Day 1: Introduction', 'Day 3: Follow Up', 'Day 7: Check In', 'Day 14: Final Touch'].forEach((_, i) => {
+                    const textarea = document.getElementById(`emailTemplate${i}`) as HTMLTextAreaElement;
+                    if (textarea) textarea.value = '';
+                  });
+                  showToast('✍️ Write your own below — blank templates ready');
+                }}
+                className="flex-1 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-slate-300 font-medium hover:bg-white/10 transition-colors"
+              >
+                ✍️ Write Your Own
+              </button>
+            </div>
+
             {['Day 1: Introduction', 'Day 3: Follow Up', 'Day 7: Check In', 'Day 14: Final Touch'].map((label, i) => (
               <div key={i}>
                 <label className="text-[10px] text-slate-500 block mb-1">{label}</label>
                 <textarea
+                  id={`emailTemplate${i}`}
                   defaultValue={localStorage.getItem(`hawkeye_email_template_${i}`) || ''}
                   onBlur={(e) => {
                     localStorage.setItem(`hawkeye_email_template_${i}`, e.target.value);
                     buildClient().then((client) => client.request('PUT', '/profile/preferences', { [`emailTemplate${i}`]: e.target.value })).catch(() => {});
                   }}
                   placeholder={i === 0 ? 'Hi {name}, I saw your post and wanted to reach out...' : i === 1 ? 'Hi {name}, just following up on my previous message...' : i === 2 ? 'Hi {name}, checking in to see if you had any questions...' : 'Hi {name}, I wanted to touch base one more time...'}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-20"
                 />
               </div>
             ))}
             <button
               onClick={async () => {
-                showToast('✓ Templates saved');
+                for (let i = 0; i < 4; i++) {
+                  const textarea = document.getElementById(`emailTemplate${i}`) as HTMLTextAreaElement;
+                  if (textarea) {
+                    localStorage.setItem(`hawkeye_email_template_${i}`, textarea.value);
+                    try {
+                      const client = await buildClient();
+                      await client.request('PUT', '/profile/preferences', { [`emailTemplate${i}`]: textarea.value });
+                    } catch { /* ignore */ }
+                  }
+                }
+                showToast('✓ All templates saved');
               }}
-              className="text-xs text-green-400 bg-green-600/20 px-3 py-1.5 rounded-lg"
+              className="w-full py-2 text-xs text-green-400 bg-green-600/20 border border-green-500/30 rounded-lg font-medium hover:bg-green-600/30"
             >
-              💾 Save Templates
+              💾 Save All Templates
             </button>
           </div>
         </details>

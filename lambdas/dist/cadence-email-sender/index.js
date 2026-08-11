@@ -79,6 +79,27 @@ exports.handler = async () => {
         }
       } catch { /* continue if prefs not found */ }
 
+      // Tier check — free/nest users get 3 auto-sends, soar/summit get unlimited
+      try {
+        const profileResult = await dynamo.send(new GetCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+        }));
+        const profile = profileResult.Item;
+        const tier = profile?.subscriptionTier || 'free';
+        const paidTiers = ['base', 'growth', 'soar', 'flight', 'team', 'summit'];
+        
+        if (!paidTiers.includes(tier)) {
+          // Free/Nest user — check usage count
+          const cadenceUsed = profile?.cadenceEmailsSent || 0;
+          const FREE_LIMIT = 3;
+          if (cadenceUsed >= FREE_LIMIT) {
+            console.log(`[cadence-email] Free user ${userId} hit limit (${cadenceUsed}/${FREE_LIMIT}) — skipping.`);
+            continue;
+          }
+        }
+      } catch { /* continue if profile not found — treat as free with 0 usage */ }
+
       // Get user's connected email (try Microsoft first, then Google)
       let tokenRecord = null;
       let provider = null;
@@ -180,7 +201,16 @@ exports.handler = async () => {
 
           sent++;
           console.log(`[cadence-email] Sent email to ${leadEmail} for lead ${leadName} (user ${userId}, step ${step.idx})`);
-        } catch (e) {
+
+          // Increment cadence email counter on user profile (for free tier limit tracking)
+          try {
+            await dynamo.send(new UpdateCommand({
+              TableName: TABLE_NAME,
+              Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+              UpdateExpression: 'SET cadenceEmailsSent = if_not_exists(cadenceEmailsSent, :zero) + :one',
+              ExpressionAttributeValues: { ':zero': 0, ':one': 1 },
+            }));
+          } catch { /* non-critical */ }        } catch (e) {
           console.error(`[cadence-email] Failed to send to ${leadEmail}:`, e.message);
         }
       }

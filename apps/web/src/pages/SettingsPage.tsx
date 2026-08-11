@@ -721,7 +721,15 @@ export default function SettingsPage() {
       {/* Email Automation — Gmail/Outlook Integration */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">✉️ Email Automation</h3>
-        <p className="text-xs text-slate-400 mb-4">Connect your email to auto-send follow-up emails to leads based on your cadence schedule.</p>
+        <p className="text-xs text-slate-400 mb-3">Connect your email to auto-send follow-up emails to leads based on your cadence schedule.</p>
+        
+        {/* Tier info */}
+        {!['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(currentTier) && (
+          <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-3">
+            <p className="text-xs text-amber-300 font-medium">🆓 Free Preview — 3 auto-emails included</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Upgrade to Soar for unlimited cadence emails to your leads.</p>
+          </div>
+        )}
 
         {/* Connected status */}
         {(() => {

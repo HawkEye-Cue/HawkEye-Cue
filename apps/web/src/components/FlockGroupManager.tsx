@@ -32,6 +32,72 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
   const [newAnyday, setNewAnyday] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // On first open, import existing calendar flock events into the groups list (no duplicates)
+  useEffect(() => {
+    const existingGroups: FlockGroup[] = (() => {
+      try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { return []; }
+    })();
+    const existingNames = new Set(existingGroups.map((g) => g.name.toLowerCase()));
+
+    // Find all post-type calendar events and extract unique group names
+    const postEvents = events.filter((e) => e.type === 'post');
+    const imported: FlockGroup[] = [];
+
+    for (const evt of postEvents) {
+      // Clean title — remove time prefix like [14:30] and trim
+      const cleanName = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').trim();
+      if (!cleanName) continue;
+      const nameLower = cleanName.toLowerCase();
+
+      // Skip if already in groups list
+      if (existingNames.has(nameLower)) continue;
+      existingNames.add(nameLower);
+
+      // Determine which day of week this event was on
+      const eventDate = new Date(evt.date + 'T12:00:00');
+      const dayOfWeek = eventDate.getDay();
+
+      // Check if there's already an imported group with this name — merge days
+      const existingImport = imported.find((g) => g.name.toLowerCase() === nameLower);
+      if (existingImport) {
+        if (!existingImport.postingDays.includes(dayOfWeek)) {
+          existingImport.postingDays.push(dayOfWeek);
+          existingImport.postingDays.sort();
+        }
+        if (!existingImport.link && evt.link) existingImport.link = evt.link;
+      } else {
+        imported.push({
+          id: `imported-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: cleanName,
+          link: evt.link || '',
+          postingDays: dayOfWeek === 0 ? [] : [dayOfWeek], // If Sunday, leave empty
+          anyday: false,
+        });
+      }
+    }
+
+    if (imported.length > 0) {
+      // Deduplicate imported by merging days for same-name groups
+      const mergedImports: FlockGroup[] = [];
+      for (const imp of imported) {
+        const existing = mergedImports.find((g) => g.name.toLowerCase() === imp.name.toLowerCase());
+        if (existing) {
+          for (const d of imp.postingDays) {
+            if (!existing.postingDays.includes(d)) existing.postingDays.push(d);
+          }
+          existing.postingDays.sort();
+          if (!existing.link && imp.link) existing.link = imp.link;
+        } else {
+          mergedImports.push(imp);
+        }
+      }
+
+      const combined = [...existingGroups, ...mergedImports];
+      setGroups(combined);
+      localStorage.setItem(storageKey, JSON.stringify(combined));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Save groups whenever they change
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(groups));
@@ -45,6 +111,11 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
     if (!newName.trim()) return;
     if (!newAnyday && newDays.length === 0) {
       showToast('Pick at least one posting day or toggle "Any Day"');
+      return;
+    }
+    // Check for duplicate
+    if (groups.some((g) => g.name.toLowerCase() === newName.trim().toLowerCase())) {
+      showToast('⚠️ This group already exists');
       return;
     }
     const group: FlockGroup = {

@@ -781,7 +781,7 @@ export default function CalendarPage() {
                       </label>
                       <p className="text-[10px] text-slate-500">Pick days or toggle "Any Day" to auto-schedule this flock on your calendar.</p>
                     </div>
-                  )}}
+                  )}
                   {/* Meeting-specific fields */}
                   {newEventType === 'meeting' && (
                     <>

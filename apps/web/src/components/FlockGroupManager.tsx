@@ -335,7 +335,13 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
           ) : (
             <div className="space-y-2">
               <p className="text-xs font-medium text-white">Your Groups ({groups.length})</p>
-              {groups.map((group) => {
+              {[...groups].sort((a, b) => {
+                // Sort by first posting day (Mon=1 first, Any Day last)
+                const dayA = a.anyday ? 99 : (a.postingDays.length > 0 ? (a.postingDays[0] === 0 ? 7 : a.postingDays[0]) : 99);
+                const dayB = b.anyday ? 99 : (b.postingDays.length > 0 ? (b.postingDays[0] === 0 ? 7 : b.postingDays[0]) : 99);
+                if (dayA !== dayB) return dayA - dayB;
+                return a.name.localeCompare(b.name);
+              }).map((group) => {
                 const isEditing = editingId === group.id;
                 return (
                   <div key={group.id} className="bg-slate-800 border border-white/10 rounded-xl overflow-hidden">

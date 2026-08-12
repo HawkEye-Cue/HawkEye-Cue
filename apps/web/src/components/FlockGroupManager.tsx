@@ -13,6 +13,24 @@ interface FlockGroup {
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LABELS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_COLORS = [
+  'bg-red-500/20 text-red-300 border-red-500/30',       // Sun
+  'bg-blue-500/20 text-blue-300 border-blue-500/30',    // Mon
+  'bg-green-500/20 text-green-300 border-green-500/30', // Tue
+  'bg-purple-500/20 text-purple-300 border-purple-500/30', // Wed
+  'bg-amber-500/20 text-amber-300 border-amber-500/30', // Thu
+  'bg-pink-500/20 text-pink-300 border-pink-500/30',    // Fri
+  'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',    // Sat
+];
+const DAY_BUTTON_ACTIVE = [
+  'bg-red-500 text-white',    // Sun
+  'bg-blue-500 text-white',   // Mon
+  'bg-green-500 text-white',  // Tue
+  'bg-purple-500 text-white', // Wed
+  'bg-amber-500 text-black',  // Thu
+  'bg-pink-500 text-white',   // Fri
+  'bg-cyan-500 text-white',   // Sat
+];
 
 export default function FlockGroupManager({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
@@ -264,7 +282,7 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
                       newAnyday
                         ? 'bg-slate-700 text-slate-600 cursor-not-allowed'
                         : newDays.includes(i)
-                          ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30'
+                          ? `${DAY_BUTTON_ACTIVE[i]} shadow-md`
                           : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
                     }`}
                   >
@@ -329,7 +347,7 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
                             <span className="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">Any Day</span>
                           ) : (
                             group.postingDays.map((d) => (
-                              <span key={d} className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
+                              <span key={d} className={`text-[9px] px-1.5 py-0.5 rounded border ${DAY_COLORS[d]}`}>
                                 {DAY_LABELS[d]}
                               </span>
                             ))
@@ -376,7 +394,7 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
                               disabled={group.anyday}
                               className={`flex-1 py-1.5 rounded text-[9px] font-bold transition-all ${
                                 group.anyday ? 'bg-slate-700 text-slate-600' :
-                                group.postingDays.includes(i) ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                group.postingDays.includes(i) ? DAY_BUTTON_ACTIVE[i] : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
                               }`}
                             >
                               {DAY_LABELS_SHORT[i]}

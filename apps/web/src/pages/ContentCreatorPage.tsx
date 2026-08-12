@@ -816,12 +816,26 @@ export default function ContentCreatorPage() {
           </button>
         </div>
 
-        {/* Manage Groups Button */}
+        {/* Manage Groups Tile */}
         <button
           onClick={() => setShowFlockManager(true)}
-          className="w-full mb-3 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-slate-300 hover:bg-white/10 hover:text-white transition-colors flex items-center justify-center gap-2"
+          className="w-full mb-4 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-2 border-amber-500/30 rounded-xl hover:border-amber-500/50 hover:bg-amber-500/15 transition-all active:scale-[0.98]"
         >
-          ⚙️ Manage Groups — Set posting days & jumble schedule
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🦅</span>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-white">Manage Flock Groups</p>
+              <p className="text-xs text-slate-400 mt-0.5">Add, edit, remove groups · Set posting days · Jumble rotation</p>
+            </div>
+            <span className="text-slate-500 text-lg">→</span>
+          </div>
+          {(() => {
+            try {
+              const groups = JSON.parse(localStorage.getItem(`hawkeye_flock_groups_${user?.sub}`) || '[]');
+              if (groups.length > 0) return <p className="text-[10px] text-amber-300 mt-2 text-left">{groups.length} group{groups.length !== 1 ? 's' : ''} saved</p>;
+            } catch {}
+            return null;
+          })()}
         </button>
 
         {flocksTab === 'today' && (

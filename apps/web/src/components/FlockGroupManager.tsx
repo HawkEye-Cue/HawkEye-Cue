@@ -243,28 +243,87 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
             <p className="text-xs text-slate-500 text-center py-4">No groups yet. Add your Facebook groups above.</p>
           ) : (
             <div className="space-y-2">
-              {groups.map((group) => (
-                <div key={group.id} className="flex items-center gap-2 bg-slate-800 border border-white/10 px-3 py-2.5 rounded-xl">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-white font-medium truncate">{group.name}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      {group.anyday ? (
-                        <span className="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">Any Day</span>
-                      ) : (
-                        group.postingDays.map((d) => (
-                          <span key={d} className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
-                            {DAY_LABELS[d]}
-                          </span>
-                        ))
+              <p className="text-xs font-medium text-white">Your Groups ({groups.length})</p>
+              {groups.map((group) => {
+                const isEditing = editingId === group.id;
+                return (
+                  <div key={group.id} className="bg-slate-800 border border-white/10 rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-2 px-3 py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white font-medium truncate">{group.name}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          {group.anyday ? (
+                            <span className="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">Any Day</span>
+                          ) : (
+                            group.postingDays.map((d) => (
+                              <span key={d} className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
+                                {DAY_LABELS[d]}
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                      {group.link && (
+                        <a href={group.link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs hover:text-blue-300 shrink-0">↗</a>
                       )}
+                      <button onClick={() => setEditingId(isEditing ? null : group.id)} className="text-xs text-blue-400 hover:text-blue-300 shrink-0">
+                        {isEditing ? '✓' : '✏️'}
+                      </button>
+                      <button onClick={() => handleRemoveGroup(group.id)} className="text-red-400 hover:text-red-300 text-xs shrink-0">✕</button>
                     </div>
+                    {/* Inline edit */}
+                    {isEditing && (
+                      <div className="px-3 pb-3 pt-1 border-t border-white/5 space-y-2">
+                        <input
+                          type="text"
+                          defaultValue={group.name}
+                          onBlur={(e) => {
+                            const val = e.target.value.trim();
+                            if (val) setGroups(groups.map((g) => g.id === group.id ? { ...g, name: val } : g));
+                          }}
+                          className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs"
+                        />
+                        <input
+                          type="url"
+                          defaultValue={group.link}
+                          placeholder="Group link"
+                          onBlur={(e) => setGroups(groups.map((g) => g.id === group.id ? { ...g, link: e.target.value.trim() } : g))}
+                          className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-slate-500"
+                        />
+                        <div className="flex gap-1">
+                          {DAY_LABELS.map((label, i) => (
+                            <button
+                              key={i}
+                              onClick={() => {
+                                const g = groups.find((x) => x.id === group.id);
+                                if (!g || g.anyday) return;
+                                const days = g.postingDays.includes(i) ? g.postingDays.filter((d) => d !== i) : [...g.postingDays, i];
+                                setGroups(groups.map((x) => x.id === group.id ? { ...x, postingDays: days.sort() } : x));
+                              }}
+                              disabled={group.anyday}
+                              className={`flex-1 py-1.5 rounded text-[9px] font-bold transition-all ${
+                                group.anyday ? 'bg-slate-700 text-slate-600' :
+                                group.postingDays.includes(i) ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                              }`}
+                            >
+                              {DAY_LABELS_SHORT[i]}
+                            </button>
+                          ))}
+                        </div>
+                        <label className="flex items-center justify-between p-1.5 bg-slate-700 rounded cursor-pointer">
+                          <span className="text-[10px] text-slate-300">Any Day</span>
+                          <input
+                            type="checkbox"
+                            checked={group.anyday}
+                            onChange={(e) => setGroups(groups.map((g) => g.id === group.id ? { ...g, anyday: e.target.checked, postingDays: e.target.checked ? [] : g.postingDays } : g))}
+                            className="w-4 h-4 rounded accent-amber-500"
+                          />
+                        </label>
+                      </div>
+                    )}
                   </div>
-                  {group.link && (
-                    <a href={group.link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs hover:text-blue-300 shrink-0">↗</a>
-                  )}
-                  <button onClick={() => handleRemoveGroup(group.id)} className="text-red-400 hover:text-red-300 text-xs shrink-0">✕</button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

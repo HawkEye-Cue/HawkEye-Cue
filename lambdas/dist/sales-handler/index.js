@@ -44,7 +44,11 @@ function getUserId(event) { return event.requestContext?.authorizer?.jwt?.claims
 const STAGES = ['prospect', 'contacted', 'quoted', 'closing', 'won', 'lost'];
 
 // ─── Team Deal Won Notification ───────────────────────────────────────────────
-async function notifyTeamDealWon(userId, dealName, dealValue) {
+async function notifyTeamDealWon(userId, dealName, dealValue, soldBy, policyType, folio) {
+  soldBy = soldBy || '';
+  policyType = policyType || '';
+  folio = folio || '';
+
   // Check if user belongs to a team
   const { GetCommand } = require('@aws-sdk/lib-dynamodb');
 
@@ -91,6 +95,28 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
   }));
   const teammates = (membersResult.Items || []).filter((m) => m.userId !== userId);
 
+  // Calculate total folio premium (sum of all won deals in the same folio)
+  let totalFolioPremium = 0;
+  if (folio) {
+    try {
+      const folioDealsResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        FilterExpression: 'stage = :stage AND folio = :folio',
+        ExpressionAttributeValues: {
+          ':pk': `USER#${userId}`,
+          ':sk': 'DEAL#',
+          ':stage': 'won',
+          ':folio': folio,
+        },
+      }));
+      const folioDeals = folioDealsResult.Items || [];
+      totalFolioPremium = folioDeals.reduce((sum, deal) => sum + (deal.dealValue || 0), 0);
+    } catch (e) {
+      console.error(`[team-win-email] Failed to calculate folio premium:`, e.message);
+    }
+  }
+
   const now = new Date().toISOString();
   const notifId = randomUUID();
 
@@ -122,19 +148,24 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
       const mateNotifs = (mateProfile.Items || [])[0]?.emailNotifications || {};
       if (mateEmail && mateNotifs.teamWin !== false) {
         const displayName = userEmail.split('@')[0];
+        const subjectName = soldBy || displayName;
         const html = `
           <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
             <h2 style="color:#16a34a;margin:0 0 16px 0;">🏆 Team Win!</h2>
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-bottom:16px;">
-              <p style="margin:0 0 8px 0;font-size:16px;font-weight:600;color:#166534;">${displayName} closed a deal!</p>
+              <p style="margin:0 0 8px 0;font-size:16px;font-weight:600;color:#166534;">${subjectName} closed a deal!</p>
               <p style="margin:0 0 4px 0;font-size:14px;color:#334155;"><strong>Deal:</strong> ${dealName || 'Deal'}</p>
-              <p style="margin:0;font-size:14px;color:#334155;"><strong>Value:</strong> $${(dealValue || 0).toLocaleString()}</p>
+              <p style="margin:0 0 4px 0;font-size:14px;color:#334155;"><strong>Value:</strong> $${(dealValue || 0).toLocaleString()}</p>
+              ${soldBy ? `<p style="margin:0 0 4px 0;font-size:14px;color:#334155;"><strong>Sold by:</strong> ${soldBy}</p>` : ''}
+              ${policyType ? `<p style="margin:0 0 4px 0;font-size:14px;color:#334155;"><strong>Policy Type:</strong> ${policyType}</p>` : ''}
+              ${folio ? `<p style="margin:0 0 4px 0;font-size:14px;color:#334155;"><strong>Folio:</strong> ${folio}</p>` : ''}
+              ${totalFolioPremium ? `<p style="margin:0;font-size:14px;color:#334155;"><strong>Total Folio Premium:</strong> $${totalFolioPremium.toLocaleString()}</p>` : ''}
             </div>
             <a href="https://hawkeyecue.com/team" style="display:inline-block;background:#16a34a;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">View Team →</a>
             <p style="font-size:11px;color:#94a3b8;margin:16px 0 0 0;">Manage notifications in Settings → Email Notifications.</p>
           </div>
         `;
-        await sendEmail(mateEmail, `🏆 ${displayName} closed "${dealName}" — $${(dealValue || 0).toLocaleString()}!`, html);
+        await sendEmail(mateEmail, `🏆 ${subjectName} closed "${dealName}" — $${(dealValue || 0).toLocaleString()}!`, html);
       }
     } catch (e) {
       console.error(`[team-win-email] Failed for mate ${mate.userId}:`, e.message);
@@ -260,6 +291,15 @@ async function handleCreateDeal(userId, body) {
     },
   }));
 
+  // Notify team when deal is created as won
+  if (stage === 'won') {
+    try {
+      await notifyTeamDealWon(userId, name.trim(), dealValue, soldBy, policyType, folio);
+    } catch (e) {
+      console.error('Failed to send team deal notification on create:', e.message);
+    }
+  }
+
   return ok({ id: dealId, name: name.trim(), value: dealValue, stage: stage || 'prospect', policyType: policyType || '', leadSource: leadSource || '', leadSourceNote: leadSourceNote || '', bundleItems: bundleItems || undefined, createdAt: now });
 }
 
@@ -305,7 +345,14 @@ async function handleUpdateDeal(userId, dealId, body) {
   // If deal was just moved to 'won', notify team members
   if (body.stage === 'won' && previousStage !== 'won') {
     try {
-      await notifyTeamDealWon(userId, body.name || item.dealName, body.value !== undefined ? body.value : item.dealValue);
+      await notifyTeamDealWon(
+        userId,
+        body.name || item.dealName,
+        body.value !== undefined ? body.value : item.dealValue,
+        body.soldBy !== undefined ? body.soldBy : (item.soldBy || ''),
+        body.policyType !== undefined ? body.policyType : (item.policyType || ''),
+        body.folio !== undefined ? body.folio : (item.folio || '')
+      );
     } catch (e) {
       console.error('Failed to send team deal notification:', e.message);
     }

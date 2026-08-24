@@ -162,7 +162,20 @@ async function handlePaymentFailed(invoice) {
 
 exports.handler = async (event) => {
   try {
-    const secrets = await getSecrets();
+    let secrets;
+    try {
+      secrets = await getSecrets();
+    } catch (e) {
+      console.error('Failed to get secrets:', e.message);
+      // Return 200 to prevent Stripe from retrying — we can't process without secrets
+      return respond(200, { received: true, error: 'config_error' });
+    }
+
+    if (!secrets.STRIPE_SECRET_KEY || !secrets.STRIPE_WEBHOOK_SECRET) {
+      console.error('Missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET in secrets');
+      return respond(200, { received: true, error: 'missing_keys' });
+    }
+
     const stripe = new Stripe(secrets.STRIPE_SECRET_KEY);
 
     // API Gateway HTTP API v2 may base64-encode the body
@@ -170,11 +183,15 @@ exports.handler = async (event) => {
     if (event.isBase64Encoded && rawBody) {
       rawBody = Buffer.from(rawBody, 'base64').toString('utf-8');
     }
-    const signature = event.headers?.['stripe-signature'] ?? event.headers?.['Stripe-Signature'] ?? event.headers?.['STRIPE-SIGNATURE'];
+
+    // HTTP API v2 lowercases all headers
+    const headers = event.headers || {};
+    const signature = headers['stripe-signature'] || headers['Stripe-Signature'] || headers['STRIPE-SIGNATURE'];
 
     if (!rawBody || !signature) {
-      console.error('Missing body or signature. Headers:', JSON.stringify(event.headers || {}));
-      return respond(400, { error: 'Missing body or stripe-signature header' });
+      console.error('Missing body or signature. isBase64:', event.isBase64Encoded, 'bodyLen:', (event.body || '').length, 'headers:', Object.keys(headers).join(','));
+      // Return 200 so Stripe doesn't keep retrying
+      return respond(200, { received: true, error: 'missing_input' });
     }
 
     let stripeEvent;
@@ -185,7 +202,8 @@ exports.handler = async (event) => {
         secrets.STRIPE_WEBHOOK_SECRET
       );
     } catch (e) {
-      console.error('Webhook signature verification failed:', e.message);
+      console.error('Webhook signature verification failed:', e.message, 'sigPrefix:', signature?.slice(0, 20), 'bodyPrefix:', rawBody?.slice(0, 50));
+      // Return 400 for sig failure — this is a legitimate rejection
       return respond(400, { error: `Webhook signature verification failed: ${e.message}` });
     }
 
@@ -209,13 +227,13 @@ exports.handler = async (event) => {
         break;
 
       default:
-        // Acknowledge unhandled events so Stripe doesn't retry them
         console.log(`Unhandled event type: ${stripeEvent.type}`);
     }
 
     return respond(200, { received: true });
   } catch (e) {
     console.error('stripe-webhook handler error:', e.message, e.stack);
-    return respond(500, { error: 'Internal server error' });
+    // Return 200 even on unexpected errors to prevent Stripe from disabling the endpoint
+    return respond(200, { received: true, error: 'internal_error' });
   }
 };

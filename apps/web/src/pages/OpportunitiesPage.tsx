@@ -534,9 +534,9 @@ export default function OpportunitiesPage() {
 
       {/* Add Lead Modal */}
       {showAddLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto" onClick={() => setShowAddLead(false)}>
-          <div className="min-h-full flex items-center justify-center p-4">
-            <div className="glass-card-strong w-full max-w-sm animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm" onClick={() => setShowAddLead(false)}>
+          <div className="p-4 pb-24">
+            <div className="glass-card-strong w-full max-w-sm mx-auto animate-scale-in" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-white">+ Add Lead</h3>
                 <button onClick={() => setShowAddLead(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
@@ -741,9 +741,9 @@ export default function OpportunitiesPage() {
 
       {/* Edit Lead Modal */}
       {editingLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto" onClick={() => setEditingLead(null)}>
-          <div className="min-h-full flex items-center justify-center p-4">
-            <div className="glass-card-strong w-full max-w-sm animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm" onClick={() => setEditingLead(null)}>
+          <div className="p-4 pb-24">
+            <div className="glass-card-strong w-full max-w-sm mx-auto animate-scale-in" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-white">✏️ Edit Lead</h3>
                 <button onClick={() => setEditingLead(null)} className="text-slate-400 hover:text-white text-lg">✕</button>

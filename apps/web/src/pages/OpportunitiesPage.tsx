@@ -545,7 +545,7 @@ export default function OpportunitiesPage() {
       {/* Add Lead Modal */}
       {showAddLead && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" style={{ overflowY: 'scroll', WebkitOverflowScrolling: 'touch' }} onClick={() => setShowAddLead(false)}>
-          <div style={{ padding: '1rem', paddingBottom: '6rem', position: 'relative', minHeight: '100%' }}>
+          <div style={{ padding: '4.5rem 1rem 6rem 1rem' }}>
             <div className="glass-card-strong w-full max-w-sm mx-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-white">+ Add Lead</h3>
@@ -743,6 +743,7 @@ export default function OpportunitiesPage() {
               >
                 Add Lead
               </button>
+              <button onClick={() => setShowAddLead(false)} className="w-full py-2 text-slate-400 text-sm hover:text-white transition-colors">Cancel</button>
             </div>
           </div>
           </div>
@@ -752,7 +753,7 @@ export default function OpportunitiesPage() {
       {/* Edit Lead Modal */}
       {editingLead && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" style={{ overflowY: 'scroll', WebkitOverflowScrolling: 'touch' }} onClick={() => setEditingLead(null)}>
-          <div style={{ padding: '1rem', paddingBottom: '6rem', position: 'relative', minHeight: '100%' }}>
+          <div style={{ padding: '4.5rem 1rem 6rem 1rem' }}>
             <div className="glass-card-strong w-full max-w-sm mx-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-white">✏️ Edit Lead</h3>
@@ -842,6 +843,7 @@ export default function OpportunitiesPage() {
               >
                 ✓ Save Changes
               </button>
+              <button onClick={() => setEditingLead(null)} className="w-full py-2 text-slate-400 text-sm hover:text-white transition-colors">Cancel</button>
             </div>
           </div>
           </div>

@@ -147,7 +147,7 @@ function computeStats(deals, folioStart, folioEnd) {
   };
 }
 
-function buildRecapEmail(stats, folioLabel) {
+function buildRecapEmail(stats, folioLabel, agencyTotal) {
   const { totalSold, wonDeals, totalDeals, topPipelineType, topPipelineValue, topEmployee, topEmployeeValue } = stats;
 
   // Build a simple text bar chart for pipeline types
@@ -170,14 +170,15 @@ function buildRecapEmail(stats, folioLabel) {
     })
     .join('\n');
 
-  const subject = `🦅 Folio Recap: $${totalSold.toLocaleString()} sold last folio!`;
+  const subject = `🦅 Folio Recap: $${totalSold.toLocaleString()} sold | Agency Total: $${(agencyTotal || totalSold).toLocaleString()}`;
 
   const body = `
 🦅 HawkEye-Cue — Folio Recap
 ${'═'.repeat(45)}
 
 📅 Folio Period: ${folioLabel}
-💰 Premium Sold: $${totalSold.toLocaleString()}
+💰 Premium Sold (You): $${totalSold.toLocaleString()}
+🏢 Total Agency Premium: $${(agencyTotal || totalSold).toLocaleString()}
 🎯 Deals Won: ${wonDeals} of ${totalDeals} total
 
 ${'─'.repeat(45)}
@@ -246,9 +247,49 @@ exports.handler = async () => {
         continue;
       }
 
+      // Compute total agency premium — sum all team members' won deals in this folio
+      let agencyTotal = stats.totalSold;
+      try {
+        // Check if user belongs to a team
+        const teamResult = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND SK = :sk',
+          ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_MEMBER' },
+        }));
+        const teamRecord = (teamResult.Items || [])[0];
+        if (teamRecord && teamRecord.teamId) {
+          // Get all team members
+          let teamLastKey = undefined;
+          const allTeamMembers = [];
+          do {
+            const teamScan = await dynamo.send(new ScanCommand({
+              TableName: TABLE_NAME,
+              FilterExpression: 'SK = :sk AND teamId = :tid',
+              ExpressionAttributeValues: { ':sk': 'TEAM_MEMBER', ':tid': teamRecord.teamId },
+              ExclusiveStartKey: teamLastKey,
+            }));
+            allTeamMembers.push(...(teamScan.Items || []));
+            teamLastKey = teamScan.LastEvaluatedKey;
+          } while (teamLastKey);
+
+          // Sum all team members' won deals for this folio period
+          let totalAgency = 0;
+          for (const member of allTeamMembers) {
+            const memberId = member.PK.replace('USER#', '');
+            const memberDeals = await getDealsForUser(memberId);
+            const memberStats = computeStats(memberDeals, folioStart, folioEnd);
+            totalAgency += memberStats.totalSold;
+          }
+          agencyTotal = totalAgency;
+        }
+      } catch (e) {
+        console.error(`[folio] Failed to compute agency total for user ${userId}:`, e.message);
+        // Fall back to individual total
+      }
+
       // Build and send recap email
       const folioLabel = `${folioStart} to ${folioEnd}`;
-      const { subject, body } = buildRecapEmail(stats, folioLabel);
+      const { subject, body } = buildRecapEmail(stats, folioLabel, agencyTotal);
 
       for (const email of emails.slice(0, 10)) {
         try {

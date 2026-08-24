@@ -534,11 +534,11 @@ export default function OpportunitiesPage() {
 
       {/* Add Lead Modal */}
       {showAddLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto">
-          <div className="glass-card-strong w-full max-w-sm animate-scale-in max-h-[calc(100vh-2rem)] overflow-y-auto">
-            <div className="flex items-center justify-between mb-3">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto" style={{ padding: '1rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)) 0.75rem' }}>
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in">
+            <div className="flex items-center justify-between mb-3 sticky top-0 bg-slate-800/95 backdrop-blur-sm -mx-4 -mt-4 px-4 pt-4 pb-2 z-10 border-b border-white/5">
               <h3 className="font-bold text-white">+ Add Lead</h3>
-              <button onClick={() => setShowAddLead(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowAddLead(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
             <div className="space-y-3">
               <div>
@@ -739,8 +739,8 @@ export default function OpportunitiesPage() {
 
       {/* Edit Lead Modal */}
       {editingLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto">
-          <div className="glass-card-strong w-full max-w-sm animate-scale-in max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto" style={{ padding: '1rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)) 0.75rem' }}>
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-white">✏️ Edit Lead</h3>
               <button onClick={() => setEditingLead(null)} className="text-slate-400 hover:text-white">✕</button>

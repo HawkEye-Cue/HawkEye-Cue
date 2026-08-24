@@ -1015,8 +1015,8 @@ export default function SalesPage() {
 
       {/* Edit Deal Modal */}
       {editingDeal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="glass-card-strong w-full max-w-sm animate-scale-in space-y-3">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto">
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in space-y-3 max-h-[calc(100vh-2rem)] overflow-y-auto">
             <h3 className="font-bold text-white">Edit Deal</h3>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contact name *" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
             <div className="flex gap-2">

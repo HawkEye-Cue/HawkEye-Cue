@@ -1117,8 +1117,8 @@ export default function DashboardPage() {
 
       {/* Edit Meeting Modal */}
       {editingEvent && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-2xl p-5 shadow-2xl">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto">
+          <div className="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-2xl p-5 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-white text-lg">✏️ Edit Meeting</h3>
               <button onClick={() => setEditingEvent(null)} className="text-slate-400 hover:text-white text-lg">✕</button>

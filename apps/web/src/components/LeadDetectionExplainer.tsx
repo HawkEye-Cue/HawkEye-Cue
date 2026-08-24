@@ -4,8 +4,8 @@ interface Props {
 
 export default function LeadDetectionExplainer({ onClose }: Props) {
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <div className="glass-card-strong w-full max-w-md animate-scale-in space-y-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto" onClick={onClose}>
+      <div className="glass-card-strong w-full max-w-md animate-scale-in space-y-4 max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="text-center">
           <span className="text-4xl">🦅</span>
           <h2 className="text-xl font-bold text-white mt-2">How Lead Detection Works</h2>

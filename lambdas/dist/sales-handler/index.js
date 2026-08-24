@@ -260,6 +260,15 @@ async function handleCreateDeal(userId, body) {
     },
   }));
 
+  // If deal is created as 'won', notify team
+  if (stage === 'won') {
+    try {
+      await notifyTeamDealWon(userId, name.trim(), dealValue);
+    } catch (e) {
+      console.error('Failed to send team deal notification on create:', e.message);
+    }
+  }
+
   return ok({ id: dealId, name: name.trim(), value: dealValue, stage: stage || 'prospect', policyType: policyType || '', leadSource: leadSource || '', leadSourceNote: leadSourceNote || '', bundleItems: bundleItems || undefined, createdAt: now });
 }
 

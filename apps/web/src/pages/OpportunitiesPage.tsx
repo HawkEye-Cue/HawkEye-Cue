@@ -294,6 +294,16 @@ export default function OpportunitiesPage() {
     buildClient().then((client) => client.request<{ tier: string }>('GET', '/subscription')).then((res) => setTier(res.tier || 'free')).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Lock body scroll when modals are open
+  useEffect(() => {
+    if (showAddLead || editingLead) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [showAddLead, editingLead]);
+
   const hasAccess = ['soar', 'team', 'summit'].includes(tier);
 
   // Load user's groups from calendar events (post type cues = groups)
@@ -534,9 +544,9 @@ export default function OpportunitiesPage() {
 
       {/* Add Lead Modal */}
       {showAddLead && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm" onClick={() => setShowAddLead(false)}>
-          <div className="p-4 pb-24">
-            <div className="glass-card-strong w-full max-w-sm mx-auto animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" style={{ overflowY: 'scroll', WebkitOverflowScrolling: 'touch' }} onClick={() => setShowAddLead(false)}>
+          <div style={{ padding: '1rem', paddingBottom: '6rem', position: 'relative', minHeight: '100%' }}>
+            <div className="glass-card-strong w-full max-w-sm mx-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-white">+ Add Lead</h3>
                 <button onClick={() => setShowAddLead(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
@@ -741,9 +751,9 @@ export default function OpportunitiesPage() {
 
       {/* Edit Lead Modal */}
       {editingLead && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm" onClick={() => setEditingLead(null)}>
-          <div className="p-4 pb-24">
-            <div className="glass-card-strong w-full max-w-sm mx-auto animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" style={{ overflowY: 'scroll', WebkitOverflowScrolling: 'touch' }} onClick={() => setEditingLead(null)}>
+          <div style={{ padding: '1rem', paddingBottom: '6rem', position: 'relative', minHeight: '100%' }}>
+            <div className="glass-card-strong w-full max-w-sm mx-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-white">✏️ Edit Lead</h3>
                 <button onClick={() => setEditingLead(null)} className="text-slate-400 hover:text-white text-lg">✕</button>

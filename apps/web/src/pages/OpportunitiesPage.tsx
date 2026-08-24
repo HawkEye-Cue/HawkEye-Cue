@@ -534,9 +534,9 @@ export default function OpportunitiesPage() {
 
       {/* Add Lead Modal */}
       {showAddLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto" style={{ padding: '1rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)) 0.75rem' }}>
-          <div className="glass-card-strong w-full max-w-sm animate-scale-in">
-            <div className="flex items-center justify-between mb-3 sticky top-0 bg-slate-800/95 backdrop-blur-sm -mx-4 -mt-4 px-4 pt-4 pb-2 z-10 border-b border-white/5">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto" style={{ paddingTop: '3.5rem', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
+          <div className="glass-card-strong w-full max-w-sm mx-auto animate-scale-in">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-white">+ Add Lead</h3>
               <button onClick={() => setShowAddLead(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
@@ -739,8 +739,8 @@ export default function OpportunitiesPage() {
 
       {/* Edit Lead Modal */}
       {editingLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto" style={{ padding: '1rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)) 0.75rem' }}>
-          <div className="glass-card-strong w-full max-w-sm animate-scale-in">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto" style={{ paddingTop: '3.5rem', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
+          <div className="glass-card-strong w-full max-w-sm mx-auto animate-scale-in">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-white">✏️ Edit Lead</h3>
               <button onClick={() => setEditingLead(null)} className="text-slate-400 hover:text-white">✕</button>

@@ -487,8 +487,8 @@ export default function CalendarPage() {
 
       {/* Day Detail Modal */}
       {showModal && selectedDay !== null && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto" style={{ padding: '1rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)) 0.75rem' }} onClick={() => { setShowModal(false); setShowAddForm(false); }}>
-          <div className="glass-card-strong w-full max-w-md animate-scale-in relative" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto" style={{ paddingTop: '3.5rem', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', paddingLeft: '0.75rem', paddingRight: '0.75rem' }} onClick={() => { setShowModal(false); setShowAddForm(false); }}>
+          <div className="glass-card-strong w-full max-w-md mx-auto animate-scale-in relative" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-white text-lg">
                 {new Date(currentYear, currentMonth, selectedDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}

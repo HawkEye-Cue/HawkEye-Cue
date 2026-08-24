@@ -534,13 +534,18 @@ export default function OpportunitiesPage() {
 
       {/* Add Lead Modal */}
       {showAddLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3" onClick={() => setShowAddLead(false)}>
-          <div className="glass-card-strong w-full max-w-sm animate-scale-in flex flex-col" style={{ maxHeight: 'calc(100dvh - 1.5rem)' }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3 shrink-0">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={() => setShowAddLead(false)}>
+          <div
+            className="fixed left-3 right-3 top-14 bg-slate-800 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
               <h3 className="font-bold text-white">+ Add Lead</h3>
               <button onClick={() => setShowAddLead(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
-            <div className="space-y-3 overflow-y-auto flex-1 -mr-2 pr-2">
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+            <div className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Lead Name / Contact</label>
                 <input type="text" value={newLeadName} onChange={(e) => setNewLeadName(e.target.value)} placeholder="e.g. John Smith" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
@@ -733,19 +738,25 @@ export default function OpportunitiesPage() {
                 Add Lead
               </button>
             </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Edit Lead Modal */}
       {editingLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3" onClick={() => setEditingLead(null)}>
-          <div className="glass-card-strong w-full max-w-sm animate-scale-in flex flex-col" style={{ maxHeight: 'calc(100dvh - 1.5rem)' }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3 shrink-0">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={() => setEditingLead(null)}>
+          <div
+            className="fixed left-3 right-3 top-14 bg-slate-800 border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
               <h3 className="font-bold text-white">✏️ Edit Lead</h3>
               <button onClick={() => setEditingLead(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
-            <div className="space-y-3 overflow-y-auto flex-1 -mr-2 pr-2">
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+            <div className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Lead Name / Contact</label>
                 <input type="text" defaultValue={editingLead.sourceAuthor} id="editLeadName" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
@@ -829,6 +840,7 @@ export default function OpportunitiesPage() {
               >
                 ✓ Save Changes
               </button>
+            </div>
             </div>
           </div>
         </div>

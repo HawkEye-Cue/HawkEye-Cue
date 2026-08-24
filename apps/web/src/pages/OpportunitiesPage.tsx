@@ -534,13 +534,13 @@ export default function OpportunitiesPage() {
 
       {/* Add Lead Modal */}
       {showAddLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto" style={{ paddingTop: '3.5rem', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
-          <div className="glass-card-strong w-full max-w-sm mx-auto animate-scale-in">
-            <div className="flex items-center justify-between mb-3">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3" onClick={() => setShowAddLead(false)}>
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in flex flex-col" style={{ maxHeight: 'calc(100dvh - 1.5rem)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="font-bold text-white">+ Add Lead</h3>
               <button onClick={() => setShowAddLead(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto flex-1 -mr-2 pr-2">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Lead Name / Contact</label>
                 <input type="text" value={newLeadName} onChange={(e) => setNewLeadName(e.target.value)} placeholder="e.g. John Smith" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
@@ -739,13 +739,13 @@ export default function OpportunitiesPage() {
 
       {/* Edit Lead Modal */}
       {editingLead && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto" style={{ paddingTop: '3.5rem', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
-          <div className="glass-card-strong w-full max-w-sm mx-auto animate-scale-in">
-            <div className="flex items-center justify-between mb-3">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3" onClick={() => setEditingLead(null)}>
+          <div className="glass-card-strong w-full max-w-sm animate-scale-in flex flex-col" style={{ maxHeight: 'calc(100dvh - 1.5rem)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="font-bold text-white">✏️ Edit Lead</h3>
-              <button onClick={() => setEditingLead(null)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setEditingLead(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto flex-1 -mr-2 pr-2">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Lead Name / Contact</label>
                 <input type="text" defaultValue={editingLead.sourceAuthor} id="editLeadName" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />

@@ -143,6 +143,23 @@ export default function TeamPage() {
   const [monthlyHistory, setMonthlyHistory] = useState<{ key: string; label: string; premium: number; deals: number }[]>([]);
   const [showFolioGraph, setShowFolioGraph] = useState(false);
   const [currentFolio, setCurrentFolio] = useState<{ start: string; end: string } | null>(null);
+  const [editingFolioDates, setEditingFolioDates] = useState(false);
+  const [folioStartInput, setFolioStartInput] = useState('');
+  const [folioEndInput, setFolioEndInput] = useState('');
+
+  // Save team folio dates (admin sets the current folio period)
+  async function saveFolioDates() {
+    if (!folioStartInput || !folioEndInput) { showToast('Pick both start and end dates'); return; }
+    try {
+      const client = await buildClient();
+      await client.request('PUT', '/sales/folio-config', { folioStart: folioStartInput, folioEnd: folioEndInput });
+      setCurrentFolio({ start: folioStartInput, end: folioEndInput });
+      setSelectedFolio('current');
+      setEditingFolioDates(false);
+      await fetchStats(folioStartInput, folioEndInput);
+      showToast('✓ Folio dates updated');
+    } catch { showToast('❌ Failed to save folio dates'); }
+  }
 
   // Fetch team stats filtered to a folio period (or current folio by default)
   async function fetchStats(folioStart?: string, folioEnd?: string) {
@@ -210,8 +227,30 @@ export default function TeamPage() {
             }
           } catch { /* no folio config */ }
 
+          const todayStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; })();
+
+          // Auto-advance the folio if the stored period has already ended.
+          // Rolls forward by the same length repeatedly until it covers today.
+          if (fStart && fEnd && todayStr > fEnd) {
+            const startD = new Date(fStart + 'T12:00:00');
+            const endD = new Date(fEnd + 'T12:00:00');
+            const periodDays = Math.round((endD.getTime() - startD.getTime()) / 86400000) + 1;
+            let ns = new Date(startD);
+            let ne = new Date(endD);
+            const todayD = new Date(todayStr + 'T12:00:00');
+            let guard = 0;
+            while (ne < todayD && guard < 60) {
+              ns = new Date(ne); ns.setDate(ns.getDate() + 1);
+              ne = new Date(ns); ne.setDate(ne.getDate() + periodDays - 1);
+              guard++;
+            }
+            fStart = `${ns.getFullYear()}-${String(ns.getMonth() + 1).padStart(2, '0')}-${String(ns.getDate()).padStart(2, '0')}`;
+            fEnd = `${ne.getFullYear()}-${String(ne.getMonth() + 1).padStart(2, '0')}-${String(ne.getDate()).padStart(2, '0')}`;
+            // Persist the advanced folio so it stays in sync
+            try { await client.request('PUT', '/sales/folio-config', { folioStart: fStart, folioEnd: fEnd }); } catch { /* best-effort */ }
+          }
+
           // If no folio config is set, default to the current calendar month.
-          // This guarantees EVERY user sees only current production, not all-time.
           if (!fStart || !fEnd) {
             const now = new Date();
             const y = now.getFullYear();
@@ -614,6 +653,43 @@ export default function TeamPage() {
             📊 Trends
           </button>
         </div>
+
+        {/* Edit Folio Dates — admin sets the team's current folio period */}
+        {team.role === 'admin' && (
+          <div>
+            {!editingFolioDates ? (
+              <button
+                onClick={() => {
+                  setFolioStartInput(currentFolio?.start || '');
+                  setFolioEndInput(currentFolio?.end || '');
+                  setEditingFolioDates(true);
+                }}
+                className="text-xs text-blue-400 hover:text-blue-300"
+              >
+                ✏️ Set folio dates
+              </button>
+            ) : (
+              <div className="p-3 bg-slate-800 border border-white/10 rounded-xl space-y-2">
+                <p className="text-xs font-medium text-white">Set Current Folio Period</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label className="block text-[10px] text-slate-400 mb-1">Start</label>
+                    <input type="date" value={folioStartInput} onChange={(e) => setFolioStartInput(e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[10px] text-slate-400 mb-1">End</label>
+                    <input type="date" value={folioEndInput} onChange={(e) => setFolioEndInput(e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={saveFolioDates} className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg">💾 Save</button>
+                  <button onClick={() => setEditingFolioDates(false)} className="px-3 py-2 text-slate-400 text-xs hover:text-white">Cancel</button>
+                </div>
+                <p className="text-[10px] text-slate-500">This sets the folio for the whole team's production tracking.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Rolling-13 Production Graph */}
         {showFolioGraph && (

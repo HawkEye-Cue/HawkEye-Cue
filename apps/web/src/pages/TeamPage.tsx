@@ -207,9 +207,22 @@ export default function TeamPage() {
             if (folioResult.folioStart && folioResult.folioEnd) {
               fStart = folioResult.folioStart;
               fEnd = folioResult.folioEnd;
-              setCurrentFolio({ start: fStart, end: fEnd });
             }
           } catch { /* no folio config */ }
+
+          // If no folio config is set, default to the current calendar month.
+          // This guarantees EVERY user sees only current production, not all-time.
+          if (!fStart || !fEnd) {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = now.getMonth();
+            const firstDay = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+            const lastDate = new Date(y, m + 1, 0);
+            const lastDay = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}-${String(lastDate.getDate()).padStart(2, '0')}`;
+            fStart = firstDay;
+            fEnd = lastDay;
+          }
+          setCurrentFolio({ start: fStart, end: fEnd });
           await fetchStats(fStart, fEnd);
         }
       } catch { /* ignore */ }

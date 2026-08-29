@@ -5,6 +5,8 @@ import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 interface Deal {
   id: string;
@@ -300,7 +302,7 @@ export default function SalesPage() {
   const { getToken, user } = useAuth();
   const { selectedTrade } = useTrade();
   const { addEvent, removeAllByTitle } = useCalendar();
-  const { showToast } = useToast();
+  const { showToast, showUndoToast } = useToast();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState<string>('free');
@@ -592,14 +594,28 @@ export default function SalesPage() {
   }
 
   async function handleDelete(dealId: string) {
-    try {
-      const deal = deals.find((d) => d.id === dealId);
-      const client = await buildClient();
-      await client.request('DELETE', `/sales/deals/${dealId}`);
-      setDeals(deals.filter((d) => d.id !== dealId));
-      // Remove related calendar events
-      if (deal) removeAllByTitle(deal.name);
-    } catch { /* ignore */ }
+    const deal = deals.find((d) => d.id === dealId);
+    if (!deal) return;
+
+    // Optimistic remove + offer undo for 5 seconds
+    setDeals((prev) => prev.filter((d) => d.id !== dealId));
+    let undone = false;
+    showUndoToast('Deal deleted', () => {
+      undone = true;
+      setDeals((prev) => [deal, ...prev]);
+    });
+
+    setTimeout(async () => {
+      if (undone) return;
+      try {
+        const client = await buildClient();
+        await client.request('DELETE', `/sales/deals/${dealId}`);
+        removeAllByTitle(deal.name);
+      } catch {
+        setDeals((prev) => [deal, ...prev]);
+        showToast('❌ Failed to delete');
+      }
+    }, 5000);
   }
 
   function resetForm() {
@@ -1129,12 +1145,16 @@ export default function SalesPage() {
 
       {/* Deals List */}
       {loading ? (
-        <p className="text-sm text-slate-500">Loading...</p>
+        <div className="glass-card"><LoadingSkeleton rows={3} variant="list" /></div>
       ) : filtered.length === 0 ? (
-        <div className="glass-card text-center py-8">
-          <p className="text-2xl mb-2">💰</p>
-          <p className="text-slate-300 font-medium">No deals yet</p>
-          <p className="text-sm text-slate-500 mt-1">Add your first deal to start tracking your sales pipeline.</p>
+        <div className="glass-card">
+          <EmptyState
+            icon="💰"
+            title="No deals yet"
+            description="Log your first sale to start tracking your pipeline and folio production."
+            actionLabel="+ Add your first deal"
+            onAction={() => setShowAdd(true)}
+          />
         </div>
       ) : (
         <div className="space-y-2">

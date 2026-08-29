@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 interface Appreciation {
   id: string;
@@ -284,7 +286,7 @@ export default function AppreciationsPage() {
     : [];
 
   if (loading) {
-    return <p className="text-slate-400">Loading appreciations…</p>;
+    return <div className="glass-card"><LoadingSkeleton rows={3} variant="card" /></div>;
   }
 
   if (!hasAccess && !loading) {
@@ -430,12 +432,12 @@ export default function AppreciationsPage() {
 
           {/* Empty state */}
           {mentions.length === 0 && (
-            <div className="glass-card text-center py-8">
-              <p className="text-2xl mb-2">🦅</p>
-              <p className="text-slate-300 font-medium">No appreciations yet</p>
-              <p className="text-sm text-slate-500 mt-1">
-                When someone recommends or shouts you out on social media, log it here to keep a record of your social proof. Tap "+ Cue a Mention Manually" above to add your first one.
-              </p>
+            <div className="glass-card">
+              <EmptyState
+                icon="🙏"
+                title="No appreciations yet"
+                description="When someone recommends or shouts you out on social media, log it here to keep a record of your social proof. Tap '+ Cue a Mention Manually' above to add your first one."
+              />
             </div>
           )}
 
@@ -565,8 +567,12 @@ export default function AppreciationsPage() {
           <p className="text-sm text-slate-400">People who recommend you — tap to see their full history</p>
 
           {advocates.length === 0 ? (
-            <div className="glass-card text-center py-8">
-              <p className="text-slate-400">No advocates yet. Mentions will build profiles here automatically.</p>
+            <div className="glass-card">
+              <EmptyState
+                icon="⭐"
+                title="No advocates yet"
+                description="Mentions will build advocate profiles here automatically as people recommend you."
+              />
             </div>
           ) : (
             <div className="space-y-2">

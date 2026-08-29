@@ -5,6 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import { TRADES, ApiClient } from '@social-lead-gen/shared';
 import type { NetworkPost, NetworkContact } from '@social-lead-gen/shared';
 import AppreciationsPage from './AppreciationsPage';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
@@ -514,10 +516,14 @@ export default function NetworkPage() {
 
               {/* Posts Feed */}
               {postsLoading ? (
-                <p className="text-sm text-slate-500">Loading posts...</p>
+                <div className="glass-card"><LoadingSkeleton rows={3} variant="card" /></div>
               ) : posts.length === 0 ? (
-                <div className="glass-card text-center py-8">
-                  <p className="text-slate-400">No posts in your area yet. Be the first to start a conversation!</p>
+                <div className="glass-card">
+                  <EmptyState
+                    icon="🤝"
+                    title="No posts in your area yet"
+                    description="Be the first to start a conversation with other trades in your region."
+                  />
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -660,11 +666,14 @@ export default function NetworkPage() {
               )}
 
               {contactsLoading ? (
-                <p className="text-sm text-slate-500">Loading contacts...</p>
+                <div className="glass-card"><LoadingSkeleton rows={3} variant="list" /></div>
               ) : contacts.length === 0 ? (
-                <div className="glass-card text-center py-8">
-                  <p className="text-slate-400 mb-2">No contacts yet</p>
-                  <p className="text-xs text-slate-500">Add referral partners, networking contacts, and collaborators.</p>
+                <div className="glass-card">
+                  <EmptyState
+                    icon="👥"
+                    title="No contacts yet"
+                    description="Add referral partners, networking contacts, and collaborators to build your network."
+                  />
                 </div>
               ) : (
                 <div className="space-y-2">

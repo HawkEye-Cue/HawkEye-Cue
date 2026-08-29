@@ -146,19 +146,22 @@ export default function TeamPage() {
   const [editingFolioDates, setEditingFolioDates] = useState(false);
   const [folioStartInput, setFolioStartInput] = useState('');
   const [folioEndInput, setFolioEndInput] = useState('');
+  const [folioNameInput, setFolioNameInput] = useState('');
+  const [folioName, setFolioName] = useState('');
 
-  // Save team folio dates (admin sets the current folio period)
+  // Save team folio dates + name (admin sets the current folio period)
   async function saveFolioDates() {
     if (!folioStartInput || !folioEndInput) { showToast('Pick both start and end dates'); return; }
     try {
       const client = await buildClient();
-      await client.request('PUT', '/sales/folio-config', { folioStart: folioStartInput, folioEnd: folioEndInput });
+      await client.request('PUT', '/sales/folio-config', { folioStart: folioStartInput, folioEnd: folioEndInput, folioName: folioNameInput.trim() });
       setCurrentFolio({ start: folioStartInput, end: folioEndInput });
+      setFolioName(folioNameInput.trim());
       setSelectedFolio('current');
       setEditingFolioDates(false);
       await fetchStats(folioStartInput, folioEndInput);
-      showToast('✓ Folio dates updated');
-    } catch { showToast('❌ Failed to save folio dates'); }
+      showToast('✓ Folio updated');
+    } catch { showToast('❌ Failed to save folio'); }
   }
 
   // Fetch team stats filtered to a folio period (or current folio by default)
@@ -220,11 +223,12 @@ export default function TeamPage() {
           let fStart: string | undefined;
           let fEnd: string | undefined;
           try {
-            const folioResult = await client.request<{ folioStart?: string; folioEnd?: string }>('GET', '/sales/folio-config');
+            const folioResult = await client.request<{ folioStart?: string; folioEnd?: string; folioName?: string }>('GET', '/sales/folio-config');
             if (folioResult.folioStart && folioResult.folioEnd) {
               fStart = folioResult.folioStart;
               fEnd = folioResult.folioEnd;
             }
+            if (folioResult.folioName) setFolioName(folioResult.folioName);
           } catch { /* no folio config */ }
 
           const todayStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; })();
@@ -644,7 +648,7 @@ export default function TeamPage() {
             }}
             className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs"
           >
-            <option value="current">📅 Current Folio{currentFolio ? ` (${currentFolio.start} to ${currentFolio.end})` : ''}</option>
+            <option value="current">📅 {folioName || 'Current Folio'}{currentFolio ? ` (${currentFolio.start} to ${currentFolio.end})` : ''}</option>
             <option value="all">All Time</option>
           </select>
           <button
@@ -663,15 +667,20 @@ export default function TeamPage() {
                 onClick={() => {
                   setFolioStartInput(currentFolio?.start || '');
                   setFolioEndInput(currentFolio?.end || '');
+                  setFolioNameInput(folioName || '');
                   setEditingFolioDates(true);
                 }}
                 className="text-xs text-blue-400 hover:text-blue-300"
               >
-                ✏️ Set folio dates
+                ✏️ Set folio dates & name
               </button>
             ) : (
               <div className="p-3 bg-slate-800 border border-white/10 rounded-xl space-y-2">
-                <p className="text-xs font-medium text-white">Set Current Folio Period</p>
+                <p className="text-xs font-medium text-white">Set Current Folio</p>
+                <div>
+                  <label className="block text-[10px] text-slate-400 mb-1">Folio Name (optional)</label>
+                  <input type="text" value={folioNameInput} onChange={(e) => setFolioNameInput(e.target.value)} placeholder='e.g. "Aug 26 Folio"' className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-slate-500" />
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <label className="block text-[10px] text-slate-400 mb-1">Start</label>
@@ -849,7 +858,7 @@ export default function TeamPage() {
         <div className="glass-card space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-white">📊 Team Stats</h3>
-            <span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : currentFolio ? `${currentFolio.start} → ${currentFolio.end}` : 'Current Folio'}</span>
+            <span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : folioName ? folioName : currentFolio ? `${currentFolio.start} → ${currentFolio.end}` : 'Current Folio'}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-slate-700 rounded-lg p-3 text-center">

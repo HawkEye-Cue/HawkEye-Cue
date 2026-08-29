@@ -383,6 +383,7 @@ export default function SalesPage() {
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
 
   // Folio default (saved once, auto-populates new deals)
+  const [defaultFolioName, setDefaultFolioName] = useState(() => localStorage.getItem('hawkeye_folio_name') || '');
   const [defaultFolioStart, setDefaultFolioStart] = useState(() => localStorage.getItem('hawkeye_folio_start') || '');
   const [defaultFolioEnd, setDefaultFolioEnd] = useState(() => localStorage.getItem('hawkeye_folio_end') || '');
   const [editingFolio, setEditingFolio] = useState(false);
@@ -443,7 +444,8 @@ export default function SalesPage() {
         }
         // Fetch folio config from server (cross-device sync)
         try {
-          const folioResult = await client.request<{ folioStart?: string; folioEnd?: string }>('GET', '/sales/folio-config');
+          const folioResult = await client.request<{ folioStart?: string; folioEnd?: string; folioName?: string }>('GET', '/sales/folio-config');
+          if (folioResult.folioName !== undefined) { setDefaultFolioName(folioResult.folioName || ''); localStorage.setItem('hawkeye_folio_name', folioResult.folioName || ''); }
           if (folioResult.folioStart) { setDefaultFolioStart(folioResult.folioStart); localStorage.setItem('hawkeye_folio_start', folioResult.folioStart); }
           if (folioResult.folioEnd) { setDefaultFolioEnd(folioResult.folioEnd); localStorage.setItem('hawkeye_folio_end', folioResult.folioEnd); }
         } catch { /* use localStorage defaults */ }
@@ -804,7 +806,7 @@ export default function SalesPage() {
       <div className="glass-card">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-white">📅 Current Folio</p>
+            <p className="text-sm font-medium text-white">📅 {defaultFolioName || 'Current Folio'}</p>
             {defaultFolioStart && defaultFolioEnd ? (
               <p className="text-xs text-slate-400">{defaultFolioStart} to {defaultFolioEnd}</p>
             ) : (
@@ -819,7 +821,21 @@ export default function SalesPage() {
           </button>
         </div>
         {editingFolio && (
-          <div className="mt-3 flex gap-2 items-center">
+          <div className="mt-3 space-y-2">
+            <input
+              type="text"
+              value={defaultFolioName}
+              onChange={(e) => {
+                setDefaultFolioName(e.target.value);
+                localStorage.setItem('hawkeye_folio_name', e.target.value);
+                buildClient().then((client) => {
+                  client.request('PUT', '/sales/folio-config', { folioStart: defaultFolioStart, folioEnd: defaultFolioEnd, folioName: e.target.value });
+                }).catch(() => {});
+              }}
+              placeholder='Folio name (e.g. "Aug 26 Folio")'
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+            />
+          <div className="flex gap-2 items-center">
             <input
               type="date"
               value={defaultFolioStart}
@@ -828,7 +844,7 @@ export default function SalesPage() {
                 localStorage.setItem('hawkeye_folio_start', e.target.value);
                 // Sync to server for folio recap notifications
                 buildClient().then((client) => {
-                  client.request('PUT', '/sales/folio-config', { folioStart: e.target.value, folioEnd: defaultFolioEnd });
+                  client.request('PUT', '/sales/folio-config', { folioStart: e.target.value, folioEnd: defaultFolioEnd, folioName: defaultFolioName });
                 }).catch(() => {});
               }}
               className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
@@ -842,11 +858,12 @@ export default function SalesPage() {
                 localStorage.setItem('hawkeye_folio_end', e.target.value);
                 // Sync to server for folio recap notifications
                 buildClient().then((client) => {
-                  client.request('PUT', '/sales/folio-config', { folioStart: defaultFolioStart, folioEnd: e.target.value });
+                  client.request('PUT', '/sales/folio-config', { folioStart: defaultFolioStart, folioEnd: e.target.value, folioName: defaultFolioName });
                 }).catch(() => {});
               }}
               className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
             />
+          </div>
           </div>
         )}
       </div>

@@ -406,7 +406,7 @@ exports.handler = async (event) => {
       return ok({ emails });
     }
 
-    // GET /sales/folio-config — get user's folio date range
+    // GET /sales/folio-config — get user's folio date range + name
     if (method === 'GET' && path === '/sales/folio-config') {
       const result = await dynamo.send(new QueryCommand({
         TableName: TABLE_NAME,
@@ -414,13 +414,13 @@ exports.handler = async (event) => {
         ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'FOLIO_CONFIG' },
       }));
       const item = (result.Items || [])[0];
-      return ok({ folioStart: item?.folioStart || '', folioEnd: item?.folioEnd || '' });
+      return ok({ folioStart: item?.folioStart || '', folioEnd: item?.folioEnd || '', folioName: item?.folioName || '' });
     }
 
-    // PUT /sales/folio-config — save user's folio date range
+    // PUT /sales/folio-config — save user's folio date range + optional name
     if (method === 'PUT' && path === '/sales/folio-config') {
       const body = event.body ? JSON.parse(event.body) : {};
-      const { folioStart, folioEnd } = body;
+      const { folioStart, folioEnd, folioName } = body;
       await dynamo.send(new PutCommand({
         TableName: TABLE_NAME,
         Item: {
@@ -428,10 +428,11 @@ exports.handler = async (event) => {
           SK: 'FOLIO_CONFIG',
           folioStart: folioStart || '',
           folioEnd: folioEnd || '',
+          folioName: folioName || '',
           updatedAt: new Date().toISOString(),
         },
       }));
-      return ok({ folioStart, folioEnd });
+      return ok({ folioStart, folioEnd, folioName: folioName || '' });
     }
 
     // ─── Linked Accounts ────────────────────────────────────────────────────

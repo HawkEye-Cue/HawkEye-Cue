@@ -357,28 +357,51 @@ async function updateTeamName(teamId, adminUserId, newName) {
 }
 
 // Helper — get the effective date of a deal (won date preferred, else created)
+// Normalize any date string to YYYY-MM-DD for comparison.
+// Handles both "2026-07-18" and "7/18/2026" formats.
+function normalizeDate(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  // Already ISO YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // M/D/YYYY or MM/DD/YYYY
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (mdy) {
+    const [, m, d, y] = mdy;
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  // ISO timestamp
+  try { return new Date(s).toISOString().slice(0, 10); } catch { return null; }
+}
+
 function dealDate(d) {
-  // Use creation date — this reflects when the deal was actually made/sold.
-  // Do NOT use updatedAt, because editing an old deal would incorrectly pull it
-  // into the current folio.
-  if (d.createdAt) return d.createdAt.slice(0, 10);
+  // Use creation date — reflects when the deal was actually made/sold.
+  if (d.createdAt) return normalizeDate(d.createdAt);
   return null;
 }
 
 // Helper — check if a deal falls within a folio period [start, end]
 function dealInFolio(d, folioStart, folioEnd) {
-  if (!folioStart || !folioEnd) return true;
+  const fStart = normalizeDate(folioStart);
+  const fEnd = normalizeDate(folioEnd);
+  if (!fStart || !fEnd) return true;
 
-  // Primary: if the deal has an explicit folio label, it MUST match exactly.
-  // A deal stamped with a different folio belongs to that folio, not this one.
-  if (d.folio && d.folio.includes(' to ')) {
-    return d.folio === `${folioStart} to ${folioEnd}`;
+  // Primary filter: match by the deal's actual date (createdAt) within the folio window.
+  // This is the most reliable — the label can be stale/mismatched.
+  const date = dealDate(d);
+  if (date) {
+    return date >= fStart && date <= fEnd;
   }
 
-  // Fallback for deals with no folio label: match by creation date within range.
-  const date = dealDate(d);
-  if (!date) return false;
-  return date >= folioStart && date <= folioEnd;
+  // Fallback: if no date, match by explicit folio label
+  if (d.folio && d.folio.includes(' to ')) {
+    const parts = d.folio.split(' to ');
+    const labelStart = normalizeDate(parts[0]);
+    const labelEnd = normalizeDate(parts[1]);
+    return labelStart === fStart && labelEnd === fEnd;
+  }
+
+  return false;
 }
 
 // ─── Get team stats (admin only — sees all members' deals) ───────────────────

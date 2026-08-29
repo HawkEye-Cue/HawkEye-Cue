@@ -263,6 +263,7 @@ export default function TeamPage() {
           }
           setCurrentFolio({ start: fStart, end: fEnd });
           await fetchStats(fStart, fEnd);
+          fetchHistory(); // load YTD + rolling-13 data
         }
       } catch { /* ignore */ }
       finally { setLoading(false); }
@@ -843,17 +844,20 @@ export default function TeamPage() {
       {/* Right column: Calendar, Stats */}
       <div className="min-w-0 space-y-4">
 
-      {/* 📊 Stats */}
-      {teamAnalytics && (
+      {/* 📊 Stats — current folio only (from folio-filtered stats) */}
+      {stats && (
         <div className="glass-card space-y-3">
-          <h3 className="font-semibold text-white">📊 Team Stats</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-white">📊 Team Stats</h3>
+            <span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : currentFolio ? `${currentFolio.start} → ${currentFolio.end}` : 'Current Folio'}</span>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-green-400">${teamAnalytics.totalRevenue.toLocaleString()}</p>
-              <p className="text-xs text-slate-400">Revenue</p>
+              <p className="text-xl font-bold text-green-400">${(stats.totalWonValue || 0).toLocaleString()}</p>
+              <p className="text-xs text-slate-400">Premium (Folio)</p>
             </div>
             <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-blue-400">{teamAnalytics.wonDeals}</p>
+              <p className="text-xl font-bold text-blue-400">{stats.members.reduce((s, m) => s + (m.wonDeals || 0), 0)}</p>
               <p className="text-xs text-slate-400">Won</p>
             </div>
             <div className="bg-slate-700 rounded-lg p-3 text-center">
@@ -861,14 +865,28 @@ export default function TeamPage() {
               <p className="text-xs text-slate-400">Total Leads</p>
             </div>
             <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-amber-400">{teamAnalytics.flockCompletionRate}%</p>
+              <p className="text-xl font-bold text-amber-400">{teamAnalytics?.flockCompletionRate ?? 0}%</p>
               <p className="text-xs text-slate-400">Flock Rate</p>
             </div>
           </div>
-          {/* Leaderboard */}
+
+          {/* Premium earned so far this year (all folios YTD) */}
+          {(() => {
+            const now = new Date();
+            const ytd = monthlyHistory.filter((m) => m.key.startsWith(String(now.getFullYear()))).reduce((s, m) => s + m.premium, 0);
+            if (monthlyHistory.length === 0) return null;
+            return (
+              <div className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-500/20 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-green-300">${ytd.toLocaleString()}</p>
+                <p className="text-[10px] text-slate-400">Premium earned so far in {now.getFullYear()}</p>
+              </div>
+            );
+          })()}
+
+          {/* Leaderboard — current folio */}
           <div className="space-y-1.5">
-            <p className="text-xs text-slate-400 font-semibold">🏆 Leaderboard</p>
-            {teamAnalytics.members.sort((a, b) => b.revenue - a.revenue).slice(0, 5).map((m, i) => {
+            <p className="text-xs text-slate-400 font-semibold">🏆 Leaderboard {selectedFolio !== 'all' && <span className="font-normal text-slate-500">(current folio)</span>}</p>
+            {[...stats.members].sort((a, b) => b.wonValue - a.wonValue).slice(0, 5).map((m, i) => {
               const colorIdx = getMemberColorIndex(m.email);
               const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
               const name = displayNames[m.email] || m.email.split('@')[0];
@@ -879,7 +897,7 @@ export default function TeamPage() {
                     <div className={`w-2.5 h-2.5 rounded-full ${MEMBER_COLORS[colorIdx]}`} />
                     <span className="text-xs text-white">{name}</span>
                   </div>
-                  <span className="text-xs font-bold text-green-400">${m.revenue.toLocaleString()}</span>
+                  <span className="text-xs font-bold text-green-400">${(m.wonValue || 0).toLocaleString()}</span>
                 </div>
               );
             })}

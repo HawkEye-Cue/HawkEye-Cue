@@ -358,19 +358,27 @@ async function updateTeamName(teamId, adminUserId, newName) {
 
 // Helper — get the effective date of a deal (won date preferred, else created)
 function dealDate(d) {
-  if (d.stage === 'won' && d.updatedAt) return d.updatedAt.slice(0, 10);
+  // Use creation date — this reflects when the deal was actually made/sold.
+  // Do NOT use updatedAt, because editing an old deal would incorrectly pull it
+  // into the current folio.
   if (d.createdAt) return d.createdAt.slice(0, 10);
   return null;
 }
 
 // Helper — check if a deal falls within a folio period [start, end]
 function dealInFolio(d, folioStart, folioEnd) {
-  // Match explicit folio label first
-  if (folioStart && folioEnd && d.folio === `${folioStart} to ${folioEnd}`) return true;
+  if (!folioStart || !folioEnd) return true;
+
+  // Primary: if the deal has an explicit folio label, it MUST match exactly.
+  // A deal stamped with a different folio belongs to that folio, not this one.
+  if (d.folio && d.folio.includes(' to ')) {
+    return d.folio === `${folioStart} to ${folioEnd}`;
+  }
+
+  // Fallback for deals with no folio label: match by creation date within range.
   const date = dealDate(d);
   if (!date) return false;
-  if (folioStart && folioEnd) return date >= folioStart && date <= folioEnd;
-  return true;
+  return date >= folioStart && date <= folioEnd;
 }
 
 // ─── Get team stats (admin only — sees all members' deals) ───────────────────

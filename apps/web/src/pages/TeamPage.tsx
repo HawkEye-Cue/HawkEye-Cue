@@ -138,6 +138,32 @@ export default function TeamPage() {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [memberColors, setMemberColors] = useState<Record<string, number>>(() => JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}'));
 
+  // Folio selection + monthly history for the Lead Nests production graph
+  const [selectedFolio, setSelectedFolio] = useState<string>('current');
+  const [monthlyHistory, setMonthlyHistory] = useState<{ key: string; label: string; premium: number; deals: number }[]>([]);
+  const [showFolioGraph, setShowFolioGraph] = useState(false);
+  const [currentFolio, setCurrentFolio] = useState<{ start: string; end: string } | null>(null);
+
+  // Fetch team stats filtered to a folio period (or current folio by default)
+  async function fetchStats(folioStart?: string, folioEnd?: string) {
+    try {
+      const client = await buildClient();
+      let url = '/team/stats';
+      if (folioStart && folioEnd) url += `?folioStart=${folioStart}&folioEnd=${folioEnd}`;
+      const statsResult = await client.request<{ members: MemberStat[]; totalWonValue: number }>('GET', url);
+      setStats(statsResult);
+    } catch { /* ignore */ }
+  }
+
+  // Fetch the rolling-13 monthly production history
+  async function fetchHistory() {
+    try {
+      const client = await buildClient();
+      const result = await client.request<{ months: { key: string; label: string; premium: number; deals: number }[] }>('GET', '/team/history');
+      setMonthlyHistory(result.months || []);
+    } catch { setMonthlyHistory([]); }
+  }
+
   // Load team colors from server (shared across all team members)
   async function fetchTeamColors() {
     try {
@@ -173,10 +199,18 @@ export default function TeamPage() {
         const result = await client.request<{ team: Team | null }>('GET', '/team');
         setTeam(result.team);
         if (result.team) {
+          // Load current folio config so stats default to current folio only
+          let fStart: string | undefined;
+          let fEnd: string | undefined;
           try {
-            const statsResult = await client.request<{ members: MemberStat[]; totalWonValue: number }>('GET', '/team/stats');
-            setStats(statsResult);
-          } catch { /* ignore */ }
+            const folioResult = await client.request<{ folioStart?: string; folioEnd?: string }>('GET', '/sales/folio-config');
+            if (folioResult.folioStart && folioResult.folioEnd) {
+              fStart = folioResult.folioStart;
+              fEnd = folioResult.folioEnd;
+              setCurrentFolio({ start: fStart, end: fEnd });
+            }
+          } catch { /* no folio config */ }
+          await fetchStats(fStart, fEnd);
         }
       } catch { /* ignore */ }
       finally { setLoading(false); }
@@ -542,6 +576,66 @@ export default function TeamPage() {
           <h3 className="text-sm font-semibold text-white">🪹 Lead Nests</h3>
           <span className="text-xs text-slate-500">{teamLeads.length} total leads</span>
         </div>
+
+        {/* Folio selector + production graph toggle */}
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedFolio}
+            onChange={(e) => {
+              setSelectedFolio(e.target.value);
+              if (e.target.value === 'current') {
+                fetchStats(currentFolio?.start, currentFolio?.end);
+              } else if (e.target.value === 'all') {
+                fetchStats(); // no filter = all time
+              }
+            }}
+            className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs"
+          >
+            <option value="current">📅 Current Folio{currentFolio ? ` (${currentFolio.start} to ${currentFolio.end})` : ''}</option>
+            <option value="all">All Time</option>
+          </select>
+          <button
+            onClick={() => { setShowFolioGraph(!showFolioGraph); if (!showFolioGraph && monthlyHistory.length === 0) fetchHistory(); }}
+            className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${showFolioGraph ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+          >
+            📊 Trends
+          </button>
+        </div>
+
+        {/* Rolling-13 Production Graph */}
+        {showFolioGraph && (
+          <div className="p-3 bg-slate-800 border border-white/10 rounded-xl">
+            <p className="text-xs font-semibold text-white text-center mb-1">Rolling-13 Premium (Agency)</p>
+            <p className="text-[10px] text-slate-500 text-center mb-3">Monthly production — helps predict future folios</p>
+            {monthlyHistory.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-6">Loading production history…</p>
+            ) : (
+              (() => {
+                const maxPremium = Math.max(...monthlyHistory.map((m) => m.premium), 1);
+                return (
+                  <div className="flex items-end justify-between gap-1 h-48">
+                    {monthlyHistory.map((m) => {
+                      const heightPct = (m.premium / maxPremium) * 100;
+                      return (
+                        <div key={m.key} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                          {/* Tooltip */}
+                          <div className="absolute -top-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 border border-white/20 rounded px-1.5 py-0.5 text-[9px] text-white whitespace-nowrap z-10 pointer-events-none">
+                            ${m.premium.toLocaleString()}
+                          </div>
+                          <div
+                            className="w-full bg-blue-500 hover:bg-blue-400 rounded-t transition-all"
+                            style={{ height: `${Math.max(heightPct, 1)}%`, minHeight: m.premium > 0 ? '2px' : '0' }}
+                          />
+                          <span className="text-[7px] text-slate-500 mt-1 -rotate-45 origin-center whitespace-nowrap">{m.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        )}
         {leadsLoading ? (
           <p className="text-xs text-slate-500">Loading...</p>
         ) : (

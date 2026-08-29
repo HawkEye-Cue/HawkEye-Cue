@@ -356,8 +356,26 @@ async function updateTeamName(teamId, adminUserId, newName) {
   return ok({ teamName: newName });
 }
 
+// Helper — get the effective date of a deal (won date preferred, else created)
+function dealDate(d) {
+  if (d.stage === 'won' && d.updatedAt) return d.updatedAt.slice(0, 10);
+  if (d.createdAt) return d.createdAt.slice(0, 10);
+  return null;
+}
+
+// Helper — check if a deal falls within a folio period [start, end]
+function dealInFolio(d, folioStart, folioEnd) {
+  // Match explicit folio label first
+  if (folioStart && folioEnd && d.folio === `${folioStart} to ${folioEnd}`) return true;
+  const date = dealDate(d);
+  if (!date) return false;
+  if (folioStart && folioEnd) return date >= folioStart && date <= folioEnd;
+  return true;
+}
+
 // ─── Get team stats (admin only — sees all members' deals) ───────────────────
-async function getTeamStats(teamId, adminUserId) {
+// Accepts optional folioStart/folioEnd query params to filter to a specific folio.
+async function getTeamStats(teamId, adminUserId, folioStart, folioEnd) {
   const teamInfo = await dynamo.send(new GetCommand({
     TableName: TABLE_NAME,
     Key: { PK: `TEAM#${teamId}`, SK: 'INFO' },
@@ -374,7 +392,9 @@ async function getTeamStats(teamId, adminUserId) {
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
       ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'DEAL#' },
     }));
-    const items = deals.Items || [];
+    const allItems = deals.Items || [];
+    // Filter to folio period if provided
+    const items = (folioStart && folioEnd) ? allItems.filter((d) => dealInFolio(d, folioStart, folioEnd)) : allItems;
     const wonDeals = items.filter((d) => d.stage === 'won');
     memberStats.push({
       userId: member.userId,
@@ -387,13 +407,60 @@ async function getTeamStats(teamId, adminUserId) {
     });
   }
 
-  // Sort by won value descending
   memberStats.sort((a, b) => b.wonValue - a.wonValue);
 
   const totalWonValue = memberStats.reduce((sum, m) => sum + m.wonValue, 0);
   const totalDeals = memberStats.reduce((sum, m) => sum + m.totalDeals, 0);
 
-  return ok({ teamName: teamInfo.Item.teamName, members: memberStats, totalWonValue, totalDeals });
+  return ok({ teamName: teamInfo.Item.teamName, members: memberStats, totalWonValue, totalDeals, folioStart: folioStart || null, folioEnd: folioEnd || null });
+}
+
+// ─── Get monthly production history (Rolling-13) for the whole team ──────────
+async function getTeamMonthlyHistory(teamId, adminUserId) {
+  const teamInfo = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `TEAM#${teamId}`, SK: 'INFO' },
+  }));
+  if (!teamInfo.Item) return err(404, 'TEAM_NOT_FOUND', 'Team not found');
+  if (teamInfo.Item.adminUserId !== adminUserId) return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
+
+  const members = await getTeamMembers(teamId);
+
+  // Collect all won deals from all members
+  const allWonDeals = [];
+  for (const member of members) {
+    const deals = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'DEAL#' },
+    }));
+    for (const d of (deals.Items || [])) {
+      if (d.stage === 'won') allWonDeals.push(d);
+    }
+  }
+
+  // Build last 13 months buckets (YYYY-MM)
+  const now = new Date();
+  const months = [];
+  for (let i = 12; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    months.push({ key, label, premium: 0, deals: 0 });
+  }
+
+  for (const deal of allWonDeals) {
+    const date = dealDate(deal);
+    if (!date) continue;
+    const monthKey = date.slice(0, 7); // YYYY-MM
+    const bucket = months.find((m) => m.key === monthKey);
+    if (bucket) {
+      bucket.premium += deal.dealValue || 0;
+      bucket.deals += 1;
+    }
+  }
+
+  return ok({ months });
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -529,11 +596,21 @@ exports.handler = async (event) => {
     }
 
     // GET /team/stats — team performance dashboard (admin only)
+    // Optional query: folioStart, folioEnd to filter to a specific folio period
     if (method === 'GET' && path === '/team/stats') {
       const teamRecord = await getUserTeam(userId);
       if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
 
-      return getTeamStats(teamRecord.teamId, userId);
+      const qs = event.queryStringParameters || {};
+      return getTeamStats(teamRecord.teamId, userId, qs.folioStart, qs.folioEnd);
+    }
+
+    // GET /team/history — rolling 13-month production history (admin only)
+    if (method === 'GET' && path === '/team/history') {
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
+
+      return getTeamMonthlyHistory(teamRecord.teamId, userId);
     }
 
     // POST /team/leave — leave the current team

@@ -1125,6 +1125,12 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
     this.httpApi.addRoutes({
+      path: '/team/history',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
       path: '/team/leave',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: teamIntegration,

@@ -832,10 +832,29 @@ exports.handler = async (event) => {
       }
     }
 
-    // GET /team/analytics — merged team analytics
+    // GET /team/analytics — merged team analytics (filtered to current folio)
     if (method === 'GET' && path === '/team/analytics') {
       const teamRecord = await getUserTeam(userId);
       if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      // Determine folio window — from query params, or the requesting user's folio config
+      const qs = event.queryStringParameters || {};
+      let aFolioStart = qs.folioStart;
+      let aFolioEnd = qs.folioEnd;
+      if (!aFolioStart || !aFolioEnd) {
+        try {
+          const folioCfg = await dynamo.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'PK = :pk AND SK = :sk',
+            ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'FOLIO_CONFIG' },
+          }));
+          const cfg = (folioCfg.Items || [])[0];
+          if (cfg?.folioStart && cfg?.folioEnd) {
+            aFolioStart = cfg.folioStart;
+            aFolioEnd = cfg.folioEnd;
+          }
+        } catch { /* no folio config */ }
+      }
 
       const members = await getTeamMembers(teamRecord.teamId);
       const memberAnalytics = [];
@@ -849,7 +868,9 @@ exports.handler = async (event) => {
           KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
           ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'DEAL#' },
         }));
-        const deals = dealsResult.Items || [];
+        const allDeals = dealsResult.Items || [];
+        // Filter to folio if we have a window
+        const deals = (aFolioStart && aFolioEnd) ? allDeals.filter((d) => dealInFolio(d, aFolioStart, aFolioEnd)) : allDeals;
         const won = deals.filter((d) => d.stage === 'won');
         const memberRevenue = won.reduce((sum, d) => sum + (d.dealValue || 0), 0);
 
@@ -890,6 +911,8 @@ exports.handler = async (event) => {
         totalRevenue,
         flockCompletionRate,
         members: memberAnalytics,
+        folioStart: aFolioStart || null,
+        folioEnd: aFolioEnd || null,
       });
     }
 

@@ -12,6 +12,7 @@ import HourlyTimeline from '../components/HourlyTimeline';
 import type { TimelineEvent } from '../components/HourlyTimeline';
 import ViewModeToggle from '../components/ViewModeToggle';
 import type { ViewMode } from '../components/ViewModeToggle';
+import SetupProgress from '../components/SetupProgress';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -214,6 +215,8 @@ export default function DashboardPage() {
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {/* Left column */}
       <div className="min-w-0 space-y-4">
+      {/* Setup progress — auto-hides when complete */}
+      <SetupProgress />
       <div className="flex flex-col items-center gap-2">
         <h2 className="text-xl font-bold text-white">Dashboard</h2>
         <div className="flex flex-wrap justify-center gap-1.5">

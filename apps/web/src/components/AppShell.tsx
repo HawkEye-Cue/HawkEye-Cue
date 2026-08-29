@@ -259,6 +259,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     setQuickName('');
                     setQuickLink('');
                     setShowQuickAdd(false);
+                    localStorage.setItem(`hawkeye_first_lead_${user?.sub}`, 'true');
                     showToast('✓ Lead saved — ' + quickName.trim());
                   } catch {
                     showToast('❌ Failed to save lead');

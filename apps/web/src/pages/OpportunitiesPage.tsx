@@ -8,6 +8,8 @@ import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
 import LeadProfilePopup from '../components/LeadProfilePopup';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 const FILTERS: { label: string; value: OpportunityStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
@@ -91,7 +93,7 @@ const DEFAULT_LEAD_PROTOCOL = LEAD_PROTOCOLS['default'].steps;
 
 export default function OpportunitiesPage() {
   const { getToken, user } = useAuth();
-  const { showToast } = useToast();
+  const { showToast, showUndoToast } = useToast();
   const navigate = useNavigate();
   const { selectedTrade } = useTrade();
   const { events, addEvent, toggleComplete, removeAllByTitle } = useCalendar();
@@ -393,26 +395,40 @@ export default function OpportunitiesPage() {
   }
 
   async function handleDelete(id: string) {
-    try {
-      const client = await buildClient();
-      await client.deleteOpportunity(id);
-      const deleted = leads.find((l) => l.id === id);
-      // Remove all calendar reminders related to this lead
-      if (deleted?.sourceAuthor) {
-        removeAllByTitle(deleted.sourceAuthor);
+    const deleted = leads.find((l) => l.id === id);
+    if (!deleted) return;
+
+    // Optimistic remove from UI immediately
+    setLeads((prev) => prev.filter((l) => l.id !== id));
+
+    let undone = false;
+    // Offer undo for 5 seconds before committing the server delete
+    showUndoToast('Lead deleted', () => {
+      undone = true;
+      // Restore the lead in the UI
+      setLeads((prev) => [deleted, ...prev]);
+    });
+
+    setTimeout(async () => {
+      if (undone) return; // user undid — don't delete on server
+      try {
+        const client = await buildClient();
+        await client.deleteOpportunity(id);
+        if (deleted.sourceAuthor) removeAllByTitle(deleted.sourceAuthor);
+        setStats((prev) => {
+          const updated = { ...prev, total: prev.total - 1 };
+          if (deleted.status === 'new') updated.new--;
+          else if (deleted.status === 'followed_up') updated.followedUp--;
+          else if (deleted.status === 'converted') updated.converted--;
+          return updated;
+        });
+      } catch (e) {
+        console.error('Failed to delete lead:', e);
+        // Restore on failure
+        setLeads((prev) => [deleted, ...prev]);
+        showToast('❌ Failed to delete');
       }
-      setLeads((prev) => prev.filter((l) => l.id !== id));
-      setStats((prev) => {
-        const updated = { ...prev, total: prev.total - 1 };
-        if (deleted?.status === 'new') updated.new--;
-        else if (deleted?.status === 'followed_up') updated.followedUp--;
-        else if (deleted?.status === 'converted') updated.converted--;
-        return updated;
-      });
-    } catch (e) {
-      console.error('Failed to delete lead:', e);
-      alert('Failed to delete: ' + (e instanceof Error ? e.message : String(e)));
-    }
+    }, 5000);
   }
 
   function renderLeadCard(lead: Opportunity) {
@@ -683,6 +699,7 @@ export default function OpportunitiesPage() {
                       contactEmail: (document.getElementById('newLeadContactEmail') as HTMLInputElement)?.value?.trim() || undefined,
                     });
                     showToast('🎯 Lead added!');
+                    localStorage.setItem(`hawkeye_first_lead_${user?.sub}`, 'true');
                     // Refresh to get the lead with all server-stored fields
                     fetchData();
 
@@ -926,14 +943,16 @@ export default function OpportunitiesPage() {
 
       {/* Leads Table — scalable for hundreds */}
       {loading ? (
-        <p className="text-sm text-slate-500">Loading leads...</p>
+        <div className="glass-card"><LoadingSkeleton rows={4} variant="list" /></div>
       ) : leads.length === 0 ? (
-        <div className="glass-card text-center py-8">
-          <p className="text-2xl mb-2">🦅</p>
-          <p className="text-slate-300 font-medium">No lead cues yet</p>
-          <p className="text-sm text-slate-500 mt-1">
-            Install the browser extension and configure keywords to start detecting leads!
-          </p>
+        <div className="glass-card">
+          <EmptyState
+            icon="🎯"
+            title="No leads yet"
+            description="Save your first lead to start tracking. Use the browser extension while scrolling Facebook, or add one manually."
+            actionLabel="+ Save your first lead"
+            onAction={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }}
+          />
         </div>
       ) : (() => {
         const filtered = leads

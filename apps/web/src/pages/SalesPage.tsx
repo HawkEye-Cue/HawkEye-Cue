@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import FolioManager from '../components/FolioManager';
 
 interface Deal {
   id: string;
@@ -832,71 +833,12 @@ export default function SalesPage() {
         );
       })()}
 
-      {/* Folio Settings */}
-      <div className="glass-card">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-white">📅 {defaultFolioName || 'Current Folio'}</p>
-            {defaultFolioStart && defaultFolioEnd ? (
-              <p className="text-xs text-slate-400">{defaultFolioStart} to {defaultFolioEnd}</p>
-            ) : (
-              <p className="text-xs text-amber-400">Not set — tap Edit to configure</p>
-            )}
-          </div>
-          <button
-            onClick={() => setEditingFolio(!editingFolio)}
-            className="text-xs text-blue-400 hover:text-blue-300"
-          >
-            {editingFolio ? 'Done' : 'Edit'}
-          </button>
-        </div>
-        {editingFolio && (
-          <div className="mt-3 space-y-2">
-            <input
-              type="text"
-              value={defaultFolioName}
-              onChange={(e) => {
-                setDefaultFolioName(e.target.value);
-                localStorage.setItem('hawkeye_folio_name', e.target.value);
-                buildClient().then((client) => {
-                  client.request('PUT', '/sales/folio-config', { folioStart: defaultFolioStart, folioEnd: defaultFolioEnd, folioName: e.target.value });
-                }).catch(() => {});
-              }}
-              placeholder='Folio name (e.g. "Aug 26 Folio")'
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
-            />
-          <div className="flex gap-2 items-center">
-            <input
-              type="date"
-              value={defaultFolioStart}
-              onChange={(e) => {
-                setDefaultFolioStart(e.target.value);
-                localStorage.setItem('hawkeye_folio_start', e.target.value);
-                // Sync to server for folio recap notifications
-                buildClient().then((client) => {
-                  client.request('PUT', '/sales/folio-config', { folioStart: e.target.value, folioEnd: defaultFolioEnd, folioName: defaultFolioName });
-                }).catch(() => {});
-              }}
-              className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
-            />
-            <span className="text-slate-500 text-xs">to</span>
-            <input
-              type="date"
-              value={defaultFolioEnd}
-              onChange={(e) => {
-                setDefaultFolioEnd(e.target.value);
-                localStorage.setItem('hawkeye_folio_end', e.target.value);
-                // Sync to server for folio recap notifications
-                buildClient().then((client) => {
-                  client.request('PUT', '/sales/folio-config', { folioStart: defaultFolioStart, folioEnd: e.target.value, folioName: defaultFolioName });
-                }).catch(() => {});
-              }}
-              className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
-            />
-          </div>
-          </div>
-        )}
-      </div>
+      {/* Folio Settings — cohesive manager, syncs everywhere */}
+      <FolioManager onSaved={(s, e) => {
+        setDefaultFolioStart(s);
+        setDefaultFolioEnd(e);
+        setFolioFilter('current');
+      }} />
 
       {/* Folio History — view any past folio */}
       {availableFolios.length > 0 && (

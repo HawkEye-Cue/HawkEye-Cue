@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
+import FolioManager from '../components/FolioManager';
 
 interface TeamMember {
   userId: string;
@@ -659,46 +660,16 @@ export default function TeamPage() {
           </button>
         </div>
 
-        {/* Edit Folio Dates — admin sets the team's current folio period */}
+        {/* Set folio — cohesive manager, syncs everywhere (admin only) */}
         {team.role === 'admin' && (
-          <div>
-            {!editingFolioDates ? (
-              <button
-                onClick={() => {
-                  setFolioStartInput(currentFolio?.start || '');
-                  setFolioEndInput(currentFolio?.end || '');
-                  setFolioNameInput(folioName || '');
-                  setEditingFolioDates(true);
-                }}
-                className="text-xs text-blue-400 hover:text-blue-300"
-              >
-                ✏️ Set folio dates & name
-              </button>
-            ) : (
-              <div className="p-3 bg-slate-800 border border-white/10 rounded-xl space-y-2">
-                <p className="text-xs font-medium text-white">Set Current Folio</p>
-                <div>
-                  <label className="block text-[10px] text-slate-400 mb-1">Folio Name (optional)</label>
-                  <input type="text" value={folioNameInput} onChange={(e) => setFolioNameInput(e.target.value)} placeholder='e.g. "Aug 26 Folio"' className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-slate-500" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <label className="block text-[10px] text-slate-400 mb-1">Start</label>
-                    <input type="date" value={folioStartInput} onChange={(e) => setFolioStartInput(e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-[10px] text-slate-400 mb-1">End</label>
-                    <input type="date" value={folioEndInput} onChange={(e) => setFolioEndInput(e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={saveFolioDates} className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg">💾 Save</button>
-                  <button onClick={() => setEditingFolioDates(false)} className="px-3 py-2 text-slate-400 text-xs hover:text-white">Cancel</button>
-                </div>
-                <p className="text-[10px] text-slate-500">This sets the folio for the whole team's production tracking.</p>
-              </div>
-            )}
-          </div>
+          <FolioManager
+            compact
+            onSaved={(s, e) => {
+              setCurrentFolio({ start: s, end: e });
+              setSelectedFolio('current');
+              fetchStats(s, e);
+            }}
+          />
         )}
 
         {/* Rolling-13 Production Graph */}

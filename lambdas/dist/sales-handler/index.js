@@ -73,7 +73,10 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
     }
   }
 
-  if (!teamId) return; // Not in a team
+  if (!teamId) {
+    console.log(`[team-win] User ${userId} not in a team — no notification sent`);
+    return;
+  }
 
   // Get user's email
   const profileResult = await dynamo.send(new QueryCommand({
@@ -90,6 +93,7 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
     ExpressionAttributeValues: { ':pk': `TEAM#${teamId}`, ':sk': 'MEMBER#' },
   }));
   const teammates = (membersResult.Items || []).filter((m) => m.userId !== userId);
+  console.log(`[team-win] Team ${teamId}: ${teammates.length} teammate(s) to notify about ${dealName} ($${dealValue})`);
 
   const now = new Date().toISOString();
   const notifId = randomUUID();
@@ -120,6 +124,7 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
       }));
       const mateEmail = (mateProfile.Items || [])[0]?.email;
       const mateNotifs = (mateProfile.Items || [])[0]?.emailNotifications || {};
+      console.log(`[team-win] Mate ${mate.userId}: email=${mateEmail || 'NONE'}, teamWin=${mateNotifs.teamWin}`);
       if (mateEmail && mateNotifs.teamWin !== false) {
         const displayName = userEmail.split('@')[0];
         const html = `
@@ -135,9 +140,31 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
           </div>
         `;
         await sendEmail(mateEmail, `🏆 ${displayName} closed "${dealName}" — $${(dealValue || 0).toLocaleString()}!`, html);
+        console.log(`[team-win] ✓ Email sent to ${mateEmail}`);
       }
     } catch (e) {
       console.error(`[team-win-email] Failed for mate ${mate.userId}:`, e.message);
+    }
+  }
+
+  // Also send a confirmation to the seller
+  if (userEmail) {
+    try {
+      const sellerHtml = `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
+          <h2 style="color:#16a34a;margin:0 0 16px 0;">🎉 Sale Logged!</h2>
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-bottom:16px;">
+            <p style="margin:0 0 4px 0;font-size:14px;color:#334155;"><strong>Deal:</strong> ${dealName || 'Deal'}</p>
+            <p style="margin:0;font-size:14px;color:#334155;"><strong>Premium:</strong> $${(dealValue || 0).toLocaleString()}</p>
+          </div>
+          <p style="font-size:13px;color:#475569;margin:0 0 16px 0;">Your team has been notified. Congrats on the win! 🦅</p>
+          <a href="https://hawkeyecue.com/sales" style="display:inline-block;background:#16a34a;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">View Sales →</a>
+        </div>
+      `;
+      await sendEmail(userEmail, `🎉 Sale logged: ${dealName} — $${(dealValue || 0).toLocaleString()}`, sellerHtml);
+      console.log(`[team-win] ✓ Confirmation sent to seller ${userEmail}`);
+    } catch (e) {
+      console.error('[team-win] Failed to send seller confirmation:', e.message);
     }
   }
 }

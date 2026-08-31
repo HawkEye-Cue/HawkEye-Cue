@@ -263,27 +263,63 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
             <div className="flex justify-between text-[9px] text-slate-500"><span>6mo</span><span>18mo</span><span>36mo</span></div>
           </div>
 
-          <button onClick={generateSchedule} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg">⚡ Generate Folios</button>
+          <div className="flex gap-2">
+            <button onClick={generateSchedule} className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg">⚡ Auto-Generate</button>
+            <button
+              onClick={() => setScheduled((prev) => {
+                // Add a blank folio starting the day after the last one (or today)
+                let s = new Date();
+                if (prev.length > 0) { s = new Date(prev[prev.length - 1].end + 'T12:00:00'); s.setDate(s.getDate() + 1); }
+                const e = new Date(s); e.setMonth(e.getMonth() + 1); e.setDate(e.getDate() - 1);
+                return [...prev, { start: fmt(s), end: fmt(e), name: s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) + ' Folio' }];
+              })}
+              className="flex-1 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-bold rounded-lg"
+            >+ Add Folio</button>
+          </div>
 
-          {/* Preview list */}
+          {/* Editable list — full control over each folio's name AND dates */}
           {scheduled.length > 0 && (
             <>
-              <div className="max-h-48 overflow-y-auto space-y-1">
+              <p className="text-[10px] text-slate-400">Tap any field to edit — name, start, and end are all yours to set.</p>
+              <div className="max-h-72 overflow-y-auto space-y-2">
                 {scheduled.map((f, i) => (
-                  <div key={i} className="flex items-center justify-between bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5">
-                    <input
-                      type="text"
-                      value={f.name}
-                      onChange={(e) => setScheduled((prev) => prev.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x))}
-                      className="bg-transparent text-[11px] text-white font-medium w-24 border-b border-transparent focus:border-amber-500 outline-none"
-                    />
-                    <span className="text-[9px] text-slate-400">{prettyDate(f.start)} → {prettyDate(f.end)}</span>
-                    <button onClick={() => setScheduled((prev) => prev.filter((_, xi) => xi !== i))} className="text-red-400 hover:text-red-300 text-xs">✕</button>
+                  <div key={i} className="bg-slate-800 border border-white/10 rounded-lg p-2.5 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={f.name}
+                        onChange={(e) => setScheduled((prev) => prev.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x))}
+                        placeholder="Folio name"
+                        className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-[11px] text-white font-medium focus:border-amber-500 outline-none"
+                      />
+                      <button onClick={() => setScheduled((prev) => prev.filter((_, xi) => xi !== i))} className="text-red-400 hover:text-red-300 text-sm shrink-0 px-1">✕</button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <label className="block text-[9px] text-slate-500 mb-0.5">Start</label>
+                        <input
+                          type="date"
+                          value={f.start}
+                          onChange={(e) => setScheduled((prev) => prev.map((x, xi) => xi === i ? { ...x, start: e.target.value } : x))}
+                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-[10px] text-white focus:border-amber-500 outline-none"
+                        />
+                      </div>
+                      <span className="text-slate-500 text-[10px] pt-4">→</span>
+                      <div className="flex-1">
+                        <label className="block text-[9px] text-slate-500 mb-0.5">End</label>
+                        <input
+                          type="date"
+                          value={f.end}
+                          onChange={(e) => setScheduled((prev) => prev.map((x, xi) => xi === i ? { ...x, end: e.target.value } : x))}
+                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-[10px] text-white focus:border-amber-500 outline-none"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
               <button onClick={saveSchedule} disabled={saving} className="w-full py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
-                {saving ? 'Saving…' : `💾 Save ${scheduled.length} Folios`}
+                {saving ? 'Saving…' : `💾 Save ${scheduled.length} Folio${scheduled.length !== 1 ? 's' : ''}`}
               </button>
             </>
           )}

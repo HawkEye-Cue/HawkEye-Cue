@@ -120,6 +120,7 @@ export default function OpportunitiesPage() {
   const [teamLeadFilter, setTeamLeadFilter] = useState('all');
   const [showProtocolEditor, setShowProtocolEditor] = useState(false);
   const [activeBucket, setActiveBucket] = useState<string | null>(null);
+  const [showWonNest, setShowWonNest] = useState(false);
   const [showBucketManager, setShowBucketManager] = useState(false);
   const [newBucketName, setNewBucketName] = useState('');
   const [selectedLead, setSelectedLead] = useState<Opportunity | null>(null);
@@ -429,6 +430,16 @@ export default function OpportunitiesPage() {
         showToast('❌ Failed to delete');
       }
     }, 5000);
+  }
+
+  // Move a lead into the Won nest (marks it converted). For older leads added before the Won-nest update.
+  async function moveToWon(lead: Opportunity) {
+    try {
+      const client = await buildClient();
+      await client.request('PUT', `/opportunities/${lead.id}/status`, { status: 'converted' });
+      setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, status: 'converted' as any } : l));
+      showToast('🏆 Moved to Won nest');
+    } catch { showToast('❌ Failed to move'); }
   }
 
   function renderLeadCard(lead: Opportunity) {
@@ -897,15 +908,42 @@ export default function OpportunitiesPage() {
 
           {/* Nest grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <button
-              onClick={() => setActiveBucket(null)}
-              className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${!activeBucket ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
-            >
-              <span className="text-3xl mb-1">🪹</span>
-              <span className="text-2xl absolute top-2 right-2">🦅</span>
-              <span className="text-2xl font-bold text-white">{leads.length}</span>
-              <span className="text-xs text-slate-300 mt-1 font-medium">All Leads</span>
-            </button>
+            {(() => {
+              const activeLeads = leads.filter((l) => l.status !== 'converted');
+              return (
+                <button
+                  onClick={() => { setActiveBucket(null); setShowWonNest(false); }}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${!activeBucket && !showWonNest ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
+                >
+                  <span className="text-3xl mb-1">🪹</span>
+                  <span className="text-2xl absolute top-2 right-2">🦅</span>
+                  <span className="text-2xl font-bold text-white">{activeLeads.length}</span>
+                  <span className="text-xs text-slate-300 mt-1 font-medium">Active Leads</span>
+                </button>
+              );
+            })()}
+            {/* 🏆 Won nest */}
+            {(() => {
+              const wonLeads = leads.filter((l) => l.status === 'converted');
+              const localLeadData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+              const totalPremium = wonLeads.reduce((sum, l) => {
+                const prem = (l as any).expectedPremium || localLeadData[(l.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;
+                return sum + (Number(prem) || 0);
+              }, 0);
+              return (
+                <button
+                  onClick={() => { setShowWonNest(!showWonNest); setActiveBucket(null); }}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${showWonNest ? 'border-green-500 bg-green-500/15 scale-[1.03] shadow-lg shadow-green-500/20' : 'border-green-500/30 bg-slate-800 hover:border-green-500/50'}`}
+                >
+                  <span className="text-3xl mb-1">🏆</span>
+                  <div className="absolute top-2 right-2 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-md">
+                    <span className="text-xs font-bold text-white">{wonLeads.length}</span>
+                  </div>
+                  <span className="text-xs text-white mt-1 font-medium">Won</span>
+                  {totalPremium > 0 && <span className="text-[9px] text-green-300 font-medium mt-0.5">${totalPremium.toLocaleString()}</span>}
+                </button>
+              );
+            })()}
             {buckets.map((bucket) => {
               const localBucketsMap = JSON.parse(localStorage.getItem(`hawkeye_lead_buckets_map_${user?.sub}`) || '{}');
               const count = leads.filter((l) => {
@@ -925,7 +963,7 @@ export default function OpportunitiesPage() {
               return (
                 <button
                   key={bucket}
-                  onClick={() => setActiveBucket(isActive ? null : bucket)}
+                  onClick={() => { setActiveBucket(isActive ? null : bucket); setShowWonNest(false); }}
                   className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${isActive ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
                 >
                   <span className="text-3xl mb-1">🪹</span>
@@ -957,6 +995,10 @@ export default function OpportunitiesPage() {
       ) : (() => {
         const filtered = leads
           .filter((lead) => {
+            // Won nest: show ONLY converted leads
+            if (showWonNest) return lead.status === 'converted';
+            // Everywhere else: hide converted leads (they live in the Won nest)
+            if (lead.status === 'converted') return false;
             if (activeBucket) {
               const lb = ((lead as any).bucket || '').toLowerCase();
               const ls = ((lead as any).leadSource || '').toLowerCase();
@@ -985,7 +1027,8 @@ export default function OpportunitiesPage() {
           <div className="space-y-2">
             {/* Header bar */}
             <div className="flex items-center justify-between">
-              {activeBucket && <p className="text-xs text-amber-400 font-medium">🪹 {activeBucket}</p>}
+              {showWonNest && <p className="text-xs text-green-400 font-medium">🏆 Won — {filtered.length} {filtered.length === 1 ? 'policy' : 'policies'} sold</p>}
+              {activeBucket && !showWonNest && <p className="text-xs text-amber-400 font-medium">🪹 {activeBucket}</p>}
               <p className="text-xs text-slate-500 ml-auto">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</p>
             </div>
 
@@ -1055,15 +1098,27 @@ export default function OpportunitiesPage() {
                           return premium ? `$${Number(premium).toLocaleString()}` : '—';
                         })()}
                       </span>
-                      {/* Color / Priority */}
-                      <div className="w-10 flex justify-center gap-0.5">
-                        {['yellow', 'green', 'red'].map((c) => (
+                      {/* Color / Priority + Move to Won */}
+                      <div className="w-10 flex flex-col items-center gap-1">
+                        <div className="flex justify-center gap-0.5">
+                          {['yellow', 'green', 'red'].map((c) => (
+                            <button
+                              key={c}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); buildClient().then((client) => client.request('PUT', `/opportunities/${lead.id}/status`, { leadColor: newColor })).catch(() => {}); setLeads((prev) => [...prev]); }}
+                              className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${c === 'yellow' ? 'bg-yellow-400 border-yellow-300' : c === 'green' ? 'bg-green-400 border-green-300' : 'bg-red-400 border-red-300'} ${leadColor === c ? 'ring-2 ring-white scale-150 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-125'}`}
+                            />
+                          ))}
+                        </div>
+                        {/* Move to Won (only for non-won leads) */}
+                        {lead.status !== 'converted' && (
                           <button
-                            key={c}
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); buildClient().then((client) => client.request('PUT', `/opportunities/${lead.id}/status`, { leadColor: newColor })).catch(() => {}); setLeads((prev) => [...prev]); }}
-                            className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${c === 'yellow' ? 'bg-yellow-400 border-yellow-300' : c === 'green' ? 'bg-green-400 border-green-300' : 'bg-red-400 border-red-300'} ${leadColor === c ? 'ring-2 ring-white scale-150 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-125'}`}
-                          />
-                        ))}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveToWon(lead); }}
+                            title="Move to Won nest"
+                            className="text-xs opacity-40 hover:opacity-100 hover:scale-125 transition-all"
+                          >
+                            🏆
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

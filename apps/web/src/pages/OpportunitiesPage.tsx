@@ -1076,17 +1076,8 @@ export default function OpportunitiesPage() {
               <p className="text-xs text-slate-500 ml-auto">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</p>
             </div>
 
-            {/* Column headers */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-2 text-[9px] text-amber-200/70 uppercase tracking-widest font-bold border-b border-amber-500/20 bg-gradient-to-r from-slate-800 to-slate-700 rounded-t-lg">
-              <span>🦅 Lead / Type</span>
-              <span className="w-16 text-center">Status</span>
-              <span className="w-20 text-center">Producer</span>
-              <span className="w-16 text-center">Premium</span>
-              <span className="w-10 text-center">Flag</span>
-            </div>
-
-            {/* Compact lead rows */}
-            <div className="space-y-0.5 max-h-[600px] overflow-y-auto">
+            {/* Lead cards — spacious, modern, on-brand */}
+            <div className="space-y-2 max-h-[640px] overflow-y-auto pr-0.5">
               {filtered.map((lead) => {
                 const followup = leadFollowups[lead.id];
                 const steps = followup?.steps || [];
@@ -1094,84 +1085,80 @@ export default function OpportunitiesPage() {
                 const totalSteps = steps.length;
                 const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
                 const leadColor = (lead as any).leadColor || localStorage.getItem(`hawkeye_lead_color_${lead.id}`) || '';
-                const colorBorder = leadColor === 'yellow' ? 'border-l-4 border-l-yellow-400' : leadColor === 'green' ? 'border-l-4 border-l-green-400' : leadColor === 'red' ? 'border-l-4 border-l-red-400' : '';
-                const colorBg = leadColor === 'yellow' ? 'bg-yellow-500/5' : leadColor === 'green' ? 'bg-green-500/5' : leadColor === 'red' ? 'bg-red-500/5' : '';
+                const accent = leadColor === 'yellow' ? '#facc15' : leadColor === 'green' ? '#4ade80' : leadColor === 'red' ? '#f87171' : '';
 
-                const leadColorDot = leadColor === 'yellow' ? 'shadow-[0_0_8px_2px_rgba(250,204,21,0.4)]' : leadColor === 'green' ? 'shadow-[0_0_8px_2px_rgba(74,222,128,0.4)]' : leadColor === 'red' ? 'shadow-[0_0_8px_2px_rgba(248,113,113,0.4)]' : '';
+                const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+                const assigned = (lead as any).assignedTo || localData[(lead.sourceAuthor || '').toLowerCase()]?.assignedTo || '';
+                const displayNames = JSON.parse(localStorage.getItem(`hawkeye_display_names`) || '{}');
+                const producer = assigned ? (displayNames[assigned] || assigned.split('@')[0]) : '';
+                const premium = (lead as any).expectedPremium || localData[(lead.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;
+                const statusLabel = lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New';
 
                 return (
-                  <div key={lead.id} className={`group lead-row ${leadColorDot} cursor-pointer`} onClick={() => setSelectedLead(lead)}>
-                    <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-3 py-2.5">
-                      {/* Avatar + Name + Policy Type + Progress */}
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="platform-badge">{platformIcons[lead.sourcePlatform] || '📱'}</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm text-white font-bold truncate">{lead.sourceAuthor}</span>
-                            {(lead as any).policyType && (
-                              <span className="text-[9px] font-bold text-amber-200 bg-gradient-to-r from-amber-500/30 to-orange-500/20 px-2 py-0.5 rounded-full border border-amber-400/40 shrink-0">{(lead as any).policyType}</span>
-                            )}
-                          </div>
+                  <div
+                    key={lead.id}
+                    className="group relative rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98))',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      boxShadow: accent ? `0 0 0 1px ${accent}33, 0 4px 16px -6px ${accent}44` : '0 2px 12px -6px rgba(0,0,0,0.5)',
+                    }}
+                    onClick={() => setSelectedLead(lead)}
+                  >
+                    {/* accent edge */}
+                    {accent && <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: `linear-gradient(180deg, ${accent}, ${accent}66)` }} />}
+
+                    <div className="flex items-center gap-3 p-3 pl-4">
+                      {/* Platform avatar */}
+                      <div className="platform-badge">{platformIcons[lead.sourcePlatform] || '📱'}</div>
+
+                      {/* Main info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[15px] text-white font-bold leading-tight">{lead.sourceAuthor}</span>
+                          {(lead as any).policyType && (
+                            <span className="text-[9px] font-bold text-amber-200 bg-gradient-to-r from-amber-500/30 to-orange-500/15 px-2 py-0.5 rounded-full border border-amber-400/40">{(lead as any).policyType}</span>
+                          )}
+                          <span className={`text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>{statusLabel}</span>
+                        </div>
+                        {/* meta row */}
+                        <div className="flex items-center gap-3 mt-1.5 text-[11px]">
+                          {producer && <span className="text-sky-300 font-semibold flex items-center gap-1">👤 {producer}</span>}
+                          {premium > 0 && <span className="text-green-400 font-bold flex items-center gap-1">💰 ${Number(premium).toLocaleString()}</span>}
                           {totalSteps > 0 && (
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <div className="w-20 h-1.5 bg-slate-700/80 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-amber-400 via-amber-300 to-green-400 rounded-full transition-all" style={{ width: `${progress}%` }} />
-                              </div>
-                              <span className="text-[9px] text-slate-400 font-medium">{completedSteps}/{totalSteps}</span>
-                            </div>
+                            <span className="flex items-center gap-1.5 text-slate-400">
+                              <span className="inline-block w-14 h-1.5 bg-slate-700/80 rounded-full overflow-hidden align-middle">
+                                <span className="block h-full bg-gradient-to-r from-amber-400 to-green-400 rounded-full" style={{ width: `${progress}%` }} />
+                              </span>
+                              <span className="text-[9px] font-medium">{completedSteps}/{totalSteps}</span>
+                            </span>
                           )}
                         </div>
                       </div>
-                      {/* Status */}
-                      <span className={`w-16 text-center text-[9px] font-bold uppercase tracking-wide px-1.5 py-1 rounded-full border ${statusColors[lead.status]}`}>
-                        {lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New'}
-                      </span>
-                      {/* Producer */}
-                      <span className="w-20 text-center text-[10px] text-sky-300 font-semibold truncate">
-                        {(() => {
-                          const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
-                          const assigned = (lead as any).assignedTo || localData[(lead.sourceAuthor || '').toLowerCase()]?.assignedTo || '';
-                          if (!assigned) return '—';
-                          const displayNames = JSON.parse(localStorage.getItem(`hawkeye_display_names`) || '{}');
-                          return displayNames[assigned] || assigned.split('@')[0];
-                        })()}
-                      </span>
-                      {/* Premium */}
-                      <span className="w-16 text-center text-[11px] text-green-400 font-bold">
-                        {(() => {
-                          const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
-                          const premium = (lead as any).expectedPremium || localData[(lead.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;
-                          return premium ? `$${Number(premium).toLocaleString()}` : '—';
-                        })()}
-                      </span>
-                      {/* Color / Priority + Move to Won */}
-                      <div className="w-10 flex flex-col items-center gap-1">
-                        <div className="flex justify-center gap-0.5">
+
+                      {/* Right side: flags + actions (revealed on hover) */}
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <div className="flex gap-1">
                           {['yellow', 'green', 'red'].map((c) => (
                             <button
                               key={c}
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); buildClient().then((client) => client.request('PUT', `/opportunities/${lead.id}/status`, { leadColor: newColor })).catch(() => {}); setLeads((prev) => [...prev]); }}
-                              className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${c === 'yellow' ? 'bg-yellow-400 border-yellow-300' : c === 'green' ? 'bg-green-400 border-green-300' : 'bg-red-400 border-red-300'} ${leadColor === c ? 'ring-2 ring-white scale-150 shadow-lg' : 'opacity-40 hover:opacity-100 hover:scale-125'}`}
+                              className={`w-3 h-3 rounded-full transition-all ${c === 'yellow' ? 'bg-yellow-400' : c === 'green' ? 'bg-green-400' : 'bg-red-400'} ${leadColor === c ? 'ring-2 ring-white scale-125' : 'opacity-30 hover:opacity-100 hover:scale-110'}`}
                             />
                           ))}
                         </div>
-                        {/* Move to Won + Perch (only for non-won leads) */}
                         {lead.status !== 'converted' && (
-                          <div className="flex gap-1">
+                          <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveToWon(lead); }}
                               title="Move to Won nest"
-                              className="text-xs opacity-40 hover:opacity-100 hover:scale-125 transition-all"
-                            >
-                              🏆
-                            </button>
+                              className="w-6 h-6 rounded-lg bg-green-500/15 border border-green-500/30 hover:bg-green-500/30 flex items-center justify-center text-xs transition-all"
+                            >🏆</button>
                             <button
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePerched(lead.id); }}
                               title={perchedIds.has(lead.id) ? 'Return to active leads' : 'Perch — circle back later'}
-                              className={`text-xs transition-all hover:scale-125 ${perchedIds.has(lead.id) ? 'opacity-100' : 'opacity-40 hover:opacity-100'}`}
-                            >
-                              🌲
-                            </button>
+                              className={`w-6 h-6 rounded-lg border flex items-center justify-center text-xs transition-all ${perchedIds.has(lead.id) ? 'bg-sky-500/30 border-sky-500/50' : 'bg-sky-500/15 border-sky-500/30 hover:bg-sky-500/30'}`}
+                            >🌲</button>
                           </div>
                         )}
                       </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
+import { setFolioName, folioRange } from '../utils/folioName';
 
 interface FolioManagerProps {
   /** Called after folio dates are saved, with the new start/end */
@@ -70,6 +71,13 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
       localStorage.setItem('hawkeye_folio_start', newStart);
       localStorage.setItem('hawkeye_folio_end', newEnd);
       localStorage.setItem('hawkeye_folio_name', name);
+      // Associate the nickname with this date range so it shows everywhere
+      setFolioName(folioRange(newStart, newEnd), name);
+      // Also sync the names map to the server for cross-device persistence
+      try {
+        const { getFolioNameMap } = await import('../utils/folioName');
+        await client.request('PUT', '/profile/preferences', { folioNamesMap: getFolioNameMap() });
+      } catch { /* best effort */ }
       setStart(newStart);
       setEnd(newEnd);
       setEditing(false);
@@ -113,7 +121,7 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-sm font-medium text-white flex items-center gap-1.5">
-              📅 {name || 'Current Folio'}
+              📅 {name || (start && end ? 'Current Folio' : 'Current Folio')}
               {folioEnded && <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full border border-amber-500/30">Ended</span>}
             </p>
             {start && end ? (

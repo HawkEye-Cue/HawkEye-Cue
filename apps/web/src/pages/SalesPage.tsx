@@ -8,6 +8,7 @@ import { ApiClient } from '@social-lead-gen/shared';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import FolioManager from '../components/FolioManager';
+import { folioDisplayName } from '../utils/folioName';
 
 interface Deal {
   id: string;
@@ -861,7 +862,7 @@ export default function SalesPage() {
                   className={`w-full text-left p-3 rounded-lg border transition-all ${isActive ? 'bg-blue-500/15 border-blue-500/30' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-white font-medium">{folio}</span>
+                    <span className="text-xs text-white font-medium">{folioDisplayName(folio)}</span>
                     {isActive && <span className="text-[9px] text-blue-400 font-bold">VIEWING</span>}
                   </div>
                   <div className="flex gap-4 mt-1">
@@ -1110,10 +1111,10 @@ export default function SalesPage() {
           onChange={(e) => setFolioFilter(e.target.value)}
           className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
         >
-          <option value="current">📅 Current Folio{defaultFolioStart && defaultFolioEnd ? ` (${defaultFolioStart} to ${defaultFolioEnd})` : ''}</option>
+          <option value="current">📅 {defaultFolioStart && defaultFolioEnd ? folioDisplayName(`${defaultFolioStart} to ${defaultFolioEnd}`) : 'Current Folio'}</option>
           <option value="all">All Periods</option>
           {availableFolios.map((f) => (
-            <option key={f} value={f}>{f}</option>
+            <option key={f} value={f}>{folioDisplayName(f)}</option>
           ))}
         </select>
       </div>
@@ -1362,8 +1363,8 @@ export default function SalesPage() {
         <div className="glass-card-strong border-green-500/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white">{folioFilter === 'current' ? 'Current Folio Total' : 'Folio Total'}</p>
-              <p className="text-xs text-slate-400">{filtered.filter((d) => d.stage === 'won').length} won {folioFilter === 'current' ? (defaultFolioStart && defaultFolioEnd ? `(${defaultFolioStart} to ${defaultFolioEnd})` : 'this folio') : folioFilter !== 'all' ? `in ${folioFilter}` : ''}</p>
+              <p className="text-sm font-medium text-white">{folioFilter === 'current' && defaultFolioStart && defaultFolioEnd ? folioDisplayName(`${defaultFolioStart} to ${defaultFolioEnd}`) : folioFilter === 'current' ? 'Current Folio' : folioFilter !== 'all' ? folioDisplayName(folioFilter) : 'Folio'} Total</p>
+              <p className="text-xs text-slate-400">{filtered.filter((d) => d.stage === 'won').length} won</p>
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold text-green-400">${filtered.filter((d) => d.stage === 'won').reduce((sum, d) => sum + d.value, 0).toLocaleString()}</p>

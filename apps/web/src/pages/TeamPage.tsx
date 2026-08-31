@@ -4,6 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
+import { folioDisplayName } from '../utils/folioName';
 
 interface TeamMember {
   userId: string;
@@ -649,7 +650,7 @@ export default function TeamPage() {
             }}
             className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs"
           >
-            <option value="current">📅 {folioName || 'Current Folio'}{currentFolio ? ` (${currentFolio.start} to ${currentFolio.end})` : ''}</option>
+            <option value="current">📅 {currentFolio ? folioDisplayName(`${currentFolio.start} to ${currentFolio.end}`) : 'Current Folio'}</option>
             <option value="all">All Time</option>
           </select>
           <button
@@ -829,7 +830,7 @@ export default function TeamPage() {
         <div className="glass-card space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-white">📊 Team Stats</h3>
-            <span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : folioName ? folioName : currentFolio ? `${currentFolio.start} → ${currentFolio.end}` : 'Current Folio'}</span>
+            <span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : currentFolio ? folioDisplayName(`${currentFolio.start} to ${currentFolio.end}`) : 'Current Folio'}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-slate-700 rounded-lg p-3 text-center">

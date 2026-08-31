@@ -35,6 +35,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
         if (prefs.displayNames && typeof prefs.displayNames === 'object') {
           localStorage.setItem('hawkeye_display_names', JSON.stringify(prefs.displayNames));
         }
+        // Sync folio nicknames map so they show everywhere across devices
+        if (prefs.folioNamesMap && typeof prefs.folioNamesMap === 'object') {
+          localStorage.setItem('hawkeye_folio_names_map', JSON.stringify(prefs.folioNamesMap));
+        }
         // Auto-save user's timezone to profile (detected from browser)
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (tz && prefs.timezone !== tz) {

@@ -121,6 +121,9 @@ export default function OpportunitiesPage() {
   const [showProtocolEditor, setShowProtocolEditor] = useState(false);
   const [activeBucket, setActiveBucket] = useState<string | null>(null);
   const [showWonNest, setShowWonNest] = useState(false);
+  const [showPerchedNest, setShowPerchedNest] = useState(false);
+  // Perched leads (circle back later) — stored per user
+  const [perchedIds, setPerchedIds] = useState<Set<string>>(new Set());
   const [showBucketManager, setShowBucketManager] = useState(false);
   const [newBucketName, setNewBucketName] = useState('');
   const [selectedLead, setSelectedLead] = useState<Opportunity | null>(null);
@@ -306,6 +309,26 @@ export default function OpportunitiesPage() {
     }
     return () => { document.body.style.overflow = ''; };
   }, [showAddLead, editingLead]);
+
+  // Load perched (circle-back-later) leads for this user
+  useEffect(() => {
+    if (!user?.sub) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`hawkeye_perched_leads_${user.sub}`) || '[]');
+      setPerchedIds(new Set(stored));
+    } catch { /* ignore */ }
+  }, [user?.sub]);
+
+  // Toggle a lead's perched state (circle back later)
+  function togglePerched(leadId: string) {
+    setPerchedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(leadId)) { next.delete(leadId); showToast('🪺 Back to active leads'); }
+      else { next.add(leadId); showToast('🌲 Perched — circle back later'); }
+      localStorage.setItem(`hawkeye_perched_leads_${user?.sub}`, JSON.stringify([...next]));
+      return next;
+    });
+  }
 
   const hasAccess = ['soar', 'team', 'summit'].includes(tier);
 
@@ -909,11 +932,11 @@ export default function OpportunitiesPage() {
           {/* Nest grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {(() => {
-              const activeLeads = leads.filter((l) => l.status !== 'converted');
+              const activeLeads = leads.filter((l) => l.status !== 'converted' && !perchedIds.has(l.id));
               return (
                 <button
-                  onClick={() => { setActiveBucket(null); setShowWonNest(false); }}
-                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${!activeBucket && !showWonNest ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
+                  onClick={() => { setActiveBucket(null); setShowWonNest(false); setShowPerchedNest(false); }}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${!activeBucket && !showWonNest && !showPerchedNest ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
                 >
                   <span className="text-3xl mb-1">🪹</span>
                   <span className="text-2xl absolute top-2 right-2">🦅</span>
@@ -932,7 +955,7 @@ export default function OpportunitiesPage() {
               }, 0);
               return (
                 <button
-                  onClick={() => { setShowWonNest(!showWonNest); setActiveBucket(null); }}
+                  onClick={() => { setShowWonNest(!showWonNest); setActiveBucket(null); setShowPerchedNest(false); }}
                   className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${showWonNest ? 'border-green-500 bg-green-500/15 scale-[1.03] shadow-lg shadow-green-500/20' : 'border-green-500/30 bg-slate-800 hover:border-green-500/50'}`}
                 >
                   <span className="text-3xl mb-1">🏆</span>
@@ -941,6 +964,23 @@ export default function OpportunitiesPage() {
                   </div>
                   <span className="text-xs text-white mt-1 font-medium">Won</span>
                   {totalPremium > 0 && <span className="text-[9px] text-green-300 font-medium mt-0.5">${totalPremium.toLocaleString()}</span>}
+                </button>
+              );
+            })()}
+            {/* 🌲 Perched nest — circle back later */}
+            {(() => {
+              const perchedCount = leads.filter((l) => perchedIds.has(l.id) && l.status !== 'converted').length;
+              return (
+                <button
+                  onClick={() => { setShowPerchedNest(!showPerchedNest); setActiveBucket(null); setShowWonNest(false); }}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${showPerchedNest ? 'border-sky-500 bg-sky-500/15 scale-[1.03] shadow-lg shadow-sky-500/20' : 'border-sky-500/30 bg-slate-800 hover:border-sky-500/50'}`}
+                >
+                  <span className="text-3xl mb-1">🌲</span>
+                  <div className="absolute top-2 right-2 w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center shadow-md">
+                    <span className="text-xs font-bold text-white">{perchedCount}</span>
+                  </div>
+                  <span className="text-xs text-white mt-1 font-medium">Perched</span>
+                  <span className="text-[9px] text-sky-300 mt-0.5">Circle back</span>
                 </button>
               );
             })()}
@@ -963,7 +1003,7 @@ export default function OpportunitiesPage() {
               return (
                 <button
                   key={bucket}
-                  onClick={() => { setActiveBucket(isActive ? null : bucket); setShowWonNest(false); }}
+                  onClick={() => { setActiveBucket(isActive ? null : bucket); setShowWonNest(false); setShowPerchedNest(false); }}
                   className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${isActive ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
                 >
                   <span className="text-3xl mb-1">🪹</span>
@@ -997,8 +1037,12 @@ export default function OpportunitiesPage() {
           .filter((lead) => {
             // Won nest: show ONLY converted leads
             if (showWonNest) return lead.status === 'converted';
+            // Perched nest: show ONLY perched (non-won) leads
+            if (showPerchedNest) return perchedIds.has(lead.id) && lead.status !== 'converted';
             // Everywhere else: hide converted leads (they live in the Won nest)
             if (lead.status === 'converted') return false;
+            // Hide perched leads from the active list
+            if (perchedIds.has(lead.id)) return false;
             if (activeBucket) {
               const lb = ((lead as any).bucket || '').toLowerCase();
               const ls = ((lead as any).leadSource || '').toLowerCase();
@@ -1028,7 +1072,8 @@ export default function OpportunitiesPage() {
             {/* Header bar */}
             <div className="flex items-center justify-between">
               {showWonNest && <p className="text-xs text-green-400 font-medium">🏆 Won — {filtered.length} {filtered.length === 1 ? 'policy' : 'policies'} sold</p>}
-              {activeBucket && !showWonNest && <p className="text-xs text-amber-400 font-medium">🪹 {activeBucket}</p>}
+              {showPerchedNest && <p className="text-xs text-sky-400 font-medium">🌲 Perched — circle back when ready</p>}
+              {activeBucket && !showWonNest && !showPerchedNest && <p className="text-xs text-amber-400 font-medium">🪹 {activeBucket}</p>}
               <p className="text-xs text-slate-500 ml-auto">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</p>
             </div>
 
@@ -1109,15 +1154,24 @@ export default function OpportunitiesPage() {
                             />
                           ))}
                         </div>
-                        {/* Move to Won (only for non-won leads) */}
+                        {/* Move to Won + Perch (only for non-won leads) */}
                         {lead.status !== 'converted' && (
-                          <button
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveToWon(lead); }}
-                            title="Move to Won nest"
-                            className="text-xs opacity-40 hover:opacity-100 hover:scale-125 transition-all"
-                          >
-                            🏆
-                          </button>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveToWon(lead); }}
+                              title="Move to Won nest"
+                              className="text-xs opacity-40 hover:opacity-100 hover:scale-125 transition-all"
+                            >
+                              🏆
+                            </button>
+                            <button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePerched(lead.id); }}
+                              title={perchedIds.has(lead.id) ? 'Return to active leads' : 'Perch — circle back later'}
+                              className={`text-xs transition-all hover:scale-125 ${perchedIds.has(lead.id) ? 'opacity-100' : 'opacity-40 hover:opacity-100'}`}
+                            >
+                              🌲
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

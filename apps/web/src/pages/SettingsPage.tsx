@@ -7,6 +7,7 @@ import TradeSelector from '../components/TradeSelector';
 import ExtensionTour from '../components/ExtensionTour';
 import LeadDetectionExplainer from '../components/LeadDetectionExplainer';
 import HowToGuide from '../components/HowToGuide';
+import FolioSetup from '../components/FolioSetup';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Subscription, SocialAccount } from '@social-lead-gen/shared';
 
@@ -307,6 +308,9 @@ export default function SettingsPage() {
       </div>
 
       <TradeSelector />
+
+      {/* Folio Setup — set periods or turn off for trades that don't use folios */}
+      <FolioSetup />
 
       {/* Connected Social Accounts */}
       <div className="glass-card">

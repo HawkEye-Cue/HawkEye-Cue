@@ -403,7 +403,7 @@ export default function SalesPage() {
   const [dealDate, setDealDate] = useState('');
   const [bundleItems, setBundleItems] = useState<{ type: string; value: string }[]>([]);
   const [adding, setAdding] = useState(false);
-  const [folioFilter, setFolioFilter] = useState('all');
+  const [folioFilter, setFolioFilter] = useState('current');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [snoozeId, setSnoozeId] = useState<string | null>(null);
   const [teamEmailsText, setTeamEmailsText] = useState('');
@@ -626,9 +626,39 @@ export default function SalesPage() {
     setLeadSource(''); setLeadSourceNote(''); setSoldBy(''); setDealDate(''); setBundleItems([]);
   }
 
+  // Normalize date for folio comparison (handles YYYY-MM-DD and M/D/YYYY, ISO timestamps)
+  function normDate(s?: string): string | null {
+    if (!s) return null;
+    s = String(s).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (mdy) { const [, m, d, y] = mdy; return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+    try { return new Date(s).toISOString().slice(0, 10); } catch { return null; }
+  }
+
+  // Does a deal fall within the current folio window?
+  function dealInCurrentFolio(d: Deal): boolean {
+    const fStart = normDate(defaultFolioStart);
+    const fEnd = normDate(defaultFolioEnd);
+    if (!fStart || !fEnd) return true; // no folio set — show all
+    // Match by the deal's date (createdAt preferred)
+    const date = normDate((d as any).createdAt);
+    if (date) return date >= fStart && date <= fEnd;
+    // Fallback: explicit folio label match
+    if (d.folio && d.folio.includes(' to ')) {
+      const [ls, le] = d.folio.split(' to ');
+      return normDate(ls) === fStart && normDate(le) === fEnd;
+    }
+    return false;
+  }
+
   const filtered = (() => {
     let result = filter === 'all' ? deals : deals.filter((d) => d.stage === filter);
-    if (folioFilter !== 'all') result = result.filter((d) => d.folio === folioFilter);
+    if (folioFilter === 'current') {
+      result = result.filter(dealInCurrentFolio);
+    } else if (folioFilter !== 'all') {
+      result = result.filter((d) => d.folio === folioFilter);
+    }
     return result;
   })();
 
@@ -1131,21 +1161,20 @@ export default function SalesPage() {
       )}
 
       {/* Folio Filter */}
-      {availableFolios.length > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Folio:</span>
-          <select
-            value={folioFilter}
-            onChange={(e) => setFolioFilter(e.target.value)}
-            className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
-          >
-            <option value="all">All Periods</option>
-            {availableFolios.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-slate-400">Folio:</span>
+        <select
+          value={folioFilter}
+          onChange={(e) => setFolioFilter(e.target.value)}
+          className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+        >
+          <option value="current">📅 Current Folio{defaultFolioStart && defaultFolioEnd ? ` (${defaultFolioStart} to ${defaultFolioEnd})` : ''}</option>
+          <option value="all">All Periods</option>
+          {availableFolios.map((f) => (
+            <option key={f} value={f}>{f}</option>
+          ))}
+        </select>
+      </div>
 
       {/* Stage Filter */}
       <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-3 px-3">
@@ -1391,8 +1420,8 @@ export default function SalesPage() {
         <div className="glass-card-strong border-green-500/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white">Folio Total</p>
-              <p className="text-xs text-slate-400">{filtered.filter((d) => d.stage === 'won').length} won {folioFilter !== 'all' ? `in ${folioFilter}` : ''}</p>
+              <p className="text-sm font-medium text-white">{folioFilter === 'current' ? 'Current Folio Total' : 'Folio Total'}</p>
+              <p className="text-xs text-slate-400">{filtered.filter((d) => d.stage === 'won').length} won {folioFilter === 'current' ? (defaultFolioStart && defaultFolioEnd ? `(${defaultFolioStart} to ${defaultFolioEnd})` : 'this folio') : folioFilter !== 'all' ? `in ${folioFilter}` : ''}</p>
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold text-green-400">${filtered.filter((d) => d.stage === 'won').reduce((sum, d) => sum + d.value, 0).toLocaleString()}</p>

@@ -441,21 +441,28 @@ exports.handler = async (event) => {
         ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'FOLIO_CONFIG' },
       }));
       const item = (result.Items || [])[0];
-      return ok({ folioStart: item?.folioStart || '', folioEnd: item?.folioEnd || '', folioName: item?.folioName || '' });
+      return ok({ folioStart: item?.folioStart || '', folioEnd: item?.folioEnd || '', folioName: item?.folioName || '', scheduledFolios: item?.scheduledFolios || [] });
     }
 
-    // PUT /sales/folio-config — save user's folio date range + optional name
+    // PUT /sales/folio-config — save user's folio date range + optional name + scheduled folios
     if (method === 'PUT' && path === '/sales/folio-config') {
       const body = event.body ? JSON.parse(event.body) : {};
-      const { folioStart, folioEnd, folioName } = body;
+      const { folioStart, folioEnd, folioName, scheduledFolios } = body;
+      // Load existing so partial updates don't wipe other fields
+      const existing = (await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'FOLIO_CONFIG' },
+      })))?.Items?.[0] || {};
       await dynamo.send(new PutCommand({
         TableName: TABLE_NAME,
         Item: {
           PK: `USER#${userId}`,
           SK: 'FOLIO_CONFIG',
-          folioStart: folioStart || '',
-          folioEnd: folioEnd || '',
-          folioName: folioName || '',
+          folioStart: folioStart !== undefined ? folioStart : (existing.folioStart || ''),
+          folioEnd: folioEnd !== undefined ? folioEnd : (existing.folioEnd || ''),
+          folioName: folioName !== undefined ? folioName : (existing.folioName || ''),
+          scheduledFolios: scheduledFolios !== undefined ? scheduledFolios : (existing.scheduledFolios || []),
           updatedAt: new Date().toISOString(),
         },
       }));

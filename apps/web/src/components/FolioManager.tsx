@@ -11,6 +11,12 @@ interface FolioManagerProps {
   compact?: boolean;
 }
 
+interface ScheduledFolio {
+  start: string;
+  end: string;
+  name: string;
+}
+
 function fmt(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -37,6 +43,11 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [scheduled, setScheduled] = useState<ScheduledFolio[]>([]);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [cycleType, setCycleType] = useState<'monthly' | 'custom'>('monthly');
+  const [cycleDays, setCycleDays] = useState(30);
+  const [monthsAhead, setMonthsAhead] = useState(18);
 
   async function buildClient() {
     const token = await getToken();
@@ -48,10 +59,11 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
     async function load() {
       try {
         const client = await buildClient();
-        const cfg = await client.request<{ folioStart?: string; folioEnd?: string; folioName?: string }>('GET', '/sales/folio-config');
+        const cfg = await client.request<{ folioStart?: string; folioEnd?: string; folioName?: string; scheduledFolios?: ScheduledFolio[] }>('GET', '/sales/folio-config');
         if (cfg.folioStart) setStart(cfg.folioStart);
         if (cfg.folioEnd) setEnd(cfg.folioEnd);
         if (cfg.folioName) setName(cfg.folioName);
+        if (Array.isArray(cfg.scheduledFolios)) setScheduled(cfg.scheduledFolios);
       } catch { /* fall back to localStorage */
         setStart(localStorage.getItem('hawkeye_folio_start') || '');
         setEnd(localStorage.getItem('hawkeye_folio_end') || '');
@@ -110,6 +122,50 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
     setEnd(fmt(newEnd));
   }
 
+  // Generate a series of future folios from the current start, up to monthsAhead
+  function generateSchedule() {
+    if (!start) { showToast('Set a start date first'); return; }
+    const folios: ScheduledFolio[] = [];
+    const horizon = new Date(start + 'T12:00:00');
+    horizon.setMonth(horizon.getMonth() + monthsAhead);
+
+    let curStart = new Date(start + 'T12:00:00');
+    let guard = 0;
+    while (curStart < horizon && guard < 60) {
+      guard++;
+      let curEnd: Date;
+      if (cycleType === 'monthly') {
+        // End = last day of the folio's start month cycle (one month minus a day)
+        curEnd = new Date(curStart);
+        curEnd.setMonth(curEnd.getMonth() + 1);
+        curEnd.setDate(curEnd.getDate() - 1);
+      } else {
+        curEnd = new Date(curStart);
+        curEnd.setDate(curEnd.getDate() + (cycleDays - 1));
+      }
+      const label = curStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) + ' Folio';
+      folios.push({ start: fmt(curStart), end: fmt(curEnd), name: label });
+      // Next folio starts the day after this one ends
+      curStart = new Date(curEnd);
+      curStart.setDate(curStart.getDate() + 1);
+    }
+    setScheduled(folios);
+    showToast(`✓ Generated ${folios.length} folios`);
+  }
+
+  async function saveSchedule() {
+    setSaving(true);
+    try {
+      const client = await buildClient();
+      await client.request('PUT', '/sales/folio-config', { scheduledFolios: scheduled });
+      // Also register each folio's name in the shared names map
+      for (const f of scheduled) setFolioName(folioRange(f.start, f.end), f.name);
+      showToast(`✓ ${scheduled.length} folios scheduled`);
+      setShowSchedule(false);
+    } catch { showToast('❌ Failed to save schedule'); }
+    finally { setSaving(false); }
+  }
+
   // Has the current folio already ended? (suggest rolling forward)
   const folioEnded = end && end < fmt(new Date());
 
@@ -130,12 +186,20 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
               <p className="text-xs text-amber-400">Not set — tap to configure</p>
             )}
           </div>
-          <button
-            onClick={() => { if (folioEnded) rollForward(); setEditing(true); }}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg shrink-0"
-          >
-            {folioEnded ? '↻ New Folio' : start ? 'Edit' : 'Set Dates'}
-          </button>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <button
+              onClick={() => { if (folioEnded) rollForward(); setEditing(true); }}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg"
+            >
+              {folioEnded ? '↻ New Folio' : start ? 'Edit' : 'Set Dates'}
+            </button>
+            <button
+              onClick={() => setShowSchedule(!showSchedule)}
+              className="text-[11px] text-amber-400 hover:text-amber-300"
+            >
+              📆 Schedule ahead{scheduled.length > 0 ? ` (${scheduled.length})` : ''}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
@@ -170,6 +234,59 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
             <button onClick={() => setEditing(false)} className="px-3 py-2 text-slate-400 text-xs hover:text-white">Cancel</button>
           </div>
           <p className="text-[10px] text-slate-500">This syncs everywhere — Sales, Summit, and recap emails all use these dates.</p>
+        </div>
+      )}
+
+      {/* Schedule ahead panel — plan folios 18+ months out */}
+      {showSchedule && (
+        <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
+          <p className="text-xs font-semibold text-white">📆 Schedule Future Folios</p>
+          <p className="text-[10px] text-slate-400">Plan your folio calendar ahead of time. Starts from your current folio start date.</p>
+
+          {/* Cycle type */}
+          <div className="flex gap-2">
+            <button onClick={() => setCycleType('monthly')} className={`flex-1 py-2 rounded-lg text-[11px] font-medium transition-all ${cycleType === 'monthly' ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-300'}`}>Monthly</button>
+            <button onClick={() => setCycleType('custom')} className={`flex-1 py-2 rounded-lg text-[11px] font-medium transition-all ${cycleType === 'custom' ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-300'}`}>Custom cycle</button>
+          </div>
+
+          {cycleType === 'custom' && (
+            <div>
+              <label className="block text-[10px] text-slate-400 mb-1">Cycle length (days)</label>
+              <input type="number" min={7} max={90} value={cycleDays} onChange={(e) => setCycleDays(Math.max(7, parseInt(e.target.value) || 30))} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
+            </div>
+          )}
+
+          {/* Months ahead */}
+          <div>
+            <label className="block text-[10px] text-slate-400 mb-1">Plan ahead: {monthsAhead} months</label>
+            <input type="range" min={6} max={36} step={1} value={monthsAhead} onChange={(e) => setMonthsAhead(parseInt(e.target.value))} className="w-full accent-amber-500" />
+            <div className="flex justify-between text-[9px] text-slate-500"><span>6mo</span><span>18mo</span><span>36mo</span></div>
+          </div>
+
+          <button onClick={generateSchedule} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg">⚡ Generate Folios</button>
+
+          {/* Preview list */}
+          {scheduled.length > 0 && (
+            <>
+              <div className="max-h-48 overflow-y-auto space-y-1">
+                {scheduled.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5">
+                    <input
+                      type="text"
+                      value={f.name}
+                      onChange={(e) => setScheduled((prev) => prev.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x))}
+                      className="bg-transparent text-[11px] text-white font-medium w-24 border-b border-transparent focus:border-amber-500 outline-none"
+                    />
+                    <span className="text-[9px] text-slate-400">{prettyDate(f.start)} → {prettyDate(f.end)}</span>
+                    <button onClick={() => setScheduled((prev) => prev.filter((_, xi) => xi !== i))} className="text-red-400 hover:text-red-300 text-xs">✕</button>
+                  </div>
+                ))}
+              </div>
+              <button onClick={saveSchedule} disabled={saving} className="w-full py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
+                {saving ? 'Saving…' : `💾 Save ${scheduled.length} Folios`}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -936,12 +936,12 @@ export default function OpportunitiesPage() {
               return (
                 <button
                   onClick={() => { setActiveBucket(null); setShowWonNest(false); setShowPerchedNest(false); }}
-                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${!activeBucket && !showWonNest && !showPerchedNest ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${!activeBucket && !showWonNest && !showPerchedNest ? 'border-amber-500 bg-gradient-to-br from-amber-500/20 to-orange-500/10 scale-[1.03] shadow-lg shadow-amber-500/25' : 'border-white/15 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-amber-500/40'}`}
                 >
-                  <span className="text-3xl mb-1">🪹</span>
-                  <span className="text-2xl absolute top-2 right-2">🦅</span>
-                  <span className="text-2xl font-bold text-white">{activeLeads.length}</span>
-                  <span className="text-xs text-slate-300 mt-1 font-medium">Active Leads</span>
+                  <span className="text-3xl mb-1 drop-shadow-[0_0_8px_rgba(250,204,21,0.3)]">🪹</span>
+                  <span className="text-xl absolute top-2 right-2 opacity-80">🦅</span>
+                  <span className="text-2xl font-extrabold text-white">{activeLeads.length}</span>
+                  <span className="text-xs text-amber-100 mt-0.5 font-semibold">Active Leads</span>
                 </button>
               );
             })()}
@@ -956,14 +956,14 @@ export default function OpportunitiesPage() {
               return (
                 <button
                   onClick={() => { setShowWonNest(!showWonNest); setActiveBucket(null); setShowPerchedNest(false); }}
-                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${showWonNest ? 'border-green-500 bg-green-500/15 scale-[1.03] shadow-lg shadow-green-500/20' : 'border-green-500/30 bg-slate-800 hover:border-green-500/50'}`}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${showWonNest ? 'border-green-500 bg-gradient-to-br from-green-500/20 to-emerald-500/10 scale-[1.03] shadow-lg shadow-green-500/25' : 'border-green-500/30 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-green-500/50'}`}
                 >
-                  <span className="text-3xl mb-1">🏆</span>
-                  <div className="absolute top-2 right-2 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-md">
+                  <span className="text-3xl mb-1 drop-shadow-[0_0_8px_rgba(74,222,128,0.4)]">🏆</span>
+                  <div className="absolute top-2 right-2 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-md shadow-green-500/40">
                     <span className="text-xs font-bold text-white">{wonLeads.length}</span>
                   </div>
-                  <span className="text-xs text-white mt-1 font-medium">Won</span>
-                  {totalPremium > 0 && <span className="text-[9px] text-green-300 font-medium mt-0.5">${totalPremium.toLocaleString()}</span>}
+                  <span className="text-xs text-white mt-1 font-semibold">Won</span>
+                  {totalPremium > 0 && <span className="text-[9px] text-green-300 font-bold mt-0.5">${totalPremium.toLocaleString()}</span>}
                 </button>
               );
             })()}
@@ -973,13 +973,13 @@ export default function OpportunitiesPage() {
               return (
                 <button
                   onClick={() => { setShowPerchedNest(!showPerchedNest); setActiveBucket(null); setShowWonNest(false); }}
-                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${showPerchedNest ? 'border-sky-500 bg-sky-500/15 scale-[1.03] shadow-lg shadow-sky-500/20' : 'border-sky-500/30 bg-slate-800 hover:border-sky-500/50'}`}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${showPerchedNest ? 'border-sky-500 bg-gradient-to-br from-sky-500/20 to-blue-500/10 scale-[1.03] shadow-lg shadow-sky-500/25' : 'border-sky-500/30 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-sky-500/50'}`}
                 >
-                  <span className="text-3xl mb-1">🌲</span>
-                  <div className="absolute top-2 right-2 w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center shadow-md">
+                  <span className="text-3xl mb-1 drop-shadow-[0_0_8px_rgba(56,189,248,0.4)]">🌲</span>
+                  <div className="absolute top-2 right-2 w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center shadow-md shadow-sky-500/40">
                     <span className="text-xs font-bold text-white">{perchedCount}</span>
                   </div>
-                  <span className="text-xs text-white mt-1 font-medium">Perched</span>
+                  <span className="text-xs text-white mt-1 font-semibold">Perched</span>
                   <span className="text-[9px] text-sky-300 mt-0.5">Circle back</span>
                 </button>
               );
@@ -1004,14 +1004,13 @@ export default function OpportunitiesPage() {
                 <button
                   key={bucket}
                   onClick={() => { setActiveBucket(isActive ? null : bucket); setShowWonNest(false); setShowPerchedNest(false); }}
-                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${isActive ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${isActive ? 'border-amber-500 bg-gradient-to-br from-amber-500/20 to-orange-500/10 scale-[1.03] shadow-lg shadow-amber-500/25' : 'border-white/15 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-amber-500/40'}`}
                 >
-                  <span className="text-3xl mb-1">🪹</span>
-                  <span className="text-2xl absolute top-2 right-2">🦅</span>
-                  <div className="absolute top-2 right-2 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center shadow-md">
+                  <span className="text-3xl mb-1 drop-shadow-[0_0_8px_rgba(250,204,21,0.25)]">🪹</span>
+                  <div className="absolute top-2 right-2 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center shadow-md shadow-amber-500/40">
                     <span className="text-xs font-bold text-black">{count}</span>
                   </div>
-                  <span className="text-xs text-white mt-1 font-medium text-center leading-tight">{bucket}</span>
+                  <span className="text-xs text-white mt-1 font-semibold text-center leading-tight">{bucket}</span>
                 </button>
               );
             })}
@@ -1078,12 +1077,12 @@ export default function OpportunitiesPage() {
             </div>
 
             {/* Column headers */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-1.5 text-[10px] text-slate-400 uppercase tracking-wide font-semibold border-b border-white/20 bg-slate-700 rounded-t-lg">
-              <span>Lead / Type</span>
+            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-2 text-[9px] text-amber-200/70 uppercase tracking-widest font-bold border-b border-amber-500/20 bg-gradient-to-r from-slate-800 to-slate-700 rounded-t-lg">
+              <span>🦅 Lead / Type</span>
               <span className="w-16 text-center">Status</span>
               <span className="w-20 text-center">Producer</span>
               <span className="w-16 text-center">Premium</span>
-              <span className="w-10 text-center">Priority</span>
+              <span className="w-10 text-center">Flag</span>
             </div>
 
             {/* Compact lead rows */}
@@ -1098,35 +1097,37 @@ export default function OpportunitiesPage() {
                 const colorBorder = leadColor === 'yellow' ? 'border-l-4 border-l-yellow-400' : leadColor === 'green' ? 'border-l-4 border-l-green-400' : leadColor === 'red' ? 'border-l-4 border-l-red-400' : '';
                 const colorBg = leadColor === 'yellow' ? 'bg-yellow-500/5' : leadColor === 'green' ? 'bg-green-500/5' : leadColor === 'red' ? 'bg-red-500/5' : '';
 
+                const leadColorDot = leadColor === 'yellow' ? 'shadow-[0_0_8px_2px_rgba(250,204,21,0.4)]' : leadColor === 'green' ? 'shadow-[0_0_8px_2px_rgba(74,222,128,0.4)]' : leadColor === 'red' ? 'shadow-[0_0_8px_2px_rgba(248,113,113,0.4)]' : '';
+
                 return (
-                  <div key={lead.id} className={`group rounded-lg border-2 border-white/30 bg-slate-600 overflow-hidden ${colorBorder} ${colorBg} cursor-pointer hover:bg-white/10 transition-colors`} onClick={() => setSelectedLead(lead)}>
+                  <div key={lead.id} className={`group lead-row ${leadColorDot} cursor-pointer`} onClick={() => setSelectedLead(lead)}>
                     <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-3 py-2.5">
-                      {/* Name + Policy Type + Progress */}
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm shrink-0">{platformIcons[lead.sourcePlatform] || '📱'}</span>
+                      {/* Avatar + Name + Policy Type + Progress */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="platform-badge">{platformIcons[lead.sourcePlatform] || '📱'}</div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-sm text-white font-semibold truncate">{lead.sourceAuthor}</span>
+                            <span className="text-sm text-white font-bold truncate">{lead.sourceAuthor}</span>
                             {(lead as any).policyType && (
-                              <span className="text-[10px] font-bold text-amber-200 bg-amber-500/30 px-1.5 py-0.5 rounded-full border border-amber-400/40 shrink-0">{(lead as any).policyType}</span>
+                              <span className="text-[9px] font-bold text-amber-200 bg-gradient-to-r from-amber-500/30 to-orange-500/20 px-2 py-0.5 rounded-full border border-amber-400/40 shrink-0">{(lead as any).policyType}</span>
                             )}
                           </div>
                           {totalSteps > 0 && (
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <div className="w-16 h-1 bg-slate-600 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-blue-400 to-green-400 rounded-full" style={{ width: `${progress}%` }} />
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <div className="w-20 h-1.5 bg-slate-700/80 rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-amber-400 via-amber-300 to-green-400 rounded-full transition-all" style={{ width: `${progress}%` }} />
                               </div>
-                              <span className="text-[9px] text-slate-400">{completedSteps}/{totalSteps}</span>
+                              <span className="text-[9px] text-slate-400 font-medium">{completedSteps}/{totalSteps}</span>
                             </div>
                           )}
                         </div>
                       </div>
                       {/* Status */}
-                      <span className={`w-16 text-center text-[10px] px-1.5 py-0.5 rounded-full border ${statusColors[lead.status]}`}>
+                      <span className={`w-16 text-center text-[9px] font-bold uppercase tracking-wide px-1.5 py-1 rounded-full border ${statusColors[lead.status]}`}>
                         {lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New'}
                       </span>
                       {/* Producer */}
-                      <span className="w-20 text-center text-[10px] text-blue-300 font-medium truncate">
+                      <span className="w-20 text-center text-[10px] text-sky-300 font-semibold truncate">
                         {(() => {
                           const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
                           const assigned = (lead as any).assignedTo || localData[(lead.sourceAuthor || '').toLowerCase()]?.assignedTo || '';
@@ -1136,7 +1137,7 @@ export default function OpportunitiesPage() {
                         })()}
                       </span>
                       {/* Premium */}
-                      <span className="w-16 text-center text-[10px] text-green-400 font-medium">
+                      <span className="w-16 text-center text-[11px] text-green-400 font-bold">
                         {(() => {
                           const localData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
                           const premium = (lead as any).expectedPremium || localData[(lead.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;

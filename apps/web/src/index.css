@@ -122,6 +122,46 @@ body::after {
     animation: gradientX 4s linear infinite;
   }
 
+  /* ─── Branded lead row (hawk perch cards) ───────────────────────────── */
+  .lead-row {
+    position: relative;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, rgba(51, 65, 85, 0.9), rgba(30, 41, 59, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.2s ease;
+    overflow: hidden;
+  }
+  .lead-row::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #FACC15, #f59e0b);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .lead-row:hover {
+    border-color: rgba(250, 204, 21, 0.35);
+    background: linear-gradient(135deg, rgba(51, 65, 85, 1), rgba(30, 41, 59, 1));
+    transform: translateX(2px);
+    box-shadow: 0 4px 20px -4px rgba(250, 204, 21, 0.15);
+  }
+  .lead-row:hover::before { opacity: 1; }
+
+  /* Platform avatar badge */
+  .platform-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.6rem;
+    background: linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(245, 158, 11, 0.08));
+    border: 1px solid rgba(250, 204, 21, 0.2);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
   /* Scroll reveal base state (hidden until observed) */
   .reveal {
     opacity: 0;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
+import { getTodayStr, findFutureFlockEvents } from './flockSchedule';
 
 interface FlockGroup {
   id: string;
@@ -34,7 +35,7 @@ const DAY_BUTTON_ACTIVE = [
 
 export default function FlockGroupManager({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
-  const { addEvent, events, removeAllByTitle } = useCalendar();
+  const { addEvent, updateEvent, removeEvent, events, refreshEvents } = useCalendar();
   const { showToast } = useToast();
 
   const storageKey = `hawkeye_flock_groups_${user?.sub}`;
@@ -151,8 +152,126 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
     showToast('✓ Group added');
   }
 
-  function handleRemoveGroup(id: string) {
+  async function handleRemoveGroup(id: string) {
+    // Find the group first so we know which calendar events belong to it (by name).
+    const group = groups.find((g) => g.id === id);
+
+    if (group) {
+      // Refresh FIRST so we match against server-truth events with real eventIds.
+      // The in-memory `events` array can hold temp client ids (from a not-yet-resolved
+      // scheduleFlocks POST), which the backend can't delete — causing survivors.
+      const fresh = await refreshEvents();
+
+      // Delete every future 'post' event that belongs to this group (Req 5.1, 5.2).
+      // Past events (date < today) are preserved — the selector scopes date >= today (Req 5.5).
+      const futureEvents = findFutureFlockEvents(fresh, group.name, getTodayStr());
+      // When there are no future events, make no calendar calls and no error (Req 5.4).
+      let hadFailure = false;
+      for (const evt of futureEvents) {
+        try {
+          await removeEvent(evt.id);
+        } catch {
+          hadFailure = true;
+        }
+      }
+      if (hadFailure) {
+        showToast(`⚠️ Some calendar posts for "${group.name}" couldn't be removed`);
+      }
+    }
+
+    // Remove the group from local state.
     setGroups(groups.filter((g) => g.id !== id));
+
+    // Reconcile with the server so the calendar reflects the deletions (Req 8.1).
+    await refreshEvents();
+  }
+
+  // Inline name edit — rename future calendar posts to the new title (Req 6.1, 6.3, 6.6).
+  async function handleRenameGroup(id: string, rawValue: string) {
+    const newName = rawValue.trim();
+    if (!newName) return; // ignore empty names
+    const group = groups.find((g) => g.id === id);
+    if (!group || group.name === newName) return; // no change
+
+    // Refresh FIRST so we operate on server-truth events with real eventIds.
+    const fresh = await refreshEvents();
+    // Match future events by the OLD name, then re-title them.
+    const futureEvents = findFutureFlockEvents(fresh, group.name, getTodayStr());
+    let hadFailure = false;
+    for (const evt of futureEvents) {
+      try {
+        await updateEvent(evt.id, { title: newName });
+      } catch {
+        hadFailure = true;
+      }
+    }
+    if (hadFailure) {
+      showToast(`⚠️ Some calendar posts for "${group.name}" couldn't be renamed`);
+    }
+
+    setGroups(groups.map((g) => g.id === id ? { ...g, name: newName } : g));
+  }
+
+  // Inline link edit — update the link on every future calendar post (Req 6.4, 6.6).
+  async function handleChangeLink(id: string, rawValue: string) {
+    const newLink = rawValue.trim();
+    const group = groups.find((g) => g.id === id);
+    if (!group || group.link === newLink) return; // no change
+
+    // Refresh FIRST so we operate on server-truth events with real eventIds.
+    const fresh = await refreshEvents();
+    // Match future events by the current group name.
+    const futureEvents = findFutureFlockEvents(fresh, group.name, getTodayStr());
+    let hadFailure = false;
+    for (const evt of futureEvents) {
+      try {
+        await updateEvent(evt.id, { link: newLink });
+      } catch {
+        hadFailure = true;
+      }
+    }
+    if (hadFailure) {
+      showToast(`⚠️ Some calendar posts for "${group.name}" couldn't be updated`);
+    }
+
+    setGroups(groups.map((g) => g.id === id ? { ...g, link: newLink } : g));
+  }
+
+  // Inline day-toggle for fixed-day groups. Turning a day OFF deletes future posts
+  // that fall on that weekday; turning a day ON only updates local state (events
+  // materialize on the next scheduleFlocks) (Req 6.2, 6.3, 6.6).
+  async function handleToggleDay(id: string, day: number) {
+    const group = groups.find((x) => x.id === id);
+    if (!group || group.anyday) return;
+
+    const isTurningOff = group.postingDays.includes(day);
+    const days = isTurningOff
+      ? group.postingDays.filter((d) => d !== day)
+      : [...group.postingDays, day];
+
+    if (isTurningOff) {
+      // Refresh FIRST so we operate on server-truth events with real eventIds.
+      const fresh = await refreshEvents();
+      // Delete future posts for this group whose weekday equals the removed day.
+      // Weekday is computed from the event date (noon avoids TZ edge cases).
+      // Past events are preserved — findFutureFlockEvents scopes date >= today.
+      const futureEvents = findFutureFlockEvents(fresh, group.name, getTodayStr());
+      let hadFailure = false;
+      for (const evt of futureEvents) {
+        const weekday = new Date(evt.date + 'T12:00:00').getDay();
+        if (weekday !== day) continue;
+        try {
+          await removeEvent(evt.id);
+        } catch {
+          hadFailure = true;
+        }
+      }
+      if (hadFailure) {
+        showToast(`⚠️ Some calendar posts for "${group.name}" couldn't be removed`);
+      }
+    }
+
+    setGroups(groups.map((x) => x.id === id ? { ...x, postingDays: days.sort() } : x));
   }
 
   function toggleDay(day: number) {
@@ -374,29 +493,21 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
                         <input
                           type="text"
                           defaultValue={group.name}
-                          onBlur={(e) => {
-                            const val = e.target.value.trim();
-                            if (val) setGroups(groups.map((g) => g.id === group.id ? { ...g, name: val } : g));
-                          }}
+                          onBlur={(e) => handleRenameGroup(group.id, e.target.value)}
                           className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs"
                         />
                         <input
                           type="url"
                           defaultValue={group.link}
                           placeholder="Group link"
-                          onBlur={(e) => setGroups(groups.map((g) => g.id === group.id ? { ...g, link: e.target.value.trim() } : g))}
+                          onBlur={(e) => handleChangeLink(group.id, e.target.value)}
                           className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-slate-500"
                         />
                         <div className="flex gap-1">
                           {DAY_LABELS.map((label, i) => (
                             <button
                               key={i}
-                              onClick={() => {
-                                const g = groups.find((x) => x.id === group.id);
-                                if (!g || g.anyday) return;
-                                const days = g.postingDays.includes(i) ? g.postingDays.filter((d) => d !== i) : [...g.postingDays, i];
-                                setGroups(groups.map((x) => x.id === group.id ? { ...x, postingDays: days.sort() } : x));
-                              }}
+                              onClick={() => handleToggleDay(group.id, i)}
                               disabled={group.anyday}
                               className={`flex-1 py-1.5 rounded text-[9px] font-bold transition-all ${
                                 group.anyday ? 'bg-slate-700 text-slate-600' :

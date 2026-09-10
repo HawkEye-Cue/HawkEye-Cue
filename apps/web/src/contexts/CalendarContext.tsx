@@ -26,7 +26,7 @@ interface CalendarState {
   removeEvent: (id: string) => void;
   removeAllByTitle: (title: string) => void;
   updateNotes: (id: string, notes: string) => Promise<void>;
-  refreshEvents: () => Promise<void>;
+  refreshEvents: () => Promise<CalendarEvent[]>;
   loading: boolean;
 }
 
@@ -81,7 +81,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     fetchEvents();
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const refreshEvents = useCallback(async () => {
+  const refreshEvents = useCallback(async (): Promise<CalendarEvent[]> => {
     try {
       const client = await buildClient();
       const result = await client.request<{ events: CalendarEvent[] }>('GET', '/calendar/events');
@@ -97,7 +97,13 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
         return e;
       });
       setEvents(processed);
-    } catch { /* ignore */ }
+      // Return the server-truth events (with real eventIds) so callers can operate
+      // on reliable ids rather than the potentially-stale in-memory `events` array.
+      return processed;
+    } catch {
+      // Best effort: on fetch failure return an empty array and keep existing state.
+      return [];
+    }
   }, [getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id' | 'completed'>): Promise<string> => {

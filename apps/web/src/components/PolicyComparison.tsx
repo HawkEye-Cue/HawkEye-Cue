@@ -39,6 +39,51 @@ export default function PolicyComparison({ leadId, leadName, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [mode, setMode] = useState<'input' | 'result'>('input');
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Example data users can load to see how it works
+  const EXAMPLE_CURRENT = `Auto Insurance — Current Policy (Geico)
+Premium: $180/month
+Deductible: $1,000
+Bodily Injury Liability: $25,000 per person / $50,000 per accident
+Property Damage: $25,000
+Comprehensive: Yes
+Collision: Yes
+Roadside Assistance: No
+Rental Car Coverage: No`;
+
+  const EXAMPLE_QUOTE = `Auto Insurance — Your New Quote (State Farm)
+Premium: $155/month
+Deductible: $500
+Bodily Injury Liability: $100,000 per person / $300,000 per accident
+Property Damage: $100,000
+Comprehensive: Yes
+Collision: Yes
+Roadside Assistance: Yes (included)
+Rental Car Coverage: Yes ($40/day)`;
+
+  const EXAMPLE_COMPARISON: Comparison = {
+    summary: 'Your new quote saves the customer $25 a month AND gives them much stronger protection. They get a lower deductible and far higher liability limits, plus free roadside and rental coverage. This is a clear upgrade.',
+    rows: [
+      { label: 'Monthly Cost', current: '$180/mo', quoted: '$155/mo', better: 'quoted' },
+      { label: 'Deductible (what you pay in a claim)', current: '$1,000', quoted: '$500', better: 'quoted' },
+      { label: 'Injury Coverage', current: '$25k / $50k', quoted: '$100k / $300k', better: 'quoted' },
+      { label: 'Property Damage', current: '$25,000', quoted: '$100,000', better: 'quoted' },
+      { label: 'Roadside Assistance', current: 'Not included', quoted: 'Included free', better: 'quoted' },
+      { label: 'Rental Car Coverage', current: 'None', quoted: '$40/day', better: 'quoted' },
+    ],
+    pros: [
+      'Saves $25 every month ($300/year)',
+      'Cheaper deductible — pay $500 less out of pocket in a claim',
+      '4x more injury protection if an accident is serious',
+      'Free roadside assistance and rental car coverage',
+    ],
+    cons: [
+      'Switching means canceling the old policy — confirm no cancellation fee',
+      'New company, so double-check their claims reputation',
+    ],
+    recommendation: 'Yes — switch. They pay less every month and get significantly better protection. It is a win on both price and coverage.',
+  };
 
   async function buildClient() {
     const token = await getToken();
@@ -55,7 +100,8 @@ export default function PolicyComparison({ leadId, leadName, onClose }: Props) {
         if (res.currentPolicy) setCurrentPolicy(res.currentPolicy);
         if (res.quotedPolicy) setQuotedPolicy(res.quotedPolicy);
         if (res.comparison) { setComparison(res.comparison); setMode('result'); }
-      } catch { /* none yet */ }
+        else { setShowHelp(true); } // first time — show the guide
+      } catch { setShowHelp(true); }
       finally { setLoading(false); }
     }
     load();
@@ -120,6 +166,29 @@ export default function PolicyComparison({ leadId, leadName, onClose }: Props) {
             <p className="text-sm text-slate-500 py-8 text-center">Loading…</p>
           ) : mode === 'input' ? (
             <div className="space-y-4">
+              {/* How it works */}
+              <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 overflow-hidden">
+                <button onClick={() => setShowHelp(!showHelp)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-blue-500/5">
+                  <span className="text-xs font-bold text-blue-300">💡 How does this work?</span>
+                  <span className="text-blue-400 text-xs">{showHelp ? '▼' : '▶'}</span>
+                </button>
+                {showHelp && (
+                  <div className="px-3 pb-3 space-y-2 text-[11px] text-slate-300 leading-relaxed">
+                    <p><strong className="text-white">1.</strong> Paste (or upload a file of) your lead's <strong className="text-white">current policy</strong> — premium, deductible, coverages.</p>
+                    <p><strong className="text-white">2.</strong> Paste your <strong className="text-white">new quote</strong> in the second box.</p>
+                    <p><strong className="text-white">3.</strong> Tap <strong className="text-amber-300">🤖 AI Compare</strong> — HawkEye reads both and builds a plain-English side-by-side. No insurance jargon.</p>
+                    <p><strong className="text-white">4.</strong> Show the lead the breakdown — it highlights where your quote wins (green), lists pros & cons, and gives a clear recommendation.</p>
+                    <p className="text-slate-400">💡 Everything is editable, so you can tweak wording before showing your lead. It saves automatically per lead.</p>
+                    <button
+                      onClick={() => { setCurrentPolicy(EXAMPLE_CURRENT); setQuotedPolicy(EXAMPLE_QUOTE); setComparison(EXAMPLE_COMPARISON); setMode('result'); showToast('👀 Example loaded'); }}
+                      className="mt-1 px-3 py-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-lg text-[11px] font-bold hover:bg-amber-500/30"
+                    >
+                      👀 See a Live Example
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <p className="text-xs text-slate-400">Paste or upload the lead's current policy and your new quote. AI will break it down in plain English — or you can build it yourself.</p>
 
               {/* Current policy */}

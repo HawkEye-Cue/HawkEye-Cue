@@ -10,6 +10,7 @@ import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeam
 import LeadProfilePopup from '../components/LeadProfilePopup';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import PolicyComparison from '../components/PolicyComparison';
 
 const FILTERS: { label: string; value: OpportunityStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
@@ -122,6 +123,7 @@ export default function OpportunitiesPage() {
   const [activeBucket, setActiveBucket] = useState<string | null>(null);
   const [showWonNest, setShowWonNest] = useState(false);
   const [showPerchedNest, setShowPerchedNest] = useState(false);
+  const [comparingLead, setComparingLead] = useState<Opportunity | null>(null);
   // Perched leads (circle back later) — stored per user
   const [perchedIds, setPerchedIds] = useState<Set<string>>(new Set());
   const [showBucketManager, setShowBucketManager] = useState(false);
@@ -1460,7 +1462,17 @@ export default function OpportunitiesPage() {
             setEditingLead({ ...lead, _localBucket: ld.bucket || (lead as any).bucket || '', _localPremium: ld.expectedPremium || (lead as any).expectedPremium || '', _localAssignee: ld.assignedTo || (lead as any).assignedTo || '' });
             setSelectedLead(null);
           }}
+          onCompare={(lead) => { setComparingLead(lead); setSelectedLead(null); }}
           updatingId={updatingId}
+        />
+      )}
+
+      {/* Policy Comparison modal */}
+      {comparingLead && (
+        <PolicyComparison
+          leadId={comparingLead.id}
+          leadName={comparingLead.sourceAuthor || 'Lead'}
+          onClose={() => setComparingLead(null)}
         />
       )}
     </div>

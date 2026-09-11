@@ -472,6 +472,26 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // ─── Policy Comparison Handler ────────────────────────────────────────
+    const policyComparisonFn = new lambda.Function(this, 'PolicyComparisonFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-PolicyComparison',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/policy-comparison'),
+      description: 'AI-powered side-by-side policy comparison in laymans terms',
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(policyComparisonFn);
+    policyComparisonFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [`arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0`],
+      })
+    );
+
     // ─── Cadence Email Sender (EventBridge scheduled, daily at 2pm UTC / 8am MT) ─
     const cadenceEmailFn = new lambda.Function(this, 'CadenceEmailSenderFn', {
       ...lambdaDefaults,
@@ -1212,6 +1232,24 @@ export class ApiStack extends cdk.Stack {
       path: '/email/generate-templates',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: emailOAuthIntegration,
+      authorizer,
+    });
+
+    // Policy Comparison routes
+    const policyComparisonIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'PolicyComparisonIntegration',
+      policyComparisonFn
+    );
+    this.httpApi.addRoutes({
+      path: '/policy/compare',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: policyComparisonIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/policy/comparison/{leadId}',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE],
+      integration: policyComparisonIntegration,
       authorizer,
     });
 

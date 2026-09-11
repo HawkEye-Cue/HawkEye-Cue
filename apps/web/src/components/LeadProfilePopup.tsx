@@ -22,6 +22,7 @@ export interface LeadProfilePopupProps {
   onFollowupComplete: (leadId: string, stepIdx: number) => Promise<void>;
   onDelete: (leadId: string) => Promise<void>;
   onEdit: (lead: Opportunity) => void;
+  onCompare?: (lead: Opportunity) => void;
   updatingId: string | null;
 }
 
@@ -84,6 +85,7 @@ export default function LeadProfilePopup({
   onFollowupComplete,
   onDelete,
   onEdit,
+  onCompare,
   updatingId,
 }: LeadProfilePopupProps) {
   const { user, getToken } = useAuth();
@@ -310,6 +312,14 @@ export default function LeadProfilePopup({
           >
             ✏️ Edit
           </button>
+          {onCompare && (
+            <button
+              onClick={() => onCompare(lead)}
+              className="px-3 py-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-medium hover:bg-amber-500/25 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            >
+              ⚖️ Compare Policy
+            </button>
+          )}
           <button
             onClick={() => onDelete(lead.id)}
             disabled={updatingId === lead.id}

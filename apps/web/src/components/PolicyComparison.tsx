@@ -150,17 +150,20 @@ Rental Car Coverage: Yes ($40/day)`;
     better === side ? 'text-green-300 font-bold' : better === 'same' ? 'text-slate-300' : 'text-slate-400';
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm overflow-y-auto" style={{ paddingTop: '3.5rem', paddingBottom: '6rem' }} onClick={onClose}>
-      <div className="w-full max-w-2xl mx-auto px-3" onClick={(e) => e.stopPropagation()}>
-        <div className="glass-card-strong">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="font-bold text-white flex items-center gap-2">⚖️ Policy Comparison</h3>
-              <p className="text-xs text-slate-400">{leadName}</p>
-            </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
-          </div>
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex flex-col" onClick={onClose}>
+      {/* Fixed header bar — always visible, never cut off */}
+      <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-slate-900/95 border-b border-white/10" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }} onClick={(e) => e.stopPropagation()}>
+        <div className="min-w-0">
+          <h3 className="font-bold text-white flex items-center gap-2 text-sm">⚖️ Policy Comparison</h3>
+          <p className="text-xs text-slate-400 truncate">{leadName}</p>
+        </div>
+        <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none px-2 shrink-0">✕</button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto p-3 pb-24" onClick={(e) => e.stopPropagation()}>
+        <div className="w-full max-w-2xl mx-auto">
+          <div className="glass-card-strong">
 
           {loading ? (
             <p className="text-sm text-slate-500 py-8 text-center">Loading…</p>
@@ -277,6 +280,7 @@ Rental Car Coverage: Yes ($40/day)`;
               <button onClick={saveManual} className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg">💾 Save Comparison</button>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

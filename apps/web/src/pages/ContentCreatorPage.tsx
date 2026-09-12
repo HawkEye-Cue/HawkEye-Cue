@@ -32,6 +32,10 @@ export default function ContentCreatorPage() {
   });
   const [createMode, setCreateMode] = useState<'ai' | 'own'>('own');
   const [ownContent, setOwnContent] = useState(() => localStorage.getItem('hawkeye_draft_ownContent') || '');
+  const [showIdeas, setShowIdeas] = useState(false);
+  const [ideas, setIdeas] = useState<{ hook: string; idea: string; starter: string }[]>([]);
+  const [ideasLoading, setIdeasLoading] = useState(false);
+  const [ideaCategory, setIdeaCategory] = useState<'any' | 'tips' | 'promo' | 'story' | 'seasonal' | 'engagement'>('any');
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postLength, setPostLength] = useState<'short' | 'medium' | 'long'>('medium');
   const [userTier, setUserTier] = useState<string>('free');
@@ -114,6 +118,21 @@ export default function ContentCreatorPage() {
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
     );
   };
+
+  async function fetchIdeas() {
+    setIdeasLoading(true);
+    try {
+      const token = await getToken();
+      const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+      const res = await client.request<{ ideas: { hook: string; idea: string; starter: string }[] }>('POST', '/content/ideas', {
+        tradeName: selectedTrade?.name || 'local business',
+        category: ideaCategory,
+      });
+      setIdeas(res.ideas || []);
+    } catch {
+      showToast('❌ Could not get ideas. Try again.');
+    } finally { setIdeasLoading(false); }
+  }
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -260,6 +279,73 @@ export default function ContentCreatorPage() {
           </div>
         </div>
       )}
+
+      {/* Post Idea Generator — for when you're stuck */}
+      <div className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-blue-500/10 overflow-hidden">
+        <button onClick={() => { setShowIdeas(!showIdeas); if (!showIdeas && ideas.length === 0) fetchIdeas(); }} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">💡</span>
+            <div className="text-left">
+              <p className="text-sm font-bold text-white">Need a post idea?</p>
+              <p className="text-[11px] text-slate-400">Stuck? Let HawkEye suggest fresh ideas for your trade</p>
+            </div>
+          </div>
+          <span className="text-slate-400 text-sm">{showIdeas ? '▼' : '▶'}</span>
+        </button>
+
+        {showIdeas && (
+          <div className="px-4 pb-4 space-y-3">
+            {/* Category chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { id: 'any', label: '🎲 Mix' },
+                { id: 'tips', label: '💡 Tips' },
+                { id: 'promo', label: '🏷️ Promo' },
+                { id: 'story', label: '📖 Story' },
+                { id: 'seasonal', label: '🍂 Seasonal' },
+                { id: 'engagement', label: '💬 Engagement' },
+              ] as const).map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => { setIdeaCategory(c.id); }}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${ideaCategory === c.id ? 'bg-purple-500 text-white' : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'}`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+
+            <button onClick={fetchIdeas} disabled={ideasLoading} className="w-full py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold rounded-lg disabled:opacity-50 hover:opacity-90">
+              {ideasLoading ? '🦅 Thinking…' : ideas.length > 0 ? '🔄 Get New Ideas' : '✨ Generate Ideas'}
+            </button>
+
+            {/* Idea list */}
+            {ideas.length > 0 && (
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {ideas.map((idea, i) => (
+                  <div key={i} className="p-3 bg-slate-800/80 border border-white/10 rounded-lg">
+                    <p className="text-xs font-bold text-purple-300">{idea.hook}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{idea.idea}</p>
+                    <p className="text-[11px] text-slate-200 mt-1.5 italic">"{idea.starter}"</p>
+                    <button
+                      onClick={() => {
+                        setCreateMode('own');
+                        setOwnContent(idea.starter);
+                        setShowIdeas(false);
+                        showToast('✓ Idea loaded — build on it!');
+                        setTimeout(() => document.getElementById('own-post-textarea')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                      }}
+                      className="mt-2 px-3 py-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-lg text-[11px] font-bold hover:bg-amber-500/30"
+                    >
+                      ✍️ Use this idea
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Mode Toggle */}
       <div className="flex gap-2 bg-slate-700/60 border-2 border-amber-500 rounded-xl p-2 shadow-xl shadow-amber-500/10">

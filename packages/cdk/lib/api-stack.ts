@@ -658,6 +658,12 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
     this.httpApi.addRoutes({
+      path: '/content/ideas',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: contentIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
       path: '/content/history',
       methods: [apigatewayv2.HttpMethod.GET],
       integration: contentIntegration,

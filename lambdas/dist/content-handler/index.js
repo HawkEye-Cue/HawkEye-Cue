@@ -144,6 +144,59 @@ Important rules:
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
+// POST /content/ideas — suggest post ideas for a trade when the user is stuck
+async function handleIdeas(userId, body) {
+  const tradeName = (body && body.tradeName) || 'local business';
+  const category = (body && body.category) || 'any';
+
+  const categoryHint = {
+    tips: 'helpful tips and how-to advice for customers',
+    promo: 'promotions, offers, or reasons to buy now',
+    story: 'behind-the-scenes, personal stories, or team spotlights',
+    seasonal: 'seasonal, holiday, or timely topics for right now',
+    engagement: 'questions, polls, or fun posts that get comments',
+    any: 'a healthy mix of tips, promotions, stories, and engagement',
+  }[category] || 'a healthy mix';
+
+  const prompt = `You are a social media strategist for a ${tradeName} business. The owner is out of ideas and needs fresh post concepts.
+
+Suggest 6 short, specific, ready-to-use post ideas focused on ${categoryHint}.
+
+Return ONLY a JSON array of 6 objects:
+[{ "hook": "a punchy 3-6 word title for the idea", "idea": "one sentence describing the post concept", "starter": "a ready-to-post opening line the user can build on" }]
+
+Rules:
+- Make ideas specific to a ${tradeName} — not generic.
+- Keep hooks short and scroll-stopping.
+- The "starter" should sound human and friendly, not corporate.
+- Vary the ideas so they don't repeat.`;
+
+  const command = new InvokeModelCommand({
+    modelId: 'amazon.nova-lite-v1:0',
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: JSON.stringify({
+      messages: [{ role: 'user', content: [{ text: prompt }] }],
+      inferenceConfig: { maxTokens: 1500, temperature: 0.9 },
+    }),
+  });
+
+  try {
+    const response = await bedrock.send(command);
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    const aiText = responseBody.output.message.content[0].text.trim();
+    const jsonMatch = aiText.match(/\[[\s\S]*\]/);
+    const ideas = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    if (!ideas || !Array.isArray(ideas)) {
+      return respond(500, { error: { code: 'PARSE_FAILED', message: 'Could not generate ideas. Try again.' } });
+    }
+    return respond(200, { ideas });
+  } catch (e) {
+    console.error('[content-ideas] AI error:', e.message);
+    return respond(500, { error: { code: 'AI_FAILED', message: 'Could not generate ideas. Try again.' } });
+  }
+}
+
 // POST /content/generate
 async function handleGenerate(userId, body) {
   const errors = validateGenerateRequest(body);
@@ -327,6 +380,11 @@ exports.handler = async (event) => {
     if (method === 'POST' && path === '/content/generate') {
       const body = event.body ? JSON.parse(event.body) : null;
       return handleGenerate(userId, body);
+    }
+
+    if (method === 'POST' && path === '/content/ideas') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      return handleIdeas(userId, body);
     }
 
     if (method === 'GET' && path === '/content/history') {

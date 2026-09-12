@@ -197,6 +197,95 @@ Rules:
   }
 }
 
+// POST /content/generate-image — text-to-image via Amazon Titan/Nova Canvas
+async function handleGenerateImage(userId, body) {
+  const rawPrompt = (body && body.prompt) || '';
+  const tradeName = (body && body.tradeName) || '';
+  const style = (body && body.style) || 'photo';
+  if (!rawPrompt.trim()) {
+    return respond(400, { error: { code: 'VALIDATION_ERROR', message: 'A prompt is required' } });
+  }
+
+  // Enrich the prompt for better marketing-quality output
+  const styleHint = {
+    photo: 'professional high-quality photograph, realistic, well-lit, marketing quality',
+    illustration: 'clean modern flat illustration, vibrant colors',
+    bold: 'bold eye-catching social media graphic, high contrast',
+  }[style] || 'professional photograph';
+
+  const fullPrompt = `${rawPrompt.trim()}${tradeName ? `, for a ${tradeName} business` : ''}. ${styleHint}. No text or words in the image.`;
+
+  // Amazon Nova Canvas (falls back to Titan if unavailable)
+  const requestBody = {
+    taskType: 'TEXT_IMAGE',
+    textToImageParams: { text: fullPrompt.slice(0, 1000) },
+    imageGenerationConfig: {
+      numberOfImages: 1,
+      height: 1024,
+      width: 1024,
+      cfgScale: 8.0,
+      seed: Math.floor(Math.random() * 858993459),
+    },
+  };
+
+  let base64Image = null;
+  try {
+    const command = new InvokeModelCommand({
+      modelId: 'amazon.nova-canvas-v1:0',
+      contentType: 'application/json',
+      accept: 'application/json',
+      body: JSON.stringify(requestBody),
+    });
+    const response = await bedrock.send(command);
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    base64Image = responseBody.images?.[0];
+  } catch (e) {
+    console.error('[gen-image] Nova Canvas failed, trying Titan:', e.message);
+    // Fallback to Titan Image Generator v2
+    try {
+      const titanBody = {
+        taskType: 'TEXT_IMAGE',
+        textToImageParams: { text: fullPrompt.slice(0, 512) },
+        imageGenerationConfig: { numberOfImages: 1, height: 1024, width: 1024, cfgScale: 8.0 },
+      };
+      const command = new InvokeModelCommand({
+        modelId: 'amazon.titan-image-generator-v2:0',
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify(titanBody),
+      });
+      const response = await bedrock.send(command);
+      const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+      base64Image = responseBody.images?.[0];
+    } catch (e2) {
+      console.error('[gen-image] Titan also failed:', e2.message);
+      return respond(500, { error: { code: 'IMAGE_FAILED', message: 'Could not generate image. Try a simpler prompt.' } });
+    }
+  }
+
+  if (!base64Image) {
+    return respond(500, { error: { code: 'IMAGE_FAILED', message: 'No image returned. Try again.' } });
+  }
+
+  // Upload to S3 and return a public URL
+  try {
+    const buffer = Buffer.from(base64Image, 'base64');
+    const key = `ai-images/${userId}/${randomUUID()}.png`;
+    await s3.send(new PutObjectCommand({
+      Bucket: MEDIA_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: 'image/png',
+    }));
+    const url = `https://${MEDIA_BUCKET}.s3.amazonaws.com/${key}`;
+    return respond(200, { url, key });
+  } catch (e) {
+    console.error('[gen-image] S3 upload failed:', e.message);
+    // Return inline base64 as fallback
+    return respond(200, { dataUrl: `data:image/png;base64,${base64Image}` });
+  }
+}
+
 // POST /content/generate
 async function handleGenerate(userId, body) {
   const errors = validateGenerateRequest(body);
@@ -385,6 +474,11 @@ exports.handler = async (event) => {
     if (method === 'POST' && path === '/content/ideas') {
       const body = event.body ? JSON.parse(event.body) : {};
       return handleIdeas(userId, body);
+    }
+
+    if (method === 'POST' && path === '/content/generate-image') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      return handleGenerateImage(userId, body);
     }
 
     if (method === 'GET' && path === '/content/history') {

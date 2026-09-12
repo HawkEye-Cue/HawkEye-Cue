@@ -36,6 +36,12 @@ export default function ContentCreatorPage() {
   const [ideas, setIdeas] = useState<{ hook: string; idea: string; starter: string }[]>([]);
   const [ideasLoading, setIdeasLoading] = useState(false);
   const [ideaCategory, setIdeaCategory] = useState<'any' | 'tips' | 'promo' | 'story' | 'seasonal' | 'engagement'>('any');
+  // AI photo generation
+  const [showAiPhoto, setShowAiPhoto] = useState(false);
+  const [aiPhotoPrompt, setAiPhotoPrompt] = useState('');
+  const [aiPhotoStyle, setAiPhotoStyle] = useState<'photo' | 'illustration' | 'bold'>('photo');
+  const [aiPhotoUrl, setAiPhotoUrl] = useState<string | null>(null);
+  const [aiPhotoLoading, setAiPhotoLoading] = useState(false);
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postLength, setPostLength] = useState<'short' | 'medium' | 'long'>('medium');
   const [userTier, setUserTier] = useState<string>('free');
@@ -132,6 +138,26 @@ export default function ContentCreatorPage() {
     } catch {
       showToast('❌ Could not get ideas. Try again.');
     } finally { setIdeasLoading(false); }
+  }
+
+  async function generateAiPhoto() {
+    if (!aiPhotoPrompt.trim()) { showToast('Describe the photo you want'); return; }
+    setAiPhotoLoading(true);
+    setAiPhotoUrl(null);
+    try {
+      const token = await getToken();
+      const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+      const res = await client.request<{ url?: string; dataUrl?: string }>('POST', '/content/generate-image', {
+        prompt: aiPhotoPrompt.trim(),
+        tradeName: selectedTrade?.name || '',
+        style: aiPhotoStyle,
+      });
+      const img = res.url || res.dataUrl || null;
+      setAiPhotoUrl(img);
+      if (img) showToast('✓ Photo generated!');
+    } catch (e) {
+      showToast(`❌ ${e instanceof Error ? e.message : 'Image generation failed'}`);
+    } finally { setAiPhotoLoading(false); }
   }
 
   const handleGenerate = async () => {
@@ -341,6 +367,55 @@ export default function ContentCreatorPage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* AI Photo Generator */}
+      <div className="rounded-xl border border-pink-500/30 bg-gradient-to-br from-pink-500/10 to-purple-500/10 overflow-hidden">
+        <button onClick={() => setShowAiPhoto(!showAiPhoto)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🎨</span>
+            <div className="text-left">
+              <p className="text-sm font-bold text-white">Generate a Photo with AI</p>
+              <p className="text-[11px] text-slate-400">No photo on hand? Describe one and AI creates it</p>
+            </div>
+          </div>
+          <span className="text-slate-400 text-sm">{showAiPhoto ? '▼' : '▶'}</span>
+        </button>
+
+        {showAiPhoto && (
+          <div className="px-4 pb-4 space-y-3">
+            <textarea
+              value={aiPhotoPrompt}
+              onChange={(e) => setAiPhotoPrompt(e.target.value)}
+              placeholder="Describe the photo — e.g. 'a cozy living room protected and safe' or 'a happy family in front of their new home'"
+              className="w-full h-20 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none"
+            />
+            {/* Style */}
+            <div className="flex gap-1.5">
+              {([
+                { id: 'photo', label: '📷 Photo' },
+                { id: 'illustration', label: '🖌️ Illustration' },
+                { id: 'bold', label: '⚡ Bold Graphic' },
+              ] as const).map((s) => (
+                <button key={s.id} onClick={() => setAiPhotoStyle(s.id)} className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${aiPhotoStyle === s.id ? 'bg-pink-500 text-white' : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'}`}>{s.label}</button>
+              ))}
+            </div>
+            <button onClick={generateAiPhoto} disabled={aiPhotoLoading} className="w-full py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold rounded-lg disabled:opacity-50 hover:opacity-90">
+              {aiPhotoLoading ? '🎨 Creating your photo…' : '✨ Generate Photo'}
+            </button>
+
+            {aiPhotoUrl && (
+              <div className="space-y-2">
+                <img src={aiPhotoUrl} alt="AI generated" className="w-full rounded-lg border border-white/10" />
+                <div className="flex gap-2">
+                  <a href={aiPhotoUrl} download="hawkeye-ai-photo.png" target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">⬇ Download</a>
+                  <button onClick={generateAiPhoto} className="flex-1 py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">🔄 Regenerate</button>
+                </div>
+                <p className="text-[10px] text-slate-500 text-center">💡 Download the image, then attach it in your Facebook group post for best engagement.</p>
               </div>
             )}
           </div>

@@ -157,16 +157,21 @@ export class ApiStack extends cdk.Stack {
     table.grantReadWriteData(contentHandlerFn);
     mediaBucket.grantPut(contentHandlerFn);
 
-    // Grant Bedrock InvokeModel permission for AI content generation
+    // Grant Bedrock InvokeModel permission for AI content + image generation
     contentHandlerFn.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['bedrock:InvokeModel'],
         resources: [
           `arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0`,
+          `arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-canvas-v1:0`,
+          `arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-image-generator-v2:0`,
         ],
       })
     );
+
+    // Content handler writes AI-generated images to the media bucket
+    mediaBucket.grantReadWrite(contentHandlerFn);
 
     // ─── Posts Handler ────────────────────────────────────────────────────
     const postsHandlerFn = new lambda.Function(this, 'PostsHandlerFn', {
@@ -659,6 +664,12 @@ export class ApiStack extends cdk.Stack {
     });
     this.httpApi.addRoutes({
       path: '/content/ideas',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: contentIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/content/generate-image',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: contentIntegration,
       authorizer,

@@ -150,9 +150,9 @@ Rental Car Coverage: Yes ($40/day)`;
     better === side ? 'text-green-300 font-bold' : better === 'same' ? 'text-slate-300' : 'text-slate-400';
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex flex-col" onClick={onClose}>
-      {/* Fixed header bar — always visible, never cut off */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-slate-900/95 border-b border-white/10" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex flex-col" style={{ paddingTop: '5rem' }} onClick={onClose}>
+      {/* Header bar — sits below the site header, always visible */}
+      <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-white/10 mx-2 rounded-t-xl" onClick={(e) => e.stopPropagation()}>
         <div className="min-w-0">
           <h3 className="font-bold text-white flex items-center gap-2 text-sm">⚖️ Policy Comparison</h3>
           <p className="text-xs text-slate-400 truncate">{leadName}</p>
@@ -161,7 +161,7 @@ Rental Car Coverage: Yes ($40/day)`;
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto p-3 pb-24" onClick={(e) => e.stopPropagation()}>
+      <div className="flex-1 overflow-y-auto px-3 pb-24 pt-3" onClick={(e) => e.stopPropagation()}>
         <div className="w-full max-w-2xl mx-auto">
           <div className="glass-card-strong">
 

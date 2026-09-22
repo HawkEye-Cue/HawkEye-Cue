@@ -882,6 +882,33 @@ exports.handler = async (event) => {
       }
     }
 
+    // GET /team/folios — distinct folio periods across ALL team members' deals
+    if (method === 'GET' && path === '/team/folios') {
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      const members = await getTeamMembers(teamRecord.teamId);
+      const folioSet = new Set();
+      for (const member of members) {
+        const deals = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':pk': `USER#${member.userId}`, ':sk': 'DEAL#' },
+        }));
+        for (const d of (deals.Items || [])) {
+          // Prefer the explicit folio label; otherwise skip (current/all cover the rest)
+          if (d.folio && String(d.folio).includes(' to ')) folioSet.add(String(d.folio));
+        }
+      }
+      // Sort newest first by start date
+      const folios = [...folioSet].sort((a, b) => {
+        const sa = normalizeDate(a.split(' to ')[0]) || '';
+        const sb = normalizeDate(b.split(' to ')[0]) || '';
+        return sb.localeCompare(sa);
+      });
+      return ok({ folios });
+    }
+
     // GET /team/analytics — merged team analytics (filtered to current folio)
     if (method === 'GET' && path === '/team/analytics') {
       const teamRecord = await getUserTeam(userId);

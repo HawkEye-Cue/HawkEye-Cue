@@ -332,7 +332,7 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState<string>('free');
   // Summit: view own pipeline vs the whole team's production
-  const { isInTeam, teamMembers, teamLeads, teamAnalytics, fetchLeads: fetchTeamLeads, fetchAnalytics: fetchTeamAnalytics } = useTeamData();
+  const { isInTeam, teamMembers, teamLeads, teamAnalytics, teamFolios, fetchLeads: fetchTeamLeads, fetchAnalytics: fetchTeamAnalytics, fetchFolios: fetchTeamFolios } = useTeamData();
   const [pipelineView, setPipelineView] = useState<'mine' | 'team'>('mine');
   // Which folio the team view is showing: 'current' | 'all' | "START to END"
   const [teamFolio, setTeamFolio] = useState<string>('current');
@@ -717,6 +717,7 @@ export default function SalesPage() {
       const w = teamFolioWindow();
       fetchTeamAnalytics(w.start, w.end);
       fetchTeamLeads();
+      fetchTeamFolios();
     }
   }, [isSummit, pipelineView, teamFolio, defaultFolioStart, defaultFolioEnd]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -823,9 +824,12 @@ export default function SalesPage() {
           >
             <option value="current">📅 {defaultFolioStart && defaultFolioEnd ? folioDisplayName(`${defaultFolioStart} to ${defaultFolioEnd}`) : 'Current Folio'}</option>
             <option value="all">All Time</option>
-            {availableFolios.filter((f) => f !== `${defaultFolioStart} to ${defaultFolioEnd}`).map((f) => (
-              <option key={f} value={f}>{folioDisplayName(f)}</option>
-            ))}
+            {/* Full list of folios across ALL team members (from /team/folios), plus any local ones */}
+            {[...new Set([...teamFolios, ...availableFolios])]
+              .filter((f) => f && f !== `${defaultFolioStart} to ${defaultFolioEnd}`)
+              .map((f) => (
+                <option key={f} value={f}>{folioDisplayName(f)}</option>
+              ))}
           </select>
 
           {/* Team totals */}

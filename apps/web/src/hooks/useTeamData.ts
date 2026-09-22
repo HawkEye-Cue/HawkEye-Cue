@@ -62,6 +62,7 @@ export function useTeamData() {
   const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
   const [leadsNextCursor, setLeadsNextCursor] = useState<string | undefined>();
   const [teamAnalytics, setTeamAnalytics] = useState<TeamAnalytics | null>(null);
+  const [teamFolios, setTeamFolios] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,6 +135,14 @@ export function useTeamData() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const fetchFolios = useCallback(async () => {
+    try {
+      const client = await buildClient();
+      const result = await client.request<{ folios: string[] }>('GET', '/team/folios');
+      setTeamFolios(result.folios || []);
+    } catch { /* non-critical */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function getMemberColorIndex(email: string): number {
     const idx = teamMembers.findIndex((m) => m.email === email);
     return idx >= 0 ? idx % MEMBER_COLORS.length : 0;
@@ -174,11 +183,13 @@ export function useTeamData() {
     teamLeads,
     leadsNextCursor,
     teamAnalytics,
+    teamFolios,
     loading,
     error,
     fetchCalendar,
     fetchLeads,
     fetchAnalytics,
+    fetchFolios,
     getMemberColorIndex,
     claimLead,
     releaseLead,

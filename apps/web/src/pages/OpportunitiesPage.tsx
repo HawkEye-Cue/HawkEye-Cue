@@ -601,7 +601,10 @@ export default function OpportunitiesPage() {
       {/* Left column */}
       <div className="min-w-0 space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xl font-bold text-white">Lead Cues</h2>
+        <div>
+          <h2 className="text-xl font-bold text-white">Opportunities</h2>
+          <p className="text-[11px] text-slate-400">Who should I contact?</p>
+        </div>
         <div className="flex gap-2">
           <button onClick={() => setShowRadar(true)} className="px-3 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-xl transition-all shadow-lg shadow-amber-500/30 active:scale-95 flex items-center gap-1" title="HawkEye Radar — score a post">
             📡 Radar

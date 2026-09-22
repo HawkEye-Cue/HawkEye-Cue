@@ -9,14 +9,23 @@ import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
 import SetupWizard from './SetupWizard';
 
+// Five primary tabs — each answers one question.
 const navItems = [
   { path: '/', label: 'Today', icon: '🦅', tour: 'home' },
   { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
-  { path: '/opportunities', label: 'Leads', icon: '🎯', tour: 'leads' },
-  { path: '/sales', label: 'Sales', icon: '💰', tour: 'sales' },
-  { path: '/network', label: 'Network', icon: '🤝', tour: 'network' },
-  { path: '/team', label: 'Summit', icon: '🏔️', tour: 'team' },
-  { path: '/settings', label: 'More', icon: '⚙️', tour: 'settings' },
+  { path: '/opportunities', label: 'Opportunities', icon: '🎯', tour: 'leads' },
+  { path: '/sales', label: 'Pipeline', icon: '💰', tour: 'sales' },
+  { path: '/hawk-insights', label: 'Insights', icon: '📊', tour: 'insights' },
+];
+
+// Everything else lives under "More" — nothing is removed, just tucked away.
+const moreItems = [
+  { path: '/network', label: 'Network', icon: '🤝', desc: 'Referral partners & appreciations' },
+  { path: '/team', label: 'Summit (Team)', icon: '🏔️', desc: 'Team calendar, leads & leaderboard' },
+  { path: '/dashboard', label: 'Full Dashboard', icon: '🗓️', desc: 'Calendar, engagement & everything at a glance' },
+  { path: '/keywords', label: 'Keywords', icon: '🔑', desc: 'What HawkEye watches for' },
+  { path: '/settings', label: 'Settings', icon: '⚙️', desc: 'Trade, accounts, subscription & more' },
+  { path: '/profile', label: 'Profile', icon: '👤', desc: 'Your account & password' },
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -86,6 +95,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   });
   const visibleNotifications = notifications.filter((n) => !dismissedNotifs.has(n.id));
   const unreadCount = visibleNotifications.length;
+
+  // "More" menu (secondary navigation)
+  const [showMore, setShowMore] = useState(false);
+  // Close the More sheet whenever the route changes
+  useEffect(() => { setShowMore(false); }, [location.pathname]);
 
   // Quick Add Lead state
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -200,10 +214,51 @@ export default function AppShell({ children }: { children: ReactNode }) {
             }`}
           >
             <span className="text-xl sm:text-2xl">{item.icon}</span>
-            <span className="mt-0.5 hidden sm:block">{item.label}</span>
+            <span className="mt-0.5 hidden sm:block leading-tight text-center">{item.label}</span>
           </Link>
         ))}
+        {/* More — secondary navigation */}
+        <button
+          onClick={() => setShowMore(true)}
+          data-tour="more"
+          className={`flex flex-col items-center min-w-[44px] min-h-[44px] justify-center px-1 sm:px-3 py-1 sm:py-2 rounded-xl text-xs sm:text-sm transition-all duration-200 ${
+            moreItems.some((m) => m.path === location.pathname)
+              ? 'text-blue-400 font-bold bg-blue-500/10 scale-105'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <span className="text-xl sm:text-2xl">⚙️</span>
+          <span className="mt-0.5 hidden sm:block leading-tight">More</span>
+        </button>
       </nav>
+
+      {/* More menu — bottom sheet */}
+      {showMore && (
+        <div className="fixed inset-0 z-[9997] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={() => setShowMore(false)}>
+          <div className="w-full sm:max-w-sm bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl p-4 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-white text-base">More</h3>
+              <button onClick={() => setShowMore(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            <div className="space-y-1.5">
+              {moreItems.map((m) => (
+                <Link
+                  key={m.path}
+                  to={m.path}
+                  onClick={() => setShowMore(false)}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${location.pathname === m.path ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-slate-800 hover:bg-slate-700 border border-transparent'}`}
+                >
+                  <span className="text-2xl shrink-0">{m.icon}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white">{m.label}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{m.desc}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Add Lead — floating button (mobile-friendly) */}
       <button

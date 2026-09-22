@@ -173,6 +173,17 @@ export class ApiStack extends cdk.Stack {
     // Content handler writes AI-generated images to the media bucket
     mediaBucket.grantReadWrite(contentHandlerFn);
 
+    // Grant Secrets Manager access for the OpenAI image-generation key
+    contentHandlerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/OpenAI*`,
+        ],
+      })
+    );
+
     // ─── Posts Handler ────────────────────────────────────────────────────
     const postsHandlerFn = new lambda.Function(this, 'PostsHandlerFn', {
       ...lambdaDefaults,

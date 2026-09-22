@@ -197,7 +197,18 @@ Rules:
   }
 }
 
-// POST /content/generate-image — text-to-image via Amazon Titan/Nova Canvas
+// Cached OpenAI key
+let openAiKey = null;
+async function getOpenAiKey() {
+  if (openAiKey) return openAiKey;
+  const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+  const sm = new SecretsManagerClient({ region: 'us-east-1' });
+  const result = await sm.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/OpenAI' }));
+  openAiKey = JSON.parse(result.SecretString).OPENAI_API_KEY;
+  return openAiKey;
+}
+
+// POST /content/generate-image — text-to-image via OpenAI gpt-image-1
 async function handleGenerateImage(userId, body) {
   const rawPrompt = (body && body.prompt) || '';
   const tradeName = (body && body.tradeName) || '';
@@ -208,59 +219,40 @@ async function handleGenerateImage(userId, body) {
 
   // Enrich the prompt for better marketing-quality output
   const styleHint = {
-    photo: 'professional high-quality photograph, realistic, well-lit, marketing quality',
-    illustration: 'clean modern flat illustration, vibrant colors',
-    bold: 'bold eye-catching social media graphic, high contrast',
-  }[style] || 'professional photograph';
+    photo: 'a professional, high-quality, realistic photograph, well-lit, marketing quality',
+    illustration: 'a clean modern flat illustration with vibrant colors',
+    bold: 'a bold, eye-catching social media graphic with high contrast',
+  }[style] || 'a professional photograph';
 
-  const fullPrompt = `${rawPrompt.trim()}${tradeName ? `, for a ${tradeName} business` : ''}. ${styleHint}. No text or words in the image.`;
-
-  // Amazon Nova Canvas (falls back to Titan if unavailable)
-  const requestBody = {
-    taskType: 'TEXT_IMAGE',
-    textToImageParams: { text: fullPrompt.slice(0, 1000) },
-    imageGenerationConfig: {
-      numberOfImages: 1,
-      height: 1024,
-      width: 1024,
-      cfgScale: 8.0,
-      seed: Math.floor(Math.random() * 858993459),
-    },
-  };
+  const fullPrompt = `${styleHint} of: ${rawPrompt.trim()}${tradeName ? `, relevant to a ${tradeName} business` : ''}. Do not include any text or words in the image.`;
 
   let base64Image = null;
   try {
-    const command = new InvokeModelCommand({
-      modelId: 'amazon.nova-canvas-v1:0',
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify(requestBody),
+    const apiKey = await getOpenAiKey();
+    const res = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-image-1',
+        prompt: fullPrompt.slice(0, 4000),
+        n: 1,
+        size: '1024x1024',
+      }),
     });
-    const response = await bedrock.send(command);
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    base64Image = responseBody.images?.[0];
-  } catch (e) {
-    console.error('[gen-image] Nova Canvas failed, trying Titan:', e.message);
-    // Fallback to Titan Image Generator v2
-    try {
-      const titanBody = {
-        taskType: 'TEXT_IMAGE',
-        textToImageParams: { text: fullPrompt.slice(0, 512) },
-        imageGenerationConfig: { numberOfImages: 1, height: 1024, width: 1024, cfgScale: 8.0 },
-      };
-      const command = new InvokeModelCommand({
-        modelId: 'amazon.titan-image-generator-v2:0',
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify(titanBody),
-      });
-      const response = await bedrock.send(command);
-      const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      base64Image = responseBody.images?.[0];
-    } catch (e2) {
-      console.error('[gen-image] Titan also failed:', e2.message);
-      return respond(500, { error: { code: 'IMAGE_FAILED', message: 'Could not generate image. Try a simpler prompt.' } });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[gen-image] OpenAI error:', JSON.stringify(data));
+      const msg = data?.error?.message || 'Image generation failed';
+      return respond(500, { error: { code: 'IMAGE_FAILED', message: msg } });
     }
+    base64Image = data?.data?.[0]?.b64_json;
+    // Some responses return a URL instead of base64
+    if (!base64Image && data?.data?.[0]?.url) {
+      return respond(200, { url: data.data[0].url });
+    }
+  } catch (e) {
+    console.error('[gen-image] OpenAI request failed:', e.message);
+    return respond(500, { error: { code: 'IMAGE_FAILED', message: 'Could not reach image service. Try again.' } });
   }
 
   if (!base64Image) {
@@ -281,7 +273,6 @@ async function handleGenerateImage(userId, body) {
     return respond(200, { url, key });
   } catch (e) {
     console.error('[gen-image] S3 upload failed:', e.message);
-    // Return inline base64 as fallback
     return respond(200, { dataUrl: `data:image/png;base64,${base64Image}` });
   }
 }

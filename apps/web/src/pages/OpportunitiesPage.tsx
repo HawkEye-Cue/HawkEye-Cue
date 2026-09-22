@@ -128,6 +128,13 @@ export default function OpportunitiesPage() {
   const [showRadar, setShowRadar] = useState(false);
   // Perched leads (circle back later) — stored per user
   const [perchedIds, setPerchedIds] = useState<Set<string>>(new Set());
+  // HawkSight scores cached per lead (score/urgency/reason/suggestedResponse)
+  interface LeadScore { score: number; urgency: 'now' | 'soon' | 'nurture' | 'not_a_lead'; reason: string; suggestedResponse?: string; }
+  const [leadScores, setLeadScores] = useState<Record<string, LeadScore>>(() => {
+    try { return JSON.parse(localStorage.getItem(`hawkeye_lead_scores_${user?.sub}`) || '{}'); } catch { return {}; }
+  });
+  const [scoringId, setScoringId] = useState<string | null>(null);
+  const [expandedReason, setExpandedReason] = useState<Set<string>>(new Set());
   const [showBucketManager, setShowBucketManager] = useState(false);
   const [newBucketName, setNewBucketName] = useState('');
   const [selectedLead, setSelectedLead] = useState<Opportunity | null>(null);
@@ -332,6 +339,61 @@ export default function OpportunitiesPage() {
       localStorage.setItem(`hawkeye_perched_leads_${user?.sub}`, JSON.stringify([...next]));
       return next;
     });
+  }
+
+  // ─── HawkSight scoring helpers ──────────────────────────────────────────────
+  function relativeTime(dateStr?: string): string {
+    if (!dateStr) return '';
+    const then = new Date(dateStr).getTime();
+    if (isNaN(then)) return '';
+    const mins = Math.floor((Date.now() - then) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // Quality label + color from a 0-100 score
+  function scoreQuality(score: number): { label: string; color: string; ring: string } {
+    if (score >= 80) return { label: 'Excellent opportunity', color: 'text-emerald-300', ring: '#34d399' };
+    if (score >= 50) return { label: 'Strong opportunity', color: 'text-amber-300', ring: '#fbbf24' };
+    if (score >= 20) return { label: 'Worth a look', color: 'text-sky-300', ring: '#38bdf8' };
+    return { label: 'Low signal', color: 'text-slate-400', ring: '#64748b' };
+  }
+
+  const URGENCY_BADGE: Record<string, { label: string; cls: string }> = {
+    now: { label: '⚡ Respond now', cls: 'text-red-300 bg-red-500/15 border-red-500/30' },
+    soon: { label: '⚡ Respond soon', cls: 'text-amber-300 bg-amber-500/15 border-amber-500/30' },
+    nurture: { label: '🌱 Nurture', cls: 'text-sky-300 bg-sky-500/15 border-sky-500/30' },
+    not_a_lead: { label: '🚫 Not a lead', cls: 'text-slate-400 bg-slate-500/15 border-slate-500/30' },
+  };
+
+  // Score a single lead on demand via HawkEye Radar, cache the result.
+  async function scoreLead(lead: Opportunity) {
+    if (!lead.sourceContent || !lead.sourceContent.trim()) { showToast('No post text to score'); return; }
+    setScoringId(lead.id);
+    try {
+      const client = await buildClient();
+      const res = await client.request<{ result: { score: number; urgency: LeadScore['urgency']; reason: string; suggestedResponse?: string } }>(
+        'POST', '/radar/score', {
+          postText: lead.sourceContent,
+          tradeName: selectedTrade?.name,
+          group: (lead as any).leadSourceGroup || '',
+        }
+      );
+      const r = res.result;
+      const next: LeadScore = { score: r.score, urgency: r.urgency, reason: r.reason, suggestedResponse: r.suggestedResponse };
+      setLeadScores((prev) => {
+        const merged = { ...prev, [lead.id]: next };
+        localStorage.setItem(`hawkeye_lead_scores_${user?.sub}`, JSON.stringify(merged));
+        return merged;
+      });
+    } catch {
+      showToast('❌ Could not score this one');
+    } finally { setScoringId(null); }
   }
 
   const hasAccess = ['soar', 'team', 'summit'].includes(tier);
@@ -1117,6 +1179,13 @@ export default function OpportunitiesPage() {
                 const premium = (lead as any).expectedPremium || localData[(lead.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;
                 const statusLabel = lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New';
 
+                const summary = (lead.sourceContent || '').trim();
+                const group = (lead as any).leadSourceGroup || '';
+                const when = relativeTime(lead.detectedAt || (lead as any).createdAt);
+                const sc = leadScores[lead.id];
+                const quality = sc ? scoreQuality(sc.score) : null;
+                const reasonOpen = expandedReason.has(lead.id);
+
                 return (
                   <div
                     key={lead.id}
@@ -1131,21 +1200,80 @@ export default function OpportunitiesPage() {
                     {/* accent edge */}
                     {accent && <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: `linear-gradient(180deg, ${accent}, ${accent}66)` }} />}
 
-                    <div className="flex items-center gap-3 p-3 pl-4">
-                      {/* Platform avatar */}
-                      <div className="platform-badge">{platformIcons[lead.sourcePlatform] || '📱'}</div>
-
-                      {/* Main info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[15px] text-white font-bold leading-tight">{lead.sourceAuthor}</span>
-                          {(lead as any).policyType && (
-                            <span className="text-[9px] font-bold text-amber-200 bg-gradient-to-r from-amber-500/30 to-orange-500/15 px-2 py-0.5 rounded-full border border-amber-400/40">{(lead as any).policyType}</span>
-                          )}
-                          <span className={`text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>{statusLabel}</span>
+                    <div className="p-4 pl-4 space-y-2.5">
+                      {/* Header row: author + platform + status */}
+                      <div className="flex items-start gap-3">
+                        <div className="platform-badge shrink-0">{platformIcons[lead.sourcePlatform] || '📱'}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[15px] text-white font-bold leading-tight">{lead.sourceAuthor}</span>
+                            {(lead as any).policyType && (
+                              <span className="text-[9px] font-bold text-amber-200 bg-gradient-to-r from-amber-500/30 to-orange-500/15 px-2 py-0.5 rounded-full border border-amber-400/40">{(lead as any).policyType}</span>
+                            )}
+                            <span className={`text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>{statusLabel}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                            {group ? `${group} · ` : ''}{when || lead.sourcePlatform}
+                          </p>
                         </div>
-                        {/* meta row */}
-                        <div className="flex items-center gap-3 mt-1.5 text-[11px]">
+                        {/* color flags */}
+                        <div className="flex gap-1 shrink-0">
+                          {['yellow', 'green', 'red'].map((c) => (
+                            <button
+                              key={c}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); buildClient().then((client) => client.request('PUT', `/opportunities/${lead.id}/status`, { leadColor: newColor })).catch(() => {}); setLeads((prev) => [...prev]); }}
+                              className={`w-3 h-3 rounded-full transition-all ${c === 'yellow' ? 'bg-yellow-400' : c === 'green' ? 'bg-green-400' : 'bg-red-400'} ${leadColor === c ? 'ring-2 ring-white scale-125' : 'opacity-30 hover:opacity-100 hover:scale-110'}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* The need — the line that says what they want */}
+                      {summary && (
+                        <p className="text-sm text-slate-200 leading-snug line-clamp-2">
+                          "{summary.slice(0, 160)}{summary.length > 160 ? '…' : ''}"
+                        </p>
+                      )}
+
+                      {/* Score + quality + urgency */}
+                      {sc ? (
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-lg font-extrabold" style={{ color: quality!.ring }}>{sc.score}</span>
+                            <span className={`text-[11px] font-semibold ${quality!.color}`}>{quality!.label}</span>
+                          </span>
+                          {URGENCY_BADGE[sc.urgency] && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${URGENCY_BADGE[sc.urgency].cls}`}>{URGENCY_BADGE[sc.urgency].label}</span>
+                          )}
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpandedReason((prev) => { const n = new Set(prev); n.has(lead.id) ? n.delete(lead.id) : n.add(lead.id); return n; }); }}
+                            className="text-[10px] text-slate-400 hover:text-slate-200 underline underline-offset-2 ml-auto"
+                          >
+                            {reasonOpen ? 'Hide' : 'Why this score?'}
+                          </button>
+                        </div>
+                      ) : (
+                        summary && (
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); scoreLead(lead); }}
+                            disabled={scoringId === lead.id}
+                            className="text-[11px] font-semibold text-amber-300 hover:text-amber-200 disabled:opacity-50 flex items-center gap-1"
+                          >
+                            {scoringId === lead.id ? '📡 Scoring…' : '📡 Score this opportunity'}
+                          </button>
+                        )
+                      )}
+
+                      {/* Why this score? — hidden by default */}
+                      {sc && reasonOpen && (
+                        <div className="text-[11px] text-slate-400 bg-white/5 rounded-lg p-2.5 leading-relaxed">
+                          {sc.reason}
+                        </div>
+                      )}
+
+                      {/* meta chips */}
+                      {(producer || premium > 0 || totalSteps > 0) && (
+                        <div className="flex items-center gap-3 text-[11px]">
                           {producer && <span className="text-sky-300 font-semibold flex items-center gap-1">👤 {producer}</span>}
                           {premium > 0 && <span className="text-green-400 font-bold flex items-center gap-1">💰 ${Number(premium).toLocaleString()}</span>}
                           {totalSteps > 0 && (
@@ -1157,34 +1285,37 @@ export default function OpportunitiesPage() {
                             </span>
                           )}
                         </div>
-                      </div>
+                      )}
 
-                      {/* Right side: flags + actions (revealed on hover) */}
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <div className="flex gap-1">
-                          {['yellow', 'green', 'red'].map((c) => (
-                            <button
-                              key={c}
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const current = localStorage.getItem(`hawkeye_lead_color_${lead.id}`); const newColor = current === c ? '' : c; localStorage.setItem(`hawkeye_lead_color_${lead.id}`, newColor); buildClient().then((client) => client.request('PUT', `/opportunities/${lead.id}/status`, { leadColor: newColor })).catch(() => {}); setLeads((prev) => [...prev]); }}
-                              className={`w-3 h-3 rounded-full transition-all ${c === 'yellow' ? 'bg-yellow-400' : c === 'green' ? 'bg-green-400' : 'bg-red-400'} ${leadColor === c ? 'ring-2 ring-white scale-125' : 'opacity-30 hover:opacity-100 hover:scale-110'}`}
-                            />
-                          ))}
+                      {/* Actions */}
+                      {lead.status !== 'converted' && (
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault(); e.stopPropagation();
+                              if (sc?.suggestedResponse) { navigator.clipboard.writeText(sc.suggestedResponse); showToast('✓ Suggested reply copied'); }
+                              setSelectedLead(lead);
+                            }}
+                            className="flex-1 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs font-bold rounded-lg transition-all active:scale-95"
+                          >
+                            ✍️ Write Response
+                          </button>
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePerched(lead.id); }}
+                            title={perchedIds.has(lead.id) ? 'Return to active leads' : 'Save for later — circle back'}
+                            className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all ${perchedIds.has(lead.id) ? 'bg-sky-500/30 border-sky-500/50 text-sky-200' : 'bg-slate-700/60 border-white/10 text-slate-300 hover:bg-slate-700'}`}
+                          >
+                            🌲 Save for Later
+                          </button>
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveToWon(lead); }}
+                            title="Move to Won nest"
+                            className="px-3 py-2 rounded-lg bg-green-500/15 border border-green-500/30 hover:bg-green-500/30 text-green-300 text-xs font-medium transition-all"
+                          >
+                            🏆
+                          </button>
                         </div>
-                        {lead.status !== 'converted' && (
-                          <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveToWon(lead); }}
-                              title="Move to Won nest"
-                              className="w-6 h-6 rounded-lg bg-green-500/15 border border-green-500/30 hover:bg-green-500/30 flex items-center justify-center text-xs transition-all"
-                            >🏆</button>
-                            <button
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePerched(lead.id); }}
-                              title={perchedIds.has(lead.id) ? 'Return to active leads' : 'Perch — circle back later'}
-                              className={`w-6 h-6 rounded-lg border flex items-center justify-center text-xs transition-all ${perchedIds.has(lead.id) ? 'bg-sky-500/30 border-sky-500/50' : 'bg-sky-500/15 border-sky-500/30 hover:bg-sky-500/30'}`}
-                            >🌲</button>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 );

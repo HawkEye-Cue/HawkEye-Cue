@@ -82,6 +82,28 @@ const STAGES = [
   { id: 'lost', label: 'Lost', color: 'bg-red-500/20 border-red-500/30 text-red-300' },
 ];
 
+// The recommended next action for each stage — so users see what to do without opening the deal.
+const NEXT_STEP: Record<string, string> = {
+  prospect: 'Reach out & introduce yourself',
+  contacted: 'Send a quote',
+  quoted: 'Follow up on the quote',
+  closing: 'Close the deal today',
+  won: 'Ask for a referral',
+  lost: 'Circle back later',
+};
+
+// Relative "last contact" from a date string.
+function relativeContact(dateStr?: string): string {
+  if (!dateStr) return '';
+  const then = new Date(dateStr).getTime();
+  if (isNaN(then)) return '';
+  const days = Math.floor((Date.now() - then) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days} days ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 // Trade-specific deal type configurations
 interface TradeConfig {
   dealTypes: string[];
@@ -1180,16 +1202,29 @@ export default function SalesPage() {
         <div className="space-y-2">
           {filtered.map((deal) => {
             const stageInfo = STAGES.find((s) => s.id === deal.stage) || STAGES[0];
+            const isActive = !['won', 'lost'].includes(deal.stage);
+            const lastContact = relativeContact(deal.createdAt);
+            const daysSince = deal.createdAt ? Math.floor((Date.now() - new Date(deal.createdAt).getTime()) / 86400000) : 0;
+            const overdue = isActive && daysSince >= 3; // red only for genuinely overdue
+            const nextStep = NEXT_STEP[deal.stage] || 'Follow up';
             return (
               <details key={deal.id} className="glass-card">
-                <summary className="flex items-center justify-between cursor-pointer">
+                <summary className="flex items-center justify-between cursor-pointer gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white truncate">{deal.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${stageInfo.color}`}>{stageInfo.label}</span>
-                      {deal.policyType && <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">{deal.policyType}</span>}
-                      {deal.folio && <span className="text-xs text-slate-500">{deal.folio}</span>}
-                      {deal.value > 0 && <span className="text-xs text-green-400">${deal.value.toLocaleString()}</span>}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-white truncate">{deal.name}</p>
+                      {deal.policyType && <span className="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">{deal.policyType}</span>}
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${stageInfo.color}`}>{stageInfo.label}</span>
+                    </div>
+                    {/* Human next-step line */}
+                    {isActive && (
+                      <p className={`text-xs mt-1 font-medium flex items-center gap-1 ${overdue ? 'text-red-400' : 'text-slate-300'}`}>
+                        {overdue ? '⏰' : '→'} Next step: {nextStep}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500">
+                      {lastContact && <span>Last contact: {lastContact}</span>}
+                      {deal.value > 0 && <span className="text-green-400 font-semibold">${deal.value.toLocaleString()}</span>}
                     </div>
                   </div>
                 </summary>

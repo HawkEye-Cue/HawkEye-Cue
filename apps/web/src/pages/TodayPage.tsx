@@ -171,7 +171,8 @@ export default function TodayPage() {
     <div className="max-w-2xl mx-auto px-1 pb-24 space-y-6">
       {/* Greeting */}
       <div className="pt-2">
-        <h1 className="text-2xl font-bold text-white">{greeting}, {name} 👋</h1>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-400/80">🦅 The Nest</p>
+        <h1 className="text-2xl font-bold text-white mt-0.5">{greeting}, {name} 👋</h1>
         <p className="text-sm text-slate-400 mt-1">
           Here's your daily flight plan{selectedTrade?.name ? ` for your ${selectedTrade.name.toLowerCase()} business` : ''}.
         </p>

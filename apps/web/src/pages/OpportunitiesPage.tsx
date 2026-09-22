@@ -602,7 +602,7 @@ export default function OpportunitiesPage() {
       <div className="min-w-0 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h2 className="text-xl font-bold text-white">Opportunities</h2>
+          <h2 className="text-xl font-bold text-white">🎯 HawkSight</h2>
           <p className="text-[11px] text-slate-400">Who should I contact?</p>
         </div>
         <div className="flex gap-2">

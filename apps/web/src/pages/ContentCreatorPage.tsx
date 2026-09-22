@@ -250,7 +250,10 @@ export default function ContentCreatorPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Create Content</h2>
+        <div>
+          <h2 className="text-xl font-bold text-white">✨ Flock</h2>
+          <p className="text-[11px] text-slate-400">What should I post?</p>
+        </div>
       </div>
       {selectedTrades.length > 1 && (
         <div className="flex justify-center">

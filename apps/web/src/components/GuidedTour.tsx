@@ -10,32 +10,32 @@ interface TourStep {
 const TOUR_STEPS: TourStep[] = [
   {
     selector: '[data-tour="home"]',
-    title: 'Today',
-    description: 'Your daily flight plan. See what needs attention and tap "Start My Flight Plan" to knock it out one task at a time.',
+    title: 'Nest — What should I do today?',
+    description: 'Your home base and daily flight plan. See what needs attention and tap "Start My Flight Plan" to knock it out one task at a time.',
     icon: '🦅',
   },
   {
     selector: '[data-tour="create"]',
-    title: 'Create',
+    title: 'Flock — What should I post?',
     description: 'Write posts or let AI generate them. Use "Copy & Open Next Flock" to fly through your Facebook groups.',
     icon: '✨',
   },
   {
     selector: '[data-tour="leads"]',
-    title: 'Opportunities',
+    title: 'HawkSight — Who should I contact?',
     description: 'Conversations HawkEye spots plus leads you save. Decide who to contact first. The 🎯 button quick-saves a lead from any page.',
     icon: '🎯',
   },
   {
     selector: '[data-tour="sales"]',
-    title: 'Pipeline',
-    description: 'Your deals from prospect to close. See who needs follow-up and which sources make you the most money.',
+    title: 'Talons — Who needs follow-up?',
+    description: 'Where you grab and hold your deals — from prospect to close. See who needs follow-up and which sources make you the most money.',
     icon: '💰',
   },
   {
     selector: '[data-tour="insights"]',
-    title: 'Insights',
-    description: 'What\'s producing revenue — deals, leads, and completion rates at a glance.',
+    title: 'Eye — What\'s making me money?',
+    description: 'The HawkEye view of what\'s producing revenue — deals, leads, and completion rates at a glance.',
     icon: '📊',
   },
   {

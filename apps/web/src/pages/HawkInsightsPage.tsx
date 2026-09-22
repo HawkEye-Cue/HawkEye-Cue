@@ -163,7 +163,7 @@ export default function HawkInsightsPage() {
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <h2 className="text-xl font-bold text-white">📊 Insights</h2>
+        <h2 className="text-xl font-bold text-white">📊 Eye</h2>
         <p className="text-xs text-slate-400">What's making me money? <span className="text-slate-500">· Hawk Insights</span></p>
       </div>
 

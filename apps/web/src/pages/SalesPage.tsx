@@ -728,7 +728,7 @@ export default function SalesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">Pipeline</h2>
+          <h2 className="text-xl font-bold text-white">💰 Talons</h2>
           <p className="text-[11px] text-slate-400">Who needs follow-up?</p>
           {selectedTrade && <p className="text-xs text-amber-400 mt-0.5">{selectedTrade.name}</p>}
         </div>

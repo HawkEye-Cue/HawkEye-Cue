@@ -334,6 +334,8 @@ export default function SalesPage() {
   // Summit: view own pipeline vs the whole team's production
   const { isInTeam, teamMembers, teamLeads, teamAnalytics, fetchLeads: fetchTeamLeads, fetchAnalytics: fetchTeamAnalytics } = useTeamData();
   const [pipelineView, setPipelineView] = useState<'mine' | 'team'>('mine');
+  // Which folio the team view is showing: 'current' | 'all' | "START to END"
+  const [teamFolio, setTeamFolio] = useState<string>('current');
 
   // Check subscription tier
   useEffect(() => {
@@ -353,13 +355,7 @@ export default function SalesPage() {
   // Summit users (team/summit tier AND in a team) can see the whole team's production
   const isSummit = ['team', 'summit'].includes(tier) && isInTeam;
 
-  // Load team production when Summit user switches to the team view
-  useEffect(() => {
-    if (isSummit && pipelineView === 'team') {
-      fetchTeamAnalytics();
-      fetchTeamLeads();
-    }
-  }, [isSummit, pipelineView]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Get trade-specific config
   const tradeConfig = useMemo(() => {
@@ -704,6 +700,26 @@ export default function SalesPage() {
     try { return new Date(s).toISOString().slice(0, 10); } catch { return null; }
   }
 
+  // Resolve the selected team folio into a [start, end] window (or undefined for all-time)
+  function teamFolioWindow(): { start?: string; end?: string } {
+    if (teamFolio === 'all') return {};
+    if (teamFolio === 'current') return { start: defaultFolioStart || undefined, end: defaultFolioEnd || undefined };
+    if (teamFolio.includes(' to ')) {
+      const [start, end] = teamFolio.split(' to ');
+      return { start, end };
+    }
+    return {};
+  }
+
+  // Load team production when Summit user switches to the team view (or changes folio)
+  useEffect(() => {
+    if (isSummit && pipelineView === 'team') {
+      const w = teamFolioWindow();
+      fetchTeamAnalytics(w.start, w.end);
+      fetchTeamLeads();
+    }
+  }, [isSummit, pipelineView, teamFolio, defaultFolioStart, defaultFolioEnd]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Does a deal fall within the current folio window?
   function dealInCurrentFolio(d: Deal): boolean {
     const fStart = normDate(defaultFolioStart);
@@ -799,9 +815,25 @@ export default function SalesPage() {
       {/* ── Team production view (Summit only) ── */}
       {isSummit && pipelineView === 'team' && (
         <div className="space-y-4">
+          {/* Folio selector */}
+          <select
+            value={teamFolio}
+            onChange={(e) => setTeamFolio(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+          >
+            <option value="current">📅 {defaultFolioStart && defaultFolioEnd ? folioDisplayName(`${defaultFolioStart} to ${defaultFolioEnd}`) : 'Current Folio'}</option>
+            <option value="all">All Time</option>
+            {availableFolios.filter((f) => f !== `${defaultFolioStart} to ${defaultFolioEnd}`).map((f) => (
+              <option key={f} value={f}>{folioDisplayName(f)}</option>
+            ))}
+          </select>
+
           {/* Team totals */}
           {teamAnalytics ? (
             <>
+              <p className="text-[10px] text-slate-500 text-center -mb-1">
+                {teamFolio === 'all' ? 'All-time team production' : `Team production · ${teamFolio === 'current' ? (defaultFolioStart && defaultFolioEnd ? folioDisplayName(`${defaultFolioStart} to ${defaultFolioEnd}`) : 'Current Folio') : folioDisplayName(teamFolio)}`}
+              </p>
               <div className="grid grid-cols-3 gap-2">
                 <div className="glass-card text-center py-3">
                   <p className="text-xl font-extrabold text-green-400">${(teamAnalytics.totalRevenue || 0).toLocaleString()}</p>

@@ -122,11 +122,12 @@ export function useTeamData() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchAnalytics = useCallback(async () => {
+  const fetchAnalytics = useCallback(async (folioStart?: string, folioEnd?: string) => {
     try {
       setError(null);
       const client = await buildClient();
-      const result = await client.request<TeamAnalytics>('GET', '/team/analytics');
+      const qs = folioStart && folioEnd ? `?folioStart=${encodeURIComponent(folioStart)}&folioEnd=${encodeURIComponent(folioEnd)}` : '';
+      const result = await client.request<TeamAnalytics>('GET', `/team/analytics${qs}`);
       setTeamAnalytics(result);
     } catch {
       setError('Team analytics unavailable');

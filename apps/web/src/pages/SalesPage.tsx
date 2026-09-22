@@ -9,6 +9,7 @@ import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import FolioManager from '../components/FolioManager';
 import { folioDisplayName } from '../utils/folioName';
+import { useTeamData } from '../hooks/useTeamData';
 
 interface Deal {
   id: string;
@@ -330,6 +331,9 @@ export default function SalesPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState<string>('free');
+  // Summit: view own pipeline vs the whole team's production
+  const { isInTeam, teamMembers, teamLeads, teamAnalytics, fetchLeads: fetchTeamLeads, fetchAnalytics: fetchTeamAnalytics } = useTeamData();
+  const [pipelineView, setPipelineView] = useState<'mine' | 'team'>('mine');
 
   // Check subscription tier
   useEffect(() => {
@@ -346,6 +350,16 @@ export default function SalesPage() {
 
   // Gate: Sales Tracker requires Soar or higher
   const hasAccess = ['soar', 'team', 'summit'].includes(tier);
+  // Summit users (team/summit tier AND in a team) can see the whole team's production
+  const isSummit = ['team', 'summit'].includes(tier) && isInTeam;
+
+  // Load team production when Summit user switches to the team view
+  useEffect(() => {
+    if (isSummit && pipelineView === 'team') {
+      fetchTeamAnalytics();
+      fetchTeamLeads();
+    }
+  }, [isSummit, pipelineView]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Get trade-specific config
   const tradeConfig = useMemo(() => {
@@ -751,16 +765,125 @@ export default function SalesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white">💰 Talons</h2>
-          <p className="text-[11px] text-slate-400">Who needs follow-up?</p>
+          <p className="text-[11px] text-slate-400">{pipelineView === 'team' ? "The whole team's production" : 'Who needs follow-up?'}</p>
           {selectedTrade && <p className="text-xs text-amber-400 mt-0.5">{selectedTrade.name}</p>}
         </div>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-500"
-        >
-          {showAdd ? '−' : '+ Add Deal'}
-        </button>
+        {pipelineView === 'mine' && (
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-500"
+          >
+            {showAdd ? '−' : '+ Add Deal'}
+          </button>
+        )}
       </div>
+
+      {/* Summit: My pipeline vs Team production toggle */}
+      {isSummit && (
+        <div className="flex bg-slate-800 rounded-xl p-1 border border-white/10">
+          <button
+            onClick={() => setPipelineView('mine')}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${pipelineView === 'mine' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+          >
+            🪶 My Pipeline
+          </button>
+          <button
+            onClick={() => setPipelineView('team')}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${pipelineView === 'team' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+          >
+            🏔️ Whole Team
+          </button>
+        </div>
+      )}
+
+      {/* ── Team production view (Summit only) ── */}
+      {isSummit && pipelineView === 'team' && (
+        <div className="space-y-4">
+          {/* Team totals */}
+          {teamAnalytics ? (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="glass-card text-center py-3">
+                  <p className="text-xl font-extrabold text-green-400">${(teamAnalytics.totalRevenue || 0).toLocaleString()}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Team Revenue</p>
+                </div>
+                <div className="glass-card text-center py-3">
+                  <p className="text-xl font-extrabold text-blue-400">{teamAnalytics.wonDeals || 0}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Deals Won</p>
+                </div>
+                <div className="glass-card text-center py-3">
+                  <p className="text-xl font-extrabold text-purple-400">{teamAnalytics.totalDeals || 0}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Total Deals</p>
+                </div>
+              </div>
+
+              {/* Leaderboard */}
+              <div className="glass-card space-y-2">
+                <h3 className="text-sm font-semibold text-white">🏆 Leaderboard</h3>
+                {[...(teamAnalytics.members || [])].sort((a, b) => b.revenue - a.revenue).map((m, i) => {
+                  const names = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                  const nm = names[m.email] || m.email.split('@')[0];
+                  const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                  const top = teamAnalytics.members.reduce((mx, x) => Math.max(mx, x.revenue), 1);
+                  return (
+                    <div key={m.email} className="flex items-center gap-2">
+                      <span className="text-sm w-6 text-center shrink-0">{medal}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-white font-medium truncate">{nm}</span>
+                          <span className="text-xs text-green-400 font-bold shrink-0">${m.revenue.toLocaleString()}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-amber-400 to-green-400 rounded-full" style={{ width: `${Math.round((m.revenue / top) * 100)}%` }} />
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{m.wonDeals} won · {m.deals} deals · {m.flockRate}% flock rate</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                {(teamAnalytics.members || []).length === 0 && (
+                  <p className="text-xs text-slate-500 text-center py-2">No team production this folio yet.</p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="glass-card"><LoadingSkeleton /></div>
+          )}
+
+          {/* Team leads pool */}
+          <div className="glass-card space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white">🪹 Team Leads</h3>
+              <span className="text-[10px] text-slate-500">{teamLeads.length} total</span>
+            </div>
+            <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+              {teamLeads.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-3">No team leads yet.</p>
+              ) : teamLeads.slice(0, 50).map((lead) => {
+                const names = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                const owner = names[lead.addedByEmail] || lead.addedBy;
+                return (
+                  <div key={lead.id} className="flex items-center gap-2 bg-slate-800 border border-white/10 px-3 py-2.5 rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-white font-medium truncate">{lead.name}</span>
+                        {lead.policyType && <span className="text-[9px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">{lead.policyType}</span>}
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{lead.sourcePlatform} · {owner}{lead.claimedByName ? ` · 🎯 ${lead.claimedByName}` : ''}</p>
+                    </div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${lead.status === 'converted' ? 'bg-green-900/40 text-green-400 border border-green-500/20' : 'bg-blue-900/40 text-blue-400 border border-blue-500/20'}`}>
+                      {lead.status === 'converted' ? 'Won' : lead.status === 'followed_up' ? 'Active' : 'New'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Personal pipeline (default) ── */}
+      {pipelineView === 'mine' && (<>{/* personal-pipeline-start */}
 
       {/* Convert from Lead — shows recent leads that can be turned into deals */}
       {showAdd && unconvertedLeads.length > 0 && (
@@ -1577,6 +1700,7 @@ export default function SalesPage() {
           </div>
         </details>
       )}
+      {/* personal-pipeline-end */}</>)}
     </div>
   );
 }

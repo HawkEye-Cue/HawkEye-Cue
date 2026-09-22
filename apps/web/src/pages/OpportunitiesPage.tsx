@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useMode } from '../contexts/ModeContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
@@ -98,6 +99,7 @@ export default function OpportunitiesPage() {
   const { showToast, showUndoToast } = useToast();
   const navigate = useNavigate();
   const { selectedTrade } = useTrade();
+  const { isPro } = useMode();
   const { events, addEvent, toggleComplete, removeAllByTitle } = useCalendar();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
@@ -993,11 +995,13 @@ export default function OpportunitiesPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">🪹 Lead Nests</h3>
-            <button onClick={() => setShowBucketManager(!showBucketManager)} className="text-xs text-blue-400 hover:text-blue-300">{showBucketManager ? 'Done' : 'Edit Nests'}</button>
+            {isPro && (
+              <button onClick={() => setShowBucketManager(!showBucketManager)} className="text-xs text-blue-400 hover:text-blue-300">{showBucketManager ? 'Done' : 'Edit Nests'}</button>
+            )}
           </div>
 
-          {/* Bucket manager */}
-          {showBucketManager && (
+          {/* Bucket manager — Pro only */}
+          {isPro && showBucketManager && (
             <div className="rounded-xl border border-white/20 p-3 bg-slate-800 space-y-2">
               <div className="flex gap-2">
                 <input type="text" value={newBucketName} onChange={(e) => setNewBucketName(e.target.value)} placeholder="New bucket name..." className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500" />
@@ -1069,7 +1073,8 @@ export default function OpportunitiesPage() {
                 </button>
               );
             })()}
-            {buckets.map((bucket) => {
+            {/* Custom bucket nests — Pro only (Guided keeps Active/Won/Perched) */}
+            {isPro && buckets.map((bucket) => {
               const localBucketsMap = JSON.parse(localStorage.getItem(`hawkeye_lead_buckets_map_${user?.sub}`) || '{}');
               const count = leads.filter((l) => {
                 const lb = ((l as any).bucket || '').toLowerCase();

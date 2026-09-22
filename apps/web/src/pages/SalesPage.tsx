@@ -10,6 +10,7 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import FolioManager from '../components/FolioManager';
 import { folioDisplayName } from '../utils/folioName';
 import { useTeamData } from '../hooks/useTeamData';
+import { useMode } from '../contexts/ModeContext';
 
 interface Deal {
   id: string;
@@ -328,6 +329,7 @@ export default function SalesPage() {
   const { selectedTrade } = useTrade();
   const { addEvent, removeAllByTitle } = useCalendar();
   const { showToast, showUndoToast } = useToast();
+  const { isPro } = useMode();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState<string>('free');
@@ -1053,8 +1055,8 @@ export default function SalesPage() {
         setFolioFilter('current');
       }} />
 
-      {/* Folio History — view any past folio */}
-      {availableFolios.length > 0 && (
+      {/* Folio History — view any past folio (Pro only) */}
+      {isPro && availableFolios.length > 0 && (
         <div className="glass-card">
           <h3 className="font-semibold text-white mb-3 flex items-center justify-between">
             <span>📊 Folio History</span>
@@ -1598,7 +1600,8 @@ export default function SalesPage() {
         </div>
       )}
 
-      {/* Linked Accounts */}
+      {/* Linked Accounts + Partner Deals — Pro only */}
+      {isPro && (<>
       <details className="glass-card">
         <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
           <span>🔗 Linked Accounts</span>
@@ -1736,6 +1739,7 @@ export default function SalesPage() {
           </div>
         </details>
       )}
+      </>)}{/* end Pro-only linked accounts + partner deals */}
       {/* personal-pipeline-end */}</>)}
     </div>
   );

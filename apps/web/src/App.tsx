@@ -8,6 +8,7 @@ import ConfirmPage from './pages/ConfirmPage';
 import ConfirmMeetingPage from './pages/ConfirmMeetingPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import OnboardingPage from './pages/OnboardingPage';
+import TodayPage from './pages/TodayPage';
 import DashboardPage from './pages/DashboardPage';
 import ContentCreatorPage from './pages/ContentCreatorPage';
 import CreatePage from './pages/CreatePage';
@@ -71,7 +72,8 @@ export default function App() {
           <AuthGuard>
             <AppShell>
               <Routes>
-                <Route path="/" element={<DashboardPage />} />
+                <Route path="/" element={<TodayPage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/create" element={<CreatePage />} />
                 <Route path="/calendar" element={<CreatePage />} />
                 <Route path="/opportunities" element={<OpportunitiesPage />} />

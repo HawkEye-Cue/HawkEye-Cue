@@ -10,7 +10,7 @@ import GuidedTour from './GuidedTour';
 import SetupWizard from './SetupWizard';
 
 const navItems = [
-  { path: '/', label: 'Home', icon: '🏠', tour: 'home' },
+  { path: '/', label: 'Today', icon: '🦅', tour: 'home' },
   { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
   { path: '/opportunities', label: 'Leads', icon: '🎯', tour: 'leads' },
   { path: '/sales', label: 'Sales', icon: '💰', tour: 'sales' },

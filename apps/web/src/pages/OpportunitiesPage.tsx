@@ -11,6 +11,7 @@ import LeadProfilePopup from '../components/LeadProfilePopup';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import PolicyComparison from '../components/PolicyComparison';
+import HawkEyeRadar from '../components/HawkEyeRadar';
 
 const FILTERS: { label: string; value: OpportunityStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
@@ -124,6 +125,7 @@ export default function OpportunitiesPage() {
   const [showWonNest, setShowWonNest] = useState(false);
   const [showPerchedNest, setShowPerchedNest] = useState(false);
   const [comparingLead, setComparingLead] = useState<Opportunity | null>(null);
+  const [showRadar, setShowRadar] = useState(false);
   // Perched leads (circle back later) — stored per user
   const [perchedIds, setPerchedIds] = useState<Set<string>>(new Set());
   const [showBucketManager, setShowBucketManager] = useState(false);
@@ -383,6 +385,17 @@ export default function OpportunitiesPage() {
     try {
       const client = await buildClient();
       await client.updateOpportunityStatus(id, newStatus);
+
+      // Feed HawkEye Radar's learning engine on Won/Lost outcomes
+      const learnLead = leads.find((l) => l.id === id);
+      if (learnLead?.sourceContent && (newStatus === 'converted')) {
+        client.request('POST', '/radar/learn', {
+          postText: learnLead.sourceContent,
+          group: (learnLead as any).leadSourceGroup || (learnLead as any).bucket || '',
+          outcome: 'won',
+        }).catch(() => {});
+      }
+
       // If converted (won), remove all cadence reminders and set paperwork check reminder
       if (newStatus === 'converted') {
         const lead = leads.find((l) => l.id === id);
@@ -587,11 +600,16 @@ export default function OpportunitiesPage() {
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {/* Left column */}
       <div className="min-w-0 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-bold text-white">Lead Cues</h2>
-        <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95">
-          + Add Lead
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowRadar(true)} className="px-3 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-xl transition-all shadow-lg shadow-amber-500/30 active:scale-95 flex items-center gap-1" title="HawkEye Radar — score a post">
+            📡 Radar
+          </button>
+          <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95">
+            + Add Lead
+          </button>
+        </div>
       </div>
 
       {/* Add Lead Modal */}
@@ -1473,6 +1491,31 @@ export default function OpportunitiesPage() {
           leadId={comparingLead.id}
           leadName={comparingLead.sourceAuthor || 'Lead'}
           onClose={() => setComparingLead(null)}
+        />
+      )}
+
+      {/* HawkEye Radar modal */}
+      {showRadar && (
+        <HawkEyeRadar
+          onClose={() => setShowRadar(false)}
+          onAddLead={async (leadName, postText, response, estValue, followUpDate) => {
+            try {
+              const client = await buildClient();
+              await client.request('POST', '/opportunities', {
+                keywordId: 'radar',
+                sourceContent: postText,
+                sourcePlatform: 'facebook',
+                sourceUrl: '',
+                sourceAuthor: leadName,
+                leadSource: 'radar',
+                expectedPremium: estValue || undefined,
+                contactEmail: undefined,
+              });
+              // Save the suggested response as a note for this lead
+              localStorage.setItem(`hawkeye_first_lead_${user?.sub}`, 'true');
+              fetchData();
+            } catch { showToast('❌ Failed to add lead'); }
+          }}
         />
       )}
     </div>

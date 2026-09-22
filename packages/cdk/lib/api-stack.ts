@@ -488,6 +488,26 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // ─── HawkEye Radar (Opportunity Score) Handler ───────────────────────
+    const radarFn = new lambda.Function(this, 'OpportunityScoreFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-OpportunityScore',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/opportunity-score'),
+      description: 'HawkEye Radar — AI opportunity scoring + Won/Lost learning',
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(radarFn);
+    radarFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [`arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0`],
+      })
+    );
+
     // ─── Policy Comparison Handler ────────────────────────────────────────
     const policyComparisonFn = new lambda.Function(this, 'PolicyComparisonFn', {
       ...lambdaDefaults,
@@ -1260,6 +1280,30 @@ export class ApiStack extends cdk.Stack {
       path: '/email/generate-templates',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: emailOAuthIntegration,
+      authorizer,
+    });
+
+    // HawkEye Radar routes
+    const radarIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'RadarIntegration',
+      radarFn
+    );
+    this.httpApi.addRoutes({
+      path: '/radar/score',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: radarIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/radar/learn',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: radarIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/radar/insights',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: radarIntegration,
       authorizer,
     });
 

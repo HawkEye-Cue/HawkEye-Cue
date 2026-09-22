@@ -40,6 +40,15 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
   const [loading, setLoading] = useState(false);
   const [insights, setInsights] = useState<string[]>([]);
 
+  // Social Proof Match
+  interface Testimonial { id: string; author: string; text: string; }
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [proofMatch, setProofMatch] = useState<{ match: Testimonial | null; reason?: string } | null>(null);
+  const [proofLoading, setProofLoading] = useState(false);
+  const [showProofMgr, setShowProofMgr] = useState(false);
+  const [newTestimonial, setNewTestimonial] = useState('');
+  const [newTestimonialAuthor, setNewTestimonialAuthor] = useState('');
+
   async function buildClient() {
     const token = await getToken();
     return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
@@ -54,7 +63,47 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
       } catch { /* none yet */ }
     }
     loadInsights();
+    loadTestimonials();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadTestimonials() {
+    try {
+      const client = await buildClient();
+      const res = await client.request<{ testimonials: Testimonial[] }>('GET', '/radar/testimonials');
+      setTestimonials(res.testimonials || []);
+    } catch { /* none yet */ }
+  }
+
+  async function addTestimonial() {
+    if (!newTestimonial.trim()) { showToast('Paste a review or testimonial first'); return; }
+    try {
+      const client = await buildClient();
+      await client.request('POST', '/radar/testimonials', { text: newTestimonial.trim(), author: newTestimonialAuthor.trim() });
+      setNewTestimonial('');
+      setNewTestimonialAuthor('');
+      showToast('✓ Saved to your social-proof library');
+      loadTestimonials();
+    } catch { showToast('❌ Could not save testimonial'); }
+  }
+
+  async function deleteTestimonial(id: string) {
+    try {
+      const client = await buildClient();
+      await client.request('DELETE', `/radar/testimonials/${encodeURIComponent(id)}`);
+      setTestimonials((prev) => prev.filter((t) => t.id !== id));
+    } catch { showToast('❌ Could not delete'); }
+  }
+
+  async function findProof(need: string) {
+    setProofLoading(true);
+    setProofMatch(null);
+    try {
+      const client = await buildClient();
+      const res = await client.request<{ match: Testimonial | null; reason?: string; message?: string }>('POST', '/radar/proof-match', { postText: need });
+      if (res.match) setProofMatch({ match: res.match, reason: res.reason });
+    } catch { /* best-effort */ }
+    finally { setProofLoading(false); }
+  }
 
   async function score() {
     if (!postText.trim()) { showToast('Paste a post to analyze'); return; }
@@ -68,6 +117,22 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
         group: group.trim(),
       });
       setResult(res.result);
+      // Social Proof Match — auto-pick a testimonial if this is a real lead
+      if (res.result?.isLead && testimonials.length > 0) {
+        findProof(postText.trim());
+      }
+      // Hawk Memory — remember we scored a post from this person
+      if (name.trim()) {
+        try {
+          const client2 = await buildClient();
+          client2.request('POST', '/radar/memory', {
+            personName: name.trim(),
+            kind: 'scored',
+            note: postText.trim().slice(0, 120),
+            group: group.trim(),
+          }).catch(() => {});
+        } catch { /* best-effort */ }
+      }
     } catch (e) {
       showToast(`❌ ${e instanceof Error ? e.message : 'Scoring failed'}`);
     } finally { setLoading(false); }
@@ -176,6 +241,33 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
                 </div>
               )}
 
+              {/* Social Proof Match */}
+              {result.isLead && (proofLoading || proofMatch?.match) && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                  <p className="text-[10px] font-bold text-emerald-300 mb-1">⭐ Social Proof Match</p>
+                  {proofLoading ? (
+                    <p className="text-xs text-slate-400">Finding your best testimonial…</p>
+                  ) : proofMatch?.match ? (
+                    <>
+                      <p className="text-xs text-slate-200 italic leading-relaxed">"{proofMatch.match.text}"</p>
+                      <p className="text-[10px] text-emerald-400 mt-1">— {proofMatch.match.author}</p>
+                      {proofMatch.reason && <p className="text-[10px] text-slate-500 mt-1">Why this fits: {proofMatch.reason}</p>}
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(`"${proofMatch.match!.text}" — ${proofMatch.match!.author}`); showToast('✓ Testimonial copied'); }}
+                        className="mt-2 px-3 py-1.5 bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 rounded-lg text-[11px] font-bold hover:bg-emerald-600/40"
+                      >
+                        📋 Copy Testimonial
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              )}
+              {result.isLead && !proofLoading && !proofMatch?.match && testimonials.length === 0 && (
+                <button onClick={() => setShowProofMgr(true)} className="w-full text-[11px] text-emerald-300 border border-emerald-500/20 rounded-lg py-2 hover:bg-emerald-500/10">
+                  ⭐ Add testimonials to auto-match social proof to leads
+                </button>
+              )}
+
               {/* Add to pipeline */}
               {result.isLead && onAddLead && (
                 <button
@@ -195,6 +287,42 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
               )}
             </div>
           )}
+
+          {/* Social Proof Library manager */}
+          <div className="glass-card space-y-3">
+            <button onClick={() => setShowProofMgr(!showProofMgr)} className="w-full flex items-center justify-between">
+              <span className="text-xs font-bold text-emerald-300">⭐ Social Proof Library</span>
+              <span className="text-[10px] text-slate-500">{testimonials.length} saved · {showProofMgr ? 'hide' : 'manage'}</span>
+            </button>
+            {showProofMgr && (
+              <>
+                <p className="text-[11px] text-slate-400">Save your best reviews and testimonials. HawkEye picks the most relevant one to share when you respond to a lead.</p>
+                <textarea
+                  value={newTestimonial}
+                  onChange={(e) => setNewTestimonial(e.target.value)}
+                  placeholder='e.g. "They saved us $600 a year and made switching painless."'
+                  className="w-full h-16 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none"
+                />
+                <div className="flex gap-2">
+                  <input value={newTestimonialAuthor} onChange={(e) => setNewTestimonialAuthor(e.target.value)} placeholder="Customer name (optional)" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500" />
+                  <button onClick={addTestimonial} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shrink-0">+ Add</button>
+                </div>
+                {testimonials.length > 0 && (
+                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                    {testimonials.map((t) => (
+                      <div key={t.id} className="flex items-start gap-2 bg-slate-800 border border-white/10 rounded-lg px-3 py-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] text-slate-200 italic leading-relaxed">"{t.text}"</p>
+                          <p className="text-[9px] text-emerald-400 mt-0.5">— {t.author}</p>
+                        </div>
+                        <button onClick={() => deleteTestimonial(t.id)} className="text-slate-500 hover:text-red-400 text-xs shrink-0">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

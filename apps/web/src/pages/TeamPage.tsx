@@ -53,10 +53,16 @@ interface TeamLead {
   id: string;
   name: string;
   sourcePlatform: string;
+  sourceContent?: string;
   status: string;
   createdAt: string;
   addedBy: string;
   addedByEmail: string;
+  policyType?: string;
+  claimedBy?: string | null;
+  claimedByName?: string;
+  claimedAt?: string;
+  responseMinutes?: number | null;
 }
 
 interface TeamAnalytics {
@@ -331,6 +337,33 @@ export default function TeamPage() {
       setTeamLeads(result.leads || []);
     } catch { setTeamLeads([]); }
     finally { setLeadsLoading(false); }
+  }
+
+  // Live team lead claiming — first responder claims the opportunity
+  async function handleClaimLead(lead: TeamLead) {
+    const myName = user?.email?.split('@')[0] || 'me';
+    try {
+      const client = await buildClient();
+      const res = await client.request<{ claimed: boolean; claimedByName?: string; claimedAt?: string; alreadyClaimedBy?: string }>(
+        'POST', `/team/leads/${encodeURIComponent(lead.id)}/claim`, { leadName: lead.name, leadCreatedAt: lead.createdAt }
+      );
+      if (res.claimed) {
+        setTeamLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, claimedBy: user?.email || 'me', claimedByName: myName, claimedAt: res.claimedAt } : l));
+        showToast(`🎯 You claimed ${lead.name}`);
+      } else if (res.alreadyClaimedBy) {
+        setTeamLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, claimedBy: 'other', claimedByName: res.alreadyClaimedBy, claimedAt: res.claimedAt } : l));
+        showToast(`⚡ ${res.alreadyClaimedBy} already claimed this one`);
+      }
+    } catch { showToast('❌ Could not claim lead'); }
+  }
+
+  async function handleReleaseLead(lead: TeamLead) {
+    try {
+      const client = await buildClient();
+      await client.request('DELETE', `/team/leads/${encodeURIComponent(lead.id)}/claim`);
+      setTeamLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, claimedBy: null, claimedByName: undefined, claimedAt: undefined, responseMinutes: null } : l));
+      showToast('↩️ Lead released — anyone can claim it now');
+    } catch { showToast('❌ Could not release lead'); }
   }
 
   async function fetchTeamAnalytics() {
@@ -628,6 +661,73 @@ export default function TeamPage() {
           })}
         </div>
       )}
+
+      {/* 🎯 Live Lead Claiming — first responder claims the opportunity */}
+      {(() => {
+        // Show the newest leads (last 14 days) so the team can race to claim.
+        const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+        const recent = teamLeads
+          .filter((l) => l.status !== 'converted' && l.status !== 'lost')
+          .filter((l) => !l.createdAt || new Date(l.createdAt).getTime() >= cutoff)
+          .slice(0, 20);
+        const unclaimedCount = recent.filter((l) => !l.claimedBy).length;
+        const myEmail = user?.email || '';
+        if (recent.length === 0) return null;
+        return (
+          <div className="glass-card space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white">🎯 Up for Grabs</h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">{unclaimedCount} unclaimed</span>
+            </div>
+            <p className="text-[10px] text-slate-500 -mt-1">Claim a lead so teammates know you've got it. First one to claim owns the follow-up.</p>
+            <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
+              {recent.map((lead) => {
+                const mineClaim = lead.claimedBy && (lead.claimedBy === myEmail || lead.claimedBy === 'me');
+                const claimed = !!lead.claimedBy;
+                return (
+                  <div key={`claim-${lead.id}`} className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border ${claimed ? (mineClaim ? 'bg-emerald-900/20 border-emerald-500/30' : 'bg-slate-800 border-white/10 opacity-80') : 'bg-slate-800 border-amber-500/30'}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-white font-medium truncate">{lead.name}</span>
+                        {lead.policyType && <span className="text-[9px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">{lead.policyType}</span>}
+                      </div>
+                      {lead.sourceContent && <p className="text-[10px] text-slate-400 mt-0.5 truncate">{lead.sourceContent}</p>}
+                      <p className="text-[9px] text-slate-500 mt-0.5">
+                        {lead.sourcePlatform} · found by {lead.addedBy}
+                        {claimed && (
+                          <span className={mineClaim ? 'text-emerald-400' : 'text-blue-400'}>
+                            {' '}· 🎯 {mineClaim ? 'you' : lead.claimedByName} claimed
+                            {typeof lead.responseMinutes === 'number' && lead.responseMinutes >= 0 && ` (${lead.responseMinutes < 60 ? lead.responseMinutes + 'm' : Math.round(lead.responseMinutes / 60) + 'h'})`}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {!claimed && (
+                      <button
+                        onClick={() => handleClaimLead(lead)}
+                        className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 shrink-0 transition-all active:scale-95"
+                      >
+                        Claim
+                      </button>
+                    )}
+                    {mineClaim && (
+                      <button
+                        onClick={() => handleReleaseLead(lead)}
+                        className="text-[10px] px-2 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 shrink-0"
+                      >
+                        Release
+                      </button>
+                    )}
+                    {claimed && !mineClaim && (
+                      <span className="text-[10px] px-2 py-1 rounded-lg bg-blue-900/40 text-blue-300 border border-blue-500/20 shrink-0">Taken</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 🪹 Lead Nests by Member */}
       <div className="glass-card space-y-3">

@@ -6,13 +6,17 @@
  * - POST /radar/score        — AI-classify a captured post into an opportunity score
  * - POST /radar/learn        — record Won/Lost outcome to improve future scoring
  * - GET  /radar/insights     — surface learned patterns (which phrases/groups convert)
+ * - POST /radar/memory       — record an interaction with a person (Hawk Memory)
+ * - GET  /radar/memory       — look up prior interactions with a person (by name)
+ * - GET/POST/DELETE /radar/testimonials — manage the user's social-proof library
+ * - POST /radar/proof-match  — AI-pick the best testimonial for a lead's need
  *
  * Uses Amazon Bedrock (Nova Lite) for classification. Learning is done by
  * aggregating Won/Lost signals per user (phrases, groups, neighborhoods, post types).
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -92,6 +96,20 @@ async function getLearnedContext(userId) {
     if (groups.length) parts.push(`groups: ${groups.join(', ')}`);
     return parts.join('; ');
   } catch { return ''; }
+}
+
+// ─── Hawk Memory ────────────────────────────────────────────────────────────
+// Normalize a person's name into a stable memory key (lowercase, trimmed).
+function memoryKey(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim().replace(/\s+/g, ' ');
+}
+
+// Number of whole days between an ISO date and now.
+function daysAgo(iso) {
+  try {
+    const then = new Date(iso).getTime();
+    return Math.max(0, Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24)));
+  } catch { return null; }
 }
 
 exports.handler = async (event) => {
@@ -185,6 +203,203 @@ exports.handler = async (event) => {
         insights.push(`Your close rate on scored leads: ${Math.round((data.wonCount / total) * 100)}%`);
       }
       return ok({ insights });
+    }
+
+    // POST /radar/memory — record an interaction with a person (Hawk Memory)
+    if (method === 'POST' && path === '/radar/memory') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const { personName, kind, note, group, postUrl, platform } = body;
+      if (!personName || !personName.trim()) return err(400, 'INVALID_INPUT', 'personName is required');
+
+      const key = memoryKey(personName);
+      if (!key) return err(400, 'INVALID_INPUT', 'personName is required');
+
+      const now = new Date().toISOString();
+      const existing = (await dynamo.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: `MEMORY#${key}` },
+      })))?.Item;
+
+      // kind: 'commented' | 'saved' | 'responded' | 'messaged' | 'scored' | 'note'
+      const interaction = {
+        kind: kind || 'note',
+        note: (note || '').slice(0, 500),
+        group: group || '',
+        postUrl: postUrl || '',
+        platform: platform || '',
+        at: now,
+      };
+
+      const interactions = (existing?.interactions || []).slice(-40); // cap history
+      interactions.push(interaction);
+
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${userId}`,
+          SK: `MEMORY#${key}`,
+          displayName: personName.trim(),
+          interactions,
+          firstSeen: existing?.firstSeen || now,
+          lastSeen: now,
+          count: (existing?.count || 0) + 1,
+          updatedAt: now,
+        },
+      }));
+
+      return ok({ saved: true, count: interactions.length });
+    }
+
+    // GET /radar/memory?name=... — look up prior interactions with a person
+    if (method === 'GET' && path === '/radar/memory') {
+      const qs = event.queryStringParameters || {};
+      const key = memoryKey(qs.name);
+      if (!key) return ok({ memory: null });
+
+      const res = await dynamo.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: `MEMORY#${key}` },
+      }));
+      const data = res.Item;
+      if (!data) return ok({ memory: null });
+
+      const interactions = (data.interactions || []).slice().reverse(); // newest first
+      const last = interactions[0];
+      // Build a friendly one-line summary for the extension panel
+      let summary = '';
+      if (last) {
+        const d = daysAgo(last.at);
+        const when = d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
+        const verb = {
+          commented: 'You commented on', saved: 'You saved a lead from',
+          responded: 'You responded to', messaged: 'You messaged',
+          scored: 'HawkEye scored a post from', note: 'You noted about',
+        }[last.kind] || 'You interacted with';
+        summary = `${verb} ${data.displayName} ${when}`;
+        if (last.note) summary += ` — "${last.note}"`;
+      }
+
+      return ok({
+        memory: {
+          displayName: data.displayName,
+          count: data.count || interactions.length,
+          firstSeen: data.firstSeen,
+          lastSeen: data.lastSeen,
+          summary,
+          interactions: interactions.slice(0, 15),
+        },
+      });
+    }
+
+    // GET /radar/testimonials — list the user's saved testimonials/reviews
+    if (method === 'GET' && path === '/radar/testimonials') {
+      const res = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TESTIMONIAL#' },
+      }));
+      const testimonials = (res.Items || []).map((t) => ({
+        id: t.SK.replace('TESTIMONIAL#', ''),
+        author: t.author || 'A happy customer',
+        text: t.text || '',
+        tags: t.tags || [],
+        createdAt: t.createdAt,
+      })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      return ok({ testimonials });
+    }
+
+    // POST /radar/testimonials — add a testimonial to the social-proof library
+    if (method === 'POST' && path === '/radar/testimonials') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const text = (body.text || '').trim();
+      if (!text) return err(400, 'INVALID_INPUT', 'text is required');
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const now = new Date().toISOString();
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `USER#${userId}`,
+          SK: `TESTIMONIAL#${id}`,
+          author: (body.author || '').trim().slice(0, 80) || 'A happy customer',
+          text: text.slice(0, 800),
+          tags: Array.isArray(body.tags) ? body.tags.slice(0, 8) : [],
+          createdAt: now,
+        },
+      }));
+      return ok({ id, saved: true });
+    }
+
+    // DELETE /radar/testimonials/{id}
+    const testimonialDel = path.match(/^\/radar\/testimonials\/([^/]+)$/);
+    if (method === 'DELETE' && testimonialDel) {
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: `TESTIMONIAL#${testimonialDel[1]}` },
+        UpdateExpression: 'SET deletedAt = :d',
+        ExpressionAttributeValues: { ':d': new Date().toISOString() },
+      })).catch(() => {});
+      // Hard delete
+      await dynamo.send(new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: `TESTIMONIAL#${testimonialDel[1]}` },
+      }));
+      return ok({ deleted: true });
+    }
+
+    // POST /radar/proof-match — pick the best testimonial for a lead's need
+    if (method === 'POST' && path === '/radar/proof-match') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const leadNeed = (body.postText || body.need || '').trim();
+      if (!leadNeed) return err(400, 'INVALID_INPUT', 'postText (the lead\'s need) is required');
+
+      const res = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TESTIMONIAL#' },
+      }));
+      const testimonials = (res.Items || []).map((t) => ({
+        id: t.SK.replace('TESTIMONIAL#', ''),
+        author: t.author || 'A happy customer',
+        text: t.text || '',
+      }));
+      if (testimonials.length === 0) {
+        return ok({ match: null, message: 'Add a few testimonials in HawkEye Radar to enable Social Proof Match.' });
+      }
+      if (testimonials.length === 1) {
+        return ok({ match: testimonials[0], reason: 'Your only saved testimonial.' });
+      }
+
+      // Ask the AI to pick the most relevant testimonial by index
+      const list = testimonials.map((t, i) => `[${i}] "${t.text}" — ${t.author}`).join('\n');
+      const prompt = `A potential customer wrote: "${leadNeed}"
+
+Here are testimonials/reviews from past happy customers:
+${list}
+
+Pick the ONE testimonial most relevant and reassuring for this customer's specific situation.
+Return ONLY valid JSON: {"index": <number>, "reason": "one short sentence why this proof fits"}`;
+
+      try {
+        const command = new InvokeModelCommand({
+          modelId: 'amazon.nova-lite-v1:0',
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: [{ text: prompt }] }],
+            inferenceConfig: { maxTokens: 200, temperature: 0.2 },
+          }),
+        });
+        const response = await bedrock.send(command);
+        const rb = JSON.parse(new TextDecoder().decode(response.body));
+        const aiText = rb.output.message.content[0].text.trim();
+        const m = aiText.match(/\{[\s\S]*\}/);
+        const parsed = m ? JSON.parse(m[0]) : { index: 0 };
+        const idx = Math.max(0, Math.min(testimonials.length - 1, parseInt(parsed.index) || 0));
+        return ok({ match: testimonials[idx], reason: parsed.reason || 'Best match for this lead.' });
+      } catch (e) {
+        console.error('[radar] proof-match failed:', e.message);
+        return ok({ match: testimonials[0], reason: 'Suggested testimonial.' });
+      }
     }
 
     return err(404, 'NOT_FOUND', `No route for ${method} ${path}`);

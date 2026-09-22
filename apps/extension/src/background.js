@@ -96,6 +96,39 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     return true;
   }
 
+  // ─── Hawk Memory: recall prior interactions with a person ───
+  if (message.type === 'GET_MEMORY') {
+    var md = message.data || {};
+    chrome.storage.local.get(['authToken'], function(authResult) {
+      var token = authResult.authToken;
+      if (!token || !md.name) { sendResponse({ success: false }); return; }
+      fetch(API_BASE + '/radar/memory?name=' + encodeURIComponent(md.name), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(function(res) { return res.ok ? res.json() : null; })
+      .then(function(j) { sendResponse({ success: true, memory: j && j.memory ? j.memory : null }); })
+      .catch(function() { sendResponse({ success: false }); });
+    });
+    return true;
+  }
+
+  // ─── Hawk Memory: record an interaction with a person ───
+  if (message.type === 'SAVE_MEMORY') {
+    var smd = message.data || {};
+    chrome.storage.local.get(['authToken'], function(authResult) {
+      var token = authResult.authToken;
+      if (!token || !smd.personName) { sendResponse({ success: false }); return; }
+      fetch(API_BASE + '/radar/memory', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ personName: smd.personName, kind: smd.kind || 'note', note: smd.note || '', group: smd.group || '', platform: smd.platform || '', postUrl: smd.postUrl || '' })
+      })
+      .then(function(res) { sendResponse({ success: res.ok }); })
+      .catch(function() { sendResponse({ success: false }); });
+    });
+    return true;
+  }
+
   if (message.type === 'SAVE_LEAD') {
     var d = message.data;
     

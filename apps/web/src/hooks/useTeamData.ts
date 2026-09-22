@@ -17,11 +17,17 @@ export interface TeamLead {
   id: string;
   name: string;
   sourcePlatform: string;
+  sourceContent?: string;
   status: string;
   createdAt: string;
   addedBy: string;
   addedByEmail: string;
   policyType?: string;
+  // Live claiming
+  claimedBy?: string | null;
+  claimedByName?: string;
+  claimedAt?: string;
+  responseMinutes?: number | null;
 }
 
 export interface TeamAnalytics {
@@ -132,6 +138,34 @@ export function useTeamData() {
     return idx >= 0 ? idx % MEMBER_COLORS.length : 0;
   }
 
+  // Claim an unclaimed team lead. Returns the resolved claim state.
+  const claimLead = useCallback(async (lead: TeamLead): Promise<{ claimed: boolean; claimedByName?: string; claimedAt?: string; alreadyClaimedBy?: string }> => {
+    const client = await buildClient();
+    const res = await client.request<{ claimed: boolean; claimedByName?: string; claimedAt?: string; alreadyClaimedBy?: string }>(
+      'POST',
+      `/team/leads/${encodeURIComponent(lead.id)}/claim`,
+      { leadName: lead.name, leadCreatedAt: lead.createdAt }
+    );
+    // Optimistically update local state
+    setTeamLeads((prev) => prev.map((l) => {
+      if (l.id !== lead.id) return l;
+      if (res.claimed) {
+        return { ...l, claimedBy: 'me', claimedByName: res.claimedByName, claimedAt: res.claimedAt };
+      }
+      if (res.alreadyClaimedBy) {
+        return { ...l, claimedBy: 'other', claimedByName: res.alreadyClaimedBy, claimedAt: res.claimedAt };
+      }
+      return l;
+    }));
+    return res;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const releaseLead = useCallback(async (lead: TeamLead): Promise<void> => {
+    const client = await buildClient();
+    await client.request('DELETE', `/team/leads/${encodeURIComponent(lead.id)}/claim`);
+    setTeamLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, claimedBy: null, claimedByName: undefined, claimedAt: undefined, responseMinutes: null } : l)));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return {
     isInTeam,
     teamMembers,
@@ -145,5 +179,7 @@ export function useTeamData() {
     fetchLeads,
     fetchAnalytics,
     getMemberColorIndex,
+    claimLead,
+    releaseLead,
   };
 }

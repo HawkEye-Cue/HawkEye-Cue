@@ -53,10 +53,28 @@
     if (type === 'wingman') {
       panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-size:14px;font-weight:600;color:#f59e0b;">🤝 Wingman Cue</span><span id="hawkeye-panel-close" style="color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</span></div><p style="font-size:12px;color:#94a3b8;margin:0 0 8px 0;">Keywords matched: <strong style="color:#f59e0b;">' + matchedKeywords.join(', ') + '</strong></p><p style="font-size:12px;color:#cbd5e1;margin:0;">Recommend <strong style="color:#f59e0b;">' + (wingmanName || 'your partner') + '</strong> in the comments. They will reciprocate with referrals!</p>';
     } else {
-      panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-size:14px;font-weight:600;color:#3b82f6;">🦅 HawkEye Match</span><span id="hawkeye-panel-close" style="color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</span></div><p style="font-size:12px;color:#94a3b8;margin:0 0 8px 0;">Keywords: <strong style="color:#3b82f6;">' + matchedKeywords.join(', ') + '</strong></p><div id="hawkeye-radar-box" style="margin:0 0 12px 0;padding:10px;background:#1e293b;border-radius:10px;border:1px solid rgba(255,255,255,0.08);"><p style="font-size:11px;color:#94a3b8;margin:0;text-align:center;">📡 Scoring opportunity…</p></div><p style="font-size:11px;color:#cbd5e1;margin:0 0 14px 0;max-height:50px;overflow:hidden;">"' + postText.slice(0, 150).replace(/"/g, '&quot;') + (postText.length > 150 ? '...' : '') + '"</p><div style="display:flex;gap:8px;"><button id="hawkeye-save-lead" style="flex:1;padding:10px;background:#1e40af;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">💼 Save as Lead</button><button id="hawkeye-save-appreciate" style="flex:1;padding:10px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🙏 Appreciation</button></div><p id="hawkeye-panel-status" style="font-size:11px;margin:8px 0 0 0;text-align:center;display:none;"></p>';
+      panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-size:14px;font-weight:600;color:#3b82f6;">🦅 HawkEye Match</span><span id="hawkeye-panel-close" style="color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</span></div><p style="font-size:12px;color:#94a3b8;margin:0 0 8px 0;">Keywords: <strong style="color:#3b82f6;">' + matchedKeywords.join(', ') + '</strong></p><div id="hawkeye-memory-box" style="display:none;margin:0 0 10px 0;padding:8px 10px;background:#3b0764;border-radius:10px;border:1px solid rgba(192,132,252,0.3);"></div><div id="hawkeye-radar-box" style="margin:0 0 12px 0;padding:10px;background:#1e293b;border-radius:10px;border:1px solid rgba(255,255,255,0.08);"><p style="font-size:11px;color:#94a3b8;margin:0;text-align:center;">📡 Scoring opportunity…</p></div><p style="font-size:11px;color:#cbd5e1;margin:0 0 14px 0;max-height:50px;overflow:hidden;">"' + postText.slice(0, 150).replace(/"/g, '&quot;') + (postText.length > 150 ? '...' : '') + '"</p><div style="display:flex;gap:8px;"><button id="hawkeye-save-lead" style="flex:1;padding:10px;background:#1e40af;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">💼 Save as Lead</button><button id="hawkeye-save-appreciate" style="flex:1;padding:10px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🙏 Appreciation</button></div><p id="hawkeye-panel-status" style="font-size:11px;margin:8px 0 0 0;text-align:center;display:none;"></p>';
     }
 
     document.body.appendChild(panel);
+
+    // ─── Hawk Memory: recall prior interactions with this person ───
+    if (type !== 'wingman') {
+      var memAuthor = extractAuthorName(postElement) || '';
+      if (memAuthor && memAuthor !== 'Unknown') {
+        chrome.runtime.sendMessage({ type: 'GET_MEMORY', data: { name: memAuthor } }, function(memResp) {
+          var memBox = document.getElementById('hawkeye-memory-box');
+          if (!memBox) return;
+          if (chrome.runtime.lastError || !memResp || !memResp.success || !memResp.memory || !memResp.memory.summary) {
+            memBox.style.display = 'none';
+            return;
+          }
+          var m = memResp.memory;
+          memBox.style.display = 'block';
+          memBox.innerHTML = '<p style="font-size:10px;color:#e9d5ff;margin:0;line-height:1.35;"><span style="font-weight:700;">🧠 Hawk Memory</span> · ' + m.summary.replace(/</g, '&lt;') + (m.count > 1 ? ' <span style="color:#c084fc;">(' + m.count + ' past touches)</span>' : '') + '</p>';
+        });
+      }
+    }
 
     // ─── HawkEye Radar: score this post in real time ───
     if (type !== 'wingman') {
@@ -134,6 +152,10 @@
           status.textContent = authorName + ' saved to Leads (' + platform + ')';
           status.style.display = 'block';
           status.style.color = '#4ade80';
+          // Hawk Memory — remember we saved a lead from this person
+          if (authorName && authorName !== 'Unknown') {
+            chrome.runtime.sendMessage({ type: 'SAVE_MEMORY', data: { personName: authorName, kind: 'saved', note: postText.slice(0, 120), platform: platform } });
+          }
         }
       });
     });

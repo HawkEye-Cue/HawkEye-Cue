@@ -785,6 +785,7 @@ exports.handler = async (event) => {
           id: l.opportunityId || l.SK.replace('OPP#', '').split('#').pop() || l.SK,
           name: l.name || l.authorName || l.sourceAuthor || 'Unknown Lead',
           sourcePlatform: l.sourcePlatform || l.platform || 'unknown',
+          sourceContent: l.sourceContent || l.postContent || '',
           status: l.status || 'new',
           createdAt: l.createdAt || l.detectedAt || '',
           addedBy: (l.transferredTo || member.email).split('@')[0],
@@ -792,6 +793,32 @@ exports.handler = async (event) => {
           policyType: l.policyType || null,
         }));
         allLeads.push(...memberLeads);
+      }
+
+      // Merge in claim status (team-scoped CLAIM# records)
+      const claimsResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': `TEAM#${teamRecord.teamId}`, ':sk': 'CLAIM#' },
+      }));
+      const claimMap = {};
+      for (const c of (claimsResult.Items || [])) {
+        claimMap[c.SK.replace('CLAIM#', '')] = c;
+      }
+      for (const lead of allLeads) {
+        const c = claimMap[lead.id];
+        if (c) {
+          lead.claimedBy = c.claimedByEmail;
+          lead.claimedByName = (c.claimedByName || c.claimedByEmail || '').split('@')[0];
+          lead.claimedAt = c.claimedAt;
+          // Response time in minutes from lead creation to claim
+          if (lead.createdAt && c.claimedAt) {
+            const mins = Math.round((new Date(c.claimedAt) - new Date(lead.createdAt)) / 60000);
+            lead.responseMinutes = mins >= 0 ? mins : null;
+          }
+        } else {
+          lead.claimedBy = null;
+        }
       }
 
       // Sort by createdAt descending
@@ -979,6 +1006,73 @@ exports.handler = async (event) => {
         ExpressionAttributeValues: { ':d': true },
       }));
       return ok({ dismissed: true });
+    }
+
+    // POST /team/leads/{leadId}/claim — claim an unclaimed team lead
+    const claimMatch = path.match(/^\/team\/leads\/([^/]+)\/claim$/);
+    if (method === 'POST' && claimMatch) {
+      const leadId = claimMatch[1];
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      const body = event.body ? JSON.parse(event.body) : {};
+      const now = new Date().toISOString();
+
+      // Get claimer's email/name
+      const profile = await dynamo.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      }));
+      const claimerEmail = profile.Item?.email || '';
+      const claimerName = claimerEmail.split('@')[0];
+
+      const claimKey = { PK: `TEAM#${teamRecord.teamId}`, SK: `CLAIM#${leadId}` };
+
+      // First-writer-wins: only claim if not already claimed
+      const existing = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: claimKey }));
+      if (existing.Item && existing.Item.claimedByUserId && existing.Item.claimedByUserId !== userId) {
+        return ok({
+          claimed: false,
+          alreadyClaimedBy: (existing.Item.claimedByName || existing.Item.claimedByEmail || '').split('@')[0],
+          claimedAt: existing.Item.claimedAt,
+        });
+      }
+
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          ...claimKey,
+          leadId,
+          leadName: body.leadName || '',
+          claimedByUserId: userId,
+          claimedByEmail: claimerEmail,
+          claimedByName: claimerName,
+          leadCreatedAt: body.leadCreatedAt || null,
+          claimedAt: now,
+        },
+      }));
+
+      return ok({ claimed: true, claimedByName: claimerName, claimedAt: now });
+    }
+
+    // DELETE /team/leads/{leadId}/claim — release a lead you claimed (or admin override)
+    const releaseMatch = path.match(/^\/team\/leads\/([^/]+)\/claim$/);
+    if (method === 'DELETE' && releaseMatch) {
+      const leadId = releaseMatch[1];
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      const claimKey = { PK: `TEAM#${teamRecord.teamId}`, SK: `CLAIM#${leadId}` };
+      const existing = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: claimKey }));
+      if (!existing.Item) return ok({ released: true });
+
+      // Only the claimer or the team admin can release
+      if (existing.Item.claimedByUserId !== userId && teamRecord.role !== 'admin') {
+        return err(403, 'NOT_ALLOWED', 'Only the person who claimed this lead (or an admin) can release it');
+      }
+
+      await dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: claimKey }));
+      return ok({ released: true });
     }
 
     return err(404, 'NOT_FOUND', `No route for ${method} ${path}`);

@@ -1217,6 +1217,12 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
     this.httpApi.addRoutes({
+      path: '/team/leads/{leadId}/claim',
+      methods: [apigatewayv2.HttpMethod.POST, apigatewayv2.HttpMethod.DELETE],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
       path: '/team/analytics',
       methods: [apigatewayv2.HttpMethod.GET],
       integration: teamIntegration,
@@ -1303,6 +1309,32 @@ export class ApiStack extends cdk.Stack {
     this.httpApi.addRoutes({
       path: '/radar/insights',
       methods: [apigatewayv2.HttpMethod.GET],
+      integration: radarIntegration,
+      authorizer,
+    });
+    // Hawk Memory
+    this.httpApi.addRoutes({
+      path: '/radar/memory',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: radarIntegration,
+      authorizer,
+    });
+    // Social Proof Match — testimonial library + AI matching
+    this.httpApi.addRoutes({
+      path: '/radar/testimonials',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: radarIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/radar/testimonials/{id}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: radarIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/radar/proof-match',
+      methods: [apigatewayv2.HttpMethod.POST],
       integration: radarIntegration,
       authorizer,
     });

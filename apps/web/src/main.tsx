@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { TradeProvider } from './contexts/TradeContext';
 import { CalendarProvider } from './contexts/CalendarContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { ModeProvider } from './contexts/ModeContext';
 import App from './App';
 import './index.css';
 
@@ -26,9 +27,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <ToastProvider>
             <TradeProvider>
-              <CalendarProvider>
-                <App />
-              </CalendarProvider>
+              <ModeProvider>
+                <CalendarProvider>
+                  <App />
+                </CalendarProvider>
+              </ModeProvider>
             </TradeProvider>
           </ToastProvider>
         </AuthProvider>

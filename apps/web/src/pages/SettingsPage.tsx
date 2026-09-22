@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useToast } from '../contexts/ToastContext';
+import { useMode } from '../contexts/ModeContext';
 import TradeSelector from '../components/TradeSelector';
 import ExtensionTour from '../components/ExtensionTour';
 import LeadDetectionExplainer from '../components/LeadDetectionExplainer';
@@ -15,6 +16,7 @@ export default function SettingsPage() {
   const { user, getToken, logout } = useAuth();
   const { selectedTrade } = useTrade();
   const { showToast } = useToast();
+  const { mode, setMode } = useMode();
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -223,6 +225,28 @@ export default function SettingsPage() {
       {/* Left column: account info, trade selector, subscription plans */}
       <div className="min-w-0 space-y-4">
       <h2 className="text-xl font-bold text-white">Settings</h2>
+
+      {/* Guided vs Pro mode */}
+      <div className="glass-card">
+        <h3 className="font-semibold mb-1 text-white">🎚️ App Mode</h3>
+        <p className="text-xs text-slate-400 mb-3">Choose how much HawkEye shows you at once.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => { setMode('guided'); showToast('✓ Guided mode on'); }}
+            className={`text-left p-3 rounded-xl border transition-all ${mode === 'guided' ? 'border-amber-500/50 bg-amber-500/10' : 'border-white/10 bg-slate-800 hover:border-white/20'}`}
+          >
+            <p className={`text-sm font-bold ${mode === 'guided' ? 'text-amber-300' : 'text-white'}`}>🧭 Guided {mode === 'guided' && '✓'}</p>
+            <p className="text-[11px] text-slate-400 mt-1 leading-snug">One task at a time, helpful tips, simple screens. Best for getting things done fast.</p>
+          </button>
+          <button
+            onClick={() => { setMode('pro'); showToast('✓ Pro mode on'); }}
+            className={`text-left p-3 rounded-xl border transition-all ${mode === 'pro' ? 'border-blue-500/50 bg-blue-500/10' : 'border-white/10 bg-slate-800 hover:border-white/20'}`}
+          >
+            <p className={`text-sm font-bold ${mode === 'pro' ? 'text-blue-300' : 'text-white'}`}>⚡ Pro {mode === 'pro' && '✓'}</p>
+            <p className="text-[11px] text-slate-400 mt-1 leading-snug">Full dashboards, bulk actions, advanced filters and team reporting. Best for power users.</p>
+          </button>
+        </div>
+      </div>
 
       {/* Team Management Link */}
       {currentTier === 'team' ? (

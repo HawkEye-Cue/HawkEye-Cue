@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useMode } from '../contexts/ModeContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import FlightPlan from '../components/FlightPlan';
 import type { FlightTask } from '../components/FlightPlan';
@@ -40,6 +41,7 @@ export default function TodayPage() {
   const { user, getToken } = useAuth();
   const { selectedTrade } = useTrade();
   const { events } = useCalendar();
+  const { isGuided } = useMode();
 
   const [counts, setCounts] = useState<TodayCounts>({ newOpps: 0, followUps: 0, postsReady: 0, activeValue: 0 });
   const [loading, setLoading] = useState(true);
@@ -222,12 +224,20 @@ export default function TodayPage() {
         </div>
       )}
 
-      {/* Quiet link to the full dashboard for power users */}
-      <div className="text-center">
-        <button onClick={() => navigate('/dashboard')} className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2">
-          See full dashboard & calendar
-        </button>
-      </div>
+      {/* Guided mode: a gentle tip. Pro mode: the full-dashboard power link. */}
+      {isGuided ? (
+        hasWork && (
+          <p className="text-center text-[11px] text-slate-500">
+            💡 Tip: tap <span className="text-amber-400 font-semibold">Start My Flight Plan</span> and HawkEye will walk you through each task, one at a time.
+          </p>
+        )
+      ) : (
+        <div className="text-center">
+          <button onClick={() => navigate('/dashboard')} className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2">
+            See full dashboard & calendar
+          </button>
+        </div>
+      )}
 
       {showPlan && <FlightPlan tasks={tasks} onClose={() => setShowPlan(false)} />}
     </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ConversationalSetup from '../components/ConversationalSetup';
 
 const STEPS = [
   {
@@ -85,9 +86,20 @@ const STEPS = [
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
+  // Start with the conversational setup; users can skip to the classic tour.
+  const [flow, setFlow] = useState<'conversation' | 'tour'>('conversation');
 
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
+
+  if (flow === 'conversation') {
+    return (
+      <ConversationalSetup
+        onComplete={() => navigate('/')}
+        onSkip={() => setFlow('tour')}
+      />
+    );
+  }
 
   function handleNext() {
     if (isLast) {

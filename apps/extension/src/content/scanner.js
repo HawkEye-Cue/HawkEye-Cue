@@ -1,6 +1,8 @@
 /**
- * HawkEye-Cue Content Script v1.5.4
- * Scans social media feeds for keyword matches and shows hawk icon overlay.
+ * HawkEye-Cue Content Script v1.7.0
+ * Scans social media feeds for keyword matches, shows hawk icon overlay,
+ * and scores each match in real time with HawkEye Radar (opportunity score,
+ * urgency, suggested reply).
  * Uses floating panel on document.body to bypass Facebook's event interception.
  */
 
@@ -51,10 +53,36 @@
     if (type === 'wingman') {
       panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-size:14px;font-weight:600;color:#f59e0b;">🤝 Wingman Cue</span><span id="hawkeye-panel-close" style="color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</span></div><p style="font-size:12px;color:#94a3b8;margin:0 0 8px 0;">Keywords matched: <strong style="color:#f59e0b;">' + matchedKeywords.join(', ') + '</strong></p><p style="font-size:12px;color:#cbd5e1;margin:0;">Recommend <strong style="color:#f59e0b;">' + (wingmanName || 'your partner') + '</strong> in the comments. They will reciprocate with referrals!</p>';
     } else {
-      panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-size:14px;font-weight:600;color:#3b82f6;">🦅 HawkEye Match</span><span id="hawkeye-panel-close" style="color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</span></div><p style="font-size:12px;color:#94a3b8;margin:0 0 8px 0;">Keywords: <strong style="color:#3b82f6;">' + matchedKeywords.join(', ') + '</strong></p><p style="font-size:11px;color:#cbd5e1;margin:0 0 14px 0;max-height:50px;overflow:hidden;">"' + postText.slice(0, 150).replace(/"/g, '&quot;') + (postText.length > 150 ? '...' : '') + '"</p><div style="display:flex;gap:8px;"><button id="hawkeye-save-lead" style="flex:1;padding:10px;background:#1e40af;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">💼 Save as Lead</button><button id="hawkeye-save-appreciate" style="flex:1;padding:10px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🙏 Appreciation</button></div><p id="hawkeye-panel-status" style="font-size:11px;margin:8px 0 0 0;text-align:center;display:none;"></p>';
+      panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-size:14px;font-weight:600;color:#3b82f6;">🦅 HawkEye Match</span><span id="hawkeye-panel-close" style="color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</span></div><p style="font-size:12px;color:#94a3b8;margin:0 0 8px 0;">Keywords: <strong style="color:#3b82f6;">' + matchedKeywords.join(', ') + '</strong></p><div id="hawkeye-radar-box" style="margin:0 0 12px 0;padding:10px;background:#1e293b;border-radius:10px;border:1px solid rgba(255,255,255,0.08);"><p style="font-size:11px;color:#94a3b8;margin:0;text-align:center;">📡 Scoring opportunity…</p></div><p style="font-size:11px;color:#cbd5e1;margin:0 0 14px 0;max-height:50px;overflow:hidden;">"' + postText.slice(0, 150).replace(/"/g, '&quot;') + (postText.length > 150 ? '...' : '') + '"</p><div style="display:flex;gap:8px;"><button id="hawkeye-save-lead" style="flex:1;padding:10px;background:#1e40af;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">💼 Save as Lead</button><button id="hawkeye-save-appreciate" style="flex:1;padding:10px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🙏 Appreciation</button></div><p id="hawkeye-panel-status" style="font-size:11px;margin:8px 0 0 0;text-align:center;display:none;"></p>';
     }
 
     document.body.appendChild(panel);
+
+    // ─── HawkEye Radar: score this post in real time ───
+    if (type !== 'wingman') {
+      chrome.runtime.sendMessage({ type: 'SCORE_POST', data: { postText: postText, group: '' } }, function(resp) {
+        const box = document.getElementById('hawkeye-radar-box');
+        if (!box) return;
+        if (chrome.runtime.lastError || !resp || !resp.success || !resp.result) {
+          box.style.display = 'none';
+          return;
+        }
+        const r = resp.result;
+        const scoreColor = r.score >= 80 ? '#f87171' : r.score >= 50 ? '#fbbf24' : r.score >= 20 ? '#38bdf8' : '#64748b';
+        const urg = { now: '🔥 NOW', soon: '⚡ SOON', nurture: '🌱 NURTURE', not_a_lead: '🚫 NOT A LEAD' }[r.urgency] || '🌱 NURTURE';
+        let html = '<div style="display:flex;align-items:center;gap:10px;">';
+        html += '<div style="width:44px;height:44px;border-radius:50%;border:4px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:16px;font-weight:800;color:' + scoreColor + ';">' + r.score + '</span></div>';
+        html += '<div style="flex:1;min-width:0;"><span style="font-size:10px;font-weight:700;color:' + scoreColor + ';">' + urg + '</span>';
+        if (r.estimatedValue) html += '<span style="font-size:10px;color:#4ade80;margin-left:6px;">~$' + Number(r.estimatedValue).toLocaleString() + '</span>';
+        html += '<p style="font-size:10px;color:#cbd5e1;margin:3px 0 0 0;line-height:1.3;">' + (r.reason || '') + '</p></div></div>';
+        if (r.isLead && r.suggestedResponse) {
+          html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);"><p style="font-size:10px;color:#93c5fd;margin:0 0 4px 0;font-weight:600;">💬 Suggested reply</p><p style="font-size:10px;color:#e2e8f0;font-style:italic;margin:0 0 6px 0;line-height:1.35;">"' + r.suggestedResponse.replace(/"/g, '&quot;') + '"</p><button id="hawkeye-copy-reply" style="width:100%;padding:6px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">📋 Copy Reply</button></div>';
+        }
+        box.innerHTML = html;
+        const copyBtn = document.getElementById('hawkeye-copy-reply');
+        if (copyBtn) copyBtn.addEventListener('click', function() { navigator.clipboard.writeText(r.suggestedResponse); copyBtn.textContent = '✓ Copied!'; });
+      });
+    }
 
     // Close button
     document.getElementById('hawkeye-panel-close').addEventListener('click', function() { panel.remove(); });

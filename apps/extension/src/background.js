@@ -38,6 +38,64 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     return true;
   }
 
+  // ─── HawkEye Radar: real-time opportunity scoring ───
+  if (message.type === 'SCORE_POST') {
+    var sd = message.data;
+    chrome.storage.local.get(['authToken', 'tokenExpiry', 'refreshToken', 'tradeName'], function(authResult) {
+      var token = authResult.authToken;
+      if (!token) { sendResponse({ success: false, error: 'Not logged in' }); return; }
+      var trade = authResult.tradeName || '';
+
+      // Fetch + cache the user's trade once so scoring is trade-aware
+      if (!trade) {
+        fetch(API_BASE + '/profile', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(p) {
+            var tn = p && (p.tradeName || (p.trade && p.trade.name)) || '';
+            if (tn) { trade = tn; chrome.storage.local.set({ tradeName: tn }); }
+          })
+          .catch(function() {});
+      }
+
+      function doScore(t) {
+        fetch(API_BASE + '/radar/score', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postText: sd.postText || '', tradeName: trade, group: sd.group || '' })
+        })
+        .then(function(res) {
+          if (res.status === 401 && authResult.refreshToken) {
+            // Refresh and retry
+            fetch('https://cognito-idp.us-east-1.amazonaws.com/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth' },
+              body: JSON.stringify({ AuthFlow: 'REFRESH_TOKEN_AUTH', ClientId: '2cr45bt815hr68i0j021murak', AuthParameters: { REFRESH_TOKEN: authResult.refreshToken } })
+            })
+            .then(function(rr) { return rr.json(); })
+            .then(function(rd) {
+              if (rd.AuthenticationResult && rd.AuthenticationResult.IdToken) {
+                var nt = rd.AuthenticationResult.IdToken;
+                chrome.storage.local.set({ authToken: nt, tokenExpiry: Date.now() + 3600000 });
+                fetch(API_BASE + '/radar/score', { method: 'POST', headers: { 'Authorization': 'Bearer ' + nt, 'Content-Type': 'application/json' }, body: JSON.stringify({ postText: sd.postText || '', tradeName: authResult.tradeName || '', group: sd.group || '' }) })
+                  .then(function(r2) { return r2.json(); })
+                  .then(function(j2) { sendResponse({ success: true, result: j2.result }); })
+                  .catch(function(e2) { sendResponse({ success: false, error: e2.message }); });
+              } else { sendResponse({ success: false, error: 'auth' }); }
+            })
+            .catch(function() { sendResponse({ success: false, error: 'auth' }); });
+          } else if (res.ok) {
+            return res.json().then(function(j) { sendResponse({ success: true, result: j.result }); });
+          } else {
+            sendResponse({ success: false, error: 'score failed' });
+          }
+        })
+        .catch(function(e) { sendResponse({ success: false, error: e.message }); });
+      }
+      doScore(token);
+    });
+    return true;
+  }
+
   if (message.type === 'SAVE_LEAD') {
     var d = message.data;
     

@@ -166,21 +166,47 @@ async function handleDeleteKeyword(userId, keywordId) {
   return respond(200, { deleted: true });
 }
 
-// GET /keywords/defaults
-async function handleGetDefaults() {
-  // Return trade-agnostic default keywords for new users
-  const defaults = [
-    'looking for recommendations',
-    'anyone know a good',
-    'need help with',
-    'can someone recommend',
-    'who do you use for',
-    'looking for a contractor',
-    'need a quote',
-    'does anyone do',
-  ];
+// Universal high-intent buying-signal phrases that convert across every trade.
+const UNIVERSAL_BUYING_SIGNALS = [
+  'anyone know a good',
+  'looking for recommendations',
+  'can someone recommend',
+  'who do you use for',
+  'need a quote',
+  'looking for someone to',
+  'does anyone do',
+  'need help with',
+  'any recommendations for',
+  'in need of',
+];
 
-  return respond(200, { defaults });
+// GET /keywords/defaults?tradeId=...&tradeName=...
+// Returns universal buying-signal phrases plus trade-specific phrasings so
+// detection works well out of the box for any trade.
+async function handleGetDefaults(event) {
+  const qs = event.queryStringParameters || {};
+  const tradeName = (qs.tradeName || '').trim();
+
+  const defaults = [...UNIVERSAL_BUYING_SIGNALS];
+
+  if (tradeName) {
+    const t = tradeName.toLowerCase();
+    // Common ways people phrase a need for this trade on social media
+    defaults.push(
+      `need a ${t}`,
+      `looking for a ${t}`,
+      `recommend a ${t}`,
+      `anyone know a good ${t}`,
+      `${t} recommendations`,
+      `best ${t} near me`,
+    );
+  }
+
+  // De-dupe while preserving order
+  const seen = new Set();
+  const unique = defaults.filter((d) => { const k = d.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+
+  return respond(200, { defaults: unique });
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -195,7 +221,7 @@ exports.handler = async (event) => {
 
     // GET /keywords/defaults (must be before /keywords to avoid path collision)
     if (method === 'GET' && path === '/keywords/defaults') {
-      return handleGetDefaults();
+      return handleGetDefaults(event);
     }
 
     // GET /keywords

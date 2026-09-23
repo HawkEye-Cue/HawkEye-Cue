@@ -208,11 +208,14 @@ export class ApiClient {
     return this.request<void>('DELETE', `/keywords/${id}`);
   }
 
-  async getDefaultKeywords(tradeId: string): Promise<string[]> {
-    return this.request<string[]>(
+  async getDefaultKeywords(tradeId: string, tradeName?: string): Promise<string[]> {
+    const params = new URLSearchParams({ tradeId });
+    if (tradeName) params.set('tradeName', tradeName);
+    const res = await this.request<{ defaults: string[] } | string[]>(
       'GET',
-      `/keywords/defaults?tradeId=${encodeURIComponent(tradeId)}`,
+      `/keywords/defaults?${params.toString()}`,
     );
+    return Array.isArray(res) ? res : res.defaults || [];
   }
 
   // --- Opportunities ---

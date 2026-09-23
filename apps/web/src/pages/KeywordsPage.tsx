@@ -21,6 +21,8 @@ export default function KeywordsPage() {
   const [newKeywordTrade, setNewKeywordTrade] = useState('');
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
+  // High-intent buying-signal phrases per trade (from the trade-aware defaults endpoint)
+  const [highIntent, setHighIntent] = useState<Record<string, string[]>>({});
 
   async function buildClient() {
     const token = await getToken();
@@ -38,6 +40,22 @@ export default function KeywordsPage() {
     }
     fetchKeywords();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load trade-aware high-intent phrases for each selected trade
+  useEffect(() => {
+    async function loadHighIntent() {
+      if (selectedTrades.length === 0) return;
+      try {
+        const client = await buildClient();
+        const map: Record<string, string[]> = {};
+        for (const t of selectedTrades) {
+          try { map[t.id] = await client.getDefaultKeywords(t.id, t.name); } catch { /* ignore */ }
+        }
+        setHighIntent(map);
+      } catch { /* ignore */ }
+    }
+    loadHighIntent();
+  }, [selectedTrades.map((t) => t.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addKeyword = async () => {
     if (!newKeyword.trim()) return;
@@ -194,7 +212,52 @@ export default function KeywordsPage() {
 
       {selectedTrades.length > 0 && (
         <div className="glass-card">
-          <h3 className="font-semibold mb-3 text-white">Suggested Keywords</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-white">Suggested Keywords</h3>
+            <button
+              onClick={async () => {
+                for (const trade of selectedTrades) {
+                  const combined = [...(trade.defaultKeywords || []), ...(highIntent[trade.id] || [])];
+                  for (const kw of combined) {
+                    if (!keywords.some((k) => k.keyword.toLowerCase() === kw.toLowerCase())) {
+                      await addSuggested(kw, trade.id);
+                    }
+                  }
+                }
+              }}
+              className="text-xs text-blue-400 hover:text-blue-300 font-medium"
+            >
+              + Add all
+            </button>
+          </div>
+
+          {/* High-intent buying-signal phrases — the ones HawkSight scores highest */}
+          {selectedTrades.map((trade) => (highIntent[trade.id]?.length ? (
+            <div key={`hi-${trade.id}`} className="mb-3">
+              <p className="text-xs text-amber-400 mb-1.5 font-medium">🎯 High-intent phrases{selectedTrades.length > 1 ? ` · ${trade.name}` : ''}</p>
+              <div className="flex flex-wrap gap-2">
+                {highIntent[trade.id].map((kw) => {
+                  const alreadyAdded = keywords.some((k) => k.keyword.toLowerCase() === kw.toLowerCase());
+                  return (
+                    <button
+                      key={`hi-${trade.id}-${kw}`}
+                      onClick={() => addSuggested(kw, trade.id)}
+                      disabled={alreadyAdded}
+                      className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                        alreadyAdded
+                          ? 'bg-green-900/30 text-green-400 border border-green-500/20'
+                          : 'bg-amber-500/5 border border-amber-500/20 text-amber-200 hover:bg-amber-500/15'
+                      }`}
+                    >
+                      {alreadyAdded ? '✓ ' : '+ '}{kw}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null))}
+
+          <p className="text-xs text-slate-500 mb-1.5 font-medium">Trade terms</p>
           {selectedTrades.map((trade) => (
             <div key={trade.id} className="mb-3 last:mb-0">
               {selectedTrades.length > 1 && <p className="text-xs text-slate-500 mb-1.5 font-medium">{trade.name}</p>}

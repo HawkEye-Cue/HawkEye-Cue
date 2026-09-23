@@ -76,6 +76,24 @@ export function TradeProvider({ children }: { children: ReactNode }) {
       });
       if (trades.length > 0) {
         await client.request('PUT', '/trade/select', { tradeIds: trades.map((t) => t.id) });
+        // Auto-seed keywords so lead detection works out of the box — only if
+        // the user hasn't added any keywords yet (never overwrite their setup).
+        try {
+          const seededKey = `hawkeye_keywords_seeded_${user?.sub}`;
+          if (!localStorage.getItem(seededKey)) {
+            const existing = await client.request<any>('GET', '/keywords');
+            const existingList = Array.isArray(existing) ? existing : (existing.keywords || []);
+            if (existingList.length === 0) {
+              for (const trade of trades) {
+                for (const kw of (trade.defaultKeywords || [])) {
+                  await client.request('POST', '/keywords', { keyword: kw, tradeId: trade.id }).catch(() => {});
+                }
+              }
+              localStorage.setItem(seededKey, 'true');
+              if (user?.sub) localStorage.setItem(`hawkeye_keywords_added_${user.sub}`, 'true');
+            }
+          }
+        } catch { /* seeding is best-effort */ }
       }
     } catch {
       // ignore

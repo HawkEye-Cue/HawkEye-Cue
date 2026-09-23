@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS } from '../hooks/useTeamData';
+import { useMode } from '../contexts/ModeContext';
 
 interface Deal {
   id: string;
@@ -24,6 +25,7 @@ interface Opportunity {
 export default function HawkInsightsPage() {
   const { getToken, user } = useAuth();
   const { events } = useCalendar();
+  const { isPro } = useMode();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [appreciations, setAppreciations] = useState<{ taggerName: string; platform: string; detectedAt: string }[]>([]);
@@ -165,6 +167,7 @@ export default function HawkInsightsPage() {
       <div className="text-center">
         <h2 className="text-xl font-bold text-white">📊 Eye</h2>
         <p className="text-xs text-slate-400">What's making me money? <span className="text-slate-500">· Hawk Insights</span></p>
+        {!isPro && <p className="text-[10px] text-slate-600 mt-1">Showing the essentials · switch to Pro in Settings for deep analytics</p>}
       </div>
 
       {/* Top Lead Sources */}
@@ -221,7 +224,8 @@ export default function HawkInsightsPage() {
         )}
       </div>
 
-      {/* Peak Engagement Times */}
+      {/* Peak Engagement Times — Pro only */}
+      {isPro && (
       <div className="glass-card">
         <h3 className="font-semibold text-white mb-3">⏰ Peak Engagement Times</h3>
         {peakHours.length === 0 ? (
@@ -241,9 +245,10 @@ export default function HawkInsightsPage() {
           </div>
         )}
       </div>
+      )}
 
-      {/* Internet Lead Vendor Performance */}
-      {topVendors.length > 0 && (
+      {/* Internet Lead Vendor Performance — Pro only */}
+      {isPro && topVendors.length > 0 && (
         <div className="glass-card">
           <h3 className="font-semibold text-white mb-3">🌐 Internet Lead Vendors</h3>
           <div className="space-y-2">
@@ -260,8 +265,8 @@ export default function HawkInsightsPage() {
         </div>
       )}
 
-      {/* 📊 Post Timing & Group Performance */}
-      {(() => {
+      {/* 📊 Post Timing & Group Performance — Pro only */}
+      {isPro && (() => {
         const postHistoryKey = `hawkeye_post_history_${user?.sub || 'default'}`;
         let postHistory: { id: string; content: string; group: string; groupLink: string; postedAt: string; timeOfDay: string; dayOfWeek: string }[] = [];
         try { postHistory = JSON.parse(localStorage.getItem(postHistoryKey) || '[]'); } catch { /* ignore */ }

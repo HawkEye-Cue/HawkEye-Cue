@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
+import { useMode } from '../contexts/ModeContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
@@ -32,6 +33,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { user, logout, getToken } = useAuth();
   const { showToast } = useToast();
+  const { mode } = useMode();
 
   // Load display names from server on startup + save user timezone
   useEffect(() => {
@@ -142,6 +144,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-white/20 px-3 sm:px-4 py-3 flex flex-col items-center gap-1" style={{ background: 'rgba(30, 41, 59, 0.95)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-wider uppercase gradient-text">HawkEye-Cue</h1>
         <div className="flex items-center gap-3">
+          {/* Mode pill — quick way to find the Guided/Pro toggle */}
+          <Link
+            to="/settings"
+            title="Change app mode in Settings"
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${mode === 'guided' ? 'text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20' : 'text-blue-300 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20'}`}
+          >
+            {mode === 'guided' ? '🧭 Guided' : '⚡ Pro'}
+          </Link>
           {/* Notification Bell */}
           <div className="relative">
             <button

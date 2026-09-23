@@ -215,6 +215,29 @@ export default function LeadProfilePopup({
           </div>
         </div>
 
+        {/* Consent basis — how you can contact this person */}
+        {(lead as any).consentBasis && (() => {
+          const labels: Record<string, string> = {
+            'public-request': 'Publicly asked for this service',
+            'opted-in': 'Gave their info / opted in',
+            'referral': 'Referred by someone they know',
+            'existing-client': 'Existing / past client',
+            'purchased-lead': 'Purchased lead (vendor consent)',
+            'cold-outreach': 'Cold outreach — no prior contact',
+          };
+          const cb = (lead as any).consentBasis as string;
+          const isCold = cb === 'cold-outreach';
+          return (
+            <div className={`mt-3 mx-2 flex items-center gap-2 rounded-lg px-3 py-2 border ${isCold ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-700/40 border-white/10'}`}>
+              <span className="text-sm shrink-0">🛡️</span>
+              <div className="min-w-0">
+                <p className="text-[10px] text-slate-400">Contact basis</p>
+                <p className="text-xs text-white">{labels[cb] || cb}{isCold && <span className="text-amber-300"> · check local rules before reaching out</span>}</p>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Next Step Card */}
         {(() => {
           const nextStep = followupSteps.find(s => !s.completed);

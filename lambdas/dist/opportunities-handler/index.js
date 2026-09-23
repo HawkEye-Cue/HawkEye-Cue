@@ -76,6 +76,7 @@ async function handleGetOpportunities(userId) {
     sourceAuthor: item.sourceAuthor,
     leadSource: item.leadSource || null,
     leadSourceGroup: item.leadSourceGroup || null,
+    consentBasis: item.consentBasis || null,
     policyType: item.policyType || null,
     assignedTo: item.assignedTo || null,
     bucket: item.bucket || null,
@@ -113,6 +114,7 @@ async function handleCreateOpportunity(userId, body) {
         sourceAuthor: body.sourceAuthor,
         leadSource: body.leadSource || null,
         leadSourceGroup: body.leadSourceGroup || null,
+        consentBasis: body.consentBasis || null,
         policyType: body.policyType || null,
         assignedTo: body.assignedTo || null,
         bucket: body.bucket || null,
@@ -231,6 +233,10 @@ async function handleUpdateStatus(userId, opportunityId, body) {
   if (body.leadNotes !== undefined) {
     updates.push('leadNotes = :leadNotes');
     values[':leadNotes'] = body.leadNotes || null;
+  }
+  if (body.consentBasis !== undefined) {
+    updates.push('consentBasis = :consentBasis');
+    values[':consentBasis'] = body.consentBasis || null;
   }
   if (body.leadColor !== undefined) {
     updates.push('leadColor = :leadColor');

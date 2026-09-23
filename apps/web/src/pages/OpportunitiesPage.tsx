@@ -116,6 +116,7 @@ export default function OpportunitiesPage() {
   const [newLeadSource, setNewLeadSource] = useState('facebook-group');
   const [newLeadGroup, setNewLeadGroup] = useState('');
   const [newLeadNote, setNewLeadNote] = useState('');
+  const [newLeadConsent, setNewLeadConsent] = useState('public-request');
   const [newLeadPolicyType, setNewLeadPolicyType] = useState('');
   const [newLeadCustomType, setNewLeadCustomType] = useState('');
   const [newLeadAssignee, setNewLeadAssignee] = useState('');
@@ -768,6 +769,18 @@ export default function OpportunitiesPage() {
                 <input type="text" value={newLeadNote} onChange={(e) => setNewLeadNote(e.target.value)} placeholder="e.g. Asked about pricing" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
               </div>
               <div>
+                <label className="block text-xs text-slate-400 mb-1">How can you contact them? 🛡️</label>
+                <select value={newLeadConsent} onChange={(e) => setNewLeadConsent(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <option value="public-request">They publicly asked for this service</option>
+                  <option value="opted-in">They gave me their info / opted in</option>
+                  <option value="referral">Referred to me by someone they know</option>
+                  <option value="existing-client">Existing / past client</option>
+                  <option value="purchased-lead">Purchased lead (vendor consent)</option>
+                  <option value="cold-outreach">Cold outreach — no prior contact</option>
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">Tracked so you can reach out responsibly. Follow local rules (TCPA/CAN-SPAM) for calls, texts &amp; email.</p>
+              </div>
+              <div>
                 <label className="block text-xs text-slate-400 mb-1">Policy Type (optional)</label>
                 <select value={newLeadPolicyType} onChange={(e) => { setNewLeadPolicyType(e.target.value); if (e.target.value !== 'other') setNewLeadCustomType(''); }} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
                   <option value="">Select policy type...</option>
@@ -827,6 +840,7 @@ export default function OpportunitiesPage() {
                       sourceAuthor: newLeadName.trim(),
                       leadSource: newLeadSource,
                       leadSourceGroup: newLeadGroup || undefined,
+                      consentBasis: newLeadConsent || undefined,
                       policyType: newLeadPolicyType === 'other' ? (newLeadCustomType.trim() || undefined) : (newLeadPolicyType || undefined),
                       assignedTo: newLeadAssignee || user?.email || undefined,
                       bucket: newLeadBucket || undefined,
@@ -855,6 +869,7 @@ export default function OpportunitiesPage() {
                     setShowAddLead(false);
                     setNewLeadName('');
                     setNewLeadNote('');
+                    setNewLeadConsent('public-request');
                     setNewLeadGroup('');
                     setNewLeadPolicyType('');
                     setNewLeadCustomType('');

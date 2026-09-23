@@ -77,6 +77,7 @@ export interface Opportunity {
   leadNotes?: string | null;
   leadSource?: string | null;
   leadSourceGroup?: string | null;
+  consentBasis?: string | null;
   policyType?: string | null;
   assignedTo?: string | null;
   expectedPremium?: string | number | null;

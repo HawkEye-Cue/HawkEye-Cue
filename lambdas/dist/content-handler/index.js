@@ -232,12 +232,17 @@ async function handleGenerateImage(userId, body) {
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      // dall-e-3 returns in ~10-15s (fits API Gateway's 29s cap); gpt-image-1
+      // regularly exceeds 30s and times out. dall-e-3 returns a hosted URL.
       body: JSON.stringify({
-        model: 'gpt-image-1',
+        model: 'dall-e-3',
         prompt: fullPrompt.slice(0, 4000),
         n: 1,
         size: '1024x1024',
+        quality: 'standard',
+        response_format: 'b64_json',
       }),
+      signal: AbortSignal.timeout(26000), // return before the gateway 29s cap
     });
     const data = await res.json();
     if (!res.ok) {

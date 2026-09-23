@@ -424,6 +424,8 @@ export default function SalesPage() {
   const [defaultFolioStart, setDefaultFolioStart] = useState(() => localStorage.getItem('hawkeye_folio_start') || '');
   const [defaultFolioEnd, setDefaultFolioEnd] = useState(() => localStorage.getItem('hawkeye_folio_end') || '');
   const [editingFolio, setEditingFolio] = useState(false);
+  // Some trades (e.g. non-insurance) don't use folios — hide folio UI when disabled.
+  const [foliosEnabled, setFoliosEnabled] = useState<boolean>(() => localStorage.getItem('hawkeye_folios_enabled') !== 'false');
 
   // Form state
   const [name, setName] = useState('');
@@ -486,6 +488,14 @@ export default function SalesPage() {
           if (folioResult.folioStart) { setDefaultFolioStart(folioResult.folioStart); localStorage.setItem('hawkeye_folio_start', folioResult.folioStart); }
           if (folioResult.folioEnd) { setDefaultFolioEnd(folioResult.folioEnd); localStorage.setItem('hawkeye_folio_end', folioResult.folioEnd); }
         } catch { /* use localStorage defaults */ }
+        // Whether this user's trade uses folios at all (default: yes)
+        try {
+          const prefs = await client.request<{ foliosEnabled?: boolean }>('GET', '/profile/preferences');
+          if (typeof prefs.foliosEnabled === 'boolean') {
+            setFoliosEnabled(prefs.foliosEnabled);
+            localStorage.setItem('hawkeye_folios_enabled', String(prefs.foliosEnabled));
+          }
+        } catch { /* default enabled */ }
         // Fetch unconverted leads for "Convert from Lead" feature
         try {
           const leadsResult = await client.request<any>('GET', '/opportunities?status=new');
@@ -742,6 +752,8 @@ export default function SalesPage() {
 
   const filtered = (() => {
     let result = filter === 'all' ? deals : deals.filter((d) => d.stage === filter);
+    // Trades with folios disabled always see all deals (no period filtering)
+    if (!foliosEnabled) return result;
     if (folioFilter === 'current') {
       result = result.filter(dealInCurrentFolio);
     } else if (folioFilter !== 'all') {
@@ -1055,15 +1067,17 @@ export default function SalesPage() {
         );
       })()}
 
-      {/* Folio Settings — cohesive manager, syncs everywhere */}
+      {/* Folio Settings — cohesive manager, syncs everywhere (only for trades that use folios) */}
+      {foliosEnabled && (
       <FolioManager onSaved={(s, e) => {
         setDefaultFolioStart(s);
         setDefaultFolioEnd(e);
         setFolioFilter('current');
       }} />
+      )}
 
-      {/* Folio History — view any past folio (Pro only) */}
-      {isPro && availableFolios.length > 0 && (
+      {/* Folio History — view any past folio (Pro only, folio trades only) */}
+      {foliosEnabled && isPro && availableFolios.length > 0 && (
         <div className="glass-card">
           <h3 className="font-semibold text-white mb-3 flex items-center justify-between">
             <span>📊 Folio History</span>
@@ -1324,7 +1338,8 @@ export default function SalesPage() {
         </div>
       )}
 
-      {/* Folio Filter */}
+      {/* Folio Filter — only for trades that use folios */}
+      {foliosEnabled && (
       <div className="flex items-center gap-2">
         <span className="text-xs text-slate-400">Folio:</span>
         <select
@@ -1339,6 +1354,7 @@ export default function SalesPage() {
           ))}
         </select>
       </div>
+      )}
 
       {/* Stage Filter */}
       <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-3 px-3">
@@ -1597,7 +1613,7 @@ export default function SalesPage() {
         <div className="glass-card-strong border-green-500/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white">{folioFilter === 'current' && defaultFolioStart && defaultFolioEnd ? folioDisplayName(`${defaultFolioStart} to ${defaultFolioEnd}`) : folioFilter === 'current' ? 'Current Folio' : folioFilter !== 'all' ? folioDisplayName(folioFilter) : 'Folio'} Total</p>
+              <p className="text-sm font-medium text-white">{!foliosEnabled ? 'Total' : folioFilter === 'current' && defaultFolioStart && defaultFolioEnd ? folioDisplayName(`${defaultFolioStart} to ${defaultFolioEnd}`) : folioFilter === 'current' ? 'Current Folio' : folioFilter !== 'all' ? folioDisplayName(folioFilter) : 'Folio'} Total</p>
               <p className="text-xs text-slate-400">{filtered.filter((d) => d.stage === 'won').length} won</p>
             </div>
             <div className="text-right">

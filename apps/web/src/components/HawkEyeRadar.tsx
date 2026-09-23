@@ -48,6 +48,8 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
   const [showProofMgr, setShowProofMgr] = useState(false);
   const [newTestimonial, setNewTestimonial] = useState('');
   const [newTestimonialAuthor, setNewTestimonialAuthor] = useState('');
+  // Screenshot → text (Send-to-HawkEye)
+  const [reading, setReading] = useState(false);
 
   async function buildClient() {
     const token = await getToken();
@@ -103,6 +105,28 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
       if (res.match) setProofMatch({ match: res.match, reason: res.reason });
     } catch { /* best-effort */ }
     finally { setProofLoading(false); }
+  }
+
+  // Read a screenshot into the post text via AI vision, then let the user scan it.
+  async function readScreenshot(file: File) {
+    if (!file.type.startsWith('image/')) { showToast('Please choose an image'); return; }
+    if (file.size > 8 * 1024 * 1024) { showToast('Image too large (max 8MB)'); return; }
+    setReading(true);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const client = await buildClient();
+      const res = await client.request<{ author: string; text: string }>('POST', '/radar/read-image', { image: dataUrl });
+      if (res.text) setPostText(res.text);
+      if (res.author && !name.trim()) setName(res.author);
+      showToast(res.text ? '✓ Read from screenshot — review & scan' : 'Could not find text — try pasting it');
+    } catch (e) {
+      showToast(`❌ ${e instanceof Error ? e.message : 'Could not read screenshot'}`);
+    } finally { setReading(false); }
   }
 
   async function score() {
@@ -176,7 +200,22 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
 
           {/* Input */}
           <div className="glass-card space-y-3">
-            <p className="text-xs text-slate-400">Paste a Facebook post or comment. HawkEye scores how likely it is to become a paying customer.</p>
+            <p className="text-xs text-slate-400">Paste a post/comment/message — or upload a screenshot from any app. HawkEye scores how likely it is to become a paying customer.</p>
+
+            {/* Screenshot → text (Send to HawkEye) */}
+            <label className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 text-amber-300 text-xs font-semibold cursor-pointer hover:bg-amber-500/10 transition-all ${reading ? 'opacity-60 pointer-events-none' : ''}`}>
+              {reading ? '🔍 Reading screenshot…' : '📸 Upload a screenshot to analyze'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) readScreenshot(f); e.currentTarget.value = ''; }}
+              />
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-px bg-white/10" /><span className="text-[10px] text-slate-500">or paste text</span><div className="flex-1 h-px bg-white/10" />
+            </div>
+
             <textarea
               value={postText}
               onChange={(e) => setPostText(e.target.value)}

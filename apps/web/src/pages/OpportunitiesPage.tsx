@@ -445,6 +445,14 @@ export default function OpportunitiesPage() {
     }
   }, [leads, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-open HawkEye Radar when navigated with ?radar=1 (Send to HawkEye)
+  useEffect(() => {
+    if (searchParams.get('radar')) {
+      setShowRadar(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleUpdateStatus(id: string, newStatus: OpportunityStatus) {
     setUpdatingId(id);
     try {

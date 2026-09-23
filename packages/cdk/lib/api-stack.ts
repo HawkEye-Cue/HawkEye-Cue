@@ -507,6 +507,14 @@ export class ApiStack extends cdk.Stack {
         resources: [`arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0`],
       })
     );
+    // OpenAI key for screenshot OCR (Send-to-HawkEye "analyze a screenshot")
+    radarFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/OpenAI*`],
+      })
+    );
 
     // ─── Policy Comparison Handler ────────────────────────────────────────
     const policyComparisonFn = new lambda.Function(this, 'PolicyComparisonFn', {
@@ -1340,6 +1348,13 @@ export class ApiStack extends cdk.Stack {
     });
     this.httpApi.addRoutes({
       path: '/radar/proof-match',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: radarIntegration,
+      authorizer,
+    });
+    // Screenshot OCR for Send-to-HawkEye
+    this.httpApi.addRoutes({
+      path: '/radar/read-image',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: radarIntegration,
       authorizer,

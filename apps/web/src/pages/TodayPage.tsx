@@ -199,6 +199,15 @@ export default function TodayPage() {
         ))}
       </div>
 
+      {/* Send to HawkEye — analyze any post/screenshot from your phone */}
+      <button
+        onClick={() => navigate('/pipeline?radar=1')}
+        className="w-full py-3 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+      >
+        <span className="text-lg">📸</span>
+        <span className="text-sm font-bold text-amber-200">Analyze a post or screenshot</span>
+      </button>
+
       {/* Flight plan CTA or all-clear */}
       {hasWork ? (
         <button

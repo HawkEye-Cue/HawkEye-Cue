@@ -10,6 +10,7 @@
  * - GET  /radar/memory       — look up prior interactions with a person (by name)
  * - GET/POST/DELETE /radar/testimonials — manage the user's social-proof library
  * - POST /radar/proof-match  — AI-pick the best testimonial for a lead's need
+ * - POST /radar/read-image   — OCR a screenshot into post text + author (OpenAI vision)
  *
  * Uses Amazon Bedrock (Nova Lite) for classification. Learning is done by
  * aggregating Won/Lost signals per user (phrases, groups, neighborhoods, post types).
@@ -22,6 +23,46 @@ const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-be
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
 const TABLE_NAME = process.env.TABLE_NAME;
+
+// ─── OpenAI vision (screenshot → text) ───────────────────────────────────────
+let _openAiKey = null;
+async function getOpenAiKey() {
+  if (_openAiKey) return _openAiKey;
+  const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+  const sm = new SecretsManagerClient({ region: 'us-east-1' });
+  const result = await sm.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/OpenAI' }));
+  _openAiKey = JSON.parse(result.SecretString).OPENAI_API_KEY;
+  return _openAiKey;
+}
+
+// Extract the post text + likely author from a screenshot data URL.
+async function readImage(dataUrl) {
+  const apiKey = await getOpenAiKey();
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'This is a screenshot of a social media post, comment, message, or email. Extract the main message text a customer wrote, and the author\'s name if visible. Ignore UI chrome (likes, timestamps, buttons). Return ONLY valid JSON: {"author": "name or empty", "text": "the message content"}' },
+          { type: 'image_url', image_url: { url: dataUrl } },
+        ],
+      }],
+      max_tokens: 500,
+      temperature: 0,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error?.message || 'Vision request failed');
+  }
+  const content = data.choices?.[0]?.message?.content || '';
+  const m = content.match(/\{[\s\S]*\}/);
+  if (!m) return { author: '', text: content.trim() };
+  try { return JSON.parse(m[0]); } catch { return { author: '', text: content.trim() }; }
+}
 
 function ok(body) { return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
 function err(status, code, message) { return { statusCode: status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: { code, message } }) }; }
@@ -399,6 +440,22 @@ Return ONLY valid JSON: {"index": <number>, "reason": "one short sentence why th
       } catch (e) {
         console.error('[radar] proof-match failed:', e.message);
         return ok({ match: testimonials[0], reason: 'Suggested testimonial.' });
+      }
+    }
+
+    // POST /radar/read-image — OCR a screenshot into post text + author
+    if (method === 'POST' && path === '/radar/read-image') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const dataUrl = body.image || body.dataUrl;
+      if (!dataUrl || !/^data:image\//.test(dataUrl)) {
+        return err(400, 'INVALID_INPUT', 'A base64 image data URL is required');
+      }
+      try {
+        const result = await readImage(dataUrl);
+        return ok({ author: result.author || '', text: result.text || '' });
+      } catch (e) {
+        console.error('[radar] read-image failed:', e.message);
+        return err(500, 'VISION_FAILED', 'Could not read that screenshot. Try pasting the text instead.');
       }
     }
 

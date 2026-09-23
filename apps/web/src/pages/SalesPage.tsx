@@ -1061,43 +1061,37 @@ export default function SalesPage() {
       }} />
       )}
 
-      {/* Folio History — view any past folio (Pro only, folio trades only) */}
+      {/* Folio History — collapsed by default, compact single-line rows (Pro, folio trades) */}
       {foliosEnabled && isPro && availableFolios.length > 0 && (
-        <div className="glass-card">
-          <h3 className="font-semibold text-white mb-3 flex items-center justify-between">
+        <details className="glass-card">
+          <summary className="flex items-center justify-between cursor-pointer font-semibold text-white text-sm">
             <span>📊 Folio History</span>
             <span className="text-xs text-slate-400 font-normal">{availableFolios.length} period{availableFolios.length !== 1 ? 's' : ''}</span>
-          </h3>
-          <p className="text-xs text-slate-400 mb-3">All sales data is saved permanently. Tap any folio to view its deals.</p>
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+          </summary>
+          <div className="mt-3 divide-y divide-white/5 max-h-[280px] overflow-y-auto">
             {availableFolios.map((folio) => {
-              const folioDeals = deals.filter((d) => d.folio === folio);
-              const wonDeals = folioDeals.filter((d) => d.stage === 'won');
+              const wonDeals = deals.filter((d) => d.folio === folio && d.stage === 'won');
               const totalRevenue = wonDeals.reduce((s, d) => s + (d.value || 0), 0);
               const isActive = folioFilter === folio;
               return (
                 <button
                   key={folio}
                   onClick={() => setFolioFilter(isActive ? 'all' : folio)}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${isActive ? 'bg-blue-500/15 border-blue-500/30' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                  className={`w-full flex items-center justify-between gap-2 py-2 px-2 rounded-md text-left transition-colors ${isActive ? 'bg-blue-500/15' : 'hover:bg-white/5'}`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-white font-medium">{folioDisplayName(folio)}</span>
-                    {isActive && <span className="text-[9px] text-blue-400 font-bold">VIEWING</span>}
-                  </div>
-                  <div className="flex gap-4 mt-1">
-                    <span className="text-[10px] text-slate-400">{folioDeals.length} deal{folioDeals.length !== 1 ? 's' : ''}</span>
-                    <span className="text-[10px] text-green-400">{wonDeals.length} won</span>
-                    <span className="text-[10px] text-green-400 font-medium">${totalRevenue.toLocaleString()}</span>
-                  </div>
+                  <span className={`text-xs truncate ${isActive ? 'text-blue-300 font-semibold' : 'text-white'}`}>{folioDisplayName(folio)}</span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] text-slate-500">{wonDeals.length} won</span>
+                    <span className="text-xs text-green-400 font-semibold">${totalRevenue.toLocaleString()}</span>
+                  </span>
                 </button>
               );
             })}
           </div>
-          {folioFilter !== 'all' && (
+          {folioFilter !== 'all' && folioFilter !== 'current' && (
             <button onClick={() => setFolioFilter('all')} className="mt-2 text-xs text-blue-400 hover:text-blue-300">Show all periods</button>
           )}
-        </div>
+        </details>
       )}
 
       {/* Deal Types Settings */}

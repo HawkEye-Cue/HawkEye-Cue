@@ -923,7 +923,7 @@ export default function SalesPage() {
                       <p className="text-[10px] text-slate-500 mt-0.5">{lead.sourcePlatform} · {owner}{lead.claimedByName ? ` · 🎯 ${lead.claimedByName}` : ''}</p>
                     </div>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${lead.status === 'converted' ? 'bg-green-900/40 text-green-400 border border-green-500/20' : 'bg-blue-900/40 text-blue-400 border border-blue-500/20'}`}>
-                      {lead.status === 'converted' ? 'Won' : lead.status === 'followed_up' ? 'Active' : 'New'}
+                      {lead.status === 'converted' ? '⭐ Client' : lead.status === 'followed_up' ? 'Active' : 'New'}
                     </span>
                   </div>
                 );

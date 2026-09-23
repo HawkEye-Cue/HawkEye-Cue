@@ -585,7 +585,7 @@ export default function DashboardPage() {
           </div>
           <div className="text-center p-3 rounded-lg bg-slate-800 border border-green-500/30">
             <div className="text-xl sm:text-2xl font-bold text-green-400">{leadStats.converted}</div>
-            <div className="text-xs text-slate-400">Converted</div>
+            <div className="text-xs text-slate-400">Clients</div>
           </div>
         </div>
       </div>

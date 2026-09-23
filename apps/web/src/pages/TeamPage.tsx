@@ -877,7 +877,7 @@ export default function TeamPage() {
                           <p className="text-[10px] text-slate-500 mt-0.5">{lead.sourcePlatform} · {new Date(lead.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                         </div>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${lead.status === 'converted' ? 'bg-green-900/40 text-green-400 border border-green-500/20' : lead.status === 'followed_up' ? 'bg-yellow-900/40 text-yellow-400 border border-yellow-500/20' : 'bg-blue-900/40 text-blue-400 border border-blue-500/20'}`}>
-                          {lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New'}
+                          {lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? '⭐ Client' : 'New'}
                         </span>
                         {/* Transfer */}
                         {team && team.members.length > 1 && (

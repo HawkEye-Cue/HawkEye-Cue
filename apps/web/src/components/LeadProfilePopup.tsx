@@ -139,7 +139,7 @@ export default function LeadProfilePopup({
   const completedSteps = followupSteps.filter(s => s.completed).length;
   const totalSteps = followupSteps.length;
   const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
-  const statusLabel = lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? 'Converted' : 'New';
+  const statusLabel = lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? '⭐ Client' : 'New';
 
   return (
     <div

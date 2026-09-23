@@ -19,7 +19,7 @@ const FILTERS: { label: string; value: OpportunityStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
   { label: 'New', value: 'new' },
   { label: 'Followed Up', value: 'followed_up' },
-  { label: 'Converted', value: 'converted' },
+  { label: 'Clients', value: 'converted' },
 ];
 
 const platformIcons: Record<string, string> = {
@@ -541,7 +541,7 @@ export default function OpportunitiesPage() {
       const client = await buildClient();
       await client.request('PUT', `/opportunities/${lead.id}/status`, { status: 'converted' });
       setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, status: 'converted' as any } : l));
-      showToast('🏆 Moved to Won nest');
+      showToast('⭐ Moved to Clients');
     } catch { showToast('❌ Failed to move'); }
   }
 
@@ -570,7 +570,7 @@ export default function OpportunitiesPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[lead.status]}`}>
-              {lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? 'Converted' : 'New'}
+              {lead.status === 'followed_up' ? 'Followed Up' : lead.status === 'converted' ? '⭐ Client' : 'New'}
             </span>
             <button onClick={() => handleDelete(lead.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
           </div>
@@ -618,7 +618,7 @@ export default function OpportunitiesPage() {
           )}
           {(lead.status === 'new' || lead.status === 'followed_up') && (
             <button onClick={async () => { await handleUpdateStatus(lead.id, 'converted'); navigate(`/sales?newDeal=${encodeURIComponent(lead.sourceAuthor)}`); }} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">
-              {updatingId === lead.id ? '...' : '✓ Mark Converted'}
+              {updatingId === lead.id ? '...' : '⭐ Convert to Client'}
             </button>
           )}
           {lead.sourceUrl && (
@@ -937,7 +937,7 @@ export default function OpportunitiesPage() {
                 <select defaultValue={editingLead.status} id="editLeadStatus" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
                   <option value="new">New</option>
                   <option value="followed_up">Followed Up</option>
-                  <option value="converted">Converted</option>
+                  <option value="converted">Client (Converted)</option>
                 </select>
               </div>
               <div>
@@ -1061,7 +1061,7 @@ export default function OpportunitiesPage() {
                   <div className="absolute top-2 right-2 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-md shadow-green-500/40">
                     <span className="text-xs font-bold text-white">{wonLeads.length}</span>
                   </div>
-                  <span className="text-xs text-white mt-1 font-semibold">Won</span>
+                  <span className="text-xs text-white mt-1 font-semibold">⭐ Clients</span>
                   {totalPremium > 0 && <span className="text-[9px] text-green-300 font-bold mt-0.5">${totalPremium.toLocaleString()}</span>}
                 </button>
               );
@@ -1192,7 +1192,7 @@ export default function OpportunitiesPage() {
                 const displayNames = JSON.parse(localStorage.getItem(`hawkeye_display_names`) || '{}');
                 const producer = assigned ? (displayNames[assigned] || assigned.split('@')[0]) : '';
                 const premium = (lead as any).expectedPremium || localData[(lead.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;
-                const statusLabel = lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? 'Won' : 'New';
+                const statusLabel = lead.status === 'followed_up' ? 'Active' : lead.status === 'converted' ? '⭐ Client' : 'New';
 
                 const summary = (lead.sourceContent || '').trim();
                 const group = (lead as any).leadSourceGroup || '';
@@ -1324,7 +1324,7 @@ export default function OpportunitiesPage() {
                           </button>
                           <button
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveToWon(lead); }}
-                            title="Move to Won nest"
+                            title="Convert to Client"
                             className="px-3 py-2 rounded-lg bg-green-500/15 border border-green-500/30 hover:bg-green-500/30 text-green-300 text-xs font-medium transition-all"
                           >
                             🏆

@@ -215,6 +215,46 @@ async function handleUpdatePreferences(userId, body) {
   return respond(200, merged);
 }
 
+// GET /profile/export — return all of the user's data for download (data portability)
+async function handleExportData(userId, event) {
+  const email = event.requestContext?.authorizer?.jwt?.claims?.email ?? '';
+  let items = [];
+  try {
+    const result = await dynamo.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}` },
+      })
+    );
+    items = result.Items || [];
+  } catch (e) {
+    console.error('Export query failed:', e);
+    return respond(500, { error: { code: 'EXPORT_FAILED', message: 'Could not export your data. Try again.' } });
+  }
+
+  // Group items by record type (the SK prefix) into a friendly structure.
+  const grouped = {};
+  for (const item of items) {
+    const sk = String(item.SK || '');
+    const type = sk.includes('#') ? sk.split('#')[0] : sk; // e.g. OPP, DEAL, CAL, PROFILE
+    if (!grouped[type]) grouped[type] = [];
+    // Strip internal keys from the export
+    const { PK, GSI1PK, GSI1SK, ...rest } = item;
+    grouped[type].push(rest);
+  }
+
+  const exportDoc = {
+    export: 'HawkEye-Cue account data',
+    account: { email, userId },
+    generatedAt: new Date().toISOString(),
+    recordCounts: Object.fromEntries(Object.entries(grouped).map(([k, v]) => [k, v.length])),
+    data: grouped,
+  };
+
+  return respond(200, exportDoc);
+}
+
 // DELETE /profile/delete — permanently delete user account
 async function handleDeleteAccount(userId, event) {
   const email = event.requestContext?.authorizer?.jwt?.claims?.email ?? '';
@@ -365,6 +405,10 @@ exports.handler = async (event) => {
 
     if (method === 'DELETE' && path === '/profile/delete') {
       return handleDeleteAccount(userId, event);
+    }
+
+    if (method === 'GET' && path === '/profile/export') {
+      return handleExportData(userId, event);
     }
 
     return respond(404, { error: { code: 'NOT_FOUND', message: `No route for ${method} ${path}` } });

@@ -28,6 +28,7 @@ const moreItems = [
   { path: '/dashboard', label: 'Full Dashboard', icon: '🗓️', desc: 'Calendar, engagement & everything at a glance' },
   { path: '/keywords', label: 'Keywords', icon: '🔑', desc: 'What HawkEye watches for' },
   { path: '/settings', label: 'Settings', icon: '⚙️', desc: 'Trade, accounts, subscription & more' },
+  { path: '/privacy', label: 'Privacy & Data', icon: '🔒', desc: 'Export or delete your data, what we access' },
   { path: '/profile', label: 'Profile', icon: '👤', desc: 'Your account & password' },
 ];
 

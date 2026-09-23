@@ -11,6 +11,7 @@ import OnboardingPage from './pages/OnboardingPage';
 import TodayPage from './pages/TodayPage';
 import PipelinePage from './pages/PipelinePage';
 import FlightPlanPage from './pages/FlightPlanPage';
+import PrivacyPage from './pages/PrivacyPage';
 import DashboardPage from './pages/DashboardPage';
 import ContentCreatorPage from './pages/ContentCreatorPage';
 import CreatePage from './pages/CreatePage';
@@ -86,6 +87,7 @@ export default function App() {
                 {/* Combined Leads + Deals tab */}
                 <Route path="/pipeline" element={<PipelinePage />} />
                 <Route path="/flight-plan" element={<FlightPlanPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
                 {/* Legacy paths keep working — redirect into the combined tab (preserving query like ?newDeal=) */}
                 <Route path="/opportunities" element={<SalesRedirect />} />
                 <Route path="/sales" element={<SalesRedirect />} />

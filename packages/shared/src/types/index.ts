@@ -10,6 +10,18 @@ export type OpportunityStatus = 'new' | 'followed_up' | 'converted' | 'dismissed
 
 export type DevicePlatform = 'ios' | 'android';
 
+// Product edition — orthogonal to subscription tier. Controls feature visibility.
+export type Edition = 'discover' | 'grow';
+
+// Per-lead CRM push outcome.
+export type PushStatus = 'not_pushed' | 'pending' | 'pushed' | 'failed';
+
+// How a CRM destination is connected.
+export type CrmConnectionMethod = 'none' | 'url' | 'api_key' | 'oauth';
+
+// Whether a destination can be connected today or is blocked on third-party approval.
+export type CrmAvailability = 'available' | 'requires_approval';
+
 // --- Interfaces ---
 
 export interface User {
@@ -83,6 +95,12 @@ export interface Opportunity {
   expectedPremium?: string | number | null;
   bucket?: string | null;
   leadColor?: string | null;
+  // CRM push tracking
+  pushStatus?: PushStatus;
+  crmRecordId?: string | null;
+  lastPushError?: string | null;
+  pushedAt?: string | null;
+  pushedConnectionId?: string | null;
 }
 
 export interface OpportunityStats {
@@ -179,4 +197,43 @@ export interface NetworkContact {
   email: string;
   notes: string;
   createdAt: string;
+}
+
+// --- CRM Push / Discover-Grow Editions ---
+
+// A CRM destination the user can connect to, with its current availability.
+export interface CrmDestinationInfo {
+  type: string; // 'csv' | 'webhook' | 'hubspot' | 'zoho' | 'gohighlevel' | 'salesforce' | ...
+  label: string;
+  method: CrmConnectionMethod;
+  availability: CrmAvailability;
+  reason?: string; // shown when availability is 'requires_approval'
+  supportsUpsert?: boolean;
+  requiredFields?: string[];
+}
+
+// Maps a CRM destination field -> exactly one HawkEye lead field.
+export type FieldMapping = Record<string, string>;
+
+// A stored CRM connection. Credentials are NEVER returned raw — only masked/omitted.
+export interface CrmConnection {
+  connectionId: string;
+  destinationType: string;
+  connectionMethod: CrmConnectionMethod;
+  availability: CrmAvailability;
+  fieldMapping: FieldMapping;
+  webhookUrl?: string | null;
+  active: boolean;
+  credentialMasked?: string; // e.g. '••••••' — never the real value
+  lastValidatedAt?: string | null;
+  createdAt: string;
+}
+
+// Result of a push attempt returned to the client.
+export interface PushResult {
+  pushStatus: PushStatus;
+  crmRecordId?: string | null;
+  reason?: string; // failure reason when pushStatus === 'failed'
+  needsConfirmation?: boolean; // dedup / re-push confirmation required
+  matchingLead?: { id: string; name: string } | null;
 }

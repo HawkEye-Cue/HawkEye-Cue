@@ -179,6 +179,20 @@ export default function ContentCreatorPage() {
     }
   }
 
+  // Save the ready image to the user's device so they can attach it in Facebook's
+  // composer with the native "add photo" button (works on desktop AND mobile).
+  function downloadReadyImage() {
+    if (!readyImageSrc) return;
+    try {
+      const a = document.createElement('a');
+      a.href = readyImageSrc;
+      a.download = 'hawkeye-photo.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch { /* best-effort */ }
+  }
+
   async function generateAiPhoto() {
     if (!aiPhotoPrompt.trim()) { showToast('Describe the photo you want'); return; }
     setAiPhotoLoading(true);
@@ -1080,6 +1094,9 @@ export default function ContentCreatorPage() {
                     onClick={() => {
                       const content = Object.values(platformContent)[0] || '';
                       navigator.clipboard.writeText(content);
+                      // Option A: one trip to Facebook — also save the photo now so the
+                      // user just pastes text + attaches the freshly-downloaded image.
+                      if (readyImageSrc) downloadReadyImage();
                       if (next) {
                         // Only toggle if not already completed (prevent double-toggle)
                         if (!next.completed) {
@@ -1096,25 +1113,26 @@ export default function ContentCreatorPage() {
                           const used = parseInt(localStorage.getItem(nestUsedKey) || '0') + 1;
                           localStorage.setItem(nestUsedKey, String(used));
                         }
-                        showToast(`✓ Copied & opened — ${remaining.length - 1} flock${remaining.length - 1 !== 1 ? 's' : ''} left`);
+                        showToast(readyImageSrc
+                          ? '✓ Text copied + photo saved — paste text, then attach the photo'
+                          : `✓ Copied & opened — ${remaining.length - 1} flock${remaining.length - 1 !== 1 ? 's' : ''} left`);
                       }
                     }}
                     className="w-full px-4 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-lg shadow-amber-500/20"
                   >
-                    <span className="text-base">📋 Copy & Open Next Flock</span>
+                    <span className="text-base">{readyImageSrc ? '📋 Copy Text + Photo & Open Flock' : '📋 Copy & Open Next Flock'}</span>
                     <span className="text-xs font-normal opacity-80 truncate max-w-full">{next?.title || 'Next flock'}</span>
                   </button>
                   {readyImageSrc && (
-                    <button
-                      onClick={copyImageToClipboard}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-pink-600 to-purple-600 hover:opacity-90 text-white text-sm font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2"
-                    >
-                      <img src={readyImageSrc} alt="" className="w-6 h-6 rounded object-cover" />
-                      📸 Copy Photo — paste after your text
-                    </button>
+                    <div className="flex items-center gap-2 justify-center">
+                      <img src={readyImageSrc} alt="" className="w-8 h-8 rounded object-cover border border-white/10" />
+                      <span className="text-[11px] text-slate-400">Photo attached to this flock</span>
+                    </div>
                   )}
                   <p className="text-xs text-slate-400 text-center">{remaining.length} flock{remaining.length !== 1 ? 's' : ''} remaining{isNestTier ? ` • ${nestLimit - nestUsedToday} free uses left today` : ''}</p>
-                  <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: paste your text first, then tap 📸 Copy Photo and paste the image into the same post (desktop). On phone, the photo saves so you can attach it.</p>
+                  <p className="text-xs text-slate-500 text-center mt-1">{readyImageSrc
+                    ? '🦅 In the group: paste your text (Ctrl/Cmd+V), then tap Facebook\'s photo button and pick the photo we just saved — then post.'
+                    : '🦅 In the group: paste your text (Ctrl/Cmd+V), then post.'}</p>
                 </>
               );
             })()}

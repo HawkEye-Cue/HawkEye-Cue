@@ -240,7 +240,6 @@ async function handleGenerateImage(userId, body) {
         n: 1,
         size: '1024x1024',
         quality: 'standard',
-        response_format: 'b64_json',
       }),
       signal: AbortSignal.timeout(26000), // return before the gateway 29s cap
     });

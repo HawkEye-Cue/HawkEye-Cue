@@ -9,6 +9,7 @@ import { ApiClient } from '@social-lead-gen/shared';
 import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
 import SetupWizard from './SetupWizard';
+import InstallPrompt from './InstallPrompt';
 
 // Five primary tabs — plain labels for instant clarity (brand names live on the
 // page headers, e.g. "💰 Talons — Who needs follow-up?").
@@ -269,6 +270,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       )}
+
+      {/* Add-to-Home-Screen prompt (only after tour + setup are done) */}
+      {!showTour && !showSetupWizard && <InstallPrompt />}
 
       {/* Quick Add Lead — floating button (mobile-friendly) */}
       <button

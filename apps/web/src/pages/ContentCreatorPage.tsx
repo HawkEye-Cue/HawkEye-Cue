@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
+import { useMode } from '../contexts/ModeContext';
 import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
 import type { SocialPlatform, ScheduledPost, Trade } from '@social-lead-gen/shared';
 import FlockGroupManager from '../components/FlockGroupManager';
@@ -24,6 +25,7 @@ export default function ContentCreatorPage() {
   const { selectedTrade, selectedTrades } = useTrade();
   const { events, removeEvent, toggleComplete, updateNotes, refreshEvents } = useCalendar();
   const { showToast } = useToast();
+  const { isPro } = useMode();
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [showHawkSwoop, setShowHawkSwoop] = useState(false);
@@ -376,7 +378,8 @@ export default function ContentCreatorPage() {
         )}
       </div>
 
-      {/* AI Photo Generator */}
+      {/* AI Photo Generator — Pro only */}
+      {isPro && (
       <div className="rounded-xl border border-pink-500/30 bg-gradient-to-br from-pink-500/10 to-purple-500/10 overflow-hidden">
         <button onClick={() => setShowAiPhoto(!showAiPhoto)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5">
           <div className="flex items-center gap-2">
@@ -424,6 +427,7 @@ export default function ContentCreatorPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Mode Toggle */}
       <div className="flex gap-2 bg-slate-700/60 border-2 border-amber-500 rounded-xl p-2 shadow-xl shadow-amber-500/10">
@@ -1143,12 +1147,14 @@ export default function ContentCreatorPage() {
               </summary>
               <div className="px-3 pb-3 pt-1 border-t border-white/5">
                 <div className="flex flex-wrap gap-2 mb-2">
-                  <button
-                    onClick={() => { setEngagementCue(e.title); setEngagementNote(''); }}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-600/20 border border-purple-500/30 text-purple-300 hover:bg-purple-600/30"
-                  >
-                    📊 Log Engagement
-                  </button>
+                  {isPro && (
+                    <button
+                      onClick={() => { setEngagementCue(e.title); setEngagementNote(''); }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-600/20 border border-purple-500/30 text-purple-300 hover:bg-purple-600/30"
+                    >
+                      📊 Log Engagement
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       const updated = new Set(personalOnlyCues);

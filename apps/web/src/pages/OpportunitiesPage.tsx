@@ -11,6 +11,7 @@ import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeam
 import LeadProfilePopup from '../components/LeadProfilePopup';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import ProNudge from '../components/ProNudge';
 import PolicyComparison from '../components/PolicyComparison';
 import HawkEyeRadar from '../components/HawkEyeRadar';
 
@@ -989,6 +990,15 @@ export default function OpportunitiesPage() {
       )}
 
       {/* Stats */}
+
+      {/* Gentle one-time nudge to Pro once they have enough leads to organize */}
+      {!loading && (
+        <ProNudge
+          id="hawksight-buckets"
+          when={leads.filter((l) => l.status !== 'converted').length >= 5}
+          message="You've got a good flock of leads. Pro mode lets you sort them into custom nests (Cross Sell, Referral, and your own) so nothing slips."
+        />
+      )}
 
       {/* Hawk Nests — Lead Buckets */}
       {!loading && leads.length > 0 && (

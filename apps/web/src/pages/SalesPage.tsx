@@ -11,6 +11,7 @@ import FolioManager from '../components/FolioManager';
 import { folioDisplayName } from '../utils/folioName';
 import { useTeamData } from '../hooks/useTeamData';
 import { useMode } from '../contexts/ModeContext';
+import ProNudge from '../components/ProNudge';
 
 interface Deal {
   id: string;
@@ -922,6 +923,12 @@ export default function SalesPage() {
 
       {/* ── Personal pipeline (default) ── */}
       {pipelineView === 'mine' && (<>{/* personal-pipeline-start */}
+      <ProNudge
+        id="talons-history"
+        when={!loading && deals.length >= 5}
+        message="Your pipeline is filling up. Pro mode adds folio history and lets you link partners so you can track production over time."
+      />
+
 
       {/* Convert from Lead — shows recent leads that can be turned into deals */}
       {showAdd && unconvertedLeads.length > 0 && (

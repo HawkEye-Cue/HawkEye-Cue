@@ -264,7 +264,10 @@ async function handleGenerateImage(userId, body) {
     return respond(500, { error: { code: 'IMAGE_FAILED', message: 'No image returned. Try again.' } });
   }
 
-  // Upload to S3 and return a public URL
+  // Return the image inline as a data URL so it renders immediately in the browser
+  // (no dependency on the media bucket being publicly readable). Also upload to S3
+  // best-effort so there's a persistent copy, but the data URL is what the UI shows.
+  const dataUrl = `data:image/png;base64,${base64Image}`;
   try {
     const buffer = Buffer.from(base64Image, 'base64');
     const key = `ai-images/${userId}/${randomUUID()}.png`;
@@ -274,11 +277,10 @@ async function handleGenerateImage(userId, body) {
       Body: buffer,
       ContentType: 'image/png',
     }));
-    const url = `https://${MEDIA_BUCKET}.s3.amazonaws.com/${key}`;
-    return respond(200, { url, key });
+    return respond(200, { dataUrl, key });
   } catch (e) {
-    console.error('[gen-image] S3 upload failed:', e.message);
-    return respond(200, { dataUrl: `data:image/png;base64,${base64Image}` });
+    console.error('[gen-image] S3 upload failed (returning inline image):', e.message);
+    return respond(200, { dataUrl });
   }
 }
 

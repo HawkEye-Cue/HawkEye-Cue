@@ -421,7 +421,7 @@ export default function ContentCreatorPage() {
                   <a href={aiPhotoUrl} download="hawkeye-ai-photo.png" target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">⬇ Download</a>
                   <button onClick={generateAiPhoto} className="flex-1 py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">🔄 Regenerate</button>
                 </div>
-                <p className="text-[10px] text-slate-500 text-center">💡 Download the image, then attach it in your Facebook group post for best engagement.</p>
+                <p className="text-[10px] text-slate-500 text-center">💡 Save or download the image, then attach it in your post for best engagement.</p>
               </div>
             )}
           </div>

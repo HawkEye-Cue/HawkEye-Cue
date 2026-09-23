@@ -66,7 +66,42 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
     }
     loadInsights();
     loadTestimonials();
+    hydrateSharedPayload();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // If opened from the Android "Share → HawkEye-Cue" flow, the service worker
+  // stashed the shared text/image. Pull it in and pre-fill the analyzer.
+  async function hydrateSharedPayload() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (!params.get('shared')) return;
+      // Clear the flag from the URL so a refresh doesn't re-hydrate.
+      params.delete('shared');
+      const clean = window.location.pathname + (params.toString() ? `?${params}` : '');
+      window.history.replaceState({}, '', clean);
+
+      // Shared text/url
+      try {
+        const textRes = await fetch('/__shared_text');
+        if (textRes.ok) {
+          const t = (await textRes.text()).trim();
+          if (t) setPostText(t);
+        }
+      } catch { /* ignore */ }
+
+      // Shared image → OCR it
+      try {
+        const imgRes = await fetch('/__shared_image');
+        if (imgRes.ok) {
+          const blob = await imgRes.blob();
+          if (blob && blob.size > 0) {
+            const file = new File([blob], 'shared.jpg', { type: blob.type || 'image/jpeg' });
+            readScreenshot(file);
+          }
+        }
+      } catch { /* ignore */ }
+    } catch { /* not a shared launch */ }
+  }
 
   async function loadTestimonials() {
     try {

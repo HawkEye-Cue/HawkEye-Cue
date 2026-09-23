@@ -6,6 +6,22 @@
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#f59e0b",
+  "share_target": {
+    "action": "/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "image",
+          "accept": ["image/*"]
+        }
+      ]
+    }
+  },
   "icons": [
     {
       "src": "/hawk.jpg",

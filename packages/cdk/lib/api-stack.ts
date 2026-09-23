@@ -8,6 +8,7 @@ import * as apigatewayv2Authorizers from 'aws-cdk-lib/aws-apigatewayv2-authorize
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 
 export interface ApiStackProps extends cdk.StackProps {
@@ -238,6 +239,31 @@ export class ApiStack extends cdk.Stack {
     } as lambda.FunctionProps);
 
     table.grantReadWriteData(opportunitiesHandlerFn);
+
+    // ─── CRM Handler (Discover/Grow editions — CRM push) ──────────────────
+    // Dedicated KMS key for encrypting user-supplied CRM credentials at rest.
+    const crmCredsKey = new kms.Key(this, 'CrmCredsKey', {
+      description: 'HawkEye-Cue — encrypts CRM connection credentials at rest',
+      enableKeyRotation: true,
+      alias: 'alias/social-lead-gen-crm-creds',
+    });
+
+    const crmHandlerFn = new lambda.Function(this, 'CrmHandlerFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-CrmHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/crm-handler'),
+      description: 'CRM connections, field mapping, and lead push',
+      timeout: cdk.Duration.seconds(35), // > 30s validation/push budget + margin
+      environment: {
+        TABLE_NAME: table.tableName,
+        MEDIA_BUCKET: mediaBucket.bucketName,
+        CRM_KMS_KEY_ID: crmCredsKey.keyId,
+      },
+    } as lambda.FunctionProps);
+
+    table.grantReadWriteData(crmHandlerFn);
+    crmCredsKey.grantEncryptDecrypt(crmHandlerFn);
 
     // ─── Subscription Handler ─────────────────────────────────────────────
     const subscriptionHandlerFn = new lambda.Function(this, 'SubscriptionHandlerFn', {
@@ -843,6 +869,48 @@ export class ApiStack extends cdk.Stack {
       path: '/opportunities/protocol-template',
       methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
       integration: opportunitiesIntegration,
+      authorizer,
+    });
+
+    // CRM routes (Discover/Grow editions — CRM push)
+    const crmIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'CrmIntegration',
+      crmHandlerFn
+    );
+    this.httpApi.addRoutes({
+      path: '/crm/destinations',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: crmIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/crm/connections',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: crmIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/crm/connections/{id}',
+      methods: [apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE],
+      integration: crmIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/crm/connections/{id}/activate',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: crmIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/crm/push',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: crmIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/crm/export/csv',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: crmIntegration,
       authorizer,
     });
 

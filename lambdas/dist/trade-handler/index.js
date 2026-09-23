@@ -191,6 +191,11 @@ async function handleGetPreferences(userId) {
 
 // PUT /profile/preferences
 async function handleUpdatePreferences(userId, body) {
+  // Validate the edition value if present — only 'discover' or 'grow' allowed.
+  // Reject invalid writes without touching the stored value (Req 2.1, 2.6).
+  if (body && body.edition !== undefined && body.edition !== 'discover' && body.edition !== 'grow') {
+    return respond(400, { error: { code: 'VALIDATION_ERROR', message: "edition must be 'discover' or 'grow'" } });
+  }
   // Merge incoming preferences with existing ones
   const result = await dynamo.send(
     new QueryCommand({
@@ -241,6 +246,11 @@ async function handleExportData(userId, event) {
     if (!grouped[type]) grouped[type] = [];
     // Strip internal keys from the export
     const { PK, GSI1PK, GSI1SK, ...rest } = item;
+    // Never export raw/ciphertext CRM credentials — mask them (Req 15.3, 15.4).
+    if (rest.credentialCiphertext !== undefined) {
+      delete rest.credentialCiphertext;
+      rest.credentialMasked = '••••••';
+    }
     grouped[type].push(rest);
   }
 

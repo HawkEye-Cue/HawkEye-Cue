@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
+import { useEdition } from '../contexts/EditionContext';
 import TradeSelector from '../components/TradeSelector';
 import ExtensionTour from '../components/ExtensionTour';
 import LeadDetectionExplainer from '../components/LeadDetectionExplainer';
@@ -17,6 +18,8 @@ export default function SettingsPage() {
   const { selectedTrade } = useTrade();
   const { showToast } = useToast();
   const { mode, setMode } = useMode();
+  const { edition, setEdition } = useEdition();
+  const [switchingEdition, setSwitchingEdition] = useState(false);
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -245,6 +248,48 @@ export default function SettingsPage() {
             <p className={`text-sm font-bold ${mode === 'pro' ? 'text-blue-300' : 'text-white'}`}>⚡ Pro {mode === 'pro' && '✓'}</p>
             <p className="text-[11px] text-slate-400 mt-1 leading-snug">Full dashboards, bulk actions, advanced filters and team reporting. Best for power users.</p>
           </button>
+        </div>
+      </div>
+
+      {/* Edition — Discover vs Grow */}
+      <div className="glass-card">
+        <h3 className="font-semibold mb-1 text-white">🧩 Edition</h3>
+        <p className="text-[11px] text-slate-400 mb-3">CRMs organize the leads you already have. HawkEye-Cue finds the ones hiding in plain sight.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={async () => {
+              if (edition === 'discover') return;
+              // Switching to Discover hides pipeline/scheduling/revenue — confirm first.
+              const ok = window.confirm('Switch to Discover? This hides the built-in Pipeline, follow-ups, scheduling and revenue tracking. Your data is kept and comes back if you switch to Grow.');
+              if (!ok) return;
+              setSwitchingEdition(true);
+              const saved = await setEdition('discover');
+              setSwitchingEdition(false);
+              showToast(saved ? '✓ Discover edition on' : '❌ Could not save — try again');
+            }}
+            disabled={switchingEdition}
+            className={`text-left p-3 rounded-xl border transition-all disabled:opacity-50 ${edition === 'discover' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/10 bg-slate-800 hover:border-white/20'}`}
+          >
+            <p className={`text-sm font-bold ${edition === 'discover' ? 'text-emerald-300' : 'text-white'}`}>🔭 Discover {edition === 'discover' && '✓'}</p>
+            <p className="text-[11px] text-slate-400 mt-1 leading-snug">Already have a CRM? Find, score &amp; draft replies to opportunities, track their social origin, then push them to your CRM.</p>
+          </button>
+          <button
+            onClick={async () => {
+              if (edition === 'grow') return;
+              setSwitchingEdition(true);
+              const saved = await setEdition('grow');
+              setSwitchingEdition(false);
+              showToast(saved ? '✓ Grow edition on' : '❌ Could not save — try again');
+            }}
+            disabled={switchingEdition}
+            className={`text-left p-3 rounded-xl border transition-all disabled:opacity-50 ${edition === 'grow' ? 'border-amber-500/50 bg-amber-500/10' : 'border-white/10 bg-slate-800 hover:border-white/20'}`}
+          >
+            <p className={`text-sm font-bold ${edition === 'grow' ? 'text-amber-300' : 'text-white'}`}>🌱 Grow {edition === 'grow' && '✓'}</p>
+            <p className="text-[11px] text-slate-400 mt-1 leading-snug">No CRM yet? Everything in Discover plus a built-in pipeline, follow-up automation, scheduling and revenue tracking.</p>
+          </button>
+        </div>
+        <div className="mt-3">
+          <Link to="/crm" className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2">Manage CRM connections →</Link>
         </div>
       </div>
 

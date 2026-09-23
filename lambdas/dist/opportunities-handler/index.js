@@ -85,6 +85,12 @@ async function handleGetOpportunities(userId) {
     leadColor: item.leadColor || null,
     status: item.status,
     createdAt: item.createdAt,
+    // CRM push tracking (Discover/Grow editions)
+    pushStatus: item.pushStatus || 'not_pushed',
+    crmRecordId: item.crmRecordId || null,
+    lastPushError: item.lastPushError || null,
+    pushedAt: item.pushedAt || null,
+    pushedConnectionId: item.pushedConnectionId || null,
   }));
 
   return respond(200, { opportunities });
@@ -95,6 +101,18 @@ async function handleCreateOpportunity(userId, body) {
   const errors = validateOpportunity(body);
   if (errors.length > 0) {
     return respond(400, { error: { code: 'VALIDATION_ERROR', message: errors.join('; ') } });
+  }
+
+  // Discover edition requires social-origin provenance on every captured lead (Req 4.7).
+  if (body && body.edition === 'discover') {
+    const requiredFields = ['sourcePlatform', 'sourceUrl', 'leadSource', 'consentBasis'];
+    const missing = requiredFields.filter((f) => {
+      const v = body[f];
+      return v == null || String(v).trim() === '';
+    });
+    if (missing.length > 0) {
+      return respond(400, { error: { code: 'VALIDATION_ERROR', message: `Missing required fields for Discover capture: ${missing.join(', ')}`, missing } });
+    }
   }
 
   const opportunityId = randomUUID();
@@ -121,6 +139,7 @@ async function handleCreateOpportunity(userId, body) {
         expectedPremium: body.expectedPremium || null,
         contactEmail: body.contactEmail || null,
         status: 'new',
+        pushStatus: 'not_pushed',
         createdAt: now,
       },
     })

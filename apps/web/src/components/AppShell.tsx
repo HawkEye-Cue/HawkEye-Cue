@@ -27,6 +27,7 @@ const moreItems = [
   { path: '/team', label: 'Summit (Team)', icon: '🏔️', desc: 'Team calendar, leads & leaderboard' },
   { path: '/dashboard', label: 'Full Dashboard', icon: '🗓️', desc: 'Calendar, engagement & everything at a glance' },
   { path: '/keywords', label: 'Keywords', icon: '🔑', desc: 'What HawkEye watches for' },
+  { path: '/crm', label: 'CRM Connections', icon: '🔗', desc: 'Push leads to HubSpot, Zapier & more' },
   { path: '/settings', label: 'Settings', icon: '⚙️', desc: 'Trade, accounts, subscription & more' },
   { path: '/privacy', label: 'Privacy & Data', icon: '🔒', desc: 'Export or delete your data, what we access' },
   { path: '/profile', label: 'Profile', icon: '👤', desc: 'Your account & password' },

@@ -15,6 +15,10 @@ import type {
   NetworkPost,
   NetworkReply,
   NetworkContact,
+  CrmDestinationInfo,
+  CrmConnection,
+  FieldMapping,
+  PushResult,
 } from '../types/index.js';
 
 import type {
@@ -387,5 +391,49 @@ export class ApiClient {
 
   async setNetworkRegion(regions: string[]): Promise<{ regions: string[] }> {
     return this.request<{ regions: string[] }>('PUT', '/network/region', { regions });
+  }
+
+  // --- CRM Push (Discover/Grow editions) ---
+
+  async getCrmDestinations(): Promise<{ destinations: CrmDestinationInfo[] }> {
+    return this.request<{ destinations: CrmDestinationInfo[] }>('GET', '/crm/destinations');
+  }
+
+  async getCrmConnections(): Promise<{ connections: CrmConnection[] }> {
+    return this.request<{ connections: CrmConnection[] }>('GET', '/crm/connections');
+  }
+
+  async createCrmConnection(req: {
+    destinationType: string;
+    connectionMethod?: string;
+    credential?: string;
+    webhookUrl?: string;
+    fieldMapping?: FieldMapping;
+  }): Promise<{ connection: CrmConnection; valid: boolean; reason?: string }> {
+    return this.request('POST', '/crm/connections', req);
+  }
+
+  async updateCrmConnection(id: string, req: {
+    credential?: string;
+    webhookUrl?: string;
+    fieldMapping?: FieldMapping;
+  }): Promise<{ connection: CrmConnection }> {
+    return this.request('PUT', `/crm/connections/${id}`, req);
+  }
+
+  async activateCrmConnection(id: string): Promise<{ connection: CrmConnection }> {
+    return this.request('POST', `/crm/connections/${id}/activate`);
+  }
+
+  async deleteCrmConnection(id: string): Promise<{ deleted: boolean }> {
+    return this.request('DELETE', `/crm/connections/${id}`);
+  }
+
+  async pushLeadToCrm(req: { opportunityId: string; connectionId?: string; confirmRepush?: boolean }): Promise<PushResult> {
+    return this.request<PushResult>('POST', '/crm/push', req);
+  }
+
+  async exportLeadsCsv(opportunityIds: string[], connectionId?: string): Promise<{ csv: string; filename: string }> {
+    return this.request('POST', '/crm/export/csv', { opportunityIds, connectionId });
   }
 }

@@ -617,7 +617,7 @@ export default function OpportunitiesPage() {
             </button>
           )}
           {(lead.status === 'new' || lead.status === 'followed_up') && (
-            <button onClick={async () => { await handleUpdateStatus(lead.id, 'converted'); navigate(`/sales?newDeal=${encodeURIComponent(lead.sourceAuthor)}`); }} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">
+            <button onClick={async () => { await handleUpdateStatus(lead.id, 'converted'); navigate(`/pipeline?newDeal=${encodeURIComponent(lead.sourceAuthor)}`); }} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">
               {updatingId === lead.id ? '...' : '⭐ Convert to Client'}
             </button>
           )}
@@ -1608,7 +1608,7 @@ export default function OpportunitiesPage() {
             const lead = leads.find((l) => l.id === leadId);
             setSelectedLead(null);
             if (status === 'converted' && lead?.sourceAuthor) {
-              navigate(`/sales?newDeal=${encodeURIComponent(lead.sourceAuthor)}`);
+              navigate(`/pipeline?newDeal=${encodeURIComponent(lead.sourceAuthor)}`);
             }
           }}
           onFollowupComplete={async (leadId, stepIdx) => {

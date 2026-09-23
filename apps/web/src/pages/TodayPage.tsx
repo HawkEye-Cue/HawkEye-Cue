@@ -119,7 +119,7 @@ export default function TodayPage() {
         subtitle: 'Powered by HawkSight',
         detail: 'Fresh conversations HawkEye spotted. Decide who to respond to first.',
         actionLabel: 'See opportunities',
-        route: '/opportunities',
+        route: '/pipeline',
         count: counts.newOpps,
       });
     }
@@ -131,7 +131,7 @@ export default function TodayPage() {
         subtitle: 'Flight Projection',
         detail: "These have gone quiet for a couple days. A quick nudge keeps them warm.",
         actionLabel: 'Start follow-up plan',
-        route: '/sales',
+        route: '/pipeline?view=deals',
         count: counts.followUps,
       });
     }
@@ -163,10 +163,10 @@ export default function TodayPage() {
   const hasWork = tasks.length > 0;
 
   const summaryCards = [
-    { label: 'New opportunities', value: counts.newOpps, icon: '🎯', accent: 'text-amber-300', route: '/opportunities' },
-    { label: 'Need follow-up', value: counts.followUps, icon: '📞', accent: 'text-sky-300', route: '/sales' },
+    { label: 'New opportunities', value: counts.newOpps, icon: '🎯', accent: 'text-amber-300', route: '/pipeline' },
+    { label: 'Need follow-up', value: counts.followUps, icon: '📞', accent: 'text-sky-300', route: '/pipeline?view=deals' },
     { label: 'Posts ready', value: counts.postsReady, icon: '✨', accent: 'text-purple-300', route: '/create' },
-    { label: 'Active pipeline', value: `$${counts.activeValue.toLocaleString()}`, icon: '💰', accent: 'text-emerald-300', route: '/sales' },
+    { label: 'Active pipeline', value: `$${counts.activeValue.toLocaleString()}`, icon: '💰', accent: 'text-emerald-300', route: '/pipeline?view=deals' },
   ];
 
   return (
@@ -218,7 +218,7 @@ export default function TodayPage() {
           {!loading && (
             <div className="flex gap-2 justify-center mt-4">
               <button onClick={() => navigate('/create')} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg">✨ Create a post</button>
-              <button onClick={() => navigate('/opportunities')} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg">🎯 Find opportunities</button>
+              <button onClick={() => navigate('/pipeline')} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg">🎯 Find opportunities</button>
             </div>
           )}
         </div>

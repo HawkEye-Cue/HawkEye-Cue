@@ -22,15 +22,9 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     selector: '[data-tour="leads"]',
-    title: 'Leads — Who should I contact?',
-    description: 'Conversations HawkEye spots (HawkSight) plus leads you save. Decide who to contact first. The 🎯 button quick-saves a lead from any page.',
+    title: 'Pipeline — Who should I contact & follow up?',
+    description: 'Everything in one place: flip between 🎯 Leads (people to contact) and 💰 Deals (sales from prospect to close). The floating 🎯 button quick-saves a lead from anywhere.',
     icon: '🎯',
-  },
-  {
-    selector: '[data-tour="sales"]',
-    title: 'Pipeline — Who needs follow-up?',
-    description: 'Your deals from prospect to close. See who needs follow-up and which sources make you the most money.',
-    icon: '💰',
   },
   {
     selector: '[data-tour="insights"]',

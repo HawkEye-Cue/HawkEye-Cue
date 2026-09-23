@@ -34,8 +34,8 @@ export default function SetupProgress() {
     { id: 'trade', label: 'Pick your trade', done: !!selectedTrade, path: '/settings' },
     { id: 'keywords', label: 'Add keywords', done: localStorage.getItem(`hawkeye_keywords_added_${user?.sub}`) === 'true', path: '/settings' },
     { id: 'post', label: 'Create a post', done: localStorage.getItem(`hawkeye_first_post_${user?.sub}`) === 'true', path: '/create' },
-    { id: 'lead', label: 'Save a lead', done: localStorage.getItem(`hawkeye_first_lead_${user?.sub}`) === 'true', path: '/opportunities' },
-    { id: 'deal', label: 'Log a sale', done: localStorage.getItem(`hawkeye_first_deal_${user?.sub}`) === 'true', path: '/sales' },
+    { id: 'lead', label: 'Save a lead', done: localStorage.getItem(`hawkeye_first_lead_${user?.sub}`) === 'true', path: '/pipeline' },
+    { id: 'deal', label: 'Log a sale', done: localStorage.getItem(`hawkeye_first_deal_${user?.sub}`) === 'true', path: '/pipeline?view=deals' },
   ];
 
   const doneCount = tasks.filter((t) => t.done).length;

@@ -15,8 +15,7 @@ import SetupWizard from './SetupWizard';
 const navItems = [
   { path: '/', label: 'Today', icon: '🦅', tour: 'home' },
   { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
-  { path: '/opportunities', label: 'Leads', icon: '🎯', tour: 'leads' },
-  { path: '/sales', label: 'Pipeline', icon: '💰', tour: 'sales' },
+  { path: '/pipeline', label: 'Pipeline', icon: '🎯', tour: 'leads' },
   { path: '/hawk-insights', label: 'Insights', icon: '📊', tour: 'insights' },
 ];
 
@@ -89,7 +88,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const notifications: { id: string; icon: string; text: string; type: string; path: string }[] = [];
   if (meetings.length > 0) notifications.push({ id: 'meetings', icon: '🤝', text: `${meetings.length} meeting${meetings.length !== 1 ? 's' : ''} today`, type: 'info', path: '/' });
-  if (reminders.length > 0) notifications.push({ id: 'reminders', icon: '🔔', text: `${reminders.length} follow-up${reminders.length !== 1 ? 's' : ''} due today`, type: 'action', path: '/opportunities' });
+  if (reminders.length > 0) notifications.push({ id: 'reminders', icon: '🔔', text: `${reminders.length} follow-up${reminders.length !== 1 ? 's' : ''} due today`, type: 'action', path: '/pipeline' });
   if (posts.length > 0) notifications.push({ id: 'posts', icon: '📤', text: `${posts.length} flock${posts.length !== 1 ? 's' : ''} to post`, type: 'action', path: '/create' });
   for (const tn of teamNotifs) notifications.push({ id: tn.id, icon: '🏆', text: tn.message, type: 'team', path: '/team' });
 

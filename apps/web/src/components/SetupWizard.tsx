@@ -72,8 +72,8 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
       title: 'Set Up Your Sales Pipeline',
       description: 'Set your folio dates and add your first deal.',
       icon: '💰',
-      action: 'Go to Sales and add a deal',
-      navigateTo: '/sales',
+      action: 'Go to Pipeline and add a deal',
+      navigateTo: '/pipeline?view=deals',
       checkComplete: () => {
         const deal = localStorage.getItem(`hawkeye_first_deal_${user?.sub}`);
         return deal === 'true';

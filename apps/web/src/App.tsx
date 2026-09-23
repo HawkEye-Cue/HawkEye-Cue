@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import AppShell from './components/AppShell';
 import LandingPage from './pages/LandingPage';
@@ -9,11 +9,10 @@ import ConfirmMeetingPage from './pages/ConfirmMeetingPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import OnboardingPage from './pages/OnboardingPage';
 import TodayPage from './pages/TodayPage';
+import PipelinePage from './pages/PipelinePage';
 import DashboardPage from './pages/DashboardPage';
 import ContentCreatorPage from './pages/ContentCreatorPage';
 import CreatePage from './pages/CreatePage';
-import OpportunitiesPage from './pages/OpportunitiesPage';
-import SalesPage from './pages/SalesPage';
 import TeamPage from './pages/TeamPage';
 import HawkInsightsPage from './pages/HawkInsightsPage';
 import NetworkPage from './pages/NetworkPage';
@@ -33,6 +32,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+// Legacy /opportunities and /sales now live under the combined /pipeline tab.
+// Preserve any query string (e.g. ?newDeal=Name from "Convert to Client").
+function SalesRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/pipeline${search}`} replace />;
 }
 
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
@@ -76,8 +82,11 @@ export default function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/create" element={<CreatePage />} />
                 <Route path="/calendar" element={<CreatePage />} />
-                <Route path="/opportunities" element={<OpportunitiesPage />} />
-                <Route path="/sales" element={<SalesPage />} />
+                {/* Combined Leads + Deals tab */}
+                <Route path="/pipeline" element={<PipelinePage />} />
+                {/* Legacy paths keep working — redirect into the combined tab (preserving query like ?newDeal=) */}
+                <Route path="/opportunities" element={<SalesRedirect />} />
+                <Route path="/sales" element={<SalesRedirect />} />
                 <Route path="/team" element={<TeamPage />} />
                 <Route path="/hawk-insights" element={<HawkInsightsPage />} />
                 <Route path="/network" element={<NetworkPage />} />

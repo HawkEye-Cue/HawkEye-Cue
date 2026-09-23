@@ -1359,6 +1359,13 @@ export class ApiStack extends cdk.Stack {
       integration: radarIntegration,
       authorizer,
     });
+    // Industry Flight Plan (AI-generated ready-to-use system per trade)
+    this.httpApi.addRoutes({
+      path: '/flight-plan',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST],
+      integration: radarIntegration,
+      authorizer,
+    });
 
     // Policy Comparison routes
     const policyComparisonIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(

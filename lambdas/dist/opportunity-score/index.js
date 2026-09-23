@@ -11,6 +11,7 @@
  * - GET/POST/DELETE /radar/testimonials — manage the user's social-proof library
  * - POST /radar/proof-match  — AI-pick the best testimonial for a lead's need
  * - POST /radar/read-image   — OCR a screenshot into post text + author (OpenAI vision)
+ * - GET/POST /flight-plan     — the user's ready-to-use Industry Flight Plan (AI-generated, cached)
  *
  * Uses Amazon Bedrock (Nova Lite) for classification. Learning is done by
  * aggregating Won/Lost signals per user (phrases, groups, neighborhoods, post types).
@@ -441,6 +442,82 @@ Return ONLY valid JSON: {"index": <number>, "reason": "one short sentence why th
         console.error('[radar] proof-match failed:', e.message);
         return ok({ match: testimonials[0], reason: 'Suggested testimonial.' });
       }
+    }
+
+    // GET /flight-plan — return the cached Industry Flight Plan (if any)
+    if (method === 'GET' && path === '/flight-plan') {
+      const res = await dynamo.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: 'FLIGHT_PLAN' },
+      }));
+      return ok({ plan: res.Item?.plan || null, tradeName: res.Item?.tradeName || null, generatedAt: res.Item?.generatedAt || null });
+    }
+
+    // POST /flight-plan — generate (or regenerate) the Industry Flight Plan for a trade
+    if (method === 'POST' && path === '/flight-plan') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const tradeName = (body.tradeName || '').trim();
+      if (!tradeName) return err(400, 'INVALID_INPUT', 'tradeName is required');
+
+      // Return the cached plan unless the caller forces a regenerate for the same trade
+      if (!body.regenerate) {
+        const cached = await dynamo.send(new GetCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: `USER#${userId}`, SK: 'FLIGHT_PLAN' },
+        }));
+        if (cached.Item?.plan && cached.Item?.tradeName === tradeName) {
+          return ok({ plan: cached.Item.plan, tradeName, generatedAt: cached.Item.generatedAt, cached: true });
+        }
+      }
+
+      const prompt = `You are building a ready-to-use sales & marketing system ("Industry Flight Plan") for a ${tradeName}. Base everything on how customers for this trade actually behave on social media and how this business wins deals.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "keywords": [8 short search terms this business should track on social media],
+  "opportunitySignals": [6 real phrases a potential customer would post when they need this service],
+  "responseTemplates": [
+    {"name": "short label", "text": "a warm, human 2-3 sentence reply the business could send/post (no hard sell)"} (give 3)
+  ],
+  "pipelineStages": [5-6 stage names from first contact to closed],
+  "followUpSequence": [
+    {"day": number, "channel": "call|text|email", "task": "what to do"} (give 5-7 steps over ~14-21 days)
+  ],
+  "contentIdeas": [5 post ideas tailored to this trade],
+  "intakeQuestions": [6 questions to ask a new lead to qualify and quote them],
+  "referralPartners": [5 complementary local business types that refer customers to this trade]
+}
+
+Keep everything specific to a ${tradeName}. Keep strings concise. No markdown, JSON only.`;
+
+      let plan;
+      try {
+        const command = new InvokeModelCommand({
+          modelId: 'amazon.nova-lite-v1:0',
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: [{ text: prompt }] }],
+            inferenceConfig: { maxTokens: 1600, temperature: 0.6 },
+          }),
+        });
+        const response = await bedrock.send(command);
+        const rb = JSON.parse(new TextDecoder().decode(response.body));
+        const aiText = rb.output.message.content[0].text.trim();
+        const m = aiText.match(/\{[\s\S]*\}/);
+        if (!m) throw new Error('no json');
+        plan = JSON.parse(m[0]);
+      } catch (e) {
+        console.error('[flight-plan] generation failed:', e.message);
+        return err(500, 'AI_FAILED', 'Could not build your Flight Plan. Try again.');
+      }
+
+      const generatedAt = new Date().toISOString();
+      await dynamo.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: { PK: `USER#${userId}`, SK: 'FLIGHT_PLAN', plan, tradeName, generatedAt },
+      }));
+      return ok({ plan, tradeName, generatedAt });
     }
 
     // POST /radar/read-image — OCR a screenshot into post text + author

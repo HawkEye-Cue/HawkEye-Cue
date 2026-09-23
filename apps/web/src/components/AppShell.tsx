@@ -22,6 +22,7 @@ const navItems = [
 
 // Everything else lives under "More" — nothing is removed, just tucked away.
 const moreItems = [
+  { path: '/flight-plan', label: 'Industry Flight Plan', icon: '🗺️', desc: 'Your ready-to-use system for your trade' },
   { path: '/network', label: 'Network', icon: '🤝', desc: 'Referral partners & appreciations' },
   { path: '/team', label: 'Summit (Team)', icon: '🏔️', desc: 'Team calendar, leads & leaderboard' },
   { path: '/dashboard', label: 'Full Dashboard', icon: '🗓️', desc: 'Calendar, engagement & everything at a glance' },

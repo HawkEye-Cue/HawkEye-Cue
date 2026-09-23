@@ -142,6 +142,43 @@ export default function ContentCreatorPage() {
     } finally { setIdeasLoading(false); }
   }
 
+  // The image currently ready to attach to a post (AI-generated or uploaded).
+  const readyImageSrc = aiPhotoUrl || imagePreview || null;
+
+  // Copy the ready image to the clipboard so the user can paste it straight into
+  // the Facebook composer (desktop). Falls back to downloading on mobile / browsers
+  // that can't put an image on the clipboard.
+  async function copyImageToClipboard() {
+    if (!readyImageSrc) { showToast('Generate or add a photo first'); return; }
+    try {
+      const resp = await fetch(readyImageSrc);
+      const blob = await resp.blob();
+      // Clipboard image write requires PNG in most browsers.
+      const pngBlob = blob.type === 'image/png' ? blob : new Blob([blob], { type: 'image/png' });
+      // @ts-ignore — ClipboardItem may not be in older TS lib defs
+      if (navigator.clipboard && typeof window.ClipboardItem !== 'undefined' && navigator.clipboard.write) {
+        // @ts-ignore
+        await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': pngBlob })]);
+        showToast('📸 Photo copied — paste it into your post (Ctrl/Cmd+V)');
+        return;
+      }
+      throw new Error('clipboard-image-unsupported');
+    } catch {
+      // Fallback: trigger a download so the user can attach it manually (mobile).
+      try {
+        const a = document.createElement('a');
+        a.href = readyImageSrc;
+        a.download = 'hawkeye-photo.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        showToast('📥 Photo saved — attach it in your post');
+      } catch {
+        showToast('❌ Could not copy the photo');
+      }
+    }
+  }
+
   async function generateAiPhoto() {
     if (!aiPhotoPrompt.trim()) { showToast('Describe the photo you want'); return; }
     setAiPhotoLoading(true);
@@ -417,11 +454,12 @@ export default function ContentCreatorPage() {
             {aiPhotoUrl && (
               <div className="space-y-2">
                 <img src={aiPhotoUrl} alt="AI generated" className="w-full rounded-lg border border-white/10" />
+                <button onClick={copyImageToClipboard} className="w-full py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold rounded-lg hover:opacity-90">📸 Copy Image (paste into your post)</button>
                 <div className="flex gap-2">
                   <a href={aiPhotoUrl} download="hawkeye-ai-photo.png" target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">⬇ Download</a>
                   <button onClick={generateAiPhoto} className="flex-1 py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">🔄 Regenerate</button>
                 </div>
-                <p className="text-[10px] text-slate-500 text-center">💡 Save or download the image, then attach it in your post for best engagement.</p>
+                <p className="text-[10px] text-slate-500 text-center">💡 On desktop: Copy Image, then paste it right into the Facebook composer after your text. On phone: it saves so you can attach it.</p>
               </div>
             )}
           </div>
@@ -1066,8 +1104,17 @@ export default function ContentCreatorPage() {
                     <span className="text-base">📋 Copy & Open Next Flock</span>
                     <span className="text-xs font-normal opacity-80 truncate max-w-full">{next?.title || 'Next flock'}</span>
                   </button>
+                  {readyImageSrc && (
+                    <button
+                      onClick={copyImageToClipboard}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-pink-600 to-purple-600 hover:opacity-90 text-white text-sm font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <img src={readyImageSrc} alt="" className="w-6 h-6 rounded object-cover" />
+                      📸 Copy Photo — paste after your text
+                    </button>
+                  )}
                   <p className="text-xs text-slate-400 text-center">{remaining.length} flock{remaining.length !== 1 ? 's' : ''} remaining{isNestTier ? ` • ${nestLimit - nestUsedToday} free uses left today` : ''}</p>
-                  <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: Photos don't copy — add your image manually in each group for best engagement.</p>
+                  <p className="text-xs text-slate-500 text-center mt-1">🦅 Tip: paste your text first, then tap 📸 Copy Photo and paste the image into the same post (desktop). On phone, the photo saves so you can attach it.</p>
                 </>
               );
             })()}

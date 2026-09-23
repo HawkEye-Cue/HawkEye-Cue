@@ -232,17 +232,17 @@ async function handleGenerateImage(userId, body) {
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      // This account has gpt-image-1 (not dall-e-3). Default quality exceeds the
-      // 29s API Gateway cap, so use 'low' quality — dramatically faster and fits
-      // the window. gpt-image-1 returns base64 (b64_json).
+      // This account has gpt-image-1 (not dall-e-3). Measured timings:
+      // low ~13-16s, medium ~19s, high ~39s. 'high' exceeds the 29s API Gateway
+      // cap, so 'medium' is the best quality that still returns in time.
       body: JSON.stringify({
         model: 'gpt-image-1',
         prompt: fullPrompt.slice(0, 4000),
         n: 1,
         size: '1024x1024',
-        quality: 'low',
+        quality: 'medium',
       }),
-      signal: AbortSignal.timeout(26000), // return before the gateway 29s cap
+      signal: AbortSignal.timeout(27000), // return before the gateway 29s cap
     });
     const data = await res.json();
     if (!res.ok) {

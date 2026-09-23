@@ -131,8 +131,8 @@ export default function OpportunitiesPage() {
   const [showRadar, setShowRadar] = useState(false);
   // Perched leads (circle back later) — stored per user
   const [perchedIds, setPerchedIds] = useState<Set<string>>(new Set());
-  // HawkSight scores cached per lead (score/urgency/reason/suggestedResponse)
-  interface LeadScore { score: number; urgency: 'now' | 'soon' | 'nurture' | 'not_a_lead'; reason: string; suggestedResponse?: string; }
+  // HawkSight scores cached per lead (score/urgency/reason/factors/suggestedResponse)
+  interface LeadScore { score: number; urgency: 'now' | 'soon' | 'nurture' | 'not_a_lead'; reason: string; factors?: { label: string; points: number }[]; suggestedResponse?: string; }
   const [leadScores, setLeadScores] = useState<Record<string, LeadScore>>(() => {
     try { return JSON.parse(localStorage.getItem(`hawkeye_lead_scores_${user?.sub}`) || '{}'); } catch { return {}; }
   });
@@ -380,7 +380,7 @@ export default function OpportunitiesPage() {
     setScoringId(lead.id);
     try {
       const client = await buildClient();
-      const res = await client.request<{ result: { score: number; urgency: LeadScore['urgency']; reason: string; suggestedResponse?: string } }>(
+      const res = await client.request<{ result: { score: number; urgency: LeadScore['urgency']; reason: string; factors?: { label: string; points: number }[]; suggestedResponse?: string } }>(
         'POST', '/radar/score', {
           postText: lead.sourceContent,
           tradeName: selectedTrade?.name,
@@ -388,7 +388,7 @@ export default function OpportunitiesPage() {
         }
       );
       const r = res.result;
-      const next: LeadScore = { score: r.score, urgency: r.urgency, reason: r.reason, suggestedResponse: r.suggestedResponse };
+      const next: LeadScore = { score: r.score, urgency: r.urgency, reason: r.reason, factors: r.factors, suggestedResponse: r.suggestedResponse };
       setLeadScores((prev) => {
         const merged = { ...prev, [lead.id]: next };
         localStorage.setItem(`hawkeye_lead_scores_${user?.sub}`, JSON.stringify(merged));
@@ -1294,8 +1294,22 @@ export default function OpportunitiesPage() {
 
                       {/* Why this score? — hidden by default */}
                       {sc && reasonOpen && (
-                        <div className="text-[11px] text-slate-400 bg-white/5 rounded-lg p-2.5 leading-relaxed">
-                          {sc.reason}
+                        <div className="bg-white/5 rounded-lg p-2.5 space-y-2">
+                          <p className="text-[11px] text-slate-400 leading-relaxed">{sc.reason}</p>
+                          {sc.factors && sc.factors.length > 0 && (
+                            <div className="space-y-1 pt-1.5 border-t border-white/10">
+                              {sc.factors.map((f, fi) => (
+                                <div key={fi} className="flex items-center justify-between text-[11px]">
+                                  <span className="text-slate-300">{f.label}</span>
+                                  <span className={`font-bold tabular-nums ${f.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{f.points >= 0 ? '+' : ''}{f.points}</span>
+                                </div>
+                              ))}
+                              <div className="flex items-center justify-between text-[11px] pt-1 mt-0.5 border-t border-white/10">
+                                <span className="text-white font-semibold">Flight Score</span>
+                                <span className="text-white font-extrabold tabular-nums">{sc.score}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 

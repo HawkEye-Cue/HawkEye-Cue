@@ -4,11 +4,14 @@ import { useTrade } from '../contexts/TradeContext';
 import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 
+interface ScoreFactor { label: string; points: number; }
+
 interface ScoreResult {
   score: number;
   urgency: 'now' | 'soon' | 'nurture' | 'not_a_lead';
   isLead: boolean;
   reason: string;
+  factors?: ScoreFactor[];
   suggestedResponse: string;
   followUpDays: number;
   followUpDate: string;
@@ -288,6 +291,25 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
                   <p className="text-xs text-slate-300 mt-2 leading-relaxed">{result.reason}</p>
                 </div>
               </div>
+
+              {/* Why this score? — transparent factor breakdown */}
+              {result.factors && result.factors.length > 0 && (
+                <div className="bg-slate-800/60 border border-white/10 rounded-lg p-3">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Why this score?</p>
+                  <div className="space-y-1">
+                    {result.factors.map((f, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <span className="text-slate-300">{f.label}</span>
+                        <span className={`font-bold tabular-nums ${f.points >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{f.points >= 0 ? '+' : ''}{f.points}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between text-xs pt-1.5 mt-1 border-t border-white/10">
+                      <span className="text-white font-semibold">Flight Score</span>
+                      <span className="text-white font-extrabold tabular-nums">{result.score}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Detail grid */}
               <div className="grid grid-cols-2 gap-2">

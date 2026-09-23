@@ -91,10 +91,24 @@ Return ONLY valid JSON:
   "urgency": "now" | "soon" | "nurture" | "not_a_lead",
   "isLead": true | false,
   "reason": "one plain-English sentence on why you scored it this way",
+  "factors": [
+    {"label": "short factor name", "points": number (can be negative)}
+  ],
   "suggestedResponse": "a friendly, genuine reply the user could post (no hard selling, sound human)",
   "followUpDays": number (days from now to follow up; 0 for now, 1 for soon, 30 for nurture),
   "estimatedValue": number (rough $ value of the potential sale/policy, best guess for a ${tradeName || 'business'})
 }
+
+The "factors" array MUST explain the score transparently — each item is a reason with a point value, and the points should roughly add up to the score. Use factors like these (only include the ones that apply):
+- "Strong buying language" (they're clearly ready to buy)
+- "Immediate timing" (urgent / needs it now)
+- "Service area match" (in the business's area) — only if location is evident
+- "Direct recommendation request" (asking who to hire)
+- "Future intent" (thinking about it later)
+- "Existing relationship" (mentions knowing the business)
+- "Provider, not a buyer" (NEGATIVE points — they do this job themselves)
+- "Off-topic / no intent" (NEGATIVE or low points)
+Give 2-5 factors. Keep labels short (2-4 words).
 
 Rules:
 - Score 0-15 for non-leads (providers, unrelated chatter).
@@ -118,7 +132,20 @@ Rules:
   const aiText = responseBody.output.message.content[0].text.trim();
   const jsonMatch = aiText.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Could not parse classification');
-  return JSON.parse(jsonMatch[0]);
+  const parsed = JSON.parse(jsonMatch[0]);
+
+  // Normalize factors: ensure it's a clean array of {label, points}.
+  if (!Array.isArray(parsed.factors)) parsed.factors = [];
+  parsed.factors = parsed.factors
+    .filter((f) => f && typeof f.label === 'string')
+    .map((f) => ({ label: f.label.trim(), points: Math.round(Number(f.points) || 0) }))
+    .slice(0, 6);
+  // Fallback: if the AI gave no breakdown, synthesize one from the reason/score.
+  if (parsed.factors.length === 0) {
+    parsed.factors = [{ label: parsed.isLead ? 'Buying signal detected' : 'Low buying intent', points: parsed.score || 0 }];
+  }
+
+  return parsed;
 }
 
 // Build a short "what converts" context string from the user's learned patterns

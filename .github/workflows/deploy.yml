@@ -43,13 +43,6 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
-          # Cognito verification email via SES. Leave these secrets UNSET to keep
-          # the safe built-in Cognito email. Set COGNITO_SES_EMAIL to
-          # "no-reply@hawkeyecue.com" only AFTER the SES domain is verified and
-          # the account is out of the SES sandbox.
-          COGNITO_SES_EMAIL: ${{ secrets.COGNITO_SES_EMAIL }}
-          COGNITO_SES_REPLY_TO: ${{ secrets.COGNITO_SES_REPLY_TO }}
-          COGNITO_SES_REGION: ${{ secrets.COGNITO_SES_REGION }}
         run: cd packages/cdk && npx cdk deploy --all --require-approval never --hotswap-fallback || echo "CDK deploy failed - continuing with web deploy"
 
       - name: Build web app

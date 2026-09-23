@@ -1,0 +1,10 @@
+{
+  "name": "cognito-custom-email",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "ISC",
+  "description": "Cognito CustomEmailSender trigger — sends verification codes via Resend",
+  "dependencies": {
+    "@aws-crypto/client-node": "^4.0.0"
+  }
+}

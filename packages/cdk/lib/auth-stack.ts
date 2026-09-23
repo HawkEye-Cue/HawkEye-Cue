@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 
 export interface AuthStackProps extends cdk.StackProps {
@@ -86,9 +87,47 @@ export class AuthStack extends cdk.Stack {
       description: 'Cognito Verify Auth Challenge — checks MFA code (not yet active)',
     } as lambda.FunctionProps);
 
+    // ─── Custom Email Sender (verification codes via Resend) ──────────────
+    // Cognito encrypts the code with this KMS key; the Lambda decrypts it and
+    // sends a branded email through Resend (no SES, no ~50/day built-in cap).
+    const customEmailKey = new kms.Key(this, 'CognitoCustomEmailKey', {
+      alias: 'SocialLeadGen-CognitoCustomEmail',
+      description: 'KMS key Cognito uses to encrypt verification codes for the custom email sender',
+      enableKeyRotation: true,
+    });
+
+    const customEmailSenderFn = new lambda.Function(this, 'CognitoCustomEmailFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-CognitoCustomEmail',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/cognito-custom-email'),
+      description: 'Cognito CustomEmailSender — sends verification codes via Resend',
+      timeout: cdk.Duration.seconds(15),
+      memorySize: 256,
+      environment: {
+        KMS_KEY_ARN: customEmailKey.keyArn,
+        FROM_EMAIL: 'HawkEye-Cue <no-reply@hawkeyecue.com>',
+      },
+    } as lambda.FunctionProps);
+
+    // Lambda decrypts codes with the key + reads the Resend API key
+    customEmailKey.grantDecrypt(customEmailSenderFn);
+    customEmailSenderFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:SocialLeadGen/Resend*`],
+      })
+    );
+    // Allow Cognito to invoke the sender
+    customEmailSenderFn.addPermission('CognitoInvokeCustomEmail', {
+      principal: new iam.ServicePrincipal('cognito-idp.amazonaws.com'),
+      sourceArn: `arn:aws:cognito-idp:${this.region}:${this.account}:userpool/*`,
+    });
+
     // ─── Cognito User Pool ────────────────────────────────────────────────
-    // NOTE: lambdaTriggers for custom auth are intentionally NOT attached.
-    // Login uses standard SRP auth until SES is verified and MFA is ready.
+    // Verification/reset codes are delivered by the CustomEmailSender Lambda
+    // (via Resend). The `email` config below is only a fallback.
     this.userPool = new cognito.UserPool(this, 'SocialLeadGenUserPool', {
       userPoolName: 'SocialLeadGen-UserPool',
       selfSignUpEnabled: true,
@@ -111,20 +150,14 @@ export class AuthStack extends cdk.Stack {
           mutable: true,
         },
       },
-      // Email sender for verification / password-reset codes.
-      // - Set COGNITO_SES_EMAIL (e.g. "no-reply@hawkeyecue.com") once the SES
-      //   domain is verified AND the account is out of the SES sandbox — this
-      //   lifts the ~50/day cap and brands the sender.
-      // - If unset, we stay on Cognito's built-in email so nothing breaks
-      //   before SES is ready. This is deploy-safe by default.
-      email: process.env.COGNITO_SES_EMAIL
-        ? cognito.UserPoolEmail.withSES({
-            fromEmail: process.env.COGNITO_SES_EMAIL,
-            fromName: 'HawkEye-Cue',
-            replyTo: process.env.COGNITO_SES_REPLY_TO || process.env.COGNITO_SES_EMAIL,
-            sesRegion: process.env.COGNITO_SES_REGION || this.region,
-          })
-        : cognito.UserPoolEmail.withCognito('noreply@verificationemail.com'),
+      // Fallback only — actual delivery is handled by the CustomEmailSender
+      // Lambda (Resend). Cognito requires an email config to exist.
+      email: cognito.UserPoolEmail.withCognito('noreply@verificationemail.com'),
+      // Route verification/reset code emails through our Resend Lambda.
+      customSenderKmsKey: customEmailKey,
+      lambdaTriggers: {
+        customEmailSender: customEmailSenderFn,
+      },
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 

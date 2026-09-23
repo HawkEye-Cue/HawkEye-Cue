@@ -10,32 +10,32 @@ interface TourStep {
 const TOUR_STEPS: TourStep[] = [
   {
     selector: '[data-tour="home"]',
-    title: 'Nest — What should I do today?',
-    description: 'Your home base and daily flight plan. See what needs attention and tap "Start My Flight Plan" to knock it out one task at a time.',
+    title: 'Today — What should I do?',
+    description: 'Your home base (the Nest). See what needs attention and tap "Start My Flight Plan" to knock it out one task at a time.',
     icon: '🦅',
   },
   {
     selector: '[data-tour="create"]',
-    title: 'Flock — What should I post?',
+    title: 'Create — What should I post?',
     description: 'Write posts or let AI generate them. Use "Copy & Open Next Flock" to fly through your Facebook groups.',
     icon: '✨',
   },
   {
     selector: '[data-tour="leads"]',
-    title: 'HawkSight — Who should I contact?',
-    description: 'Conversations HawkEye spots plus leads you save. Decide who to contact first. The 🎯 button quick-saves a lead from any page.',
+    title: 'Leads — Who should I contact?',
+    description: 'Conversations HawkEye spots (HawkSight) plus leads you save. Decide who to contact first. The 🎯 button quick-saves a lead from any page.',
     icon: '🎯',
   },
   {
     selector: '[data-tour="sales"]',
-    title: 'Talons — Who needs follow-up?',
-    description: 'Where you grab and hold your deals — from prospect to close. See who needs follow-up and which sources make you the most money.',
+    title: 'Pipeline — Who needs follow-up?',
+    description: 'Your deals from prospect to close. See who needs follow-up and which sources make you the most money.',
     icon: '💰',
   },
   {
     selector: '[data-tour="insights"]',
-    title: 'Eye — What\'s making me money?',
-    description: 'The HawkEye view of what\'s producing revenue — deals, leads, and completion rates at a glance.',
+    title: 'Insights — What\'s making me money?',
+    description: 'What\'s producing revenue — deals, leads, and completion rates at a glance.',
     icon: '📊',
   },
   {

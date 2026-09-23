@@ -10,13 +10,14 @@ import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
 import SetupWizard from './SetupWizard';
 
-// Five primary tabs — branded names, each answers one question.
+// Five primary tabs — plain labels for instant clarity (brand names live on the
+// page headers, e.g. "💰 Talons — Who needs follow-up?").
 const navItems = [
-  { path: '/', label: 'Nest', icon: '🦅', tour: 'home' },
-  { path: '/create', label: 'Flock', icon: '✨', tour: 'create' },
-  { path: '/opportunities', label: 'HawkSight', icon: '🎯', tour: 'leads' },
-  { path: '/sales', label: 'Talons', icon: '💰', tour: 'sales' },
-  { path: '/hawk-insights', label: 'Eye', icon: '📊', tour: 'insights' },
+  { path: '/', label: 'Today', icon: '🦅', tour: 'home' },
+  { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
+  { path: '/opportunities', label: 'Leads', icon: '🎯', tour: 'leads' },
+  { path: '/sales', label: 'Pipeline', icon: '💰', tour: 'sales' },
+  { path: '/hawk-insights', label: 'Insights', icon: '📊', tour: 'insights' },
 ];
 
 // Everything else lives under "More" — nothing is removed, just tucked away.

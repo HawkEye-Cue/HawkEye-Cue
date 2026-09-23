@@ -101,8 +101,8 @@ export class AuthStack extends cdk.Stack {
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       userVerification: {
-        emailSubject: 'Verify your Social Lead Gen account',
-        emailBody: 'Your verification code is {####}',
+        emailSubject: '🦅 Verify your HawkEye-Cue account',
+        emailBody: 'Welcome to HawkEye-Cue! Your verification code is {####}',
         emailStyle: cognito.VerificationEmailStyle.CODE,
       },
       standardAttributes: {
@@ -111,7 +111,20 @@ export class AuthStack extends cdk.Stack {
           mutable: true,
         },
       },
-      email: cognito.UserPoolEmail.withCognito('noreply@verificationemail.com'),
+      // Email sender for verification / password-reset codes.
+      // - Set COGNITO_SES_EMAIL (e.g. "no-reply@hawkeyecue.com") once the SES
+      //   domain is verified AND the account is out of the SES sandbox — this
+      //   lifts the ~50/day cap and brands the sender.
+      // - If unset, we stay on Cognito's built-in email so nothing breaks
+      //   before SES is ready. This is deploy-safe by default.
+      email: process.env.COGNITO_SES_EMAIL
+        ? cognito.UserPoolEmail.withSES({
+            fromEmail: process.env.COGNITO_SES_EMAIL,
+            fromName: 'HawkEye-Cue',
+            replyTo: process.env.COGNITO_SES_REPLY_TO || process.env.COGNITO_SES_EMAIL,
+            sesRegion: process.env.COGNITO_SES_REGION || this.region,
+          })
+        : cognito.UserPoolEmail.withCognito('noreply@verificationemail.com'),
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 

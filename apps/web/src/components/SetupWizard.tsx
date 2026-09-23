@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTrade } from '../contexts/TradeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useEdition } from '../contexts/EditionContext';
 
 interface SetupStep {
   id: string;
@@ -18,10 +19,11 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
   const location = useLocation();
   const { selectedTrade } = useTrade();
   const { user } = useAuth();
+  const { isDiscover } = useEdition();
   const [currentStep, setCurrentStep] = useState(0);
   const [minimized, setMinimized] = useState(false);
 
-  const steps: SetupStep[] = [
+  const allSteps: SetupStep[] = [
     {
       id: 'trade',
       title: 'Pick Your Trade',
@@ -79,7 +81,24 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
         return deal === 'true';
       },
     },
+    {
+      id: 'crm',
+      title: 'Connect Your CRM',
+      description: 'Link HubSpot, Zapier or another CRM so leads flow straight in.',
+      icon: '🔗',
+      action: 'Go to CRM and add a connection',
+      navigateTo: '/crm',
+      checkComplete: () => {
+        const crm = localStorage.getItem(`hawkeye_crm_connected_${user?.sub}`);
+        return crm === 'true';
+      },
+    },
   ];
+
+  // Discover users don't use the built-in deals pipeline — swap that step for the CRM step.
+  const steps: SetupStep[] = isDiscover
+    ? allSteps.filter((s) => s.id !== 'sales')
+    : allSteps.filter((s) => s.id !== 'crm');
 
   // Auto-advance when a step is completed — poll every second for changes
   useEffect(() => {

@@ -5,19 +5,31 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
+import { useEdition } from '../contexts/EditionContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
 import SetupWizard from './SetupWizard';
 import InstallPrompt from './InstallPrompt';
+import EditionOnboarding from './EditionOnboarding';
 
 // Five primary tabs — plain labels for instant clarity (brand names live on the
 // page headers, e.g. "💰 Talons — Who needs follow-up?").
-const navItems = [
+// Grow edition (default) — full built-in pipeline.
+const growNavItems = [
   { path: '/', label: 'Today', icon: '🦅', tour: 'home' },
   { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
   { path: '/pipeline', label: 'Pipeline', icon: '🎯', tour: 'leads' },
   { path: '/hawk-insights', label: 'Insights', icon: '📊', tour: 'insights' },
+];
+
+// Discover edition — focused on finding & pushing opportunities to an external CRM.
+// The built-in pipeline is replaced by a CRM tab.
+const discoverNavItems = [
+  { path: '/', label: 'Today', icon: '🦅', tour: 'home' },
+  { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
+  { path: '/pipeline', label: 'Leads', icon: '🎯', tour: 'leads' },
+  { path: '/crm', label: 'CRM', icon: '🔗', tour: 'crm' },
 ];
 
 // Everything else lives under "More" — nothing is removed, just tucked away.
@@ -38,6 +50,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, getToken } = useAuth();
   const { showToast } = useToast();
   const { mode } = useMode();
+  const { isDiscover } = useEdition();
+
+  // Edition-aware navigation. Discover swaps the built-in Pipeline for a CRM tab
+  // and hides pipeline-only secondary items (Full Dashboard = calendar/scheduling).
+  const navItems = isDiscover ? discoverNavItems : growNavItems;
+  const visibleMoreItems = isDiscover
+    ? moreItems.filter((i) => i.path !== '/dashboard')
+    : moreItems;
 
   // Load display names from server on startup + save user timezone
   useEffect(() => {
@@ -69,6 +89,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   });
   const [showSetupWizard, setShowSetupWizard] = useState(() => {
     const key = user?.sub ? `hawkeye_setup_complete_${user.sub}` : 'hawkeye_setup_complete';
+    return !localStorage.getItem(key);
+  });
+  // One-time "do you use a CRM?" edition question (after the tour).
+  const [showEditionOnboarding, setShowEditionOnboarding] = useState(() => {
+    const key = user?.sub ? `hawkeye_edition_onboarded_${user.sub}` : 'hawkeye_edition_onboarded';
     return !localStorage.getItem(key);
   });
 
@@ -136,7 +161,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-slate-950">
       <HawkAnimations />
       {showTour && <GuidedTour onComplete={handleTourComplete} />}
-      {!showTour && showSetupWizard && (
+      {!showTour && showEditionOnboarding && (
+        <EditionOnboarding onDone={() => setShowEditionOnboarding(false)} />
+      )}
+      {!showTour && !showEditionOnboarding && showSetupWizard && (
         <SetupWizard onComplete={() => {
           const key = user?.sub ? `hawkeye_setup_complete_${user.sub}` : 'hawkeye_setup_complete';
           localStorage.setItem(key, 'true');
@@ -255,7 +283,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <button onClick={() => setShowMore(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
             <div className="space-y-1.5">
-              {moreItems.map((m) => (
+              {visibleMoreItems.map((m) => (
                 <Link
                   key={m.path}
                   to={m.path}
@@ -275,7 +303,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       )}
 
       {/* Add-to-Home-Screen prompt (only after tour + setup are done) */}
-      {!showTour && !showSetupWizard && <InstallPrompt />}
+      {!showTour && !showEditionOnboarding && !showSetupWizard && <InstallPrompt />}
 
       {/* Quick Add Lead — floating button (mobile-friendly) */}
       <button

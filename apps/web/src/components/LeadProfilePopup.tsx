@@ -91,6 +91,33 @@ export default function LeadProfilePopup({
   const { user, getToken } = useAuth();
   const { showToast } = useToast();
   const [notes, setNotes] = useState<ActivityNote[]>(() => readNotes(lead.id, lead));
+  const [pushing, setPushing] = useState(false);
+  const [pushStatus, setPushStatus] = useState<string>((lead as any).pushStatus || 'not_pushed');
+
+  async function pushToCrm(confirmRepush = false) {
+    setPushing(true);
+    try {
+      const token = await getToken();
+      const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+      const res = await client.pushLeadToCrm({ opportunityId: lead.id, confirmRepush });
+      if ((res as any).needsConfirmation) {
+        const match = (res as any).matchingLead;
+        const msg = match ? `A lead with the same contact (${match.name}) was already pushed. Push anyway?` : 'This lead was already pushed. Push again?';
+        if (window.confirm(msg)) { await pushToCrm(true); return; }
+        setPushing(false);
+        return;
+      }
+      setPushStatus(res.pushStatus);
+      showToast(res.pushStatus === 'pushed' ? '✓ Pushed to your CRM' : `❌ ${res.reason || 'Push failed'}`);
+    } catch (e: any) {
+      const code = e?.code || e?.data?.error?.code;
+      if (code === 'NO_ACTIVE_CONNECTION') {
+        showToast('Connect a CRM first (More → CRM Connections)');
+      } else {
+        showToast(`❌ ${e instanceof Error ? e.message : 'Push failed'}`);
+      }
+    } finally { setPushing(false); }
+  }
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -329,6 +356,14 @@ export default function LeadProfilePopup({
               {updatingId === lead.id ? '...' : '✓ Mark Converted'}
             </button>
           )}
+          <button
+            onClick={() => pushToCrm(false)}
+            disabled={pushing}
+            className="px-3 py-1.5 bg-blue-500/15 border border-blue-500/30 text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-500/25 disabled:opacity-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            title="Push this lead to your connected CRM"
+          >
+            {pushing ? '…' : pushStatus === 'pushed' ? '🔗 Pushed ✓' : pushStatus === 'failed' ? '🔗 Retry push' : '🔗 Push to CRM'}
+          </button>
           <button
             onClick={() => onEdit(lead)}
             className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10 focus:ring-2 focus:ring-blue-500 focus:outline-none"

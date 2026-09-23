@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import OpportunitiesPage from './OpportunitiesPage';
 import SalesPage from './SalesPage';
+import { useEdition } from '../contexts/EditionContext';
 
 type View = 'leads' | 'deals';
 
@@ -12,15 +13,27 @@ type View = 'leads' | 'deals';
  */
 export default function PipelinePage() {
   const [searchParams] = useSearchParams();
+  const { isDiscover } = useEdition();
   // Deep links open Deals when ?newDeal=Name (from "Convert to Client") or ?view=deals.
-  const wantsDeals = () => !!searchParams.get('newDeal') || searchParams.get('view') === 'deals';
+  // In Discover, the built-in Deals pipeline is hidden — always show Leads.
+  const wantsDeals = () => !isDiscover && (!!searchParams.get('newDeal') || searchParams.get('view') === 'deals');
   const [view, setView] = useState<View>(() => (wantsDeals() ? 'deals' : 'leads'));
 
   // If a deep link arrives after mount, switch views so it isn't missed.
   useEffect(() => {
+    if (isDiscover) { setView('leads'); return; }
     if (wantsDeals()) setView('deals');
     else if (searchParams.get('view') === 'leads') setView('leads');
-  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchParams, isDiscover]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Discover: no Deals toggle — leads only, feeding the external CRM.
+  if (isDiscover) {
+    return (
+      <div className="space-y-3">
+        <OpportunitiesPage />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

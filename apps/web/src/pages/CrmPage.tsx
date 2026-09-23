@@ -22,7 +22,7 @@ const HAWKEYE_FIELDS: { key: string; label: string }[] = [
 ];
 
 export default function CrmPage() {
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [destinations, setDestinations] = useState<CrmDestinationInfo[]>([]);
@@ -72,6 +72,7 @@ export default function CrmPage() {
       } else {
         showToast('✓ Connection saved');
       }
+      try { localStorage.setItem(`hawkeye_crm_connected_${user?.sub}`, 'true'); } catch { /* ignore */ }
       setCredential(''); setWebhookUrl(''); setSelectedType('');
       refresh();
     } catch (e) {

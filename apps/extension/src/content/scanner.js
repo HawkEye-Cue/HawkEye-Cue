@@ -14,6 +14,9 @@
   let wingmanName = '';
   let processedPosts = new Set();
   let isScanning = false;
+  let flightMode = false;
+  let flightTimer = null;
+  let flightSavedAuthors = new Set(); // avoid double-saving the same author during a flight
 
   function detectPlatform() {
     const host = window.location.hostname;
@@ -354,6 +357,62 @@
     return false;
   }
 
+  // ─── Take Flight: auto-score + auto-save a matched lead, hands-free ─────────
+  function autoSaveLead(postElement, postText) {
+    var authorName = extractAuthorName(postElement) || 'Unknown';
+    // Don't save the same author twice in one flight session.
+    var dedupeKey = authorName + '|' + postText.slice(0, 40);
+    if (flightSavedAuthors.has(dedupeKey)) return;
+    flightSavedAuthors.add(dedupeKey);
+
+    chrome.storage.local.get(['authToken'], function(res) {
+      if (!res.authToken) return;
+      // Score first so we skip competitors / non-leads automatically.
+      chrome.runtime.sendMessage({ type: 'SCORE_POST', data: { postText: postText, group: '', authorName: authorName } }, function(scoreResp) {
+        var r = scoreResp && scoreResp.success ? scoreResp.result : null;
+        // Skip competitors and clear non-leads — only auto-save genuine leads.
+        if (r && (r.isCompetitor === true || r.classification === 'competitor' || r.isLead === false)) {
+          if (authorName && authorName !== 'Unknown' && (r.isCompetitor || r.classification === 'competitor')) {
+            chrome.runtime.sendMessage({ type: 'SAVE_MEMORY', data: { personName: authorName, kind: 'competitor', note: 'Auto-flagged during flight', platform: platform } });
+          }
+          return;
+        }
+        chrome.runtime.sendMessage({
+          type: 'SAVE_LEAD',
+          data: { authToken: res.authToken, platform: platform, authorName: authorName, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
+        }, function(saveResp) {
+          if (saveResp && saveResp.success) {
+            // Bump the flight counter for the popup.
+            chrome.storage.local.get(['flightLeadCount'], function(c) {
+              chrome.storage.local.set({ flightLeadCount: (c.flightLeadCount || 0) + 1 });
+            });
+            showToast('🦅 Lead saved: ' + authorName);
+          }
+        });
+      });
+    });
+  }
+
+  function startFlight() {
+    if (flightTimer) return;
+    showToast('🦅 Take Flight — auto-scrolling for leads');
+    flightTimer = setInterval(function() {
+      if (!flightMode) { stopFlight(); return; }
+      // Scroll down a viewport so new posts load, then let the observer/scan run.
+      window.scrollBy({ top: Math.round(window.innerHeight * 0.85), behavior: 'smooth' });
+      scanFeed();
+      // If we hit the bottom, nudge back up a little so lazy-load keeps feeding.
+      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 200) {
+        window.scrollBy({ top: -300, behavior: 'auto' });
+      }
+    }, 3500);
+  }
+
+  function stopFlight() {
+    if (flightTimer) { clearInterval(flightTimer); flightTimer = null; }
+    showToast('🛑 Flight ended');
+  }
+
   function scanFeed() {
     if (isScanning) return;
     // Always re-read the latest keywords from storage so newly-added keywords reach
@@ -392,7 +451,10 @@
           var matched = matchesKeywords(text);
           if (matched.length > 0) {
             if (container.setAttribute) container.setAttribute('data-hawkeye-seen', '1');
+            expandSeeMore(container); // grab full text so competitor signals aren't hidden
             createHawkOverlay(container, matched, text);
+            // During Take Flight, auto-score and auto-save real leads hands-free.
+            if (flightMode) autoSaveLead(container, container.innerText ? container.innerText.trim() : text);
             return;
           }
         }
@@ -465,7 +527,12 @@
 
     scanFeed();
 
-    // Live-update keywords when storage changes (15-min alarm, popup, or web app).
+    // Start flight immediately if it was already on when this page loaded.
+    const flightState = await chrome.storage.local.get(['flightMode']);
+    flightMode = !!flightState.flightMode;
+    if (flightMode) startFlight();
+
+    // Live-update keywords + flight mode when storage changes.
     chrome.storage.onChanged.addListener(function(changes, area) {
       if (area !== 'local') return;
       if (changes.keywords && Array.isArray(changes.keywords.newValue)) {
@@ -476,6 +543,11 @@
       }
       if (changes.wingmanKeywords && Array.isArray(changes.wingmanKeywords.newValue)) {
         wingmanKeywords = changes.wingmanKeywords.newValue;
+      }
+      if (changes.flightMode) {
+        flightMode = !!changes.flightMode.newValue;
+        if (flightMode) { flightSavedAuthors = new Set(); startFlight(); }
+        else { stopFlight(); }
       }
     });
 

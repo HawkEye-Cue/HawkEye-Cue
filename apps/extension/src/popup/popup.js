@@ -149,3 +149,52 @@ logoutBtn.addEventListener('click', async () => {
   await chrome.storage.local.remove(['authToken', 'tokenExpiry', 'userEmail', 'keywords']);
   showLogin();
 });
+
+// ─── Take Flight: auto-scroll + auto-save leads ────────────────────────────
+const flightBtn = document.getElementById('take-flight-btn');
+
+async function refreshFlightButton() {
+  if (!flightBtn) return;
+  const { flightMode, flightLeadCount } = await chrome.storage.local.get(['flightMode', 'flightLeadCount']);
+  const hint = document.getElementById('flight-hint');
+  const statusText = document.querySelector('#status-indicator span:last-child');
+  if (flightMode) {
+    flightBtn.textContent = '🛑 Stop Flight';
+    flightBtn.classList.add('flying');
+    if (hint) hint.textContent = `In flight — ${flightLeadCount || 0} lead${(flightLeadCount || 0) !== 1 ? 's' : ''} saved so far. Keep the Facebook tab open; you can work elsewhere.`;
+    if (statusText) statusText.textContent = 'In flight — auto-finding leads';
+  } else {
+    flightBtn.textContent = '🦅 Take Flight — auto-find leads';
+    flightBtn.classList.remove('flying');
+    if (hint) hint.textContent = 'Auto-scrolls your Facebook feed and saves matching leads while you work. Keep the Facebook tab open.';
+    if (statusText) statusText.textContent = 'Scanning active';
+  }
+}
+
+// Keep the popup's flight count live while open.
+chrome.storage.onChanged.addListener(function(changes, area) {
+  if (area === 'local' && (changes.flightLeadCount || changes.flightMode)) refreshFlightButton();
+});
+
+if (flightBtn) {
+  refreshFlightButton();
+  flightBtn.addEventListener('click', async () => {
+    const { flightMode } = await chrome.storage.local.get(['flightMode']);
+    const next = !flightMode;
+    await chrome.storage.local.set({ flightMode: next, flightLeadCount: next ? 0 : undefined });
+    await refreshFlightButton();
+
+    if (next) {
+      // Find an existing Facebook tab, or open one, then focus it.
+      const tabs = await chrome.tabs.query({ url: ['*://*.facebook.com/*'] });
+      if (tabs.length > 0) {
+        chrome.tabs.update(tabs[0].id, { active: true });
+        chrome.windows.update(tabs[0].windowId, { focused: true });
+      } else {
+        chrome.tabs.create({ url: 'https://www.facebook.com/' });
+      }
+      // The content script watches storage.flightMode and starts auto-scrolling.
+    }
+    // When turning off, the content script sees flightMode=false and stops.
+  });
+}

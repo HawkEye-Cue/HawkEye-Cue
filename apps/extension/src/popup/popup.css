@@ -206,3 +206,36 @@ body {
 .action-btn:hover {
   background: #334155;
 }
+
+.flight-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 12px;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  border: none;
+  border-radius: 10px;
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+}
+
+.flight-btn:hover { opacity: 0.92; }
+.flight-btn:active { transform: scale(0.98); }
+
+.flight-btn.flying {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: #fff;
+}
+
+.flight-hint {
+  font-size: 10px;
+  color: #64748b;
+  text-align: center;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}

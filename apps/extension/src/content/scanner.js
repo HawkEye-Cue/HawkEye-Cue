@@ -86,8 +86,9 @@
           return;
         }
         const r = resp.result;
-        const scoreColor = r.score >= 80 ? '#f87171' : r.score >= 50 ? '#fbbf24' : r.score >= 20 ? '#38bdf8' : '#64748b';
-        const urg = { now: '🔥 NOW', soon: '⚡ SOON', nurture: '🌱 NURTURE', not_a_lead: '🚫 NOT A LEAD' }[r.urgency] || '🌱 NURTURE';
+        const isCompetitor = r.isCompetitor === true || r.classification === 'competitor';
+        const scoreColor = isCompetitor ? '#f472b6' : r.score >= 80 ? '#f87171' : r.score >= 50 ? '#fbbf24' : r.score >= 20 ? '#38bdf8' : '#64748b';
+        const urg = isCompetitor ? '🏢 COMPETITOR' : ({ now: '🔥 NOW', soon: '⚡ SOON', nurture: '🌱 NURTURE', not_a_lead: '🚫 NOT A LEAD' }[r.urgency] || '🌱 NURTURE');
         let html = '<div style="display:flex;align-items:center;gap:10px;">';
         html += '<div style="width:44px;height:44px;border-radius:50%;border:4px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:16px;font-weight:800;color:' + scoreColor + ';">' + r.score + '</span></div>';
         html += '<div style="flex:1;min-width:0;"><span style="font-size:10px;font-weight:700;color:' + scoreColor + ';">' + urg + '</span>';

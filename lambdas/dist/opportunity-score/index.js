@@ -79,24 +79,34 @@ POST: "${postText}"
 ${userCity ? `The business serves the ${userCity} area.` : ''}
 ${learnedContext ? `\nWhat has historically converted well for this business: ${learnedContext}` : ''}
 
-Distinguish real buying signals from noise. Examples:
-- "Does anyone know a good roofer?" → strong lead (actively seeking)
-- "My roof is leaking after the storm" → urgent lead (immediate need)
-- "Thinking about replacing our roof next year" → nurture lead (future intent)
-- "My husband is a roofer" → NOT a lead (they are a provider, score near 0)
+CRITICAL — first decide WHO is posting and WHAT they want:
+- A BUYER is someone who NEEDS the service (asking for help, a recommendation, or has a problem to solve).
+- A COMPETITOR / PROVIDER is someone who SELLS or OFFERS this same service — another ${tradeName || 'business'}, agent, or professional promoting themselves, advertising, prospecting, or offering quotes/help to others. They are NOT a customer.
+
+If the author is promoting their own ${tradeName || 'business'} / agency / services, offering quotes, saying things like "I own…", "I'm a…", "I help people with…", "message me for a quote", "my agency", or otherwise advertising the SAME service the user provides — they are a COMPETITOR. Classify as competitor, score 0-5, isLead=false, and DO NOT write a suggested reply.
+
+Examples:
+- "Does anyone know a good roofer?" → BUYER, strong lead (actively seeking)
+- "My roof is leaking after the storm" → BUYER, urgent lead (immediate need)
+- "Thinking about replacing our roof next year" → BUYER, nurture lead (future intent)
+- "My husband is a roofer" → NOT a lead (household already has a provider, score near 0)
+- "Hi, I'm Sara and I own Brownell Insurance Agency — happy to give anyone a free quote!" → COMPETITOR (they SELL insurance; score 0-5, isLead=false, no reply)
+- "I'm a local realtor, DM me if you're buying or selling!" → COMPETITOR (score 0-5)
 
 Return ONLY valid JSON:
 {
   "score": 0-100,
+  "classification": "buyer" | "competitor" | "provider" | "off_topic",
   "urgency": "now" | "soon" | "nurture" | "not_a_lead",
   "isLead": true | false,
+  "isCompetitor": true | false,
   "reason": "one plain-English sentence on why you scored it this way",
   "factors": [
     {"label": "short factor name", "points": number (can be negative)}
   ],
-  "suggestedResponse": "a friendly, genuine reply the user could post (no hard selling, sound human)",
+  "suggestedResponse": "a friendly, genuine reply the BUYER could receive (leave EMPTY string if not a buyer)",
   "followUpDays": number (days from now to follow up; 0 for now, 1 for soon, 30 for nurture),
-  "estimatedValue": number (rough $ value of the potential sale/policy, best guess for a ${tradeName || 'business'})
+  "estimatedValue": number (rough $ value of the potential sale/policy, best guess for a ${tradeName || 'business'}; 0 if not a buyer)
 }
 
 The "factors" array MUST explain the score transparently — each item is a reason with a point value, and the points should roughly add up to the score. Use factors like these (only include the ones that apply):
@@ -106,15 +116,18 @@ The "factors" array MUST explain the score transparently — each item is a reas
 - "Direct recommendation request" (asking who to hire)
 - "Future intent" (thinking about it later)
 - "Existing relationship" (mentions knowing the business)
+- "Competitor promoting" (NEGATIVE — they sell the same service)
 - "Provider, not a buyer" (NEGATIVE points — they do this job themselves)
 - "Off-topic / no intent" (NEGATIVE or low points)
 Give 2-5 factors. Keep labels short (2-4 words).
 
 Rules:
-- Score 0-15 for non-leads (providers, unrelated chatter).
+- Score 0-5 for COMPETITORS (someone selling/advertising the same service). isLead=false, isCompetitor=true, urgency="not_a_lead", empty suggestedResponse.
+- Score 0-15 for other non-leads (providers, unrelated chatter).
 - Score 80-100 for urgent active buyers.
 - Score 50-79 for people actively asking for recommendations.
 - Score 20-49 for future/nurture intent.
+- NEVER write a suggested reply for a competitor or non-buyer — leave it as an empty string.
 - Keep the suggested response short, warm, and human — not salesy.`;
 
   const command = new InvokeModelCommand({
@@ -143,6 +156,36 @@ Rules:
   // Fallback: if the AI gave no breakdown, synthesize one from the reason/score.
   if (parsed.factors.length === 0) {
     parsed.factors = [{ label: parsed.isLead ? 'Buying signal detected' : 'Low buying intent', points: parsed.score || 0 }];
+  }
+
+  // ── Competitor safety net ──────────────────────────────────────────────────
+  // Belt-and-suspenders: if the AI (or an obvious text pattern) says the author is
+  // selling the same service, force a non-lead result and drop any drafted reply so
+  // we never suggest replying to a competitor as if they were a customer.
+  const lower = String(postText || '').toLowerCase();
+  const SELF_PROMO = [
+    'i own', 'i am the owner', "i'm the owner", 'my agency', 'my business', 'my company',
+    'i am a', "i'm a", 'i am an', "i'm an", 'dm me for a quote', 'message me for a quote',
+    'free quote', 'give anyone a', 'i help people', 'i help folks', 'licensed agent',
+    'contact me for', 'reach out to me', 'i sell', 'i offer', 'we offer', 'our agency',
+    'book with me', 'my rates', 'i can help you save',
+  ];
+  const looksSelfPromo = SELF_PROMO.some((p) => lower.includes(p));
+  if (parsed.isCompetitor === true || parsed.classification === 'competitor' || (looksSelfPromo && parsed.score > 15)) {
+    parsed.isCompetitor = true;
+    parsed.classification = 'competitor';
+    parsed.isLead = false;
+    parsed.urgency = 'not_a_lead';
+    parsed.score = Math.min(parsed.score || 0, 5);
+    parsed.estimatedValue = 0;
+    parsed.suggestedResponse = '';
+    parsed.followUpDays = 0;
+    if (!parsed.factors.some((f) => /competitor/i.test(f.label))) {
+      parsed.factors = [{ label: 'Competitor promoting', points: parsed.score }];
+    }
+    if (!/competitor/i.test(parsed.reason || '')) {
+      parsed.reason = 'This person is promoting their own competing service — not a customer.';
+    }
   }
 
   return parsed;

@@ -66,6 +66,10 @@ export default function ContentCreatorPage() {
   const [engageIndex, setEngageIndex] = useState(0);
   const [flocksTab, setFlocksTab] = useState<'today' | 'missed'>('today');
   const [showFlockManager, setShowFlockManager] = useState(false);
+  // The whole "create a post" toolset (ideas + AI photo + composer) is collapsed by
+  // default so the page opens on Today's Flocks (the daily job). Auto-expands once
+  // a post is generated so the Copy & Open flow is visible.
+  const [showCreator, setShowCreator] = useState(false);
   const [showReturnBanner, setShowReturnBanner] = useState(false);
 
   // Post history — tracks which content was posted to which groups and when
@@ -236,6 +240,7 @@ export default function ContentCreatorPage() {
 
       // The API now returns platformContent with per-platform versions
       if (result.platformContent) {
+        setShowCreator(true);
         setPlatformContent(result.platformContent as Record<string, string>);
         window.dispatchEvent(new CustomEvent('hawkeye-post-preview', { detail: { content: result.platformContent, imagePreview } }));
         localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
@@ -362,6 +367,23 @@ export default function ContentCreatorPage() {
         </div>
       )}
 
+      {/* ── Create a post (collapsed by default) ─────────────────────────── */}
+      <button
+        onClick={() => setShowCreator((s) => !s)}
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 hover:from-blue-600/30 hover:to-purple-600/30 transition-all"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-xl">✍️</span>
+          <div className="text-left">
+            <p className="text-sm font-bold text-white">Create a post</p>
+            <p className="text-[11px] text-slate-400">Write your own or let AI draft it — plus ideas &amp; photos</p>
+          </div>
+        </div>
+        <span className="text-slate-300 text-sm">{showCreator ? '▼ Hide' : '▶ Open'}</span>
+      </button>
+
+      {showCreator && (
+      <div className="space-y-6">
       {/* Post Idea Generator — for when you're stuck */}
       <div className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-blue-500/10 overflow-hidden">
         <button onClick={() => { setShowIdeas(!showIdeas); if (!showIdeas && ideas.length === 0) fetchIdeas(); }} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5">
@@ -800,6 +822,7 @@ export default function ContentCreatorPage() {
             for (const p of platforms) {
               content[p] = ownContent.trim();
             }
+            setShowCreator(true);
             setPlatformContent(content);
             window.dispatchEvent(new CustomEvent('hawkeye-post-preview', { detail: { content, imagePreview } }));
             setShowHawkSwoop(true);
@@ -1017,6 +1040,8 @@ export default function ContentCreatorPage() {
             )}
           </div>
         </div>
+      )}
+      </div>
       )}
 
       {/* Flocks Tabs */}

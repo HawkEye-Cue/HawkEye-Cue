@@ -1,5 +1,5 @@
 /**
- * HawkEye-Cue Content Script v1.7.0
+ * HawkEye-Cue Content Script v1.9.0
  * Scans social media feeds for keyword matches, shows hawk icon overlay,
  * and scores each match in real time with HawkEye Radar (opportunity score,
  * urgency, suggested reply).
@@ -313,65 +313,101 @@
 
   // ─── Scan Feed ────────────────────────────────────────────────────────────
 
+  // Walk up from a text node to the stable post container (an <article>, or the
+  // nearest reasonably-large ancestor). Matching the whole container's text — not a
+  // single fragment — is what makes phrase keywords and Facebook's split text work.
+  function findPostContainer(el) {
+    // Prefer a semantic article/feed unit if present.
+    var article = el.closest('div[role="article"], article, [data-pagelet^="FeedUnit"]');
+    if (article) return article;
+    // Otherwise climb until the element's text looks like a full post (or we hit a cap).
+    var c = el;
+    for (var i = 0; i < 12; i++) {
+      if (!c.parentElement) break;
+      c = c.parentElement;
+      var t = c.innerText || '';
+      if (t.length >= 60) return c;
+    }
+    return el;
+  }
+
   function scanFeed() {
-    if (isScanning || (keywords.length === 0 && wingmanKeywords.length === 0)) return;
+    if (isScanning) return;
+    // Always re-read the latest keywords from storage so newly-added keywords reach
+    // tabs that are already open (the 15-min alarm / popup updates storage, not memory).
+    if (keywords.length === 0 && wingmanKeywords.length === 0) return;
     isScanning = true;
 
-    const selector = POST_SELECTORS[platform];
-    if (!selector) { isScanning = false; return; }
+    try {
+      // Collect candidate post containers. Start from text-bearing nodes, then dedupe
+      // up to their containers so we match combined post text once per post.
+      var textNodes = document.querySelectorAll(
+        'div[data-ad-preview="message"], div[data-ad-comet-preview="message"], div[dir="auto"], span[dir="auto"], ' +
+        '.feed-shared-update-v2__description, .update-components-text, .feed-shared-text, ' +
+        'article div span, [data-e2e="browse-video-desc"], [data-e2e="video-desc"]'
+      );
 
-    let elements = document.querySelectorAll(selector);
+      var seenContainers = new Set();
 
-    // Facebook fallback
-    if (platform === 'facebook' && elements.length < 5) {
-      elements = document.querySelectorAll('div[dir="auto"], span[dir="auto"], div.xdj266r, span.x193iq5w, div.x11i5rnm');
-    }
+      textNodes.forEach(function(node) {
+        var container = findPostContainer(node);
+        if (seenContainers.has(container)) return;
+        seenContainers.add(container);
 
-    // Individual post pages — use broadest scan
-    if (platform === 'facebook') {
-      const path = window.location.pathname;
-      if (path.includes('/posts/') || path.includes('/permalink/') || path.includes('/photo/') || path.includes('/reel/')) {
-        const extra = document.querySelectorAll('div[dir="auto"], span[dir="auto"], div.xdj266r, span.x193iq5w');
-        if (extra.length > elements.length) elements = extra;
-      }
-    }
+        // Skip if we already badged this container.
+        if (container.querySelector && container.querySelector('.hawkeye-overlay, .wingman-overlay')) return;
 
-    elements.forEach(function(el) {
-      const text = el.innerText ? el.innerText.trim() : (el.textContent ? el.textContent.trim() : '');
-      if (!text || text.length < 20) return;
-      // Skip navigation/UI elements
-      if (text.startsWith('Create a post') || text.startsWith('What\'s on your mind') || text.includes('Write a comment')) return;
+        var text = container.innerText ? container.innerText.trim() : (container.textContent ? container.textContent.trim() : '');
+        if (!text || text.length < 15) return;
+        if (text.startsWith('Create a post') || text.startsWith("What's on your mind") || text.indexOf('Write a comment') === 0) return;
 
-      const postId = text.slice(0, 100);
-      if (processedPosts.has(postId)) return;
-      processedPosts.add(postId);
+        // Dedupe by container identity via a marker attribute (avoids text-prefix collisions).
+        if (container.getAttribute && container.getAttribute('data-hawkeye-seen') === '1') return;
 
-      // Check lead keywords first
-      if (keywords.length > 0) {
-        const matched = matchesKeywords(text);
-        if (matched.length > 0) {
-          let postContainer = el;
-          for (let i = 0; i < 3; i++) { if (postContainer.parentElement) postContainer = postContainer.parentElement; }
-          createHawkOverlay(postContainer, matched, text);
-          return;
+        // Lead keywords first.
+        if (keywords.length > 0) {
+          var matched = matchesKeywords(text);
+          if (matched.length > 0) {
+            if (container.setAttribute) container.setAttribute('data-hawkeye-seen', '1');
+            createHawkOverlay(container, matched, text);
+            return;
+          }
         }
-      }
-
-      // Then check wingman keywords
-      if (wingmanKeywords.length > 0) {
-        const wmMatched = wingmanKeywords.filter(function(kw) { return text.toLowerCase().includes(kw.toLowerCase()); });
-        if (wmMatched.length > 0) {
-          let postContainer = el;
-          for (let i = 0; i < 3; i++) { if (postContainer.parentElement) postContainer = postContainer.parentElement; }
-          createWingmanOverlay(postContainer, wmMatched, text);
+        // Wingman keywords.
+        if (wingmanKeywords.length > 0) {
+          var lower = text.toLowerCase();
+          var wmMatched = wingmanKeywords.filter(function(kw) { return lower.includes(kw.toLowerCase()); });
+          if (wmMatched.length > 0) {
+            if (container.setAttribute) container.setAttribute('data-hawkeye-seen', '1');
+            createWingmanOverlay(container, wmMatched, text);
+          }
         }
-      }
-    });
+      });
+    } catch (e) {
+      console.log('[HawkEye] scan error', e);
+    }
 
     isScanning = false;
   }
 
   // ─── Initialize ───────────────────────────────────────────────────────────
+
+  // Always fetch the latest keywords from the API (falls back to whatever's cached).
+  async function refreshKeywords(authToken) {
+    try {
+      const response = await fetch('https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com/keywords', {
+        headers: { 'Authorization': 'Bearer ' + authToken },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const fresh = (Array.isArray(data) ? data : data.keywords || []).map(function(k) { return k.keyword || k; });
+        if (fresh.length > 0) {
+          keywords = fresh;
+          chrome.storage.local.set({ keywords: fresh, keywordsUpdatedAt: Date.now() });
+        }
+      }
+    } catch (e) { console.log('[HawkEye] Failed to fetch keywords:', e); }
+  }
 
   async function init() {
     const result = await chrome.storage.local.get(['authToken', 'tokenExpiry', 'keywords']);
@@ -381,40 +417,51 @@
       return;
     }
 
-    let storedKeywords = result.keywords || [];
-    if (storedKeywords.length === 0) {
-      try {
-        const response = await fetch('https://29p0xwb5v8.execute-api.us-east-1.amazonaws.com/keywords', {
-          headers: { 'Authorization': 'Bearer ' + result.authToken },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          storedKeywords = (Array.isArray(data) ? data : data.keywords || []).map(function(k) { return k.keyword || k; });
-          chrome.storage.local.set({ keywords: storedKeywords, keywordsUpdatedAt: Date.now() });
-        }
-      } catch (e) { console.log('[HawkEye] Failed to fetch keywords:', e); }
-    }
-    keywords = storedKeywords;
-
+    // Use cached keywords immediately, then refresh from the API in the background so
+    // newly-added keywords always take effect (previously only fetched when empty).
+    keywords = result.keywords || [];
     const wmResult = await chrome.storage.local.get(['wingmanKeywords', 'wingmanName']);
     wingmanKeywords = wmResult.wingmanKeywords || [];
     wingmanName = wmResult.wingmanName || '';
 
+    await refreshKeywords(result.authToken);
+
+    // If still nothing, retry a few times (keywords may have just been added).
     if (keywords.length === 0 && wingmanKeywords.length === 0) {
-      console.log('[HawkEye] No keywords configured');
-      return;
+      console.log('[HawkEye] No keywords yet — will retry');
+      let tries = 0;
+      const retry = setInterval(async function() {
+        tries++;
+        const r = await chrome.storage.local.get(['authToken']);
+        if (r.authToken) await refreshKeywords(r.authToken);
+        if (keywords.length > 0 || tries >= 5) { clearInterval(retry); if (keywords.length > 0) scanFeed(); }
+      }, 6000);
     }
 
     console.log('[HawkEye] Scanning for ' + keywords.length + ' keywords + ' + wingmanKeywords.length + ' wingman keywords on ' + platform);
 
     scanFeed();
 
+    // Live-update keywords when storage changes (15-min alarm, popup, or web app).
+    chrome.storage.onChanged.addListener(function(changes, area) {
+      if (area !== 'local') return;
+      if (changes.keywords && Array.isArray(changes.keywords.newValue)) {
+        keywords = changes.keywords.newValue.map(function(k) { return k.keyword || k; });
+        // Let newly-matched posts get badged on the next scan.
+        document.querySelectorAll('[data-hawkeye-seen]').forEach(function(el) { el.removeAttribute('data-hawkeye-seen'); });
+        scanFeed();
+      }
+      if (changes.wingmanKeywords && Array.isArray(changes.wingmanKeywords.newValue)) {
+        wingmanKeywords = changes.wingmanKeywords.newValue;
+      }
+    });
+
     const observer = new MutationObserver(function() {
       clearTimeout(observer._debounce);
       observer._debounce = setTimeout(scanFeed, 500);
     });
     observer.observe(document.body, { childList: true, subtree: true });
-    setInterval(scanFeed, 5000);
+    setInterval(scanFeed, 4000);
   }
 
   if (document.readyState === 'complete') { init(); }

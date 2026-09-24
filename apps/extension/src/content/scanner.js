@@ -78,7 +78,8 @@
 
     // ─── HawkEye Radar: score this post in real time ───
     if (type !== 'wingman') {
-      chrome.runtime.sendMessage({ type: 'SCORE_POST', data: { postText: postText, group: '' } }, function(resp) {
+      var scoreAuthor = extractAuthorName(postElement) || '';
+      chrome.runtime.sendMessage({ type: 'SCORE_POST', data: { postText: postText, group: '', authorName: scoreAuthor } }, function(resp) {
         const box = document.getElementById('hawkeye-radar-box');
         if (!box) return;
         if (chrome.runtime.lastError || !resp || !resp.success || !resp.result) {
@@ -86,6 +87,10 @@
           return;
         }
         const r = resp.result;
+        // Remember competitors by author so all their future posts are flagged too.
+        if ((r.isCompetitor === true || r.classification === 'competitor') && scoreAuthor && scoreAuthor !== 'Unknown') {
+          chrome.runtime.sendMessage({ type: 'SAVE_MEMORY', data: { personName: scoreAuthor, kind: 'competitor', note: 'Flagged as competitor', platform: platform } });
+        }
         const isCompetitor = r.isCompetitor === true || r.classification === 'competitor';
         const scoreColor = isCompetitor ? '#f472b6' : r.score >= 80 ? '#f87171' : r.score >= 50 ? '#fbbf24' : r.score >= 20 ? '#38bdf8' : '#64748b';
         const urg = isCompetitor ? '🏢 COMPETITOR' : ({ now: '🔥 NOW', soon: '⚡ SOON', nurture: '🌱 NURTURE', not_a_lead: '🚫 NOT A LEAD' }[r.urgency] || '🌱 NURTURE');
@@ -330,6 +335,23 @@
       if (t.length >= 60) return c;
     }
     return el;
+  }
+
+  // Expand any "See more" inside a container so we capture the FULL post text.
+  // Facebook truncates long posts; the competitor signal ("I own … agency") is often
+  // in the hidden part, so scoring the preview alone misclassifies competitors as leads.
+  function expandSeeMore(container) {
+    try {
+      var candidates = container.querySelectorAll('div[role="button"], span[role="button"], span');
+      for (var i = 0; i < candidates.length; i++) {
+        var t = (candidates[i].innerText || candidates[i].textContent || '').trim().toLowerCase();
+        if (t === 'see more' || t === '… see more' || t === '...see more' || t === '…see more') {
+          candidates[i].click();
+          return true;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    return false;
   }
 
   function scanFeed() {

@@ -234,8 +234,37 @@ exports.handler = async (event) => {
     // POST /radar/score
     if (method === 'POST' && path === '/radar/score') {
       const body = event.body ? JSON.parse(event.body) : {};
-      const { postText, tradeName, userCity, group } = body;
+      const { postText, tradeName, userCity, group, authorName } = body;
       if (!postText || !postText.trim()) return err(400, 'INVALID_INPUT', 'postText is required');
+
+      // Author-level competitor memory: if this person was already flagged a competitor
+      // (from their bio or a prior post), treat ALL their posts as competitor — even a
+      // truncated feed preview that reads like a buyer.
+      if (authorName && authorName.trim()) {
+        try {
+          const mem = (await dynamo.send(new GetCommand({
+            TableName: TABLE_NAME,
+            Key: { PK: `USER#${userId}`, SK: `MEMORY#${memoryKey(authorName)}` },
+          })))?.Item;
+          const knownCompetitor = mem && Array.isArray(mem.interactions) && mem.interactions.some((i) => i.kind === 'competitor');
+          if (knownCompetitor) {
+            return ok({
+              result: {
+                score: 3,
+                classification: 'competitor',
+                urgency: 'not_a_lead',
+                isLead: false,
+                isCompetitor: true,
+                reason: 'This person is a known competitor promoting their own service — not a customer.',
+                factors: [{ label: 'Known competitor', points: 3 }],
+                suggestedResponse: '',
+                followUpDays: 0,
+                estimatedValue: 0,
+              },
+            });
+          }
+        } catch (e) { /* fall through to AI scoring */ }
+      }
 
       const learnedContext = await getLearnedContext(userId);
       let result;

@@ -8,6 +8,7 @@ import { useMode } from '../contexts/ModeContext';
 import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
 import type { SocialPlatform, ScheduledPost, Trade } from '@social-lead-gen/shared';
 import FlockGroupManager from '../components/FlockGroupManager';
+import OneScreenComposer from '../components/OneScreenComposer';
 
 const TONES = ['professional', 'casual', 'educational', 'urgent'] as const;
 
@@ -33,6 +34,8 @@ export default function ContentCreatorPage() {
     try { return new Set(JSON.parse(localStorage.getItem('hawkeye_personal_cues') || '[]')); } catch { return new Set(); }
   });
   const [createMode, setCreateMode] = useState<'ai' | 'own'>('own');
+  // One-screen composer mode (write / ai_draft / ideas)
+  const [composeMode, setComposeMode] = useState<'write' | 'ai_draft' | 'ideas'>('ai_draft');
   const [ownContent, setOwnContent] = useState(() => localStorage.getItem('hawkeye_draft_ownContent') || '');
   const [showIdeas, setShowIdeas] = useState(false);
   const [ideas, setIdeas] = useState<{ hook: string; idea: string; starter: string }[]>([]);
@@ -197,15 +200,16 @@ export default function ContentCreatorPage() {
     } catch { /* best-effort */ }
   }
 
-  async function generateAiPhoto() {
-    if (!aiPhotoPrompt.trim()) { showToast('Describe the photo you want'); return; }
+  async function generateAiPhoto(promptOverride?: string) {
+    const prompt = (promptOverride ?? aiPhotoPrompt).trim();
+    if (!prompt) { showToast('Describe the photo you want'); return; }
     setAiPhotoLoading(true);
     setAiPhotoUrl(null);
     try {
       const token = await getToken();
       const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
       const res = await client.request<{ url?: string; dataUrl?: string }>('POST', '/content/generate-image', {
-        prompt: aiPhotoPrompt.trim(),
+        prompt,
         tradeName: selectedTrade?.name || '',
         style: aiPhotoStyle,
       });
@@ -270,6 +274,54 @@ export default function ContentCreatorPage() {
       setLoading(false);
     }
   };
+
+  // ── One-screen composer glue ───────────────────────────────────────────────
+  // Unified single input: maps to ownContent (write) or baseText (ai_draft/ideas).
+  const composerValue = composeMode === 'write' ? ownContent : baseText;
+  const setComposerValue = (v: string) => {
+    if (composeMode === 'write') { setOwnContent(v); localStorage.setItem('hawkeye_draft_ownContent', v); }
+    else { setBaseText(v); localStorage.setItem('hawkeye_draft_baseText', v); }
+  };
+
+  // Primary action from the one-screen composer.
+  async function handleComposerPrimary() {
+    setError('');
+    if (composeMode === 'write') {
+      const text = ownContent.trim();
+      if (!text) { setError('Write your post first'); return; }
+      const content: Record<string, string> = {};
+      for (const p of platforms) content[p] = text;
+      setShowCreator(true);
+      setPlatformContent(content);
+      window.dispatchEvent(new CustomEvent('hawkeye-post-preview', { detail: { content, imagePreview } }));
+      localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
+      setShowHawkSwoop(true);
+      setTimeout(() => setShowHawkSwoop(false), 1400);
+      showToast('✓ Ready to preview');
+      return;
+    }
+    // ai_draft: default a post type so generation isn't blocked, then generate.
+    if (!postType) setPostType('Educational');
+    await handleGenerate();
+  }
+
+  // "Improve with AI": run the user's written text through generation as base text.
+  async function handleImproveWithAI() {
+    if (!ownContent.trim()) return;
+    setBaseText(ownContent.trim());
+    if (!postType) setPostType('Educational');
+    await handleGenerate();
+  }
+
+  // Create AI Image from the composer — seeds the AI photo prompt with the intent.
+  function handleCreateAiImageFromComposer() {
+    const seed = (composeMode === 'write' ? ownContent : baseText).trim();
+    setAiPhotoPrompt(seed);
+    setShowAiPhoto(true);
+    // Generate immediately if we have a description; otherwise reveal the field.
+    if (seed) { generateAiPhoto(seed); }
+    else { showToast('Type what the photo should show, then tap Create AI Image'); }
+  }
 
   // Fetch today's posts from API
   useEffect(() => {
@@ -383,8 +435,9 @@ export default function ContentCreatorPage() {
       </button>
 
       {showCreator && (
-      <div className="space-y-6">
-      {/* Post Idea Generator — for when you're stuck */}
+      <div className="space-y-4">
+      {/* Legacy Post Idea Generator (replaced by the one-screen composer) */}
+      {false && (
       <div className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-blue-500/10 overflow-hidden">
         <button onClick={() => { setShowIdeas(!showIdeas); if (!showIdeas && ideas.length === 0) fetchIdeas(); }} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5">
           <div className="flex items-center gap-2">
@@ -450,9 +503,10 @@ export default function ContentCreatorPage() {
           </div>
         )}
       </div>
+      )}
 
-      {/* AI Photo Generator — Pro only */}
-      {isPro && (
+      {/* Legacy AI Photo Generator card (replaced by composer's Create AI Image) */}
+      {false && isPro && (
       <div className="rounded-xl border border-pink-500/30 bg-gradient-to-br from-pink-500/10 to-purple-500/10 overflow-hidden">
         <button onClick={() => setShowAiPhoto(!showAiPhoto)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5">
           <div className="flex items-center gap-2">
@@ -483,17 +537,17 @@ export default function ContentCreatorPage() {
                 <button key={s.id} onClick={() => setAiPhotoStyle(s.id)} className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all ${aiPhotoStyle === s.id ? 'bg-pink-500 text-white' : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'}`}>{s.label}</button>
               ))}
             </div>
-            <button onClick={generateAiPhoto} disabled={aiPhotoLoading} className="w-full py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold rounded-lg disabled:opacity-50 hover:opacity-90">
+            <button onClick={() => generateAiPhoto()} disabled={aiPhotoLoading} className="w-full py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold rounded-lg disabled:opacity-50 hover:opacity-90">
               {aiPhotoLoading ? '🎨 Creating your photo…' : '✨ Generate Photo'}
             </button>
 
             {aiPhotoUrl && (
               <div className="space-y-2">
-                <img src={aiPhotoUrl} alt="AI generated" className="w-full rounded-lg border border-white/10" />
+                <img src={aiPhotoUrl || ''} alt="AI generated" className="w-full rounded-lg border border-white/10" />
                 <button onClick={copyImageToClipboard} className="w-full py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold rounded-lg hover:opacity-90">📸 Copy Image (paste into your post)</button>
                 <div className="flex gap-2">
-                  <a href={aiPhotoUrl} download="hawkeye-ai-photo.png" target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">⬇ Download</a>
-                  <button onClick={generateAiPhoto} className="flex-1 py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">🔄 Regenerate</button>
+                  <a href={aiPhotoUrl || '#'} download="hawkeye-ai-photo.png" target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">⬇ Download</a>
+                  <button onClick={() => generateAiPhoto()} className="flex-1 py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">🔄 Regenerate</button>
                 </div>
                 <p className="text-[10px] text-slate-500 text-center">💡 On desktop: Copy Image, then paste it right into the Facebook composer after your text. On phone: it saves so you can attach it.</p>
               </div>
@@ -503,27 +557,58 @@ export default function ContentCreatorPage() {
       </div>
       )}
 
-      {/* Mode Toggle */}
-      <div className="flex gap-2 bg-slate-700/60 border-2 border-amber-500 rounded-xl p-2 shadow-xl shadow-amber-500/10">
-        <button
-          onClick={() => setCreateMode('own')}
-          className={`flex-1 px-4 py-3.5 rounded-lg text-base font-bold transition-all duration-200 ${
-            createMode === 'own' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/40 scale-[1.02]' : 'text-white bg-slate-500/90 hover:bg-slate-400 border border-white/30'
-          }`}
-        >
-          ✍️ Write My Own
-        </button>
-        <button
-          onClick={() => setCreateMode('ai')}
-          className={`flex-1 px-4 py-3.5 rounded-lg text-base font-bold transition-all duration-200 ${
-            createMode === 'ai' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 scale-[1.02]' : 'text-white bg-slate-500/90 hover:bg-slate-400 border border-white/30'
-          }`}
-        >
-          ✨ AI Generate
-        </button>
-      </div>
+      {/* One-screen composer */}
+      <OneScreenComposer
+        mode={composeMode}
+        setMode={setComposeMode}
+        value={composerValue}
+        setValue={setComposerValue}
+        readyImageSrc={readyImageSrc}
+        onAddPhoto={(file) => { setImageFile(file); setImagePreview(URL.createObjectURL(file)); setAiPhotoUrl(null); }}
+        onCreateAiImage={handleCreateAiImageFromComposer}
+        onRemoveImage={() => { setImageFile(null); setImagePreview(null); setAiPhotoUrl(null); }}
+        canUseAiImage={isPro}
+        platforms={platforms}
+        togglePlatform={togglePlatform}
+        onPrimary={handleComposerPrimary}
+        onImproveWithAI={handleImproveWithAI}
+        onGetIdeas={() => { setShowIdeas(true); if (ideas.length === 0) fetchIdeas(); }}
+        loading={loading || aiPhotoLoading}
+        error={error}
+      />
 
-      {createMode === 'ai' && (
+      {/* Ideas panel — shown in Get Ideas mode */}
+      {composeMode === 'ideas' && showIdeas && ideas.length > 0 && (
+        <div className="glass-card space-y-2 max-h-72 overflow-y-auto">
+          {ideas.map((idea, i) => (
+            <div key={i} className="p-3 bg-slate-800/80 border border-white/10 rounded-lg">
+              <p className="text-xs font-bold text-purple-300">{idea.hook}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{idea.idea}</p>
+              <p className="text-[11px] text-slate-200 mt-1.5 italic">"{idea.starter}"</p>
+              <button
+                onClick={() => { setComposeMode('write'); setOwnContent(idea.starter); localStorage.setItem('hawkeye_draft_ownContent', idea.starter); showToast('✓ Idea loaded — build on it!'); }}
+                className="mt-2 px-3 py-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-lg text-[11px] font-bold hover:bg-amber-500/30"
+              >
+                ✍️ Use this idea
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* AI photo result — shown after Create AI Image */}
+      {aiPhotoUrl && (
+        <div className="glass-card space-y-2">
+          <img src={aiPhotoUrl || ''} alt="AI generated" className="w-full rounded-lg border border-white/10" />
+          <div className="flex gap-2">
+            <button onClick={copyImageToClipboard} className="flex-1 py-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold rounded-lg hover:opacity-90">📸 Copy Image</button>
+            <a href={aiPhotoUrl || '#'} download="hawkeye-ai-photo.png" className="flex-1 text-center py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">⬇ Download</a>
+            <button onClick={() => generateAiPhoto()} className="flex-1 py-2 bg-white/5 border border-white/10 text-white text-xs font-bold rounded-lg hover:bg-white/10">🔄 Regenerate</button>
+          </div>
+        </div>
+      )}
+
+      {false && createMode === 'ai' && (
       <>
       <div className="glass-card">
         <label className="block text-sm font-medium text-slate-300 mb-2">Tone</label>
@@ -572,7 +657,7 @@ export default function ContentCreatorPage() {
           className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
         >
           <option value="">Select post type...</option>
-          {currentTrade.postTypes.map((pt) => (
+          {(currentTrade?.postTypes || []).map((pt) => (
             <option key={pt} value={pt}>{pt}</option>
           ))}
         </select>
@@ -642,7 +727,7 @@ export default function ContentCreatorPage() {
           </label>
           {imagePreview && (
             <div className="relative">
-              <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
+              <img src={imagePreview || ''} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
               <button
                 onClick={() => { setImageFile(null); setImagePreview(null); }}
                 className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center"
@@ -697,7 +782,7 @@ export default function ContentCreatorPage() {
       </>
       )}
 
-      {createMode === 'own' && (
+      {false && createMode === 'own' && (
       <>
       {/* Write your own - all in one card */}
       <div className="glass-card space-y-4">
@@ -792,7 +877,7 @@ export default function ContentCreatorPage() {
           </label>
           {imagePreview && (
             <div className="relative">
-              <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
+              <img src={imagePreview || ''} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
               <button
                 onClick={() => { setImageFile(null); setImagePreview(null); }}
                 className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center"
@@ -1560,3 +1645,4 @@ export default function ContentCreatorPage() {
     </div>
   );
 }
+

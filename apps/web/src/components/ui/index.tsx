@@ -130,28 +130,33 @@ export function PrimaryButton({ children, onClick, disabled, className = '' }: {
 
 // ─── Hero header ──────────────────────────────────────────────────────────────
 // The big title band over the dark hawk-eye photo (the "Sales" header look).
-export function HeroHeader({ title, subtitle, right }: {
+export function HeroHeader({ title, subtitle, right, image }: {
   title: string;
   subtitle?: string;
   right?: ReactNode;
+  image?: string; // optional hawk-eye photo URL; falls back to an amber eye glow
 }) {
+  const bg = image
+    ? `linear-gradient(90deg, rgba(10,15,25,0.96) 0%, rgba(10,15,25,0.75) 45%, rgba(10,15,25,0.25) 100%), url(${image})`
+    : 'radial-gradient(90% 160% at 92% 30%, rgba(245,158,11,0.35) 0%, rgba(245,158,11,0.10) 28%, rgba(15,23,42,0.0) 55%), linear-gradient(135deg, #0b1220 0%, #0f172a 55%, #0a0f19 100%)';
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border border-white/10 px-5 py-6 mb-1"
-      style={{
-        background:
-          'radial-gradient(120% 140% at 85% 20%, rgba(245,158,11,0.25) 0%, rgba(245,158,11,0.06) 30%, rgba(15,23,42,0.0) 55%), linear-gradient(135deg, #0b1220 0%, #0f172a 60%, #111827 100%)',
-      }}
+      className="relative overflow-hidden rounded-2xl border border-white/10 px-5 py-7 mb-1"
+      style={{ background: bg, backgroundSize: 'cover', backgroundPosition: 'right center' }}
     >
-      {/* Amber "eye" glow accent, evoking the hawk-eye photo */}
-      <div
-        className="pointer-events-none absolute -right-6 -top-8 h-40 w-40 rounded-full opacity-40 blur-2xl"
-        style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.6) 0%, rgba(245,158,11,0) 70%)' }}
-      />
+      {!image && (
+        <>
+          {/* Amber "eye" evoking the hawk photo */}
+          <div className="pointer-events-none absolute right-10 top-1/2 -translate-y-1/2 h-16 w-16 rounded-full opacity-80 blur-[2px]"
+            style={{ background: 'radial-gradient(circle at 50% 50%, #fde68a 0%, #f59e0b 28%, #7c2d12 60%, #1a0a02 85%)' }} />
+          <div className="pointer-events-none absolute -right-4 -top-10 h-48 w-48 rounded-full opacity-30 blur-3xl"
+            style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.7) 0%, rgba(245,158,11,0) 70%)' }} />
+        </>
+      )}
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight tracking-tight">{title}</h2>
-          {subtitle && <p className="text-xs sm:text-sm text-slate-300/80 mt-1">{subtitle}</p>}
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight drop-shadow">{title}</h2>
+          {subtitle && <p className="text-xs sm:text-sm text-slate-200/80 mt-1">{subtitle}</p>}
         </div>
         {right && <div className="shrink-0">{right}</div>}
       </div>
@@ -327,6 +332,96 @@ export function BoldStat({ icon, label, value, trend }: {
           {trend.dir === 'up' ? '▲' : '▼'} {trend.text}
         </p>
       )}
+    </div>
+  );
+}
+
+// ─── Light stat tile (white card w/ green trend) ──────────────────────────────
+export function LightStat({ icon, label, value, trend }: {
+  icon: string;
+  label: string;
+  value: string | number;
+  trend?: { dir: 'up' | 'down'; text: string };
+}) {
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-lg">
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-full bg-amber-400 text-black flex items-center justify-center text-lg font-black shrink-0">{icon}</div>
+        <div className="min-w-0">
+          <p className="text-xl font-extrabold text-slate-900 leading-none truncate">{value}</p>
+          <p className="text-[11px] text-slate-500 mt-1">{label}</p>
+        </div>
+      </div>
+      {trend && (
+        <p className={`text-[11px] font-bold mt-2 ${trend.dir === 'up' ? 'text-emerald-600' : 'text-red-500'}`}>
+          {trend.dir === 'up' ? '▲' : '▼'} {trend.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Segmented control (Folios / Quarter / Month / Annual) ─────────────────────
+export function Segmented<T extends string>({ options, value, onChange }: {
+  options: { id: T; label: string }[];
+  value: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div className="inline-flex bg-black/40 border border-white/10 rounded-xl p-1">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          onClick={() => onChange(o.id)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            value === o.id ? 'bg-amber-500 text-black' : 'text-slate-300 hover:text-white'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Combo chart: bars + connecting line with dots (the "Sales Over Time" look) ─
+export function ComboChart({ points, height = 180 }: {
+  points: { label: string; bar: number; line: number }[];
+  height?: number;
+}) {
+  if (points.length === 0) return null;
+  const maxBar = Math.max(1, ...points.map((p) => p.bar));
+  const maxLine = Math.max(1, ...points.map((p) => p.line));
+  const w = 100;
+  const padBottom = 16;
+  const plotH = height - padBottom;
+  const step = w / points.length;
+  const lineCoords = points.map((p, i) => ({
+    x: i * step + step / 2,
+    y: plotH - (p.line / maxLine) * (plotH - 8) - 2,
+  }));
+  const linePath = lineCoords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
+  return (
+    <div>
+      <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }}>
+        {/* bars */}
+        {points.map((p, i) => {
+          const bh = (p.bar / maxBar) * (plotH - 8);
+          const bw = step * 0.5;
+          const bx = i * step + (step - bw) / 2;
+          return <rect key={i} x={bx} y={plotH - bh} width={bw} height={bh} rx="0.6" fill="#f59e0b" opacity="0.55" />;
+        })}
+        {/* connecting line */}
+        <path d={linePath} fill="none" stroke="#fbbf24" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+        {lineCoords.map((c, i) => (
+          <circle key={i} cx={c.x} cy={c.y} r="1.5" fill="#fbbf24" vectorEffect="non-scaling-stroke" />
+        ))}
+      </svg>
+      <div className="flex justify-between mt-1">
+        {points.map((p, i) => (
+          <span key={i} className="text-[10px] text-slate-400 flex-1 text-center">{p.label}</span>
+        ))}
+      </div>
     </div>
   );
 }

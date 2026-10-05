@@ -161,6 +161,37 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-950">
       <HawkAnimations />
+
+      {/* Desktop sidebar — black with yellow active state. Hidden on mobile (bottom tabs stay). */}
+      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-60 flex-col bg-black border-r border-white/10 z-40">
+        <div className="px-5 py-5 border-b border-white/10">
+          <span className="text-lg font-extrabold tracking-wider uppercase text-white">HAWKEYE<span className="text-amber-400">-CUE</span></span>
+        </div>
+        <nav className="flex-1 overflow-y-auto py-3">
+          {[...navItems, ...visibleMoreItems].map((item: any) => {
+            const activeNav = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-5 py-2.5 text-sm font-semibold transition-all border-l-4 ${
+                  activeNav
+                    ? 'bg-amber-500/15 border-amber-400 text-amber-300'
+                    : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span className="text-lg w-5 text-center">{item.icon}</span>
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="px-5 py-4 border-t border-white/10">
+          <Link to="/profile" className="block text-xs text-slate-400 hover:text-white truncate">{user?.email}</Link>
+          <button onClick={logout} className="mt-1 text-xs text-slate-500 hover:text-red-400">Logout</button>
+        </div>
+      </aside>
+
       {showTour && <GuidedTour onComplete={handleTourComplete} />}
       {!showTour && showEditionOnboarding && (
         <EditionOnboarding onDone={() => setShowEditionOnboarding(false)} />
@@ -173,8 +204,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         }} />
       )}
 
-      {/* Top Bar — bright glassmorphism */}
-      <header className="sticky top-0 z-40 border-b border-white/20 px-3 sm:px-4 py-3 flex flex-col items-center gap-1" style={{ background: 'rgba(30, 41, 59, 0.95)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+      {/* Top Bar — bright glassmorphism. Hidden on desktop (sidebar handles branding/profile). */}
+      <header className="lg:hidden sticky top-0 z-40 border-b border-white/20 px-3 sm:px-4 py-3 flex flex-col items-center gap-1" style={{ background: 'rgba(30, 41, 59, 0.95)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-wider uppercase gradient-text">HawkEye-Cue</h1>
         <div className="flex items-center gap-3">
           {/* Mode pill — quick way to find the Guided/Pro toggle */}
@@ -235,14 +266,47 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main key={location.pathname} className="p-3 sm:p-4 max-w-4xl mx-auto w-full page-enter relative z-10 bg-slate-950" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
+      {/* Desktop Sidebar — black, logo + vertical nav, amber active item. lg+ only. */}
+      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-60 flex-col border-r border-white/10 bg-black z-40">
+        <div className="px-5 py-5 flex items-center gap-2 border-b border-white/5">
+          <span className="text-2xl">🦅</span>
+          <span className="text-lg font-extrabold tracking-wide text-white uppercase">HawkEye<span className="text-amber-400">-Cue</span></span>
+        </div>
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+          {[...navItems, ...visibleMoreItems].map((item) => {
+            const activeNav = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  activeNav
+                    ? 'bg-amber-500 text-black font-bold shadow shadow-amber-500/20'
+                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <span className="text-lg w-5 text-center">{item.icon}</span>
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="px-3 py-3 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-400 truncate max-w-[9rem]" title={user?.email}>{user?.email}</span>
+            <button onClick={logout} className="text-[11px] text-slate-400 hover:text-red-400">Logout</button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content — shifts right of the sidebar on desktop */}
+      <main key={location.pathname} className="p-3 sm:p-4 lg:p-6 max-w-4xl lg:max-w-5xl mx-auto lg:ml-60 w-full page-enter relative z-10 bg-slate-950" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
         {children}
       </main>
 
-      {/* Bottom Navigation — glassmorphism */}
+      {/* Bottom Navigation — mobile only (desktop uses the sidebar) */}
       <nav
-        className="fixed bottom-0 left-0 right-0 border-t border-white/10 px-1 sm:px-2 pt-2 sm:pt-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around sm:justify-center sm:gap-1 z-50"
+        className="lg:hidden fixed bottom-0 left-0 right-0 border-t border-white/10 px-1 sm:px-2 pt-2 sm:pt-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around sm:justify-center sm:gap-1 z-50"
         style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
       >
         {navItems.map((item) => (

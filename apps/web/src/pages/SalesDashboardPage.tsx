@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity } from '@social-lead-gen/shared';
-import { HeroHeader, StatCard, StatGrid, SectionCard, DataBar, DonutChart, LineChart, BAR_COLORS } from '../components/ui';
+import { HeroHeader, PillTabs, BoldStat, Panel, StatGrid, DataBar, DonutChart, LineChart, BAR_COLORS } from '../components/ui';
 
 // A clean, on-brand Sales dashboard driven by real lead/client data.
 // "Converted" leads = clients = sales. Value comes from each lead's expectedPremium.
@@ -47,6 +47,7 @@ export default function SalesDashboardPage() {
   const navigate = useNavigate();
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'overview' | 'source' | 'products'>('overview');
 
   useEffect(() => {
     (async () => {
@@ -129,6 +130,17 @@ export default function SalesDashboardPage() {
   return (
     <div className="space-y-4 pb-8">
       <HeroHeader title="Sales" subtitle="Turn your social media into real revenue." />
+      {m.dealsWon > 0 && (
+        <PillTabs
+          active={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'overview', label: 'Overview' },
+            { id: 'source', label: 'Sales by Source' },
+            { id: 'products', label: 'Products/Services' },
+          ]}
+        />
+      )}
 
       {m.dealsWon === 0 ? (
         <div className="glass-card text-center py-10">
@@ -139,33 +151,35 @@ export default function SalesDashboardPage() {
         </div>
       ) : (
         <>
-          {/* Stat cards */}
+          {/* Stat cards — bold black/white/yellow, always visible */}
           <StatGrid cols={4}>
-            <StatCard icon="$" label="Total Sales" value={money(m.totalSales)} accent="green" />
-            <StatCard icon="📄" label="Deals Won" value={m.dealsWon} accent="amber" />
-            <StatCard icon="🏷️" label="Avg Deal Value" value={money(m.avgDeal)} accent="sky" />
-            <StatCard icon="📈" label="Win Rate" value={m.winRate + '%'} accent="purple" />
+            <BoldStat icon="$" label="Total Sales" value={money(m.totalSales)} />
+            <BoldStat icon="📄" label="Deals Won" value={m.dealsWon} />
+            <BoldStat icon="🏷️" label="Avg Deal Value" value={money(m.avgDeal)} />
+            <BoldStat icon="📈" label="Win Rate" value={m.winRate + '%'} />
           </StatGrid>
 
-          {/* Sales over time — line chart */}
-          <SectionCard title="Sales Over Time">
-            <LineChart points={m.timeline.map((t) => ({ label: t.label, value: t.revenue }))} />
-          </SectionCard>
+          {/* Overview tab */}
+          {tab === 'overview' && (
+            <Panel title="Sales Over Time">
+              <LineChart points={m.timeline.map((t) => ({ label: t.label, value: t.revenue }))} />
+            </Panel>
+          )}
 
           {/* Sales by source — donut chart */}
-          {m.bySource.length > 0 && (
-            <SectionCard title="Sales by Source">
+          {tab === 'source' && m.bySource.length > 0 && (
+            <Panel title="Sales by Source">
               <DonutChart
                 centerValue={money(m.totalSales)}
                 centerLabel="Total Sales"
                 data={m.bySource.map((s, i) => ({ label: s.label, value: s.revenue, color: BAR_COLORS[i % BAR_COLORS.length] }))}
               />
-            </SectionCard>
+            </Panel>
           )}
 
           {/* Top products / services */}
-          {m.topProducts.length > 0 && m.topProducts.some((p) => p.label !== 'Other') && (
-            <SectionCard title="Top Products / Services">
+          {tab === 'products' && m.topProducts.length > 0 && m.topProducts.some((p) => p.label !== 'Other') && (
+            <Panel title="Top Products / Services">
               <div className="space-y-1.5">
                 {m.topProducts.map((p, i) => (
                   <div key={p.label} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
@@ -174,17 +188,17 @@ export default function SalesDashboardPage() {
                   </div>
                 ))}
               </div>
-            </SectionCard>
+            </Panel>
           )}
 
           {/* Pipeline by stage */}
-          <SectionCard title="Pipeline by Stage">
+          <Panel title="Pipeline by Stage">
             <div className="space-y-2.5">
               <DataBar label="New" value={m.stage.new} max={maxStage} color="#38bdf8" />
               <DataBar label="Followed Up" value={m.stage.followed_up} max={maxStage} color="#fbbf24" />
               <DataBar label="Clients (Won)" value={m.stage.converted} max={maxStage} color="#34d399" />
             </div>
-          </SectionCard>
+          </Panel>
 
           <p className="text-center text-[11px] text-slate-500">Updates automatically as you convert leads to Clients in your Pipeline.</p>
         </>
@@ -192,5 +206,6 @@ export default function SalesDashboardPage() {
     </div>
   );
 }
+
 
 

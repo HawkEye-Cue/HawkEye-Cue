@@ -47,11 +47,11 @@ export function StatCard({ icon, label, value, accent = 'amber', sub }: {
 }) {
   const accentCls = ACCENTS[accent] || 'text-amber-300';
   return (
-    <div className="glass-card flex items-center gap-3 py-3">
-      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg shrink-0">{icon}</div>
+    <div className="panel flex items-center gap-3 py-3">
+      <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">{icon}</div>
       <div className="min-w-0">
-        <p className={`text-lg font-bold ${accentCls} leading-tight truncate`}>{value}</p>
-        <p className="text-[11px] text-slate-400">{label}</p>
+        <p className={`text-xl font-extrabold ${accentCls} leading-tight truncate`}>{value}</p>
+        <p className="text-[11px] text-slate-400 font-medium">{label}</p>
         {sub && <p className="text-[10px] text-slate-500 mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -73,10 +73,10 @@ export function SectionCard({ title, right, children, className = '' }: {
   className?: string;
 }) {
   return (
-    <div className={`glass-card ${className}`}>
+    <div className={`panel ${className}`}>
       {(title || right) && (
         <div className="flex items-center justify-between mb-3">
-          {title && <h3 className="text-sm font-semibold text-white">{title}</h3>}
+          {title && <h3 className="text-sm font-bold text-white uppercase tracking-wide">{title}</h3>}
           {right}
         </div>
       )}
@@ -280,6 +280,53 @@ export function LineChart({ points, height = 120, color = '#f59e0b' }: {
           <span key={i} className="text-[10px] text-slate-400">{p.label}</span>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Black panel (in-your-face black/white/yellow look) ──────────────────────
+// Pure black card with a thin border — replaces the grey glass-card on the
+// dashboard pages for the bold black/white/yellow aesthetic.
+export function Panel({ title, right, children, className = '' }: {
+  title?: string;
+  right?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-2xl border border-white/10 bg-black p-4 shadow-xl shadow-black/40 ${className}`}>
+      {(title || right) && (
+        <div className="flex items-center justify-between mb-3">
+          {title && <h3 className="text-sm font-bold text-white uppercase tracking-wide">{title}</h3>}
+          {right}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+// Bold stat card — black panel, big white number, yellow icon chip, optional trend.
+export function BoldStat({ icon, label, value, trend }: {
+  icon: string;
+  label: string;
+  value: string | number;
+  trend?: { dir: 'up' | 'down'; text: string };
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black p-4 shadow-xl shadow-black/40">
+      <div className="flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl bg-amber-500 text-black flex items-center justify-center text-lg font-black shrink-0">{icon}</div>
+        <div className="min-w-0">
+          <p className="text-2xl font-extrabold text-white leading-none truncate">{value}</p>
+          <p className="text-[11px] text-slate-400 mt-1 uppercase tracking-wide">{label}</p>
+        </div>
+      </div>
+      {trend && (
+        <p className={`text-[11px] font-bold mt-2 ${trend.dir === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>
+          {trend.dir === 'up' ? '▲' : '▼'} {trend.text}
+        </p>
+      )}
     </div>
   );
 }

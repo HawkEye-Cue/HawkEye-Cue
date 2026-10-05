@@ -64,6 +64,18 @@ body::after {
     -webkit-backdrop-filter: blur(12px);
   }
 
+  /* Bold black/white/yellow panel — the "in your face" dashboard look. */
+  .panel {
+    @apply rounded-2xl p-4;
+    background: #0a0a0a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  }
+  .panel-amber {
+    border-color: rgba(245, 158, 11, 0.35);
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.1), 0 8px 24px rgba(245, 158, 11, 0.06);
+  }
+
   .glass-card-strong {
     @apply rounded-xl border border-white/25 p-6;
     background: rgb(51, 65, 85);

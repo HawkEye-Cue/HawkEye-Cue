@@ -20,7 +20,7 @@ const growNavItems = [
   { path: '/', label: 'Today', icon: '🦅', tour: 'home' },
   { path: '/create', label: 'Create', icon: '✨', tour: 'create' },
   { path: '/pipeline', label: 'Pipeline', icon: '🎯', tour: 'leads' },
-  { path: '/hawk-insights', label: 'Insights', icon: '📊', tour: 'insights' },
+  { path: '/sales', label: 'Sales', icon: '💰', tour: 'sales' },
 ];
 
 // Discover edition — focused on finding & pushing opportunities to an external CRM.
@@ -38,6 +38,7 @@ const moreItems = [
   { path: '/network', label: 'Network', icon: '🤝', desc: 'Referral partners & appreciations' },
   { path: '/team', label: 'Summit (Team)', icon: '🏔️', desc: 'Team calendar, leads & leaderboard' },
   { path: '/dashboard', label: 'Full Dashboard', icon: '🗓️', desc: 'Calendar, engagement & everything at a glance' },
+  { path: '/hawk-insights', label: 'Insights', icon: '📊', desc: 'What is producing revenue & engagement' },
   { path: '/keywords', label: 'Keywords', icon: '🔑', desc: 'What HawkEye watches for' },
   { path: '/crm', label: 'CRM Connections', icon: '🔗', desc: 'Push leads to HubSpot, Zapier & more' },
   { path: '/settings', label: 'Settings', icon: '⚙️', desc: 'Trade, accounts, subscription & more' },

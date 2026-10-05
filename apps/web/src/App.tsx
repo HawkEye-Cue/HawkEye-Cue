@@ -18,6 +18,7 @@ import ContentCreatorPage from './pages/ContentCreatorPage';
 import CreatePage from './pages/CreatePage';
 import TeamPage from './pages/TeamPage';
 import HawkInsightsPage from './pages/HawkInsightsPage';
+import SalesDashboardPage from './pages/SalesDashboardPage';
 import NetworkPage from './pages/NetworkPage';
 import KeywordsPage from './pages/KeywordsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -92,7 +93,8 @@ export default function App() {
                 <Route path="/crm" element={<CrmPage />} />
                 {/* Legacy paths keep working — redirect into the combined tab (preserving query like ?newDeal=) */}
                 <Route path="/opportunities" element={<SalesRedirect />} />
-                <Route path="/sales" element={<SalesRedirect />} />
+                {/* Sales is now its own dashboard (not the old redirect to Deals). */}
+                <Route path="/sales" element={<SalesDashboardPage />} />
                 <Route path="/team" element={<TeamPage />} />
                 <Route path="/hawk-insights" element={<HawkInsightsPage />} />
                 <Route path="/network" element={<NetworkPage />} />

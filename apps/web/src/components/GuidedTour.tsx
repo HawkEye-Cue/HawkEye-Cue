@@ -27,10 +27,10 @@ const TOUR_STEPS: TourStep[] = [
     icon: '🎯',
   },
   {
-    selector: '[data-tour="insights"]',
-    title: 'Insights — What\'s making me money?',
-    description: 'What\'s producing revenue — deals, leads, and completion rates at a glance.',
-    icon: '📊',
+    selector: '[data-tour="sales"]',
+    title: 'Sales — What\'s making me money?',
+    description: 'Your sales at a glance — total revenue, deals won, win rate, and where your sales come from. Updates automatically as you convert leads to Clients.',
+    icon: '💰',
   },
   {
     selector: '[data-tour="more"]',

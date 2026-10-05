@@ -136,23 +136,16 @@ export function HeroHeader({ title, subtitle, right, image }: {
   right?: ReactNode;
   image?: string; // optional hawk-eye photo URL; falls back to an amber eye glow
 }) {
+  // When no image is passed, the hero is transparent so the page's hawk background
+  // shows straight through (just a soft dark scrim for text legibility).
   const bg = image
     ? `linear-gradient(90deg, rgba(10,15,25,0.96) 0%, rgba(10,15,25,0.75) 45%, rgba(10,15,25,0.25) 100%), url(${image})`
-    : 'radial-gradient(90% 160% at 92% 30%, rgba(245,158,11,0.35) 0%, rgba(245,158,11,0.10) 28%, rgba(15,23,42,0.0) 55%), linear-gradient(135deg, #0b1220 0%, #0f172a 55%, #0a0f19 100%)';
+    : 'linear-gradient(90deg, rgba(5,8,15,0.55) 0%, rgba(5,8,15,0.15) 60%, rgba(5,8,15,0.0) 100%)';
   return (
     <div
       className="relative overflow-hidden rounded-2xl border border-white/10 px-5 py-7 mb-1"
       style={{ background: bg, backgroundSize: 'cover', backgroundPosition: 'right center' }}
     >
-      {!image && (
-        <>
-          {/* Amber "eye" evoking the hawk photo */}
-          <div className="pointer-events-none absolute right-10 top-1/2 -translate-y-1/2 h-16 w-16 rounded-full opacity-80 blur-[2px]"
-            style={{ background: 'radial-gradient(circle at 50% 50%, #fde68a 0%, #f59e0b 28%, #7c2d12 60%, #1a0a02 85%)' }} />
-          <div className="pointer-events-none absolute -right-4 -top-10 h-48 w-48 rounded-full opacity-30 blur-3xl"
-            style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.7) 0%, rgba(245,158,11,0) 70%)' }} />
-        </>
-      )}
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight drop-shadow">{title}</h2>

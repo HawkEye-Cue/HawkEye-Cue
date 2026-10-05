@@ -138,7 +138,6 @@ export default function SalesDashboardPage() {
       <HeroHeader
         title="Sales"
         subtitle="Turn your social media into real revenue."
-        image="/hawk.jpg"
         right={<Segmented options={periodOptions} value={period} onChange={setPeriod} />}
       />
 

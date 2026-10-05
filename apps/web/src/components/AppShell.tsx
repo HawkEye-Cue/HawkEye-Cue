@@ -342,9 +342,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <div
         className="fixed inset-0 z-0 pointer-events-none"
         style={{
-          backgroundImage: 'linear-gradient(rgba(5,8,15,0.80), rgba(5,8,15,0.90)), url(/hawk.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: '30% 42%',
+          backgroundImage: 'linear-gradient(rgba(5,8,15,0.78), rgba(5,8,15,0.88)), url(/hawk.jpg)',
+          backgroundSize: '115% auto',
+          backgroundPosition: '20% 35%',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: '#05080f',
           backgroundAttachment: 'fixed',
         }}
       />

@@ -398,14 +398,14 @@
     showToast('🦅 Take Flight — auto-scrolling for leads');
     flightTimer = setInterval(function() {
       if (!flightMode) { stopFlight(); return; }
-      // Scroll down a viewport so new posts load, then let the observer/scan run.
-      window.scrollBy({ top: Math.round(window.innerHeight * 0.85), behavior: 'smooth' });
+      // Scroll down a full viewport with an instant jump (no slow animation), then scan.
+      window.scrollBy({ top: Math.round(window.innerHeight * 1.1), behavior: 'auto' });
       scanFeed();
       // If we hit the bottom, nudge back up a little so lazy-load keeps feeding.
       if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 200) {
         window.scrollBy({ top: -300, behavior: 'auto' });
       }
-    }, 3500);
+    }, 1500);
   }
 
   function stopFlight() {

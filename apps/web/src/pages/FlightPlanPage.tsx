@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { PageHeader } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useToast } from '../contexts/ToastContext';
@@ -119,10 +120,7 @@ export default function FlightPlanPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-8">
-      <div className="text-center">
-        <h2 className="text-xl font-bold text-white">🗺️ Your Flight Plan</h2>
-        <p className="text-xs text-slate-400">A ready-to-use system for {planTrade || selectedTrade?.name}</p>
-      </div>
+      <PageHeader icon="🗺️" title="Your Flight Plan" subtitle={`A ready-to-use system for ${planTrade || selectedTrade?.name || 'your trade'}`} />
 
       {/* Keywords + signals */}
       <Section icon="🔑" title="Keywords & Opportunity Signals">

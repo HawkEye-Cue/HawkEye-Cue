@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { PageHeader } from '../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
@@ -106,8 +107,7 @@ export default function KeywordsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-white">Keywords</h2>
-      <p className="text-sm text-slate-400">Track these keywords across social media to find leads</p>
+      <PageHeader icon="🔑" title="Keywords" subtitle="What HawkEye watches for across social media to find you leads." />
 
       {error && (
         <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">

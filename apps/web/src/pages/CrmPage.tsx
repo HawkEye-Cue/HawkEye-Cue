@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PageHeader } from '../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -113,10 +114,7 @@ export default function CrmPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-8">
-      <div>
-        <h2 className="text-xl font-bold text-white">🔗 CRM Connections</h2>
-        <p className="text-[11px] text-slate-400">Push the opportunities HawkEye finds straight into your CRM. We never post to social on your behalf.</p>
-      </div>
+      <PageHeader icon="🔗" title="CRM Connections" subtitle="Push the opportunities HawkEye finds straight into your CRM. We never post on your behalf." />
 
       {loading ? (
         <div className="glass-card text-center text-slate-400 text-sm py-8">Loading…</div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { PageHeader } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
@@ -311,8 +312,7 @@ export default function AppreciationsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-white">Appreciations</h2>
-      <p className="text-sm text-slate-400">Your social proof journal — track every recommendation and shoutout</p>
+      <PageHeader icon="🙏" title="Appreciations" subtitle="Your social proof journal — track every recommendation and shoutout." />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2">

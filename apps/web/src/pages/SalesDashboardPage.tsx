@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity } from '@social-lead-gen/shared';
+import { PageHeader, StatCard, StatGrid, SectionCard, DataBar, BAR_COLORS } from '../components/ui';
 
 // A clean, on-brand Sales dashboard driven by real lead/client data.
 // "Converted" leads = clients = sales. Value comes from each lead's expectedPremium.
@@ -127,13 +128,7 @@ export default function SalesDashboardPage() {
 
   return (
     <div className="space-y-4 pb-8">
-      {/* Header */}
-      <div className="flex items-end justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-white">💰 Sales</h2>
-          <p className="text-xs text-slate-400">Turn your social media into real revenue.</p>
-        </div>
-      </div>
+      <PageHeader icon="💰" title="Sales" subtitle="Turn your social media into real revenue." />
 
       {m.dealsWon === 0 ? (
         <div className="glass-card text-center py-10">
@@ -145,12 +140,12 @@ export default function SalesDashboardPage() {
       ) : (
         <>
           {/* Stat cards */}
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard icon="$" label="Total Sales" value={money(m.totalSales)} accent="text-emerald-300" />
-            <StatCard icon="📄" label="Deals Won" value={String(m.dealsWon)} accent="text-amber-300" />
-            <StatCard icon="🏷️" label="Avg Deal Value" value={money(m.avgDeal)} accent="text-sky-300" />
-            <StatCard icon="📈" label="Win Rate" value={m.winRate + '%'} accent="text-purple-300" />
-          </div>
+          <StatGrid cols={4}>
+            <StatCard icon="$" label="Total Sales" value={money(m.totalSales)} accent="green" />
+            <StatCard icon="📄" label="Deals Won" value={m.dealsWon} accent="amber" />
+            <StatCard icon="🏷️" label="Avg Deal Value" value={money(m.avgDeal)} accent="sky" />
+            <StatCard icon="📈" label="Win Rate" value={m.winRate + '%'} accent="purple" />
+          </StatGrid>
 
           {/* Sales over time */}
           <div className="glass-card">
@@ -213,14 +208,13 @@ export default function SalesDashboardPage() {
           )}
 
           {/* Pipeline by stage */}
-          <div className="glass-card">
-            <h3 className="text-sm font-semibold text-white mb-3">Pipeline by Stage</h3>
+          <SectionCard title="Pipeline by Stage">
             <div className="space-y-2.5">
-              <StageBar label="New" count={m.stage.new} max={maxStage} color="#38bdf8" />
-              <StageBar label="Followed Up" count={m.stage.followed_up} max={maxStage} color="#fbbf24" />
-              <StageBar label="Clients (Won)" count={m.stage.converted} max={maxStage} color="#34d399" />
+              <DataBar label="New" value={m.stage.new} max={maxStage} color="#38bdf8" />
+              <DataBar label="Followed Up" value={m.stage.followed_up} max={maxStage} color="#fbbf24" />
+              <DataBar label="Clients (Won)" value={m.stage.converted} max={maxStage} color="#34d399" />
             </div>
-          </div>
+          </SectionCard>
 
           <p className="text-center text-[11px] text-slate-500">Updates automatically as you convert leads to Clients in your Pipeline.</p>
         </>
@@ -229,28 +223,4 @@ export default function SalesDashboardPage() {
   );
 }
 
-function StatCard({ icon, label, value, accent }: { icon: string; label: string; value: string; accent: string }) {
-  return (
-    <div className="glass-card flex items-center gap-3 py-3">
-      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg shrink-0">{icon}</div>
-      <div className="min-w-0">
-        <p className={`text-lg font-bold ${accent} leading-tight`}>{value}</p>
-        <p className="text-[11px] text-slate-400">{label}</p>
-      </div>
-    </div>
-  );
-}
 
-function StageBar({ label, count, max, color }: { label: string; count: number; max: number; color: string }) {
-  return (
-    <div>
-      <div className="flex items-center justify-between text-xs mb-0.5">
-        <span className="text-slate-300">{label}</span>
-        <span className="text-slate-400">{count}</span>
-      </div>
-      <div className="h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${Math.round((count / max) * 100)}%`, background: color }} />
-      </div>
-    </div>
-  );
-}

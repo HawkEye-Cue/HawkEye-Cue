@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { PageHeader } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { ApiClient } from '@social-lead-gen/shared';
@@ -164,9 +165,8 @@ export default function HawkInsightsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="text-center">
-        <h2 className="text-xl font-bold text-white">📊 Eye</h2>
-        <p className="text-xs text-slate-400">What's making me money? <span className="text-slate-500">· Hawk Insights</span></p>
+      <PageHeader icon="📊" title="Insights" subtitle="What's making me money — where leads come from and what converts." />
+      <div>
         {!isPro && <p className="text-[10px] text-slate-600 mt-1">Showing the essentials · switch to Pro in Settings for deep analytics</p>}
       </div>
 

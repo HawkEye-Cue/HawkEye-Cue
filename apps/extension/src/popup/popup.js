@@ -164,12 +164,12 @@ async function refreshFlightButton() {
   if (flightMode) {
     flightBtn.textContent = '🛑 Stop Flight';
     flightBtn.classList.add('flying');
-    if (hint) hint.textContent = `In flight — ${flightLeadCount || 0} lead${(flightLeadCount || 0) !== 1 ? 's' : ''} saved so far. Keep the Facebook tab open; you can work elsewhere.`;
+    if (hint) hint.textContent = `In flight — ${flightLeadCount || 0} lead${(flightLeadCount || 0) !== 1 ? 's' : ''} saved so far. Keep Facebook visible in its own window (e.g. side-by-side or a 2nd monitor) and work in another window. If you minimize or fully hide it, scrolling pauses.`;
     if (statusText) statusText.textContent = 'In flight — auto-finding leads';
   } else {
     flightBtn.textContent = '🦅 Take Flight — auto-find leads';
     flightBtn.classList.remove('flying');
-    if (hint) hint.textContent = 'Auto-scrolls your Facebook feed and saves matching leads while you work. Keep the Facebook tab open.';
+    if (hint) hint.textContent = 'Auto-scrolls your Facebook feed and saves matching leads while you work. Keep Facebook visible in its own window (side-by-side or a 2nd monitor); if you minimize it, scrolling pauses.';
     if (statusText) statusText.textContent = 'Scanning active';
   }
 }

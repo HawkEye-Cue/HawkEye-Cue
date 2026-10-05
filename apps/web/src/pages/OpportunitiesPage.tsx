@@ -9,6 +9,7 @@ import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
 import LeadProfilePopup from '../components/LeadProfilePopup';
+import { PageHeader, StatCard, StatGrid } from '../components/ui';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import ProNudge from '../components/ProNudge';
@@ -679,20 +680,36 @@ export default function OpportunitiesPage() {
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {/* Left column */}
       <div className="min-w-0 space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold text-white">🎯 HawkSight</h2>
-          <p className="text-[11px] text-slate-400">Who should I contact?</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowRadar(true)} className="px-3 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-xl transition-all shadow-lg shadow-amber-500/30 active:scale-95 flex items-center gap-1" title="HawkEye Radar — score a post">
-            📡 Radar
-          </button>
-          <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95">
-            + Add Lead
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        icon="🎯"
+        title="HawkSight"
+        subtitle="Who should I contact?"
+        right={
+          <div className="flex gap-2">
+            <button onClick={() => setShowRadar(true)} className="px-3 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-xl transition-all shadow-lg shadow-amber-500/30 active:scale-95 flex items-center gap-1" title="HawkEye Radar — score a post">
+              📡 Radar
+            </button>
+            <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95">
+              + Add Lead
+            </button>
+          </div>
+        }
+      />
+
+      {/* Stat cards — the Sales vibe up top */}
+      <StatGrid cols={4}>
+        <StatCard icon="🆕" label="New" value={stats.new} accent="sky" />
+        <StatCard icon="📞" label="Followed Up" value={stats.followedUp} accent="amber" />
+        <StatCard icon="⭐" label="Clients" value={stats.converted} accent="green" />
+        <StatCard icon="💰" label="Pipeline Value" value={(() => {
+          const localLeadData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+          const total = leads.reduce((sum, l) => {
+            const prem = (l as any).expectedPremium || localLeadData[(l.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;
+            return sum + (Number(prem) || 0);
+          }, 0);
+          return total > 0 ? '$' + Math.round(total).toLocaleString() : '—';
+        })()} accent="purple" />
+      </StatGrid>
 
       {/* Add Lead Modal */}
       {showAddLead && (

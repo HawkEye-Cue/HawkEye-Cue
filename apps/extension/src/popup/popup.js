@@ -74,9 +74,10 @@ async function showDashboard() {
     ]);
     if (oppRes.ok) {
       const body = await oppRes.json();
-      // The endpoint returns { stats: { total, ... } }; support both shapes just in case.
-      const total = (body.stats && body.stats.total) ?? body.total ?? 0;
-      document.getElementById('leads-count').textContent = total;
+      const s = body.stats || body;
+      // Show NEW / unreviewed leads (actionable), not the lifetime total.
+      const newCount = s.new ?? s['new'] ?? 0;
+      document.getElementById('leads-count').textContent = newCount;
     }
     if (appRes.ok) {
       const appData = await appRes.json();
@@ -181,9 +182,10 @@ async function refreshLeadsCount() {
     const res = await fetch(`${API_BASE}/opportunities/stats`, { headers: { 'Authorization': `Bearer ${authToken}` } });
     if (res.ok) {
       const body = await res.json();
-      const total = (body.stats && body.stats.total) ?? body.total ?? 0;
+      const s = body.stats || body;
+      const newCount = s.new ?? s['new'] ?? 0;
       const el = document.getElementById('leads-count');
-      if (el) el.textContent = total;
+      if (el) el.textContent = newCount;
     }
   } catch { /* ignore */ }
 }

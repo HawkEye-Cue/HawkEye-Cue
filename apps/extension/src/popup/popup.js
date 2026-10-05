@@ -73,8 +73,10 @@ async function showDashboard() {
       fetch(`${API_BASE}/appreciations`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
     ]);
     if (oppRes.ok) {
-      const stats = await oppRes.json();
-      document.getElementById('leads-count').textContent = stats.total || 0;
+      const body = await oppRes.json();
+      // The endpoint returns { stats: { total, ... } }; support both shapes just in case.
+      const total = (body.stats && body.stats.total) ?? body.total ?? 0;
+      document.getElementById('leads-count').textContent = total;
     }
     if (appRes.ok) {
       const appData = await appRes.json();
@@ -171,9 +173,24 @@ async function refreshFlightButton() {
   }
 }
 
-// Keep the popup's flight count live while open.
+// Keep the popup's flight count + leads total live while open.
+async function refreshLeadsCount() {
+  const { authToken } = await chrome.storage.local.get(['authToken']);
+  if (!authToken) return;
+  try {
+    const res = await fetch(`${API_BASE}/opportunities/stats`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    if (res.ok) {
+      const body = await res.json();
+      const total = (body.stats && body.stats.total) ?? body.total ?? 0;
+      const el = document.getElementById('leads-count');
+      if (el) el.textContent = total;
+    }
+  } catch { /* ignore */ }
+}
+
 chrome.storage.onChanged.addListener(function(changes, area) {
-  if (area === 'local' && (changes.flightLeadCount || changes.flightMode)) refreshFlightButton();
+  if (area !== 'local') return;
+  if (changes.flightLeadCount || changes.flightMode) { refreshFlightButton(); refreshLeadsCount(); }
 });
 
 if (flightBtn) {

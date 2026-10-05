@@ -130,8 +130,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   // "More" menu (secondary navigation)
   const [showMore, setShowMore] = useState(false);
-  // Close the More sheet whenever the route changes
-  useEffect(() => { setShowMore(false); }, [location.pathname]);
+  // Desktop sidebar "More" (Hawk) popover
+  const [showDesktopMore, setShowDesktopMore] = useState(false);
+  // Close the More sheet (mobile + desktop) whenever the route changes
+  useEffect(() => { setShowMore(false); setShowDesktopMore(false); }, [location.pathname]);
 
   // Quick Add Lead state
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -272,8 +274,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <span className="text-2xl">🦅</span>
           <span className="text-lg font-extrabold tracking-wide text-white uppercase">HawkEye<span className="text-amber-400">-Cue</span></span>
         </div>
+        {/* Primary nav only — Today / Create / Pipeline / Sales. Everything else
+            lives under the Hawk menu at the bottom. */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-          {[...navItems, ...visibleMoreItems].map((item) => {
+          {navItems.map((item) => {
             const activeNav = location.pathname === item.path;
             return (
               <Link
@@ -291,11 +295,46 @@ export default function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div className="px-3 py-3 border-t border-white/5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-slate-400 truncate max-w-[9rem]" title={user?.email}>{user?.email}</span>
-            <button onClick={logout} className="text-[11px] text-slate-400 hover:text-red-400">Logout</button>
-          </div>
+
+        {/* Bottom — Hawk menu button (holds everything else) + logout */}
+        <div className="relative px-2 py-3 border-t border-white/5">
+          <button
+            onClick={() => setShowDesktopMore((s) => !s)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              visibleMoreItems.some((mi) => mi.path === location.pathname)
+                ? 'bg-amber-500 text-black font-bold'
+                : 'text-slate-300 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <span className="text-lg w-5 text-center">🦅</span>
+            <span className="truncate flex-1 text-left">More</span>
+            <span className="text-xs text-slate-500">{showDesktopMore ? '▾' : '▸'}</span>
+          </button>
+
+          {showDesktopMore && (
+            <div className="absolute left-2 right-2 bottom-16 bg-black border border-white/10 rounded-xl shadow-2xl shadow-black/60 p-1.5 max-h-80 overflow-y-auto z-50">
+              {visibleMoreItems.map((item) => {
+                const activeNav = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setShowDesktopMore(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      activeNav ? 'bg-amber-500 text-black font-bold' : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-lg w-5 text-center">{item.icon}</span>
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+              <div className="border-t border-white/10 mt-1 pt-1 px-3 py-2 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400 truncate max-w-[8rem]" title={user?.email}>{user?.email}</span>
+                <button onClick={logout} className="text-[11px] text-slate-400 hover:text-red-400">Logout</button>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 

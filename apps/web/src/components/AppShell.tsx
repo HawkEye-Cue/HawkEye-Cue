@@ -344,7 +344,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         style={{
           backgroundImage: 'linear-gradient(rgba(5,8,15,0.80), rgba(5,8,15,0.90)), url(/hawk.jpg)',
           backgroundSize: 'cover',
-          backgroundPosition: '75% 42%',
+          backgroundPosition: '30% 42%',
           backgroundAttachment: 'fixed',
         }}
       />

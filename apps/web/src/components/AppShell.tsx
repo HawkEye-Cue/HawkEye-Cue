@@ -338,8 +338,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      {/* Main Content — shifts right of the sidebar on desktop */}
-      <main key={location.pathname} className="p-3 sm:p-4 lg:p-6 max-w-4xl lg:max-w-5xl mx-auto lg:ml-60 w-full page-enter relative z-10 bg-slate-950" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
+      {/* Fixed hawk photo backdrop behind everything (dark-overlaid for readability) */}
+      <div
+        className="fixed inset-0 z-0 pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(5,8,15,0.82), rgba(5,8,15,0.92)), url(/hawk.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+        }}
+      />
+
+      {/* Main Content — shifts right of the sidebar on desktop. Transparent so the hawk shows through. */}
+      <main key={location.pathname} className="p-3 sm:p-4 lg:p-6 max-w-4xl lg:max-w-5xl mx-auto lg:ml-60 w-full page-enter relative z-10" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
         {children}
       </main>
 

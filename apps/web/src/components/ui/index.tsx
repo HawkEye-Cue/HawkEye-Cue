@@ -299,7 +299,7 @@ export function Panel({ title, right, children, className = '' }: {
   className?: string;
 }) {
   return (
-    <div className={`rounded-2xl border border-white/10 bg-black p-4 shadow-xl shadow-black/40 ${className}`}>
+    <div className={`rounded-2xl border border-white/10 bg-black/70 backdrop-blur-sm p-4 shadow-xl shadow-black/40 ${className}`}>
       {(title || right) && (
         <div className="flex items-center justify-between mb-3">
           {title && <h3 className="text-sm font-bold text-white uppercase tracking-wide">{title}</h3>}
@@ -319,7 +319,7 @@ export function BoldStat({ icon, label, value, trend }: {
   trend?: { dir: 'up' | 'down'; text: string };
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black p-4 shadow-xl shadow-black/40">
+    <div className="rounded-2xl border border-white/10 bg-black/70 backdrop-blur-sm p-4 shadow-xl shadow-black/40">
       <div className="flex items-start gap-3">
         <div className="w-11 h-11 rounded-xl bg-amber-500 text-black flex items-center justify-center text-lg font-black shrink-0">{icon}</div>
         <div className="min-w-0">

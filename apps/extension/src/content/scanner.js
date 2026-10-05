@@ -94,9 +94,10 @@
         if ((r.isCompetitor === true || r.classification === 'competitor') && scoreAuthor && scoreAuthor !== 'Unknown') {
           chrome.runtime.sendMessage({ type: 'SAVE_MEMORY', data: { personName: scoreAuthor, kind: 'competitor', note: 'Flagged as competitor', platform: platform } });
         }
-        const isCompetitor = r.isCompetitor === true || r.classification === 'competitor';
+        const isAdvertiser = r.classification === 'advertiser';
+        const isCompetitor = r.isCompetitor === true || r.classification === 'competitor' || isAdvertiser;
         const scoreColor = isCompetitor ? '#f472b6' : r.score >= 80 ? '#f87171' : r.score >= 50 ? '#fbbf24' : r.score >= 20 ? '#38bdf8' : '#64748b';
-        const urg = isCompetitor ? '🏢 COMPETITOR' : ({ now: '🔥 NOW', soon: '⚡ SOON', nurture: '🌱 NURTURE', not_a_lead: '🚫 NOT A LEAD' }[r.urgency] || '🌱 NURTURE');
+        const urg = isAdvertiser ? '📢 AD / SELLER' : isCompetitor ? '🏢 COMPETITOR' : ({ now: '🔥 NOW', soon: '⚡ SOON', nurture: '🌱 NURTURE', not_a_lead: '🚫 NOT A LEAD' }[r.urgency] || '🌱 NURTURE');
         let html = '<div style="display:flex;align-items:center;gap:10px;">';
         html += '<div style="width:44px;height:44px;border-radius:50%;border:4px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:16px;font-weight:800;color:' + scoreColor + ';">' + r.score + '</span></div>';
         html += '<div style="flex:1;min-width:0;"><span style="font-size:10px;font-weight:700;color:' + scoreColor + ';">' + urg + '</span>';
@@ -111,16 +112,30 @@
       });
     }
 
-    // Close button
-    document.getElementById('hawkeye-panel-close').addEventListener('click', function() { panel.remove(); });
+    // Close button — use mousedown + stopImmediatePropagation so Facebook's own
+    // event handling can't swallow the click (same reason the badge uses mousedown).
+    var closeBtn = document.getElementById('hawkeye-panel-close');
+    function closePanel() { if (panel && panel.parentNode) panel.remove(); document.removeEventListener('mousedown', closeOnOutside, true); }
+    if (closeBtn) {
+      closeBtn.style.padding = '4px 8px';
+      closeBtn.addEventListener('mousedown', function(e) {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        closePanel();
+      }, true);
+      // Belt-and-suspenders: also respond to click/touch.
+      closeBtn.addEventListener('click', function(e) { e.stopPropagation(); e.preventDefault(); closePanel(); }, true);
+      closeBtn.addEventListener('touchstart', function(e) { e.stopPropagation(); closePanel(); }, true);
+    }
 
-    // Close on outside click (after a brief delay so this click doesn't trigger it)
+    // Close on outside click (after a brief delay so this click doesn't trigger it).
+    function closeOnOutside(ev) {
+      if (!panel.contains(ev.target)) { closePanel(); }
+    }
     setTimeout(function() {
-      function closeOnOutside(ev) {
-        if (!panel.contains(ev.target)) { panel.remove(); document.removeEventListener('mousedown', closeOnOutside); }
-      }
-      document.addEventListener('mousedown', closeOnOutside);
-    }, 200);
+      document.addEventListener('mousedown', closeOnOutside, true);
+    }, 300);
 
     if (type === 'wingman') return;
 

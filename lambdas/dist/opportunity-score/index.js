@@ -85,18 +85,26 @@ CRITICAL — first decide WHO is posting and WHAT they want:
 
 If the author is promoting their own ${tradeName || 'business'} / agency / services, offering quotes, saying things like "I own…", "I'm a…", "I help people with…", "message me for a quote", "my agency", or otherwise advertising the SAME service the user provides — they are a COMPETITOR. Classify as competitor, score 0-5, isLead=false, and DO NOT write a suggested reply.
 
+ALSO filter out ADVERTISERS / SELLERS — anyone who is selling, advertising, or promoting ANY product or service (not just the user's trade). This includes shops selling items, marketing/lead-gen companies pitching services, MLM/direct-sales posts, "for sale" listings, discount/promo ads, "DM me to order", affiliate links, giveaways to collect leads, and spam. They are NOT customers. Classify as "advertiser", score 0-5, isLead=false, isCompetitor=true (treat as filtered), and DO NOT write a suggested reply.
+
+A real BUYER is someone expressing a NEED or asking for help — not someone selling or offering anything.
+
 Examples:
 - "Does anyone know a good roofer?" → BUYER, strong lead (actively seeking)
 - "My roof is leaking after the storm" → BUYER, urgent lead (immediate need)
 - "Thinking about replacing our roof next year" → BUYER, nurture lead (future intent)
 - "My husband is a roofer" → NOT a lead (household already has a provider, score near 0)
-- "Hi, I'm Sara and I own Brownell Insurance Agency — happy to give anyone a free quote!" → COMPETITOR (they SELL insurance; score 0-5, isLead=false, no reply)
+- "Hi, I'm Sara and I own Brownell Insurance Agency — happy to give anyone a free quote!" → COMPETITOR (they SELL insurance; score 0-5, no reply)
 - "I'm a local realtor, DM me if you're buying or selling!" → COMPETITOR (score 0-5)
+- "Selling a set of 4 tires, barely used, $200 OBO!" → ADVERTISER (selling a product; score 0-5, no reply)
+- "We help local businesses get more leads — book a free demo!" → ADVERTISER (pitching a service; score 0-5)
+- "Join my team and work from home! Message me 💰" → ADVERTISER (MLM/recruiting; score 0-5)
+- "GIVEAWAY! Comment to win — DM for details" → ADVERTISER (lead-bait; score 0-5)
 
 Return ONLY valid JSON:
 {
   "score": 0-100,
-  "classification": "buyer" | "competitor" | "provider" | "off_topic",
+  "classification": "buyer" | "competitor" | "advertiser" | "provider" | "off_topic",
   "urgency": "now" | "soon" | "nurture" | "not_a_lead",
   "isLead": true | false,
   "isCompetitor": true | false,
@@ -117,6 +125,7 @@ The "factors" array MUST explain the score transparently — each item is a reas
 - "Future intent" (thinking about it later)
 - "Existing relationship" (mentions knowing the business)
 - "Competitor promoting" (NEGATIVE — they sell the same service)
+- "Advertiser / seller" (NEGATIVE — selling or promoting a product/service, not a buyer)
 - "Provider, not a buyer" (NEGATIVE points — they do this job themselves)
 - "Off-topic / no intent" (NEGATIVE or low points)
 Give 2-5 factors. Keep labels short (2-4 words).
@@ -170,21 +179,38 @@ Rules:
     'contact me for', 'reach out to me', 'i sell', 'i offer', 'we offer', 'our agency',
     'book with me', 'my rates', 'i can help you save',
   ];
+  // Advertiser / sponsored / seller signals — ads, MLM, promos, lead-gen pitches, listings.
+  const ADVERTISER = [
+    'sponsored', 'free trial', 'book a demo', 'book a free', 'sign up today', 'sign up now',
+    'limited time', 'use code', 'promo code', 'discount code', '% off', 'for sale', 'fs:', 'f/s',
+    'dm to order', 'dm me to order', 'message to order', 'order now', 'shop now', 'buy now',
+    'work from home', 'join my team', 'join the team', 'join the winning team', 'extra income',
+    'side hustle', 'affiliate', 'giveaway', 'enter to win', 'comment to win', 'link in bio',
+    'www.', 'http://', 'https://', '.com', 'gohighlevel', 'go high level', 'crm trial',
+    'grow your business', 'more leads', 'lead gen', 'marketing services',
+  ];
   const looksSelfPromo = SELF_PROMO.some((p) => lower.includes(p));
-  if (parsed.isCompetitor === true || parsed.classification === 'competitor' || (looksSelfPromo && parsed.score > 15)) {
-    parsed.isCompetitor = true;
-    parsed.classification = 'competitor';
+  const looksAdvertiser = ADVERTISER.some((p) => lower.includes(p));
+  const flaggedCompetitor = parsed.isCompetitor === true || parsed.classification === 'competitor' || (looksSelfPromo && parsed.score > 15);
+  const flaggedAdvertiser = parsed.classification === 'advertiser' || (looksAdvertiser && parsed.score > 15);
+
+  if (flaggedCompetitor || flaggedAdvertiser) {
+    parsed.isCompetitor = true; // reuse the filtered flag so the UI/flight skip it
+    parsed.classification = flaggedCompetitor ? 'competitor' : 'advertiser';
     parsed.isLead = false;
     parsed.urgency = 'not_a_lead';
     parsed.score = Math.min(parsed.score || 0, 5);
     parsed.estimatedValue = 0;
     parsed.suggestedResponse = '';
     parsed.followUpDays = 0;
-    if (!parsed.factors.some((f) => /competitor/i.test(f.label))) {
-      parsed.factors = [{ label: 'Competitor promoting', points: parsed.score }];
+    const isAdv = parsed.classification === 'advertiser';
+    if (!parsed.factors.some((f) => /competitor|advertis|seller|ad/i.test(f.label))) {
+      parsed.factors = [{ label: isAdv ? 'Advertiser / seller' : 'Competitor promoting', points: parsed.score }];
     }
-    if (!/competitor/i.test(parsed.reason || '')) {
-      parsed.reason = 'This person is promoting their own competing service — not a customer.';
+    if (!/competitor|advertis|selling|promot/i.test(parsed.reason || '')) {
+      parsed.reason = isAdv
+        ? 'This is an ad or someone selling/promoting something — not a customer.'
+        : 'This person is promoting their own competing service — not a customer.';
     }
   }
 

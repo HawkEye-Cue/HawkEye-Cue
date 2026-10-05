@@ -11,7 +11,7 @@ interface ScoreResult {
   urgency: 'now' | 'soon' | 'nurture' | 'not_a_lead';
   isLead: boolean;
   isCompetitor?: boolean;
-  classification?: 'buyer' | 'competitor' | 'provider' | 'off_topic';
+  classification?: 'buyer' | 'competitor' | 'advertiser' | 'provider' | 'off_topic';
   reason: string;
   factors?: ScoreFactor[];
   suggestedResponse: string;
@@ -287,8 +287,8 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className={`inline-block text-[10px] font-bold px-2 py-1 rounded-full border ${(result.isCompetitor || result.classification === 'competitor') ? 'text-pink-300 bg-pink-500/15 border-pink-500/30' : (URGENCY[result.urgency]?.color || URGENCY.nurture.color)}`}>
-                    {(result.isCompetitor || result.classification === 'competitor') ? '🏢 COMPETITOR' : (URGENCY[result.urgency]?.label || 'NURTURE')}
+                  <span className={`inline-block text-[10px] font-bold px-2 py-1 rounded-full border ${(result.isCompetitor || result.classification === 'competitor' || result.classification === 'advertiser') ? 'text-pink-300 bg-pink-500/15 border-pink-500/30' : (URGENCY[result.urgency]?.color || URGENCY.nurture.color)}`}>
+                    {result.classification === 'advertiser' ? '📢 AD / SELLER' : (result.isCompetitor || result.classification === 'competitor') ? '🏢 COMPETITOR' : (URGENCY[result.urgency]?.label || 'NURTURE')}
                   </span>
                   <p className="text-xs text-slate-300 mt-2 leading-relaxed">{result.reason}</p>
                 </div>
@@ -380,10 +380,13 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
                 </button>
               )}
 
-              {!result.isLead && (result.isCompetitor || result.classification === 'competitor') && (
+              {!result.isLead && result.classification === 'advertiser' && (
+                <div className="text-center py-2 px-3 text-xs text-pink-300 bg-pink-500/10 border border-pink-500/20 rounded-lg">📢 This is an ad or someone selling/promoting something — not a customer. Skip it.</div>
+              )}
+              {!result.isLead && result.classification !== 'advertiser' && (result.isCompetitor || result.classification === 'competitor') && (
                 <div className="text-center py-2 px-3 text-xs text-pink-300 bg-pink-500/10 border border-pink-500/20 rounded-lg">🏢 This looks like a competitor promoting their own service — not a customer. Skip it.</div>
               )}
-              {!result.isLead && !(result.isCompetitor || result.classification === 'competitor') && (
+              {!result.isLead && !(result.isCompetitor || result.classification === 'competitor' || result.classification === 'advertiser') && (
                 <div className="text-center py-2 text-xs text-slate-500">🚫 This doesn't look like a buying signal — skip it and keep scanning.</div>
               )}
             </div>

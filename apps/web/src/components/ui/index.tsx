@@ -127,3 +127,159 @@ export function PrimaryButton({ children, onClick, disabled, className = '' }: {
     </button>
   );
 }
+
+// ─── Hero header ──────────────────────────────────────────────────────────────
+// The big title band over the dark hawk-eye photo (the "Sales" header look).
+export function HeroHeader({ title, subtitle, right }: {
+  title: string;
+  subtitle?: string;
+  right?: ReactNode;
+}) {
+  return (
+    <div
+      className="relative overflow-hidden rounded-2xl border border-white/10 px-5 py-6 mb-1"
+      style={{
+        background:
+          'radial-gradient(120% 140% at 85% 20%, rgba(245,158,11,0.25) 0%, rgba(245,158,11,0.06) 30%, rgba(15,23,42,0.0) 55%), linear-gradient(135deg, #0b1220 0%, #0f172a 60%, #111827 100%)',
+      }}
+    >
+      {/* Amber "eye" glow accent, evoking the hawk-eye photo */}
+      <div
+        className="pointer-events-none absolute -right-6 -top-8 h-40 w-40 rounded-full opacity-40 blur-2xl"
+        style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.6) 0%, rgba(245,158,11,0) 70%)' }}
+      />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight tracking-tight">{title}</h2>
+          {subtitle && <p className="text-xs sm:text-sm text-slate-300/80 mt-1">{subtitle}</p>}
+        </div>
+        {right && <div className="shrink-0">{right}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Sub-nav pills ────────────────────────────────────────────────────────────
+// The "Overview / Sales by Source / Products / Team / Goals" style tab row.
+export function PillTabs<T extends string>({ tabs, active, onChange }: {
+  tabs: { id: T; label: string }[];
+  active: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+            active === t.id
+              ? 'bg-amber-500 text-black shadow shadow-amber-500/30'
+              : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Donut chart (pure SVG, no deps) ────────────────────────────────────────────
+export function DonutChart({ data, centerLabel, centerValue, size = 160, thickness = 22 }: {
+  data: { label: string; value: number; color?: string }[];
+  centerLabel?: string;
+  centerValue?: string;
+  size?: number;
+  thickness?: number;
+}) {
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const r = (size - thickness) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <div className="flex items-center gap-4">
+      <svg width={size} height={size} className="shrink-0 -rotate-90">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={thickness} />
+        {data.map((d, i) => {
+          const frac = d.value / total;
+          const dash = frac * circ;
+          const seg = (
+            <circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke={d.color || BAR_COLORS[i % BAR_COLORS.length]}
+              strokeWidth={thickness}
+              strokeDasharray={`${dash} ${circ - dash}`}
+              strokeDashoffset={-offset}
+              strokeLinecap="butt"
+            />
+          );
+          offset += dash;
+          return seg;
+        })}
+      </svg>
+      <div className="min-w-0 flex-1">
+        {centerValue && (
+          <div className="mb-2">
+            <p className="text-xl font-extrabold text-white leading-none">{centerValue}</p>
+            {centerLabel && <p className="text-[11px] text-slate-400">{centerLabel}</p>}
+          </div>
+        )}
+        <div className="space-y-1">
+          {data.map((d, i) => (
+            <div key={i} className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 text-slate-300 truncate">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color || BAR_COLORS[i % BAR_COLORS.length] }} />
+                {d.label}
+              </span>
+              <span className="text-slate-400 shrink-0 ml-2">{Math.round((d.value / total) * 100)}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Line/area chart (pure SVG, no deps) ─────────────────────────────────────────
+export function LineChart({ points, height = 120, color = '#f59e0b' }: {
+  points: { label: string; value: number }[];
+  height?: number;
+  color?: string;
+}) {
+  if (points.length === 0) return null;
+  const max = Math.max(1, ...points.map((p) => p.value));
+  const w = 100; // use a 0-100 viewBox for responsive width
+  const stepX = points.length > 1 ? w / (points.length - 1) : w;
+  const coords = points.map((p, i) => ({ x: i * stepX, y: height - (p.value / max) * (height - 10) - 4 }));
+  const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
+  const areaPath = `${linePath} L ${w} ${height} L 0 ${height} Z`;
+  return (
+    <div>
+      <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }}>
+        <defs>
+          <linearGradient id="hc-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#hc-area)" />
+        <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        {coords.map((c, i) => (
+          <circle key={i} cx={c.x} cy={c.y} r="1.6" fill={color} vectorEffect="non-scaling-stroke" />
+        ))}
+      </svg>
+      <div className="flex justify-between mt-1">
+        {points.map((p, i) => (
+          <span key={i} className="text-[10px] text-slate-400">{p.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}

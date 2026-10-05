@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity } from '@social-lead-gen/shared';
-import { PageHeader, StatCard, StatGrid, SectionCard, DataBar, BAR_COLORS } from '../components/ui';
+import { HeroHeader, StatCard, StatGrid, SectionCard, DataBar, DonutChart, LineChart, BAR_COLORS } from '../components/ui';
 
 // A clean, on-brand Sales dashboard driven by real lead/client data.
 // "Converted" leads = clients = sales. Value comes from each lead's expectedPremium.
@@ -128,7 +128,7 @@ export default function SalesDashboardPage() {
 
   return (
     <div className="space-y-4 pb-8">
-      <PageHeader icon="💰" title="Sales" subtitle="Turn your social media into real revenue." />
+      <HeroHeader title="Sales" subtitle="Turn your social media into real revenue." />
 
       {m.dealsWon === 0 ? (
         <div className="glass-card text-center py-10">
@@ -147,55 +147,25 @@ export default function SalesDashboardPage() {
             <StatCard icon="📈" label="Win Rate" value={m.winRate + '%'} accent="purple" />
           </StatGrid>
 
-          {/* Sales over time */}
-          <div className="glass-card">
-            <h3 className="text-sm font-semibold text-white mb-3">Sales Over Time</h3>
-            <div className="flex items-end justify-between gap-2 h-32">
-              {m.timeline.map((t, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full flex items-end justify-center" style={{ height: '100px' }}>
-                    <div
-                      className="w-full max-w-[32px] rounded-t-md bg-gradient-to-t from-amber-500/40 to-amber-400"
-                      style={{ height: `${Math.max(4, (t.revenue / maxTimeline) * 100)}%` }}
-                      title={money(t.revenue)}
-                    />
-                  </div>
-                  <span className="text-[10px] text-slate-400">{t.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Sales over time — line chart */}
+          <SectionCard title="Sales Over Time">
+            <LineChart points={m.timeline.map((t) => ({ label: t.label, value: t.revenue }))} />
+          </SectionCard>
 
-          {/* Sales by source */}
+          {/* Sales by source — donut chart */}
           {m.bySource.length > 0 && (
-            <div className="glass-card">
-              <h3 className="text-sm font-semibold text-white mb-3">Sales by Source</h3>
-              <div className="space-y-2">
-                {m.bySource.map((s, i) => {
-                  const pct = Math.round((s.revenue / sourceTotal) * 100);
-                  return (
-                    <div key={s.label}>
-                      <div className="flex items-center justify-between text-xs mb-0.5">
-                        <span className="text-slate-300 flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-full" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                          {s.label}
-                        </span>
-                        <span className="text-slate-400">{money(s.revenue)} · {pct}%</span>
-                      </div>
-                      <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <SectionCard title="Sales by Source">
+              <DonutChart
+                centerValue={money(m.totalSales)}
+                centerLabel="Total Sales"
+                data={m.bySource.map((s, i) => ({ label: s.label, value: s.revenue, color: BAR_COLORS[i % BAR_COLORS.length] }))}
+              />
+            </SectionCard>
           )}
 
           {/* Top products / services */}
           {m.topProducts.length > 0 && m.topProducts.some((p) => p.label !== 'Other') && (
-            <div className="glass-card">
-              <h3 className="text-sm font-semibold text-white mb-3">Top Products / Services</h3>
+            <SectionCard title="Top Products / Services">
               <div className="space-y-1.5">
                 {m.topProducts.map((p, i) => (
                   <div key={p.label} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
@@ -204,7 +174,7 @@ export default function SalesDashboardPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </SectionCard>
           )}
 
           {/* Pipeline by stage */}

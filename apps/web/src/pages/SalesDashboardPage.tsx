@@ -4,7 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity } from '@social-lead-gen/shared';
 import { useTeamData } from '../hooks/useTeamData';
-import { HeroHeader, LightStat, Panel, StatGrid, Segmented, DataBar, DonutChart, ComboChart, BAR_COLORS } from '../components/ui';
+import { HeroHeader, LightStat, Panel, StatGrid, PeriodDropdown, DataBar, DonutChart, ComboChart, BAR_COLORS } from '../components/ui';
+
+interface SavedFolio { name: string; start: string; end: string; }
 
 // Sales dashboard. If the user is on a team, the WHOLE page is the team's sales &
 // analytics (the main focus). Personal analytics live under Insights (More tab).
@@ -27,8 +29,6 @@ function leadValue(l: any): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-type Period = 'folio' | 'month' | 'quarter' | 'annual';
-
 function monthLabel(ym: string): string {
   const parts = ym.split('-');
   const mi = parseInt(parts[1] || '1') - 1;
@@ -41,33 +41,78 @@ export default function SalesDashboardPage() {
   const { isInTeam, teamAnalytics, fetchAnalytics, loading: teamLoading } = useTeamData();
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<Period>('annual');
+  const [savedFolios, setSavedFolios] = useState<SavedFolio[]>([]);
+  // The selected timeline window. 'all' | 'month' | 'quarter' | 'annual' | a folio index 'folio:N'
+  const [period, setPeriod] = useState<string>('all');
+
+  async function buildClient() {
+    const token = await getToken();
+    return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+  }
 
   useEffect(() => {
     (async () => {
       try {
-        const token = await getToken();
-        const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+        const client = await buildClient();
         const res: any = await client.getOpportunities({});
         setLeads(res.items || res.opportunities || []);
       } catch { /* ignore */ }
       finally { setLoading(false); }
+      // Load saved folios for the dropdown.
+      try {
+        const client = await buildClient();
+        const cfg: any = await client.request('GET', '/sales/folio-config');
+        const list: SavedFolio[] = (cfg.scheduledFolios || []).map((f: any) => ({ name: (f.name || '').trim(), start: f.start, end: f.end }));
+        // Include the current folio if not already in the list.
+        if (cfg.folioStart && cfg.folioEnd) {
+          const exists = list.some((f) => f.start === cfg.folioStart && f.end === cfg.folioEnd);
+          if (!exists) list.unshift({ name: (cfg.folioName || 'Current Folio').trim(), start: cfg.folioStart, end: cfg.folioEnd });
+        }
+        // Sort newest first.
+        list.sort((a, b) => (b.start || '').localeCompare(a.start || ''));
+        setSavedFolios(list);
+      } catch { /* no folios */ }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pull full team analytics when on a team.
-  useEffect(() => { if (isInTeam) fetchAnalytics(); }, [isInTeam]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Resolve the selected period into an explicit date range (or null = all time).
+  function resolveRange(sel: string): { start?: string; end?: string } {
+    const now = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    if (sel === 'month') return { start: iso(new Date(now.getFullYear(), now.getMonth(), 1)), end: iso(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
+    if (sel === 'quarter') { const q = Math.floor(now.getMonth() / 3); return { start: iso(new Date(now.getFullYear(), q * 3, 1)), end: iso(new Date(now.getFullYear(), q * 3 + 3, 0)) }; }
+    if (sel === 'annual') return { start: `${now.getFullYear()}-01-01`, end: `${now.getFullYear()}-12-31` };
+    if (sel.startsWith('folio:')) { const f = savedFolios[parseInt(sel.split(':')[1])]; if (f) return { start: f.start, end: f.end }; }
+    return {}; // 'all'
+  }
+
+  // Fetch team analytics for the selected window whenever it (or team state) changes.
+  useEffect(() => {
+    if (!isInTeam) return;
+    const { start, end } = resolveRange(period);
+    fetchAnalytics(start, end);
+  }, [isInTeam, period, savedFolios.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Personal metrics (solo users / fallback) ─────────────────────────────
   const personal = useMemo(() => {
-    const clients = leads.filter((l) => l.status === 'converted');
+    const { start, end } = resolveRange(period);
+    const inWindow = (l: any) => {
+      if (!start && !end) return true;
+      const d = ((l.createdAt || l.detectedAt || '') + '').slice(0, 10);
+      if (!d) return true;
+      if (start && d < start) return false;
+      if (end && d > end) return false;
+      return true;
+    };
+    const scoped = leads.filter(inWindow);
+    const clients = scoped.filter((l) => l.status === 'converted');
     const totalSales = clients.reduce((s, l) => s + leadValue(l), 0);
     const dealsWon = clients.length;
     const avgDeal = dealsWon > 0 ? totalSales / dealsWon : 0;
-    const winRate = Math.round((dealsWon / (leads.length || 1)) * 100);
+    const winRate = Math.round((dealsWon / (scoped.length || 1)) * 100);
     const stage = {
-      new: leads.filter((l) => l.status === 'new').length,
-      followed_up: leads.filter((l) => l.status === 'followed_up').length,
+      new: scoped.filter((l) => l.status === 'new').length,
+      followed_up: scoped.filter((l) => l.status === 'followed_up').length,
       converted: dealsWon,
     };
     const now = new Date();
@@ -82,17 +127,19 @@ export default function SalesDashboardPage() {
       timeline.push({ label: MONTHS[d.getMonth()], bar: rev, line: rev });
     }
     return { totalSales, dealsWon, avgDeal, winRate, stage, timeline };
-  }, [leads]);
+  }, [leads, period, savedFolios.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading || (isInTeam && teamLoading)) {
     return <div className="text-center py-16 text-slate-400 text-sm">Loading sales…</div>;
   }
 
-  const periodOptions: { id: Period; label: string }[] = [
-    { id: 'folio', label: 'Folio' },
-    { id: 'month', label: 'Month' },
-    { id: 'quarter', label: 'Quarter' },
-    { id: 'annual', label: 'Annual' },
+  // Build the timeline dropdown: standard windows + every saved folio.
+  const folioOptions: { id: string; label: string }[] = [
+    { id: 'all', label: 'All Time' },
+    { id: 'month', label: 'This Month' },
+    { id: 'quarter', label: 'This Quarter' },
+    { id: 'annual', label: 'This Year' },
+    ...savedFolios.map((f, i) => ({ id: `folio:${i}`, label: f.name || `Folio ${i + 1}` })),
   ];
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -117,7 +164,7 @@ export default function SalesDashboardPage() {
         <HeroHeader
           title="Team Sales"
           subtitle="Your whole team's revenue at a glance."
-          right={<Segmented options={periodOptions} value={period} onChange={setPeriod} />}
+          right={<PeriodDropdown options={folioOptions} value={period} onChange={setPeriod} />}
         />
 
         {/* Team totals — the headline */}
@@ -214,7 +261,7 @@ export default function SalesDashboardPage() {
       <HeroHeader
         title="Sales"
         subtitle="Turn your social media into real revenue."
-        right={<Segmented options={periodOptions} value={period} onChange={setPeriod} />}
+        right={<PeriodDropdown options={folioOptions} value={period} onChange={setPeriod} />}
       />
 
       {personal.dealsWon === 0 ? (

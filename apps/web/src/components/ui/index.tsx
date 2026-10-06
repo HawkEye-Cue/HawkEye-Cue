@@ -418,3 +418,25 @@ export function ComboChart({ points, height = 180 }: {
     </div>
   );
 }
+
+// ─── Period dropdown (folio / month / quarter / annual / all / saved folios) ──
+export function PeriodDropdown({ options, value, onChange }: {
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div className="relative inline-block">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none bg-black/60 border border-white/15 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-white cursor-pointer hover:border-amber-500/50 focus:outline-none focus:border-amber-500"
+      >
+        {options.map((o) => (
+          <option key={o.id} value={o.id} className="bg-slate-900 text-white">{o.label}</option>
+        ))}
+      </select>
+      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-amber-400 text-[10px]">▼</span>
+    </div>
+  );
+}

@@ -47,7 +47,7 @@ function inPeriod(dateStr: string, period: Period): boolean {
 export default function SalesDashboardPage() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
-  const { isInTeam, teamAnalytics } = useTeamData();
+  const { isInTeam, teamAnalytics, fetchAnalytics } = useTeamData();
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('month');
@@ -63,6 +63,11 @@ export default function SalesDashboardPage() {
       finally { setLoading(false); }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load team sales once we know the user is on a team (team-admin only endpoint).
+  useEffect(() => {
+    if (isInTeam) fetchAnalytics();
+  }, [isInTeam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const m = useMemo(() => {
     const clients = leads

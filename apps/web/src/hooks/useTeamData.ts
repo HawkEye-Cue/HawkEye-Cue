@@ -42,6 +42,10 @@ export interface TeamAnalytics {
     revenue: number;
     flockRate: number;
   }[];
+  bySource?: { key: string; revenue: number }[];
+  byProduct?: { key: string; revenue: number; deals: number }[];
+  byMonth?: { month: string; revenue: number }[];
+  stageCounts?: { prospect: number; contacted: number; quoted: number; closing: number; won: number; lost: number };
 }
 
 export interface TeamMember {

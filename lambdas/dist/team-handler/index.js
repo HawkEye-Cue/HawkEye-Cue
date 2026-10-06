@@ -938,6 +938,12 @@ exports.handler = async (event) => {
       let totalDeals = 0, wonDeals = 0, totalRevenue = 0;
       let totalFlockScheduled = 0, totalFlockCompleted = 0;
 
+      // Team-wide breakdowns for the Sales dashboard charts.
+      const bySource = {};       // leadSource -> revenue
+      const byProduct = {};      // policyType -> { revenue, deals }
+      const byMonth = {};        // 'YYYY-MM' -> revenue
+      const stageCounts = { prospect: 0, contacted: 0, quoted: 0, closing: 0, won: 0, lost: 0 };
+
       for (const member of members) {
         // Get deals
         const dealsResult = await dynamo.send(new QueryCommand({
@@ -954,6 +960,22 @@ exports.handler = async (event) => {
         totalDeals += deals.length;
         wonDeals += won.length;
         totalRevenue += memberRevenue;
+
+        // Accumulate team-wide breakdowns (won deals drive revenue views).
+        for (const d of deals) {
+          if (stageCounts[d.stage] !== undefined) stageCounts[d.stage] += 1;
+        }
+        for (const d of won) {
+          const val = d.dealValue || 0;
+          const src = d.leadSource || 'other';
+          bySource[src] = (bySource[src] || 0) + val;
+          const prod = d.policyType || 'Other';
+          if (!byProduct[prod]) byProduct[prod] = { revenue: 0, deals: 0 };
+          byProduct[prod].revenue += val;
+          byProduct[prod].deals += 1;
+          const dt = d.createdAt ? String(d.createdAt).slice(0, 7) : (d.folio || '').slice(0, 7);
+          if (dt) byMonth[dt] = (byMonth[dt] || 0) + val;
+        }
 
         // Get flock/calendar posts for completion rate
         const calResult = await dynamo.send(new QueryCommand({
@@ -988,6 +1010,11 @@ exports.handler = async (event) => {
         totalRevenue,
         flockCompletionRate,
         members: memberAnalytics,
+        // Team-wide breakdowns for the Sales charts
+        bySource: Object.entries(bySource).map(([k, revenue]) => ({ key: k, revenue })).sort((a, b) => b.revenue - a.revenue),
+        byProduct: Object.entries(byProduct).map(([k, v]) => ({ key: k, revenue: v.revenue, deals: v.deals })).sort((a, b) => b.revenue - a.revenue),
+        byMonth: Object.entries(byMonth).map(([k, revenue]) => ({ month: k, revenue })).sort((a, b) => a.month.localeCompare(b.month)),
+        stageCounts,
         folioStart: aFolioStart || null,
         folioEnd: aFolioEnd || null,
       });

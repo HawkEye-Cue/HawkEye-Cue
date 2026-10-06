@@ -882,6 +882,71 @@ exports.handler = async (event) => {
       }
     }
 
+    // GET /team/member/{memberUserId}/pipeline — one teammate's full pipeline + clients sold.
+    // Any member of the same team may view any teammate's pipeline (transparency across the team).
+    const pipelineMatch = path.match(/^\/team\/member\/([^/]+)\/pipeline$/);
+    if (method === 'GET' && pipelineMatch) {
+      const memberUserId = decodeURIComponent(pipelineMatch[1]);
+      const teamRecord = await getUserTeam(userId);
+      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+
+      // Authorization: the requested member must be on the SAME team as the requester.
+      const members = await getTeamMembers(teamRecord.teamId);
+      const target = members.find((m) => m.userId === memberUserId);
+      if (!target) return err(403, 'NOT_TEAMMATE', 'That person is not on your team');
+
+      // Optional folio window
+      const qs = event.queryStringParameters || {};
+      const pFolioStart = qs.folioStart;
+      const pFolioEnd = qs.folioEnd;
+
+      const dealsResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': `USER#${memberUserId}`, ':sk': 'DEAL#' },
+        ScanIndexForward: false,
+      }));
+      const allDeals = dealsResult.Items || [];
+      const scoped = (pFolioStart && pFolioEnd) ? allDeals.filter((d) => dealInFolio(d, pFolioStart, pFolioEnd)) : allDeals;
+
+      const mapDeal = (d) => ({
+        id: d.dealId,
+        name: d.dealName || '',
+        value: d.dealValue || 0,
+        stage: d.stage || 'prospect',
+        policyType: d.policyType || '',
+        leadSource: d.leadSource || '',
+        contactName: d.contactName || '',
+        folio: d.folio || '',
+        soldBy: d.soldBy || '',
+        createdAt: d.createdAt || '',
+      });
+
+      const deals = scoped.map(mapDeal);
+      // Clients sold = won deals. Pipeline = everything not yet won/lost.
+      const clientsSold = deals.filter((d) => d.stage === 'won');
+      const pipeline = deals.filter((d) => d.stage !== 'won' && d.stage !== 'lost');
+
+      // Breakdown of what was sold, by policy/product type.
+      const byType = {};
+      for (const d of clientsSold) {
+        const t = d.policyType || 'Other';
+        if (!byType[t]) byType[t] = { type: t, revenue: 0, count: 0 };
+        byType[t].revenue += d.value;
+        byType[t].count += 1;
+      }
+
+      return ok({
+        member: { userId: memberUserId, email: target.email, name: (target.email || '').split('@')[0], role: target.role },
+        totalRevenue: clientsSold.reduce((s, d) => s + d.value, 0),
+        clientsSold,
+        pipeline,
+        byType: Object.values(byType).sort((a, b) => b.revenue - a.revenue),
+        folioStart: pFolioStart || null,
+        folioEnd: pFolioEnd || null,
+      });
+    }
+
     // GET /team/folios — distinct folio periods across ALL team members' deals
     if (method === 'GET' && path === '/team/folios') {
       const teamRecord = await getUserTeam(userId);

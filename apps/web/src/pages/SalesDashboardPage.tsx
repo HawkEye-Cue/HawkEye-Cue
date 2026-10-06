@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity } from '@social-lead-gen/shared';
 import { useTeamData } from '../hooks/useTeamData';
+import TeamMemberPipeline from '../components/TeamMemberPipeline';
 import { HeroHeader, LightStat, Panel, StatGrid, PeriodDropdown, DataBar, DonutChart, ComboChart, BAR_COLORS } from '../components/ui';
 
 interface SavedFolio { name: string; start: string; end: string; }
@@ -38,7 +39,9 @@ function monthLabel(ym: string): string {
 export default function SalesDashboardPage() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
-  const { isInTeam, teamAnalytics, fetchAnalytics, loading: teamLoading } = useTeamData();
+  const { isInTeam, teamAnalytics, teamMembers, fetchAnalytics, loading: teamLoading } = useTeamData();
+  // Which teammate's pipeline is open in the slide-over (null = closed).
+  const [openMember, setOpenMember] = useState<{ userId: string; name: string } | null>(null);
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedFolios, setSavedFolios] = useState<SavedFolio[]>([]);
@@ -206,6 +209,8 @@ export default function SalesDashboardPage() {
     const avgDeal = wonDeals > 0 ? totalRevenue / wonDeals : 0;
     const winRate = totalDeals > 0 ? Math.round((wonDeals / totalDeals) * 100) : 0;
     const members = (a?.members || []).slice().sort((x, y) => y.revenue - x.revenue);
+    const userIdByEmail = (email: string) => teamMembers.find((m) => m.email === email)?.userId;
+    const { start: winStart, end: winEnd } = resolveRange(period);
     const bySource = (a?.bySource || []).map((s) => ({ label: SOURCE_LABELS[s.key] || s.key, revenue: s.revenue }));
     const byProduct = (a?.byProduct || []).slice(0, 6);
     const stages = a?.stageCounts;
@@ -234,18 +239,29 @@ export default function SalesDashboardPage() {
             <p className="text-xs text-slate-500">No team sales recorded in this period.</p>
           ) : (
             <div className="space-y-2.5">
-              {members.map((mem, i) => (
-                <DataBar
-                  key={mem.email}
-                  label={<span className="truncate">{i === 0 ? '👑 ' : ''}{mem.email.split('@')[0]}</span>}
-                  value={mem.revenue}
-                  max={memberMax}
-                  color={BAR_COLORS[i % BAR_COLORS.length]}
-                  suffix={<span>{money(mem.revenue)} · {mem.wonDeals} won</span>}
-                />
-              ))}
+              {members.map((mem, i) => {
+                const uid = userIdByEmail(mem.email);
+                const name = mem.email.split('@')[0];
+                return (
+                  <button
+                    key={mem.email}
+                    onClick={() => uid && setOpenMember({ userId: uid, name })}
+                    disabled={!uid}
+                    className="w-full text-left group disabled:cursor-default"
+                  >
+                    <DataBar
+                      label={<span className="truncate group-hover:text-white">{i === 0 ? '👑 ' : ''}{name}{uid && <span className="text-amber-400/70 text-[10px] ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity">view →</span>}</span>}
+                      value={mem.revenue}
+                      max={memberMax}
+                      color={BAR_COLORS[i % BAR_COLORS.length]}
+                      suffix={<span>{money(mem.revenue)} · {mem.wonDeals} won</span>}
+                    />
+                  </button>
+                );
+              })}
             </div>
           )}
+          <p className="text-[10px] text-slate-500 mt-2">Tap a teammate to see their pipeline and clients sold.</p>
         </Panel>
 
         {timeline.length > 0 && (
@@ -300,6 +316,16 @@ export default function SalesDashboardPage() {
         <p className="text-center text-[11px] text-slate-500">
           Showing your whole team. Your personal analytics live under <button onClick={() => navigate('/hawk-insights')} className="text-amber-400 underline underline-offset-2">Insights</button> in the More menu.
         </p>
+
+        {openMember && (
+          <TeamMemberPipeline
+            memberUserId={openMember.userId}
+            memberName={openMember.name}
+            folioStart={winStart}
+            folioEnd={winEnd}
+            onClose={() => setOpenMember(null)}
+          />
+        )}
       </div>
     );
   }

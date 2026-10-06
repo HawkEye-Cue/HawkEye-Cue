@@ -55,6 +55,29 @@ export interface TeamMember {
   joinedAt: string;
 }
 
+export interface MemberDeal {
+  id: string;
+  name: string;
+  value: number;
+  stage: string;
+  policyType: string;
+  leadSource: string;
+  contactName: string;
+  folio: string;
+  soldBy: string;
+  createdAt: string;
+}
+
+export interface MemberPipeline {
+  member: { userId: string; email: string; name: string; role: string };
+  totalRevenue: number;
+  clientsSold: MemberDeal[];
+  pipeline: MemberDeal[];
+  byType: { type: string; revenue: number; count: number }[];
+  folioStart: string | null;
+  folioEnd: string | null;
+}
+
 export const MEMBER_COLORS = ['bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500'];
 export const MEMBER_TEXT_COLORS = ['text-blue-400', 'text-purple-400', 'text-emerald-400', 'text-amber-400', 'text-pink-400'];
 
@@ -139,6 +162,13 @@ export function useTeamData() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch one teammate's full pipeline + clients sold (same-team only, enforced server-side).
+  const fetchMemberPipeline = useCallback(async (memberUserId: string, folioStart?: string, folioEnd?: string): Promise<MemberPipeline> => {
+    const client = await buildClient();
+    const qs = folioStart && folioEnd ? `?folioStart=${encodeURIComponent(folioStart)}&folioEnd=${encodeURIComponent(folioEnd)}` : '';
+    return client.request<MemberPipeline>('GET', `/team/member/${encodeURIComponent(memberUserId)}/pipeline${qs}`);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchFolios = useCallback(async () => {
     try {
       const client = await buildClient();
@@ -194,6 +224,7 @@ export function useTeamData() {
     fetchLeads,
     fetchAnalytics,
     fetchFolios,
+    fetchMemberPipeline,
     getMemberColorIndex,
     claimLead,
     releaseLead,

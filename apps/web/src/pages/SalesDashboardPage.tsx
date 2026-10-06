@@ -42,6 +42,9 @@ export default function SalesDashboardPage() {
   const [leads, setLeads] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedFolios, setSavedFolios] = useState<SavedFolio[]>([]);
+  // How the user tracks production: folios, plain calendar, or a custom fiscal year.
+  const [trackingMode, setTrackingMode] = useState<'folio' | 'calendar' | 'fiscal'>('folio');
+  const [fiscalStart, setFiscalStart] = useState<number>(1); // 1-12
   // The selected timeline window. 'all' | 'month' | 'quarter' | 'annual' | a folio index 'folio:N'
   const [period, setPeriod] = useState<string>('all');
 
@@ -58,7 +61,19 @@ export default function SalesDashboardPage() {
         setLeads(res.items || res.opportunities || []);
       } catch { /* ignore */ }
       finally { setLoading(false); }
-      // Load saved folios for the dropdown.
+      // Load how the user tracks periods (folio / calendar / fiscal).
+      try {
+        const client = await buildClient();
+        const prefs: any = await client.request('GET', '/profile/preferences');
+        let mode: 'folio' | 'calendar' | 'fiscal' = 'folio';
+        if (prefs.trackingMode === 'folio' || prefs.trackingMode === 'calendar' || prefs.trackingMode === 'fiscal') mode = prefs.trackingMode;
+        else if (prefs.foliosEnabled === false) mode = 'calendar';
+        setTrackingMode(mode);
+        if (typeof prefs.fiscalYearStartMonth === 'number' && prefs.fiscalYearStartMonth >= 1 && prefs.fiscalYearStartMonth <= 12) {
+          setFiscalStart(prefs.fiscalYearStartMonth);
+        }
+      } catch { /* default to folio */ }
+      // Load saved folios for the dropdown (only needed in folio mode, but harmless).
       try {
         const client = await buildClient();
         const cfg: any = await client.request('GET', '/sales/folio-config');
@@ -76,22 +91,51 @@ export default function SalesDashboardPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resolve the selected period into an explicit date range (or null = all time).
+  // Quarter/year honor the fiscal-year start month when in fiscal mode.
   function resolveRange(sel: string): { start?: string; end?: string } {
     const now = new Date();
     const iso = (d: Date) => d.toISOString().slice(0, 10);
+    // Month is always the current calendar month.
     if (sel === 'month') return { start: iso(new Date(now.getFullYear(), now.getMonth(), 1)), end: iso(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
-    if (sel === 'quarter') { const q = Math.floor(now.getMonth() / 3); return { start: iso(new Date(now.getFullYear(), q * 3, 1)), end: iso(new Date(now.getFullYear(), q * 3 + 3, 0)) }; }
-    if (sel === 'annual') return { start: `${now.getFullYear()}-01-01`, end: `${now.getFullYear()}-12-31` };
+
+    // Fiscal offset: 0 for calendar mode, else (fiscalStart - 1) months.
+    const fo = trackingMode === 'fiscal' ? (fiscalStart - 1) : 0;
+
+    if (sel === 'quarter') {
+      // Months since the fiscal-year start, bucketed into quarters of 3 months.
+      const monthsSinceFYStart = ((now.getMonth() - fo) + 12) % 12;
+      const qIndex = Math.floor(monthsSinceFYStart / 3); // 0-3
+      const qStartMonthAbs = fo + qIndex * 3; // may exceed 11; Date normalizes
+      // Anchor to the fiscal year that contains "now".
+      const fyYear = now.getMonth() >= fo ? now.getFullYear() : now.getFullYear() - 1;
+      const start = new Date(fyYear, qStartMonthAbs, 1);
+      const end = new Date(fyYear, qStartMonthAbs + 3, 0);
+      return { start: iso(start), end: iso(end) };
+    }
+    if (sel === 'annual') {
+      const fyYear = now.getMonth() >= fo ? now.getFullYear() : now.getFullYear() - 1;
+      const start = new Date(fyYear, fo, 1);
+      const end = new Date(fyYear + 1, fo, 0);
+      return { start: iso(start), end: iso(end) };
+    }
     if (sel.startsWith('folio:')) { const f = savedFolios[parseInt(sel.split(':')[1])]; if (f) return { start: f.start, end: f.end }; }
     return {}; // 'all'
   }
+
+  // If the tracking mode changed and the current selection no longer applies
+  // (e.g. a folio index while in calendar mode), fall back to All Time.
+  useEffect(() => {
+    const isFolioSel = period.startsWith('folio:');
+    if (trackingMode === 'folio' && (period === 'month' || period === 'quarter' || period === 'annual')) setPeriod('all');
+    if (trackingMode !== 'folio' && isFolioSel) setPeriod('all');
+  }, [trackingMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch team analytics for the selected window whenever it (or team state) changes.
   useEffect(() => {
     if (!isInTeam) return;
     const { start, end } = resolveRange(period);
     fetchAnalytics(start, end);
-  }, [isInTeam, period, savedFolios.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isInTeam, period, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Personal metrics (solo users / fallback) ─────────────────────────────
   const personal = useMemo(() => {
@@ -127,20 +171,29 @@ export default function SalesDashboardPage() {
       timeline.push({ label: MONTHS[d.getMonth()], bar: rev, line: rev });
     }
     return { totalSales, dealsWon, avgDeal, winRate, stage, timeline };
-  }, [leads, period, savedFolios.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [leads, period, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading || (isInTeam && teamLoading)) {
     return <div className="text-center py-16 text-slate-400 text-sm">Loading sales…</div>;
   }
 
-  // Build the timeline dropdown: standard windows + every saved folio.
-  const folioOptions: { id: string; label: string }[] = [
-    { id: 'all', label: 'All Time' },
-    { id: 'month', label: 'This Month' },
-    { id: 'quarter', label: 'This Quarter' },
-    { id: 'annual', label: 'This Year' },
-    ...savedFolios.map((f, i) => ({ id: `folio:${i}`, label: f.name || `Folio ${i + 1}` })),
-  ];
+  // Build the timeline dropdown based on how the user tracks production.
+  const folioOptions: { id: string; label: string }[] = (() => {
+    if (trackingMode === 'folio') {
+      return [
+        { id: 'all', label: 'All Time' },
+        ...savedFolios.map((f, i) => ({ id: `folio:${i}`, label: f.name || `Folio ${i + 1}` })),
+      ];
+    }
+    const yearLabel = trackingMode === 'fiscal' ? 'This Fiscal Year' : 'This Year';
+    const quarterLabel = trackingMode === 'fiscal' ? 'This Fiscal Quarter' : 'This Quarter';
+    return [
+      { id: 'all', label: 'All Time' },
+      { id: 'month', label: 'This Month' },
+      { id: 'quarter', label: quarterLabel },
+      { id: 'annual', label: yearLabel },
+    ];
+  })();
 
   // ─────────────────────────────────────────────────────────────────────────
   // TEAM VIEW — the entire page is the team's sales when the user is on a team.

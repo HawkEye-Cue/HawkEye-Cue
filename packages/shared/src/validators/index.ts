@@ -113,13 +113,23 @@ export const createKeywordRequestSchema = z.object({
 });
 
 // --- Opportunity Submission Schema ---
-
+//
+// Privacy/data-minimization (D1): a Minimal-Save opportunity is valid with only a
+// usable sourceUrl + keywordId + platform. sourceContent and sourceAuthor are OPTIONAL
+// (Minimal Save does not store copied post text or author name). This still rejects
+// meaningless/empty records because a usable sourceUrl and a keywordId remain REQUIRED.
 export const opportunitySubmissionSchema = z.object({
   keywordId: z.string().min(1, 'Keyword ID is required'),
-  sourceContent: z.string().min(1, 'Source content is required'),
+  sourceContent: z
+    .string()
+    .max(5000, 'Source content must be at most 5000 characters')
+    .optional(),
   sourcePlatform: socialPlatformSchema,
   sourceUrl: z.string().url('Source URL must be a valid URL'),
-  sourceAuthor: z.string().min(1, 'Source author is required'),
+  sourceAuthor: z.string().optional(),
+  // Explicit Opportunity → Lead promotion at save time. Defaults to false (Minimal Save
+  // creates an Opportunity only; it does NOT create a Lead follow-up protocol).
+  promoteToLead: z.boolean().optional(),
 });
 
 // --- Device Registration Schema ---

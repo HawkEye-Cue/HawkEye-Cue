@@ -27,13 +27,13 @@ describe('ApiClient', () => {
   }
 
   describe('constructor', () => {
-    it('strips trailing slash from baseUrl', () => {
+    it('strips trailing slash from baseUrl', async () => {
       const c = new ApiClient({
         baseUrl: 'https://api.example.com/',
         getToken: mockGetToken,
       });
       mockFetch.mockResolvedValue(mockResponse(200, []));
-      c.getTradeList();
+      await c.getTradeList();
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/trade/list',
         expect.anything(),
@@ -200,7 +200,7 @@ describe('ApiClient', () => {
         'https://api.example.com/content/upload-url',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ filename: 'file.jpg', contentType: 'image/jpeg' }),
+          body: JSON.stringify({ fileName: 'file.jpg', contentType: 'image/jpeg' }),
         }),
       );
     });
@@ -418,6 +418,36 @@ describe('ApiClient', () => {
           method: 'POST',
           body: JSON.stringify(request),
         }),
+      );
+    });
+
+    it('createOpportunity supports a Minimal record (no author/content) [D1]', async () => {
+      const request = {
+        keywordId: 'kw1',
+        sourcePlatform: 'facebook' as const,
+        sourceUrl: 'https://facebook.com/post/123',
+      };
+      const opp = { id: 'opp2', ...request, sourceAuthor: null, sourceContent: null, promotedToLead: false };
+      mockFetch.mockResolvedValue(mockResponse(201, opp));
+
+      const result = await client.createOpportunity(request);
+      expect(result).toEqual(opp);
+      // The request body carries no author name and no post text.
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
+      expect(body.sourceAuthor).toBeUndefined();
+      expect(body.sourceContent).toBeUndefined();
+      expect(body.sourceUrl).toBe('https://facebook.com/post/123');
+    });
+
+    it('promoteOpportunityToLead calls POST /opportunities/{id}/promote [D1]', async () => {
+      const promoted = { id: 'opp1', promotedToLead: true, promotedAt: '2024-01-01T00:00:00Z' };
+      mockFetch.mockResolvedValue(mockResponse(200, promoted));
+
+      const result = await client.promoteOpportunityToLead('opp1');
+      expect(result).toEqual(promoted);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.example.com/opportunities/opp1/promote',
+        expect.objectContaining({ method: 'POST' }),
       );
     });
 

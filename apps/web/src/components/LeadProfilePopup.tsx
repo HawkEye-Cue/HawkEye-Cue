@@ -189,14 +189,18 @@ export default function LeadProfilePopup({
           ✕
         </button>
 
-        {/* Avatar Header */}
+        {/* Avatar Header — D1: URL-only Opportunities have no stored author name.
+            Fall back to a neutral label instead of a fake "Unknown". */}
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mt-2"
-          style={{ backgroundColor: getAvatarColor(lead.sourceAuthor) }}
+          style={{ backgroundColor: getAvatarColor(lead.sourceAuthor || 'Opportunity') }}
         >
-          <span className="text-white font-bold">{getInitials(lead.sourceAuthor)}</span>
+          <span className="text-white font-bold">{getInitials(lead.sourceAuthor || 'Opportunity')}</span>
         </div>
-        <p className="text-center text-lg font-semibold text-white mt-2">{lead.sourceAuthor}</p>
+        <p className="text-center text-lg font-semibold text-white mt-2">{lead.sourceAuthor || 'Opportunity'}</p>
+        {!lead.sourceAuthor && (
+          <p className="text-center text-[11px] text-slate-400 mt-0.5">Name not stored — open the original post to view details</p>
+        )}
         {(lead as any).policyType && (
           <p className="text-center mt-1">
             <span className="text-xs font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">

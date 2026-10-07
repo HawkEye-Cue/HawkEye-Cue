@@ -112,13 +112,32 @@ describe('opportunities-handler — D1 Minimal Save & Promote', () => {
     expect(oppPuts[0].input.Item.promotedToLead).toBe(false);
   });
 
-  it('rejects a malformed/empty create (no usable URL)', async () => {
+  it('rejects a malformed/empty create (no URL, no author, no content)', async () => {
     const handler = loadHandler();
     const res = await handler(
       event('POST', '/opportunities', { keywordId: 'kw1', sourcePlatform: 'facebook', sourceUrl: '' }),
     );
     expect(res.statusCode).toBe(400);
     expect(sent.filter((c) => c.name === 'PutCommand')).toHaveLength(0);
+  });
+
+  it('accepts a hand-entered manual lead (no URL, but has author) and writes NO LEAD_PROTOCOL', async () => {
+    const handler = loadHandler();
+    const res = await handler(
+      event('POST', '/opportunities', {
+        keywordId: 'manual-entry',
+        sourcePlatform: 'facebook',
+        sourceUrl: '',
+        sourceAuthor: 'Jane Q.',
+      }),
+    );
+    expect(res.statusCode).toBe(201);
+    const puts = sent.filter((c) => c.name === 'PutCommand');
+    const oppPuts = puts.filter((c) => String(c.input.Item.SK).startsWith('OPP#'));
+    const protoPuts = puts.filter((c) => String(c.input.Item.SK).startsWith('LEAD_PROTOCOL#'));
+    expect(oppPuts).toHaveLength(1);
+    expect(protoPuts).toHaveLength(0);
+    expect(oppPuts[0].input.Item.sourceAuthor).toBe('Jane Q.');
   });
 
   it('Enriched create still stores author + content', async () => {

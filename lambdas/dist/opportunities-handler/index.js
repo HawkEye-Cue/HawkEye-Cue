@@ -53,12 +53,23 @@ function validateOpportunity(body) {
   const errors = [];
   if (!body) return ['Request body is required'];
 
-  // Minimal record must be anchored by a usable URL + keyword (not an empty record).
-  if (!isUsableUrl(body.sourceUrl)) {
-    errors.push('sourceUrl is required and must be a valid http(s) URL');
-  }
+  // A keyword is always required to anchor the record.
   if (typeof body.keywordId !== 'string' || body.keywordId.trim().length < 1) {
     errors.push('keywordId is required');
+  }
+
+  // Reject meaningless/empty records (R14.7): a valid create must have EITHER a
+  // usable sourceUrl (extension/minimal save) OR a meaningful manual reference
+  // (a non-empty author name or content, e.g. a hand-entered lead with no post URL).
+  const hasUsableUrl = isUsableUrl(body.sourceUrl);
+  const hasAuthorRef =
+    typeof body.sourceAuthor === 'string' && body.sourceAuthor.trim().length > 0;
+  const hasContentRef =
+    typeof body.sourceContent === 'string' && body.sourceContent.trim().length > 0;
+  if (!hasUsableUrl && !hasAuthorRef && !hasContentRef) {
+    errors.push(
+      'a usable sourceUrl or a meaningful source reference (author or content) is required'
+    );
   }
 
   // Optional personal content — only size/type checked when present.

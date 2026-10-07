@@ -45,13 +45,33 @@ describe('opportunitySubmissionSchema (D1)', () => {
     if (r.success) expect(r.data.promoteToLead).toBe(true);
   });
 
-  it('rejects a record with no usable URL (meaningless/empty)', () => {
+  it('rejects a meaningless/empty record: no URL, no author, no content', () => {
     const r = opportunitySubmissionSchema.safeParse({
       keywordId: 'kw1',
       sourcePlatform: 'facebook',
       sourceUrl: '',
     });
     expect(r.success).toBe(false);
+  });
+
+  it('accepts a hand-entered manual lead: no URL but a meaningful author name', () => {
+    const r = opportunitySubmissionSchema.safeParse({
+      keywordId: 'manual-entry',
+      sourcePlatform: 'facebook',
+      sourceUrl: '',
+      sourceAuthor: 'Jane Q.',
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it('accepts a hand-entered manual lead: no URL but meaningful content', () => {
+    const r = opportunitySubmissionSchema.safeParse({
+      keywordId: 'manual-entry',
+      sourcePlatform: 'facebook',
+      sourceUrl: '',
+      sourceContent: 'Lead from referral: asked about auto policy',
+    });
+    expect(r.success).toBe(true);
   });
 
   it('rejects a record missing the keyword', () => {

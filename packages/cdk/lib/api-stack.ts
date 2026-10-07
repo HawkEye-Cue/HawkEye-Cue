@@ -835,6 +835,14 @@ export class ApiStack extends cdk.Stack {
       integration: opportunitiesIntegration,
       authorizer,
     });
+    // Explicit Opportunity → Lead promotion (D1). Idempotent; the only path that
+    // creates the Lead follow-up protocol.
+    this.httpApi.addRoutes({
+      path: '/opportunities/{id}/promote',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: opportunitiesIntegration,
+      authorizer,
+    });
     this.httpApi.addRoutes({
       path: '/opportunities/{id}',
       methods: [apigatewayv2.HttpMethod.DELETE],

@@ -80,11 +80,20 @@ export interface Opportunity {
   tradeId: string;
   keywordId: string;
   keywordText: string;
-  sourceContent: string;
+  // Privacy/data-minimization (D1): a Minimal-Save opportunity may be stored with
+  // only a usable sourceUrl + keyword + timestamp + platform. Author name and copied
+  // post text are NOT stored by default, so these are optional. Enriched saves (and
+  // all legacy records) continue to populate them.
+  sourceContent?: string | null;
   sourcePlatform: SocialPlatform | 'other';
   sourceUrl: string;
-  sourceAuthor: string;
+  sourceAuthor?: string | null;
   status: OpportunityStatus;
+  // Explicit Opportunity → Lead promotion marker (D1). A saved Opportunity remains an
+  // Opportunity until the user explicitly promotes it; only then is the Lead follow-up
+  // protocol created. Absent/false on legacy and newly-saved opportunities.
+  promotedToLead?: boolean;
+  promotedAt?: string | null;
   detectedAt: string;
   leadNotes?: string | null;
   leadSource?: string | null;

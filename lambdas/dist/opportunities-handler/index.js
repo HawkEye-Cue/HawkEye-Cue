@@ -30,21 +30,50 @@ function getUserId(event) {
 const VALID_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'tiktok', 'nextdoor', 'other'];
 const VALID_STATUSES = ['new', 'followed_up', 'converted', 'dismissed'];
 
+// Validate an opportunity create request.
+//
+// Privacy/data-minimization (D1): a Minimal-Save opportunity does NOT store copied
+// post text (sourceContent) or author name (sourceAuthor), so both are OPTIONAL.
+// To still reject meaningless/empty records, a valid record MUST have a usable
+// sourceUrl AND a keywordId. (The Discover edition adds further provenance checks
+// in handleCreateOpportunity.)
+function isUsableUrl(v) {
+  if (typeof v !== 'string') return false;
+  const s = v.trim();
+  if (s.length === 0) return false;
+  try {
+    const u = new URL(s);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function validateOpportunity(body) {
   const errors = [];
   if (!body) return ['Request body is required'];
 
-  if (typeof body.sourceContent !== 'string' || body.sourceContent.length < 1) {
-    errors.push('sourceContent is required');
+  // Minimal record must be anchored by a usable URL + keyword (not an empty record).
+  if (!isUsableUrl(body.sourceUrl)) {
+    errors.push('sourceUrl is required and must be a valid http(s) URL');
   }
-  if (typeof body.sourceContent === 'string' && body.sourceContent.length > 5000) {
-    errors.push('sourceContent must be at most 5000 characters');
+  if (typeof body.keywordId !== 'string' || body.keywordId.trim().length < 1) {
+    errors.push('keywordId is required');
+  }
+
+  // Optional personal content — only size/type checked when present.
+  if (body.sourceContent != null) {
+    if (typeof body.sourceContent !== 'string') {
+      errors.push('sourceContent must be a string');
+    } else if (body.sourceContent.length > 5000) {
+      errors.push('sourceContent must be at most 5000 characters');
+    }
+  }
+  if (body.sourceAuthor != null && typeof body.sourceAuthor !== 'string') {
+    errors.push('sourceAuthor must be a string');
   }
   if (body.sourcePlatform && !VALID_PLATFORMS.includes(body.sourcePlatform)) {
     errors.push(`sourcePlatform must be one of: ${VALID_PLATFORMS.join(', ')}`);
-  }
-  if (typeof body.sourceAuthor !== 'string' || body.sourceAuthor.length < 1) {
-    errors.push('sourceAuthor is required');
   }
 
   return errors;
@@ -70,10 +99,12 @@ async function handleGetOpportunities(userId) {
     id: item.opportunityId,
     keywordId: item.keywordId,
     keywordText: item.keywordId === 'manual-entry' ? (item.leadSource || 'Manual') : item.keywordId,
-    sourceContent: item.sourceContent,
+    sourceContent: item.sourceContent ?? null,
     sourcePlatform: item.sourcePlatform,
     sourceUrl: item.sourceUrl || '',
-    sourceAuthor: item.sourceAuthor,
+    sourceAuthor: item.sourceAuthor ?? null,
+    promotedToLead: item.promotedToLead === true,
+    promotedAt: item.promotedAt || null,
     leadSource: item.leadSource || null,
     leadSourceGroup: item.leadSourceGroup || null,
     consentBasis: item.consentBasis || null,
@@ -118,6 +149,12 @@ async function handleCreateOpportunity(userId, body) {
   const opportunityId = randomUUID();
   const now = new Date().toISOString();
 
+  // D1: Minimal Save stores no author/content. Only persist what was provided.
+  const hasContent = typeof body.sourceContent === 'string' && body.sourceContent.length > 0;
+  const hasAuthor = typeof body.sourceAuthor === 'string' && body.sourceAuthor.length > 0;
+  // Explicit promotion at save time. Minimal/Enriched save alone does NOT promote.
+  const promoteToLead = body.promoteToLead === true;
+
   await dynamo.send(
     new PutCommand({
       TableName: TABLE_NAME,
@@ -126,10 +163,10 @@ async function handleCreateOpportunity(userId, body) {
         SK: `OPP#${now}#${opportunityId}`,
         opportunityId,
         keywordId: body.keywordId || 'manual-entry',
-        sourceContent: body.sourceContent.substring(0, 5000),
+        sourceContent: hasContent ? body.sourceContent.substring(0, 5000) : null,
         sourcePlatform: body.sourcePlatform || 'other',
         sourceUrl: body.sourceUrl || '',
-        sourceAuthor: body.sourceAuthor,
+        sourceAuthor: hasAuthor ? body.sourceAuthor : null,
         leadSource: body.leadSource || null,
         leadSourceGroup: body.leadSourceGroup || null,
         consentBasis: body.consentBasis || null,
@@ -139,13 +176,31 @@ async function handleCreateOpportunity(userId, body) {
         expectedPremium: body.expectedPremium || null,
         contactEmail: body.contactEmail || null,
         status: 'new',
+        // Opportunity → Lead marker (D1). An Opportunity stays an Opportunity until an
+        // explicit promote. Only set true if the caller explicitly promoted at save time.
+        promotedToLead: promoteToLead,
+        promotedAt: promoteToLead ? now : null,
         pushStatus: 'not_pushed',
         createdAt: now,
       },
     })
   );
 
-  // Auto-create follow-up protocol from user's saved template
+  // D1: The Lead follow-up protocol is a LEAD side effect. It is created ONLY when the
+  // opportunity is explicitly promoted to a Lead — never on a plain (Minimal/Enriched)
+  // save. This prevents a silent derived personal-data record (leadName) on save.
+  if (promoteToLead) {
+    await createLeadProtocol(userId, opportunityId, now, hasAuthor ? body.sourceAuthor : null);
+  }
+
+  return respond(201, { id: opportunityId, status: 'new', promotedToLead: promoteToLead, createdAt: now });
+}
+
+// Create the Lead follow-up protocol from the user's saved template, if any.
+// Idempotent: writes SK `LEAD_PROTOCOL#{opportunityId}` with a condition that it does
+// not already exist, so repeated promotes (retries / double-clicks / refreshes) never
+// create duplicates.
+async function createLeadProtocol(userId, opportunityId, now, leadName) {
   try {
     const templateResult = await dynamo.send(new QueryCommand({
       TableName: TABLE_NAME,
@@ -158,7 +213,6 @@ async function handleCreateOpportunity(userId, body) {
       const steps = template.steps.map((s, i) => {
         const eventDate = new Date(startDate);
         eventDate.setDate(eventDate.getDate() + (s.day || 0));
-        // Skip Sundays — push to Monday
         if (eventDate.getDay() === 0) {
           eventDate.setDate(eventDate.getDate() + 1);
         }
@@ -174,24 +228,74 @@ async function handleCreateOpportunity(userId, body) {
         };
       });
 
-      await dynamo.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          PK: `USER#${userId}`,
-          SK: `LEAD_PROTOCOL#${opportunityId}`,
-          opportunityId,
-          leadName: body.sourceAuthor,
-          steps,
-          createdAt: now,
-          updatedAt: now,
-        },
-      }));
+      try {
+        await dynamo.send(new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            PK: `USER#${userId}`,
+            SK: `LEAD_PROTOCOL#${opportunityId}`,
+            opportunityId,
+            leadName: leadName || null,
+            steps,
+            createdAt: now,
+            updatedAt: now,
+          },
+          // Idempotency guard — do not overwrite / duplicate an existing protocol.
+          ConditionExpression: 'attribute_not_exists(SK)',
+        }));
+      } catch (e) {
+        // ConditionalCheckFailed => protocol already exists; promotion is idempotent.
+        if (!(e && e.name === 'ConditionalCheckFailedException')) throw e;
+      }
     }
   } catch (e) {
-    console.error('Failed to auto-create protocol:', e);
+    console.error('Failed to create lead protocol:', e);
+  }
+}
+
+// POST /opportunities/{id}/promote — explicit Opportunity → Lead promotion (D1).
+// Idempotent: sets promotedToLead=true on the opportunity and creates the Lead
+// follow-up protocol only if it does not already exist. Repeated calls do not create
+// duplicate LEAD_PROTOCOL records and do not error.
+async function handlePromoteToLead(userId, opportunityId) {
+  // Find the opportunity's full SK.
+  const queryResult = await dynamo.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      FilterExpression: 'opportunityId = :oppId',
+      ExpressionAttributeValues: {
+        ':pk': `USER#${userId}`,
+        ':sk': 'OPP#',
+        ':oppId': opportunityId,
+      },
+    })
+  );
+  const item = (queryResult.Items || [])[0];
+  if (!item) {
+    return respond(404, { error: { code: 'NOT_FOUND', message: 'Opportunity not found' } });
   }
 
-  return respond(201, { id: opportunityId, status: 'new', createdAt: now });
+  const now = new Date().toISOString();
+  const alreadyPromoted = item.promotedToLead === true;
+
+  // Mark promoted (idempotent — re-setting the same flag is harmless).
+  await dynamo.send(new UpdateCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: item.PK, SK: item.SK },
+    UpdateExpression: 'SET promotedToLead = :t, promotedAt = if_not_exists(promotedAt, :now)',
+    ExpressionAttributeValues: { ':t': true, ':now': now },
+  }));
+
+  // Create the Lead follow-up protocol once (guarded by attribute_not_exists in the helper).
+  await createLeadProtocol(userId, opportunityId, now, item.sourceAuthor || null);
+
+  return respond(200, {
+    id: opportunityId,
+    promotedToLead: true,
+    promotedAt: item.promotedAt || now,
+    alreadyPromoted,
+  });
 }
 
 // PUT /opportunities/{id}/status
@@ -470,6 +574,12 @@ exports.handler = async (event) => {
     if (method === 'PUT' && statusMatch) {
       const body = event.body ? JSON.parse(event.body) : {};
       return handleUpdateStatus(userId, statusMatch[1], body);
+    }
+
+    // POST /opportunities/{id}/promote — explicit Opportunity → Lead (D1, idempotent)
+    const promoteMatch = path.match(/^\/opportunities\/([^/]+)\/promote$/);
+    if (method === 'POST' && promoteMatch) {
+      return handlePromoteToLead(userId, promoteMatch[1]);
     }
 
     // DELETE /opportunities/{id}

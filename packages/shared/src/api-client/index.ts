@@ -253,6 +253,18 @@ export class ApiClient {
     });
   }
 
+  /**
+   * Explicitly promote a saved Opportunity to a Lead (D1).
+   *
+   * This is the ONLY path that creates/activates the Lead follow-up protocol. Saving
+   * an Opportunity (Minimal or Enriched) never promotes it automatically. The server
+   * promotion is idempotent: repeated calls (retries, double-clicks, refreshes) do not
+   * create duplicate LEAD_PROTOCOL records.
+   */
+  async promoteOpportunityToLead(id: string): Promise<Opportunity> {
+    return this.request<Opportunity>('POST', `/opportunities/${id}/promote`, {});
+  }
+
   async deleteOpportunity(id: string): Promise<void> {
     return this.request<void>('DELETE', `/opportunities/${id}`);
   }

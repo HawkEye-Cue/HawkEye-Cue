@@ -86,10 +86,10 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
         {/* Progress */}
-        <div className="w-full bg-slate-800 rounded-full h-1.5 mb-8">
+        <div className="w-full bg-black rounded-full h-1.5 mb-8">
           <div className="bg-gradient-to-r from-amber-500 to-yellow-400 h-1.5 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
         </div>
 
@@ -106,7 +106,7 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
                 value={chosenTrade ? chosenTrade.name : tradeQuery}
                 onChange={(e) => { setChosenTrade(null); setTradeQuery(e.target.value); }}
                 placeholder="e.g. Roofing, Insurance, Real Estate…"
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white text-base placeholder-slate-500"
+                className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white text-base placeholder-slate-500"
               />
               {!chosenTrade && tradeMatches.length > 0 && (
                 <div className="space-y-1.5">
@@ -114,7 +114,7 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
                     <button
                       key={t.id}
                       onClick={() => { setChosenTrade(t); setTradeQuery(t.name); }}
-                      className="w-full text-left px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-lg text-sm text-white"
+                      className="w-full text-left px-4 py-2.5 bg-black hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white"
                     >
                       {t.name}
                     </button>
@@ -143,11 +143,11 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
                 placeholder="e.g. Brighton & the north metro"
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white text-base placeholder-slate-500"
+                className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white text-base placeholder-slate-500"
               />
               <div className="flex gap-2">
                 <button onClick={next} className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl">Next →</button>
-                <button onClick={next} className="px-4 py-3 bg-slate-700 text-slate-300 rounded-xl text-sm">Skip</button>
+                <button onClick={next} className="px-4 py-3 bg-white/5 text-slate-300 rounded-xl text-sm">Skip</button>
               </div>
             </>
           )}
@@ -164,11 +164,11 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
                 value={services}
                 onChange={(e) => setServices(e.target.value)}
                 placeholder="e.g. Home & auto bundles, life insurance"
-                className="w-full h-24 px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white text-base placeholder-slate-500 resize-none"
+                className="w-full h-24 px-4 py-3 bg-black border border-white/10 rounded-xl text-white text-base placeholder-slate-500 resize-none"
               />
               <div className="flex gap-2">
                 <button onClick={next} className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl">Next →</button>
-                <button onClick={next} className="px-4 py-3 bg-slate-700 text-slate-300 rounded-xl text-sm">Skip</button>
+                <button onClick={next} className="px-4 py-3 bg-white/5 text-slate-300 rounded-xl text-sm">Skip</button>
               </div>
             </>
           )}
@@ -181,8 +181,8 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
                 <p className="text-sm text-slate-400 mt-2">Link the Facebook Pages or Instagram accounts you post from. You can also do this later in Settings.</p>
               </div>
               <div className="flex flex-col gap-2">
-                <button onClick={connectAccounts} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl">Connect accounts now</button>
-                <button onClick={next} className="w-full py-3 bg-slate-700 text-slate-300 rounded-xl text-sm">I'll connect them later</button>
+                <button onClick={connectAccounts} className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white font-bold rounded-xl">Connect accounts now</button>
+                <button onClick={next} className="w-full py-3 bg-white/5 text-slate-300 rounded-xl text-sm">I'll connect them later</button>
               </div>
             </>
           )}
@@ -199,11 +199,11 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
                 value={voice}
                 onChange={(e) => setVoice(e.target.value)}
                 placeholder="e.g. Hey! Happy to help — I'll shoot you a quick quote today. What's the best number to reach you?"
-                className="w-full h-28 px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white text-base placeholder-slate-500 resize-none"
+                className="w-full h-28 px-4 py-3 bg-black border border-white/10 rounded-xl text-white text-base placeholder-slate-500 resize-none"
               />
               <div className="flex gap-2">
                 <button onClick={next} className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl">Next →</button>
-                <button onClick={next} className="px-4 py-3 bg-slate-700 text-slate-300 rounded-xl text-sm">Skip</button>
+                <button onClick={next} className="px-4 py-3 bg-white/5 text-slate-300 rounded-xl text-sm">Skip</button>
               </div>
             </>
           )}
@@ -213,7 +213,7 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
               <span className="text-6xl block">🦅</span>
               <h2 className="text-2xl font-bold text-white">Your HawkEye is ready.</h2>
               <p className="text-sm text-slate-300">Let's find your first opportunity.</p>
-              <div className="text-left bg-slate-800/60 border border-white/10 rounded-xl p-4 space-y-1.5 text-sm">
+              <div className="text-left bg-white/5 border border-white/10 rounded-xl p-4 space-y-1.5 text-sm">
                 {chosenTrade && <p className="text-slate-300">🏷️ Trade: <span className="text-white font-medium">{chosenTrade.name}</span></p>}
                 {area && <p className="text-slate-300">📍 Area: <span className="text-white font-medium">{area}</span></p>}
                 {services && <p className="text-slate-300">🎯 Focus: <span className="text-white font-medium">{services}</span></p>}

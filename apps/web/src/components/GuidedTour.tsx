@@ -76,7 +76,7 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
     <div className="fixed inset-0 z-[9999]" onClick={handleNext}>
       {/* Spotlight on the nav item */}
       <div
-        className="absolute border-2 border-blue-400 rounded-xl pointer-events-none"
+        className="absolute border-2 border-amber-400 rounded-xl pointer-events-none"
         style={{
           top: targetRect.top - 4,
           left: targetRect.left - 4,
@@ -95,10 +95,10 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
           width: 300,
         }}
       >
-        <div className="bg-slate-800 border border-blue-500/30 rounded-xl p-4 shadow-2xl shadow-blue-500/20">
+        <div className="bg-black border border-amber-500/30 rounded-xl p-4 shadow-2xl shadow-blue-500/20">
           {/* Progress bar */}
-          <div className="w-full bg-slate-700 rounded-full h-1 mb-3">
-            <div className="bg-blue-500 h-1 rounded-full transition-all" style={{ width: `${((step + 1) / TOUR_STEPS.length) * 100}%` }} />
+          <div className="w-full bg-white/5 rounded-full h-1 mb-3">
+            <div className="bg-amber-500 h-1 rounded-full transition-all" style={{ width: `${((step + 1) / TOUR_STEPS.length) * 100}%` }} />
           </div>
 
           <div className="flex items-center gap-2 mb-2">
@@ -111,7 +111,7 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
           <div className="flex gap-2">
             <button
               onClick={(e) => { e.stopPropagation(); handleNext(); }}
-              className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-blue-500 transition-colors active:scale-95"
+              className="flex-1 bg-amber-500 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-amber-400 transition-colors active:scale-95"
             >
               {isLast ? 'Done — Let\'s Go! 🦅' : 'Next →'}
             </button>
@@ -129,7 +129,7 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
         </div>
 
         {/* Arrow */}
-        <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-slate-800 border-r border-b border-blue-500/30 rotate-45" />
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-black border-r border-b border-amber-500/30 rotate-45" />
       </div>
     </div>
   );

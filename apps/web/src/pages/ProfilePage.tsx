@@ -181,8 +181,11 @@ export default function ProfilePage() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-white">Profile</h2>
 
+      <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      {/* Left column */}
+      <div className="min-w-0 space-y-4">
       {/* Account Info */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="bg-white/5 rounded-xl border border-white/10 p-4">
         <h3 className="font-semibold mb-3 text-white">Account Info</h3>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
@@ -197,7 +200,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Phone Number */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="bg-white/5 rounded-xl border border-white/10 p-4">
         <h3 className="font-semibold mb-3 text-white">Phone Number</h3>
 
         {phoneError && (
@@ -215,22 +218,25 @@ export default function ProfilePage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+15551234567"
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
             />
             <p className="text-xs text-slate-500 mt-1">Include country code, e.g. +1 for US</p>
           </div>
           <button
             type="submit"
             disabled={phoneLoading}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="bg-amber-500 text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-amber-400 disabled:opacity-50"
           >
             {phoneLoading ? 'Saving...' : 'Save Phone Number'}
           </button>
         </form>
       </div>
+      </div>
 
+      {/* Right column */}
+      <div className="min-w-0 space-y-4">
       {/* Change Password */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="bg-white/5 rounded-xl border border-white/10 p-4">
         <h3 className="font-semibold mb-3 text-white">Login Verification (MFA)</h3>
         <p className="text-sm text-slate-400 mb-3">
           Choose how you receive your 6-digit login verification code.
@@ -244,7 +250,7 @@ export default function ProfilePage() {
         )}
 
         <div className="space-y-2 mb-3">
-          <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-slate-700/50 border-slate-600" style={mfaMethod === 'email' ? { borderColor: 'rgb(59, 130, 246)', background: 'rgba(59, 130, 246, 0.05)' } : {}}>
+          <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-white/5 border-white/10" style={mfaMethod === 'email' ? { borderColor: 'rgb(245, 158, 11)', background: 'rgba(245, 158, 11, 0.08)' } : {}}>
             <input
               type="radio"
               name="mfaMethod"
@@ -258,7 +264,7 @@ export default function ProfilePage() {
               <p className="text-xs text-slate-400">Code sent to {user?.email}</p>
             </div>
           </label>
-          <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-slate-700/50 border-slate-600" style={mfaMethod === 'sms' ? { borderColor: 'rgb(59, 130, 246)', background: 'rgba(59, 130, 246, 0.05)' } : {}}>
+          <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-white/5 border-white/10" style={mfaMethod === 'sms' ? { borderColor: 'rgb(245, 158, 11)', background: 'rgba(245, 158, 11, 0.08)' } : {}}>
             <input
               type="radio"
               name="mfaMethod"
@@ -277,14 +283,14 @@ export default function ProfilePage() {
         <button
           onClick={handleMfaSave}
           disabled={mfaLoading}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          className="bg-amber-500 text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-amber-400 disabled:opacity-50"
         >
           {mfaLoading ? 'Saving...' : 'Save Preference'}
         </button>
       </div>
 
       {/* Change Password Section */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div className="bg-white/5 rounded-xl border border-white/10 p-4">
         <h3 className="font-semibold mb-3 text-white">Change Password</h3>
 
         {passwordError && (
@@ -301,7 +307,7 @@ export default function ProfilePage() {
               type="password"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
               required
               autoComplete="current-password"
             />
@@ -312,7 +318,7 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={handleGeneratePassword}
-                className="text-xs text-blue-400 hover:text-blue-300"
+                className="text-xs text-amber-300 hover:text-amber-200"
               >
                 Generate Secure Password
               </button>
@@ -322,7 +328,7 @@ export default function ProfilePage() {
                 type={showNewPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 pr-16"
+                className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-amber-500 pr-16"
                 required
                 autoComplete="new-password"
               />
@@ -357,7 +363,7 @@ export default function ProfilePage() {
               type={showNewPassword ? 'text' : 'password'}
               value={confirmNewPassword}
               onChange={(e) => setConfirmNewPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
               required
               autoComplete="new-password"
             />
@@ -368,11 +374,13 @@ export default function ProfilePage() {
           <button
             type="submit"
             disabled={passwordLoading || !canSubmitPassword}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-amber-500 text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {passwordLoading ? 'Updating...' : 'Update Password'}
           </button>
         </form>
+      </div>
+      </div>
       </div>
     </div>
   );

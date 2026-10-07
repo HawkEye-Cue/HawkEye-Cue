@@ -15,7 +15,7 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LABELS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const DAY_COLORS = [
   'bg-red-500/20 text-red-300 border-red-500/30',       // Sun
-  'bg-blue-500/20 text-blue-300 border-blue-500/30',    // Mon
+  'bg-amber-500/20 text-amber-300 border-amber-500/30',    // Mon
   'bg-green-500/20 text-green-300 border-green-500/30', // Tue
   'bg-purple-500/20 text-purple-300 border-purple-500/30', // Wed
   'bg-amber-500/20 text-amber-300 border-amber-500/30', // Thu
@@ -24,7 +24,7 @@ const DAY_COLORS = [
 ];
 const DAY_BUTTON_ACTIVE = [
   'bg-red-500 text-white',    // Sun
-  'bg-blue-500 text-white',   // Mon
+  'bg-amber-500 text-white',   // Mon
   'bg-green-500 text-white',  // Tue
   'bg-purple-500 text-white', // Wed
   'bg-amber-500 text-black',  // Thu
@@ -34,7 +34,7 @@ const DAY_BUTTON_ACTIVE = [
 
 export default function FlockGroupManager({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
-  const { addEvent, events, removeAllByTitle } = useCalendar();
+  const { addEvent, events } = useCalendar();
   const { showToast } = useToast();
 
   const storageKey = `hawkeye_flock_groups_${user?.sub}`;
@@ -163,7 +163,6 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
   // Schedule flocks for the week based on group day assignments
   async function scheduleFlocks() {
     const today = new Date();
-    const todayDay = today.getDay(); // 0=Sun
     let scheduled = 0;
 
     // Determine which anyday groups go where (jumble logic)
@@ -237,7 +236,7 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] px-3 pt-3 pb-20 overflow-y-auto" onClick={onClose}>
-      <div className="w-full max-w-md mx-auto bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100dvh - 7rem)' }} onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md mx-auto bg-black border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100dvh - 7rem)' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between shrink-0">
           <div>
@@ -259,14 +258,14 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Group name (e.g. Local Moms of Springfield)"
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
             />
             <input
               type="url"
               value={newLink}
               onChange={(e) => setNewLink(e.target.value)}
               placeholder="Facebook group link (optional)"
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
             />
 
             {/* Day picker */}
@@ -280,10 +279,10 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
                     disabled={newAnyday}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                       newAnyday
-                        ? 'bg-slate-700 text-slate-600 cursor-not-allowed'
+                        ? 'bg-white/5 text-slate-600 cursor-not-allowed'
                         : newDays.includes(i)
                           ? `${DAY_BUTTON_ACTIVE[i]} shadow-md`
-                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                          : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
                     }`}
                   >
                     {DAY_LABELS_SHORT[i]}
@@ -293,7 +292,7 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
             </div>
 
             {/* Any Day toggle */}
-            <label className="flex items-center justify-between p-2 bg-slate-800 rounded-lg cursor-pointer">
+            <label className="flex items-center justify-between p-2 bg-white/5 rounded-lg cursor-pointer">
               <span className="text-xs text-slate-300">Any Day — post whenever</span>
               <input
                 type="checkbox"
@@ -306,7 +305,7 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
             <button
               onClick={handleAddGroup}
               disabled={!newName.trim()}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 transition-colors"
+              className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg disabled:opacity-50 transition-colors"
             >
               + Add Group
             </button>
@@ -344,7 +343,7 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
               }).map((group) => {
                 const isEditing = editingId === group.id;
                 return (
-                  <div key={group.id} className="bg-slate-800 border border-white/10 rounded-xl overflow-hidden">
+                  <div key={group.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
                     <div className="flex items-center gap-2 px-3 py-2.5">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-white font-medium truncate">{group.name}</p>
@@ -361,9 +360,9 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
                         </div>
                       </div>
                       {group.link && (
-                        <a href={group.link} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs hover:text-blue-300 shrink-0">↗</a>
+                        <a href={group.link} target="_blank" rel="noopener noreferrer" className="text-amber-300 text-xs hover:text-amber-200 shrink-0">↗</a>
                       )}
-                      <button onClick={() => setEditingId(isEditing ? null : group.id)} className="text-xs text-blue-400 hover:text-blue-300 shrink-0">
+                      <button onClick={() => setEditingId(isEditing ? null : group.id)} className="text-xs text-amber-300 hover:text-amber-200 shrink-0">
                         {isEditing ? '✓' : '✏️'}
                       </button>
                       <button onClick={() => handleRemoveGroup(group.id)} className="text-red-400 hover:text-red-300 text-xs shrink-0">✕</button>
@@ -378,14 +377,14 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
                             const val = e.target.value.trim();
                             if (val) setGroups(groups.map((g) => g.id === group.id ? { ...g, name: val } : g));
                           }}
-                          className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs"
+                          className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs"
                         />
                         <input
                           type="url"
                           defaultValue={group.link}
                           placeholder="Group link"
                           onBlur={(e) => setGroups(groups.map((g) => g.id === group.id ? { ...g, link: e.target.value.trim() } : g))}
-                          className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-slate-500"
+                          className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs placeholder-slate-500"
                         />
                         <div className="flex gap-1">
                           {DAY_LABELS.map((label, i) => (
@@ -399,15 +398,15 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
                               }}
                               disabled={group.anyday}
                               className={`flex-1 py-1.5 rounded text-[9px] font-bold transition-all ${
-                                group.anyday ? 'bg-slate-700 text-slate-600' :
-                                group.postingDays.includes(i) ? DAY_BUTTON_ACTIVE[i] : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                group.anyday ? 'bg-white/5 text-slate-600' :
+                                group.postingDays.includes(i) ? DAY_BUTTON_ACTIVE[i] : 'bg-white/5 text-slate-400 hover:bg-white/10'
                               }`}
                             >
                               {DAY_LABELS_SHORT[i]}
                             </button>
                           ))}
                         </div>
-                        <label className="flex items-center justify-between p-1.5 bg-slate-700 rounded cursor-pointer">
+                        <label className="flex items-center justify-between p-1.5 bg-white/5 rounded cursor-pointer">
                           <span className="text-[10px] text-slate-300">Any Day</span>
                           <input
                             type="checkbox"
@@ -430,7 +429,7 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
           <button
             onClick={scheduleFlocks}
             disabled={groups.length === 0}
-            className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-lg disabled:opacity-50 hover:opacity-90 transition-all"
+            className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg disabled:opacity-50 transition-all"
           >
             📅 Schedule This Week's Flocks
           </button>

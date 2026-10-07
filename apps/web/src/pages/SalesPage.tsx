@@ -77,8 +77,8 @@ const INTERNET_LEAD_SEQUENCE = [
 ];
 
 const STAGES = [
-  { id: 'prospect', label: 'Prospect', color: 'bg-slate-500/20 border-slate-500/30 text-slate-300' },
-  { id: 'contacted', label: 'Contacted', color: 'bg-blue-500/20 border-blue-500/30 text-blue-300' },
+  { id: 'prospect', label: 'Prospect', color: 'bg-white/10 border-white/15 text-slate-300' },
+  { id: 'contacted', label: 'Contacted', color: 'bg-amber-500/20 border-amber-500/30 text-amber-300' },
   { id: 'quoted', label: 'Quoted', color: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-300' },
   { id: 'closing', label: 'Closing', color: 'bg-purple-500/20 border-purple-500/30 text-purple-300' },
   { id: 'won', label: 'Won', color: 'bg-green-500/20 border-green-500/30 text-green-300' },
@@ -329,13 +329,13 @@ export default function SalesPage() {
   const { getToken, user } = useAuth();
   const { selectedTrade } = useTrade();
   const { addEvent, removeAllByTitle } = useCalendar();
-  const { showToast, showUndoToast } = useToast();
+  const { showToast } = useToast();
   const { isPro } = useMode();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState<string>('free');
   // Summit: view own pipeline vs the whole team's production
-  const { isInTeam, teamMembers, teamLeads, teamAnalytics, teamFolios, fetchLeads: fetchTeamLeads, fetchAnalytics: fetchTeamAnalytics, fetchFolios: fetchTeamFolios } = useTeamData();
+  const { isInTeam, teamLeads, teamAnalytics, teamFolios, fetchLeads: fetchTeamLeads, fetchAnalytics: fetchTeamAnalytics, fetchFolios: fetchTeamFolios } = useTeamData();
   const [pipelineView, setPipelineView] = useState<'mine' | 'team'>('mine');
   // Which folio the team view is showing: 'current' | 'all' | "START to END"
   const [teamFolio, setTeamFolio] = useState<string>('current');
@@ -420,10 +420,9 @@ export default function SalesPage() {
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
 
   // Folio default (saved once, auto-populates new deals)
-  const [defaultFolioName, setDefaultFolioName] = useState(() => localStorage.getItem('hawkeye_folio_name') || '');
+  const [, setDefaultFolioName] = useState(() => localStorage.getItem('hawkeye_folio_name') || '');
   const [defaultFolioStart, setDefaultFolioStart] = useState(() => localStorage.getItem('hawkeye_folio_start') || '');
   const [defaultFolioEnd, setDefaultFolioEnd] = useState(() => localStorage.getItem('hawkeye_folio_end') || '');
-  const [editingFolio, setEditingFolio] = useState(false);
   // Some trades (e.g. non-insurance) don't use folios — hide folio UI when disabled.
   const [foliosEnabled, setFoliosEnabled] = useState<boolean>(() => localStorage.getItem('hawkeye_folios_enabled') !== 'false');
 
@@ -432,7 +431,7 @@ export default function SalesPage() {
   const [value, setValue] = useState('');
   const [stage, setStage] = useState('won');
   const [policyType, setPolicyType] = useState('');
-  const [contactName, setContactName] = useState('');
+  const [, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [notes, setNotes] = useState('');
@@ -445,14 +444,13 @@ export default function SalesPage() {
   const [folioFilter, setFolioFilter] = useState('current');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [snoozeId, setSnoozeId] = useState<string | null>(null);
-  const [teamEmailsText, setTeamEmailsText] = useState('');
+  const [, setTeamEmailsText] = useState('');
   const [unconvertedLeads, setUnconvertedLeads] = useState<{ id: string; authorName: string; platform: string; postContent: string; detectedAt: string }[]>([]);
 
   // Team members / salespeople for the "Sold By" dropdown
   const [salespeople, setSalespeople] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('hawkeye_salespeople') || '[]'); } catch { return []; }
   });
-  const [newSalesperson, setNewSalesperson] = useState('');
 
   // Linked accounts / partner deals now live on the Summit "Whole Team" view.
 
@@ -657,31 +655,6 @@ export default function SalesPage() {
     }
   }
 
-  async function handleDelete(dealId: string) {
-    const deal = deals.find((d) => d.id === dealId);
-    if (!deal) return;
-
-    // Optimistic remove + offer undo for 5 seconds
-    setDeals((prev) => prev.filter((d) => d.id !== dealId));
-    let undone = false;
-    showUndoToast('Deal deleted', () => {
-      undone = true;
-      setDeals((prev) => [deal, ...prev]);
-    });
-
-    setTimeout(async () => {
-      if (undone) return;
-      try {
-        const client = await buildClient();
-        await client.request('DELETE', `/sales/deals/${dealId}`);
-        removeAllByTitle(deal.name);
-      } catch {
-        setDeals((prev) => [deal, ...prev]);
-        showToast('❌ Failed to delete');
-      }
-    }, 5000);
-  }
-
   function resetForm() {
     setName(''); setValue(''); setStage('won'); setPolicyType('');
     setContactName(''); setContactEmail(''); setContactPhone(''); setNotes('');
@@ -788,7 +761,7 @@ export default function SalesPage() {
         {pipelineView === 'mine' && (
           <button
             onClick={() => setShowAdd(!showAdd)}
-            className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-500"
+            className="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-amber-400"
           >
             {showAdd ? '−' : '+ Add Deal'}
           </button>
@@ -797,16 +770,16 @@ export default function SalesPage() {
 
       {/* Summit: My pipeline vs Team production toggle */}
       {isSummit && (
-        <div className="flex bg-slate-800 rounded-xl p-1 border border-white/10">
+        <div className="flex bg-black rounded-xl p-1 border border-white/10">
           <button
             onClick={() => setPipelineView('mine')}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${pipelineView === 'mine' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${pipelineView === 'mine' ? 'bg-amber-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
           >
             🪶 My Pipeline
           </button>
           <button
             onClick={() => setPipelineView('team')}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${pipelineView === 'team' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${pipelineView === 'team' ? 'bg-amber-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}
           >
             🏔️ Whole Team
           </button>
@@ -820,7 +793,7 @@ export default function SalesPage() {
           <select
             value={teamFolio}
             onChange={(e) => setTeamFolio(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
           >
             <option value="current">📅 {defaultFolioStart && defaultFolioEnd ? folioDisplayName(`${defaultFolioStart} to ${defaultFolioEnd}`) : 'Current Folio'}</option>
             <option value="all">All Time</option>
@@ -844,7 +817,7 @@ export default function SalesPage() {
                   <p className="text-[11px] text-slate-400 mt-0.5">Team Revenue</p>
                 </div>
                 <div className="glass-card text-center py-3">
-                  <p className="text-xl font-extrabold text-blue-400">{teamAnalytics.wonDeals || 0}</p>
+                  <p className="text-xl font-extrabold text-amber-300">{teamAnalytics.wonDeals || 0}</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">Deals Won</p>
                 </div>
                 <div className="glass-card text-center py-3">
@@ -869,7 +842,7 @@ export default function SalesPage() {
                           <span className="text-xs text-white font-medium truncate">{nm}</span>
                           <span className="text-xs text-green-400 font-bold shrink-0">${m.revenue.toLocaleString()}</span>
                         </div>
-                        <div className="mt-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div className="mt-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-amber-400 to-green-400 rounded-full" style={{ width: `${Math.round((m.revenue / top) * 100)}%` }} />
                         </div>
                         <p className="text-[10px] text-slate-500 mt-0.5">{m.wonDeals} won · {m.deals} deals · {m.flockRate}% flock rate</p>
@@ -899,7 +872,7 @@ export default function SalesPage() {
                 const names = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
                 const owner = names[lead.addedByEmail] || lead.addedBy;
                 return (
-                  <div key={lead.id} className="flex items-center gap-2 bg-slate-800 border border-white/10 px-3 py-2.5 rounded-lg">
+                  <div key={lead.id} className="flex items-center gap-2 bg-black border border-white/10 px-3 py-2.5 rounded-lg">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-white font-medium truncate">{lead.name}</span>
@@ -907,7 +880,7 @@ export default function SalesPage() {
                       </div>
                       <p className="text-[10px] text-slate-500 mt-0.5">{lead.sourcePlatform} · {owner}{lead.claimedByName ? ` · 🎯 ${lead.claimedByName}` : ''}</p>
                     </div>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${lead.status === 'converted' ? 'bg-green-900/40 text-green-400 border border-green-500/20' : 'bg-blue-900/40 text-blue-400 border border-blue-500/20'}`}>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${lead.status === 'converted' ? 'bg-green-900/40 text-green-400 border border-green-500/20' : 'bg-amber-500/15 text-amber-300 border border-amber-500/20'}`}>
                       {lead.status === 'converted' ? '⭐ Client' : lead.status === 'followed_up' ? 'Active' : 'New'}
                     </span>
                   </div>
@@ -929,8 +902,8 @@ export default function SalesPage() {
 
       {/* Convert from Lead — shows recent leads that can be turned into deals */}
       {showAdd && unconvertedLeads.length > 0 && (
-        <div className="glass-card border-blue-500/20">
-          <p className="text-xs font-medium text-blue-300 mb-2">⚡ Quick convert — tap a lead to auto-fill:</p>
+        <div className="glass-card border-amber-500/20">
+          <p className="text-xs font-medium text-amber-300 mb-2">⚡ Quick convert — tap a lead to auto-fill:</p>
           <div className="space-y-1.5 max-h-32 overflow-y-auto">
             {unconvertedLeads.map((lead) => (
               <button
@@ -945,7 +918,7 @@ export default function SalesPage() {
                   setUnconvertedLeads((prev) => prev.filter((l) => l.id !== lead.id));
                   showToast('✓ Lead info loaded — fill in the rest');
                 }}
-                className="w-full text-left p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
+                className="w-full text-left p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm">{lead.platform === 'facebook' ? '📘' : lead.platform === 'instagram' ? '📷' : lead.platform === 'linkedin' ? '💼' : '🎵'}</span>
@@ -970,7 +943,7 @@ export default function SalesPage() {
           <div className="text-xs text-slate-400">Won</div>
         </div>
         <div className="glass-card text-center">
-          <div className="text-lg font-bold text-blue-400">${totalValue.toLocaleString()}</div>
+          <div className="text-lg font-bold text-amber-300">${totalValue.toLocaleString()}</div>
           <div className="text-xs text-slate-400">Pipeline</div>
         </div>
       </div>
@@ -987,7 +960,7 @@ export default function SalesPage() {
           <div className="glass-card border-amber-500/20">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-amber-300">📋 Follow-Ups Due ({needsFollowUp.length})</p>
-              <a href="/" className="text-xs text-blue-400 hover:text-blue-300">View on Dashboard →</a>
+              <a href="/" className="text-xs text-amber-300 hover:text-amber-200">View on Dashboard →</a>
             </div>
             <div className="space-y-1.5 max-h-32 overflow-y-auto">
               {needsFollowUp.slice(0, 5).map((d) => (
@@ -1033,7 +1006,7 @@ export default function SalesPage() {
                       </div>
                       <span className="text-xs text-slate-500">Day {daysSinceCreated}</span>
                     </div>
-                    <div className="w-full h-1.5 bg-slate-700 rounded-full mb-2 overflow-hidden">
+                    <div className="w-full h-1.5 bg-white/5 rounded-full mb-2 overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-orange-500 to-green-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
                     </div>
                     <div className="flex items-center justify-between">
@@ -1077,9 +1050,9 @@ export default function SalesPage() {
                 <button
                   key={folio}
                   onClick={() => setFolioFilter(isActive ? 'all' : folio)}
-                  className={`w-full flex items-center justify-between gap-2 py-2 px-2 rounded-md text-left transition-colors ${isActive ? 'bg-blue-500/15' : 'hover:bg-white/5'}`}
+                  className={`w-full flex items-center justify-between gap-2 py-2 px-2 rounded-md text-left transition-colors ${isActive ? 'bg-amber-500/15' : 'hover:bg-white/5'}`}
                 >
-                  <span className={`text-xs truncate ${isActive ? 'text-blue-300 font-semibold' : 'text-white'}`}>{folioDisplayName(folio)}</span>
+                  <span className={`text-xs truncate ${isActive ? 'text-amber-300 font-semibold' : 'text-white'}`}>{folioDisplayName(folio)}</span>
                   <span className="flex items-center gap-2 shrink-0">
                     <span className="text-[10px] text-slate-500">{wonDeals.length} won</span>
                     <span className="text-xs text-green-400 font-semibold">${totalRevenue.toLocaleString()}</span>
@@ -1089,7 +1062,7 @@ export default function SalesPage() {
             })}
           </div>
           {folioFilter !== 'all' && folioFilter !== 'current' && (
-            <button onClick={() => setFolioFilter('all')} className="mt-2 text-xs text-blue-400 hover:text-blue-300">Show all periods</button>
+            <button onClick={() => setFolioFilter('all')} className="mt-2 text-xs text-amber-300 hover:text-amber-200">Show all periods</button>
           )}
         </details>
       )}
@@ -1103,7 +1076,7 @@ export default function SalesPage() {
           </div>
           <button
             onClick={() => setEditingDealTypes(!editingDealTypes)}
-            className="text-xs text-blue-400 hover:text-blue-300"
+            className="text-xs text-amber-300 hover:text-amber-200"
           >
             {editingDealTypes ? 'Done' : 'Edit'}
           </button>
@@ -1117,19 +1090,19 @@ export default function SalesPage() {
                 onChange={(e) => setNewDealType(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDealType(); } }}
                 placeholder={`Add new ${tradeConfig.dealTypeLabel.toLowerCase()}...`}
-                className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
               />
               <button
                 onClick={addDealType}
                 disabled={!newDealType.trim()}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
+                className="px-3 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-400 disabled:opacity-50"
               >
                 +
               </button>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {customDealTypes.map((type) => (
-                <span key={type} className="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded-full text-xs text-slate-300">
+                <span key={type} className="inline-flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-slate-300">
                   {type}
                   <button onClick={() => removeDealType(type)} className="text-red-400 hover:text-red-300 ml-0.5">×</button>
                 </span>
@@ -1148,32 +1121,32 @@ export default function SalesPage() {
       {/* Add Deal Form */}
       {showAdd && (
         <div className="glass-card space-y-3 animate-scale-in">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contact name *" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contact name *" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
           <div className="flex gap-2">
             {policyType !== 'Bundle' && (
-              <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder={`${tradeConfig.valueLabel} ($)`} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+              <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder={`${tradeConfig.valueLabel} ($)`} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
             )}
-            <select value={stage} onChange={(e) => setStage(e.target.value)} className={`px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm ${policyType === 'Bundle' ? 'flex-1' : ''}`}>
+            <select value={stage} onChange={(e) => setStage(e.target.value)} className={`px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm ${policyType === 'Bundle' ? 'flex-1' : ''}`}>
               {STAGES.map((s) => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
           </div>
-          <select value={policyType} onChange={(e) => { setPolicyType(e.target.value); if (e.target.value === 'Bundle' && bundleItems.length === 0) setBundleItems([{ type: '', value: '' }, { type: '', value: '' }]); }} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+          <select value={policyType} onChange={(e) => { setPolicyType(e.target.value); if (e.target.value === 'Bundle' && bundleItems.length === 0) setBundleItems([{ type: '', value: '' }, { type: '', value: '' }]); }} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
             <option value="">Select {tradeConfig.dealTypeLabel.toLowerCase()}...</option>
             {customDealTypes.map((pt) => (
               <option key={pt} value={pt}>{pt}</option>
             ))}
           </select>
           {policyType === 'Bundle' && (
-            <div className="space-y-2 bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+            <div className="space-y-2 bg-white/5 border border-white/10 rounded-lg p-3">
               <p className="text-xs text-amber-400 font-medium">📦 Bundle Breakdown</p>
               {bundleItems.map((item, idx) => (
                 <div key={idx} className="flex gap-2 items-center">
                   <select
                     value={item.type}
                     onChange={(e) => { const updated = [...bundleItems]; updated[idx].type = e.target.value; setBundleItems(updated); }}
-                    className="flex-1 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                    className="flex-1 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                   >
                     <option value="">Type...</option>
                     {customDealTypes.filter((t) => t !== 'Bundle').map((t) => <option key={t} value={t}>{t}</option>)}
@@ -1183,7 +1156,7 @@ export default function SalesPage() {
                     value={item.value}
                     onChange={(e) => { const updated = [...bundleItems]; updated[idx].value = e.target.value; setBundleItems(updated); }}
                     placeholder="$"
-                    className="w-24 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                    className="w-24 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
                   />
                   {bundleItems.length > 2 && (
                     <button onClick={() => setBundleItems(bundleItems.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300 text-sm">×</button>
@@ -1192,7 +1165,7 @@ export default function SalesPage() {
               ))}
               <button
                 onClick={() => setBundleItems([...bundleItems, { type: '', value: '' }])}
-                className="text-xs text-blue-400 hover:text-blue-300"
+                className="text-xs text-amber-300 hover:text-amber-200"
               >
                 + Add another policy to bundle
               </button>
@@ -1202,25 +1175,25 @@ export default function SalesPage() {
             </div>
           )}
           {defaultFolioStart && defaultFolioEnd && (
-            <p className="text-xs text-slate-400 bg-slate-800 px-3 py-2 rounded-lg">📅 Folio: {defaultFolioStart} to {defaultFolioEnd}</p>
+            <p className="text-xs text-slate-400 bg-black px-3 py-2 rounded-lg">📅 Folio: {defaultFolioStart} to {defaultFolioEnd}</p>
           )}
           <div className="flex gap-2">
-            <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
-            <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+            <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
+            <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
           </div>
-          <select value={leadSource} onChange={(e) => setLeadSource(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+          <select value={leadSource} onChange={(e) => setLeadSource(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
             <option value="">Where did this lead come from?</option>
             {LEAD_SOURCES.map((s) => (
               <option key={s.id} value={s.id}>{s.icon} {s.label}</option>
             ))}
           </select>
           {leadSource && (
-            <input type="text" value={leadSourceNote} onChange={(e) => setLeadSourceNote(e.target.value)} placeholder={leadSource === 'internet-lead' ? 'Lead vendor (e.g. QuoteWizard, EverQuote, Datalot, Hometown Quotes...)' : leadSource.includes('post') || leadSource.includes('ad') ? 'Link to the post or ad...' : leadSource === 'referral' ? 'Who referred them?' : leadSource.includes('call') ? 'Call notes — what triggered interest?' : 'Details about the source...'} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+            <input type="text" value={leadSourceNote} onChange={(e) => setLeadSourceNote(e.target.value)} placeholder={leadSource === 'internet-lead' ? 'Lead vendor (e.g. QuoteWizard, EverQuote, Datalot, Hometown Quotes...)' : leadSource.includes('post') || leadSource.includes('ad') ? 'Link to the post or ad...' : leadSource === 'referral' ? 'Who referred them?' : leadSource.includes('call') ? 'Call notes — what triggered interest?' : 'Details about the source...'} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
           )}
           {/* Sold By */}
           <div>
             <div className="flex gap-2">
-              <select value={soldBy} onChange={(e) => setSoldBy(e.target.value)} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+              <select value={soldBy} onChange={(e) => setSoldBy(e.target.value)} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                 <option value="">Who sold this?</option>
                 {[...salespeople].sort((a, b) => a.localeCompare(b)).map((sp) => (
                   <option key={sp} value={sp}>{sp}</option>
@@ -1239,19 +1212,19 @@ export default function SalesPage() {
                     buildClient().then((client) => client.request('PUT', '/profile/preferences', { salespeople: updated })).catch(() => {});
                   }
                 }}
-                className="px-3 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm font-medium"
+                className="px-3 py-2 bg-white/10 hover:bg-white/10 text-white rounded-lg text-sm font-medium"
               >
                 + Add
               </button>
             </div>
           </div>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-16" />
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes..." className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-16" />
           {/* Deal Date (optional — backdate if needed) */}
           <div>
             <label className="text-[10px] text-slate-400 block mb-1">Date (leave blank for today)</label>
-            <input type="date" value={dealDate} onChange={(e) => setDealDate(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+            <input type="date" value={dealDate} onChange={(e) => setDealDate(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
           </div>
-          <button onClick={handleAdd} disabled={adding || !name.trim()} className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50">
+          <button onClick={handleAdd} disabled={adding || !name.trim()} className="w-full bg-amber-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-amber-400 disabled:opacity-50">
             {adding ? 'Saving...' : 'Save Deal'}
           </button>
         </div>
@@ -1262,28 +1235,28 @@ export default function SalesPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto">
           <div className="glass-card-strong w-full max-w-sm animate-scale-in space-y-3 max-h-[calc(100vh-2rem)] overflow-y-auto">
             <h3 className="font-bold text-white">Edit Deal</h3>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contact name *" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contact name *" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
             <div className="flex gap-2">
-              <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder={`${tradeConfig.valueLabel} ($)`} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
-              <select value={policyType} onChange={(e) => setPolicyType(e.target.value)} className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+              <input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder={`${tradeConfig.valueLabel} ($)`} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+              <select value={policyType} onChange={(e) => setPolicyType(e.target.value)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                 <option value="">{tradeConfig.dealTypeLabel}</option>
                 {customDealTypes.map((pt) => <option key={pt} value={pt}>{pt}</option>)}
               </select>
             </div>
             <div className="flex gap-2">
-              <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
-              <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+              <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
+              <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
             </div>
-            <select value={leadSource} onChange={(e) => setLeadSource(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+            <select value={leadSource} onChange={(e) => setLeadSource(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
               <option value="">Lead source...</option>
               {LEAD_SOURCES.map((s) => (
                 <option key={s.id} value={s.id}>{s.icon} {s.label}</option>
               ))}
             </select>
             {leadSource && (
-              <input type="text" value={leadSourceNote} onChange={(e) => setLeadSourceNote(e.target.value)} placeholder="Source details..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+              <input type="text" value={leadSourceNote} onChange={(e) => setLeadSourceNote(e.target.value)} placeholder="Source details..." className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
             )}
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm resize-none h-16" />
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes..." className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm resize-none h-16" />
             <div className="flex gap-2">
               <button
                 onClick={async () => {
@@ -1305,11 +1278,11 @@ export default function SalesPage() {
                     resetForm();
                   } catch { /* ignore */ }
                 }}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-500"
+                className="flex-1 bg-amber-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-amber-400"
               >
                 Save Changes
               </button>
-              <button onClick={() => { setEditingDeal(null); resetForm(); }} className="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600">
+              <button onClick={() => { setEditingDeal(null); resetForm(); }} className="px-4 py-2 bg-white/5 text-slate-300 rounded-lg text-sm hover:bg-white/10">
                 Cancel
               </button>
             </div>
@@ -1324,7 +1297,7 @@ export default function SalesPage() {
         <select
           value={folioFilter}
           onChange={(e) => setFolioFilter(e.target.value)}
-          className="px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+          className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
         >
           <option value="current">📅 {defaultFolioStart && defaultFolioEnd ? folioDisplayName(`${defaultFolioStart} to ${defaultFolioEnd}`) : 'Current Folio'}</option>
           <option value="all">All Periods</option>
@@ -1337,11 +1310,11 @@ export default function SalesPage() {
 
       {/* Stage Filter */}
       <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-3 px-3">
-        <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white/5 border border-white/10 text-slate-400'}`}>All ({deals.length})</button>
+        <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${filter === 'all' ? 'bg-amber-500 text-white' : 'bg-white/5 border border-white/10 text-slate-400'}`}>All ({deals.length})</button>
         {STAGES.map((s) => {
           const count = deals.filter((d) => d.stage === s.id).length;
           return (
-            <button key={s.id} onClick={() => setFilter(s.id)} className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${filter === s.id ? 'bg-blue-600 text-white' : 'bg-white/5 border border-white/10 text-slate-400'}`}>
+            <button key={s.id} onClick={() => setFilter(s.id)} className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${filter === s.id ? 'bg-amber-500 text-white' : 'bg-white/5 border border-white/10 text-slate-400'}`}>
               {s.label} ({count})
             </button>
           );
@@ -1449,7 +1422,7 @@ export default function SalesPage() {
                                 className="mt-0.5 w-3.5 h-3.5 rounded shrink-0"
                               />
                               <div className="min-w-0">
-                                <span className={`font-medium ${step.type === 'call' ? 'text-blue-300' : step.type === 'sms' ? 'text-green-300' : 'text-purple-300'}`}>
+                                <span className={`font-medium ${step.type === 'call' ? 'text-amber-300' : step.type === 'sms' ? 'text-green-300' : 'text-purple-300'}`}>
                                   {step.type === 'call' ? '📞' : step.type === 'sms' ? '💬' : '✉️'} Day {step.day} · {step.time}
                                 </span>
                                 <p className="text-slate-400 mt-0.5">{step.task}</p>
@@ -1490,13 +1463,12 @@ export default function SalesPage() {
                         setLeadSource(deal.leadSource || '');
                         setLeadSourceNote(deal.leadSourceNote || '');
                       }}
-                      className="text-xs text-blue-400 hover:text-blue-300"
+                      className="text-xs text-amber-300 hover:text-amber-200"
                     >
                       ✏️ Edit
                     </button>
                     <button
                       onClick={() => {
-                        const snoozeDealId = deal.id === confirmDeleteId ? null : deal.id;
                         setConfirmDeleteId(null);
                         setSnoozeId(snoozeId === deal.id ? null : deal.id);
                       }}
@@ -1573,7 +1545,7 @@ export default function SalesPage() {
                         </button>
                         <button
                           onClick={() => setConfirmDeleteId(null)}
-                          className="px-3 py-1.5 bg-slate-700 text-slate-300 rounded-lg text-xs hover:bg-slate-600"
+                          className="px-3 py-1.5 bg-white/5 text-slate-300 rounded-lg text-xs hover:bg-white/10"
                         >
                           Cancel
                         </button>

@@ -102,7 +102,7 @@ export default function FlightPlanPage() {
         <button
           onClick={() => generate(false)}
           disabled={generating || !selectedTrade}
-          className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold rounded-xl disabled:opacity-50 hover:opacity-90"
+          className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl disabled:opacity-50"
         >
           {generating ? '🦅 Building your plan…' : '🗺️ Build My Flight Plan'}
         </button>
@@ -119,8 +119,12 @@ export default function FlightPlanPage() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-8">
+    <div className="max-w-2xl lg:max-w-none mx-auto space-y-4 pb-8">
       <PageHeader icon="🗺️" title="Your Flight Plan" subtitle={`A ready-to-use system for ${planTrade || selectedTrade?.name || 'your trade'}`} />
+
+      <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      {/* Left column */}
+      <div className="min-w-0 space-y-4">
 
       {/* Keywords + signals */}
       <Section icon="🔑" title="Keywords & Opportunity Signals">
@@ -129,7 +133,7 @@ export default function FlightPlanPage() {
             <span key={i} className="text-[11px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300">{k}</span>
           ))}
         </div>
-        <button onClick={seedKeywords} disabled={seeding} className="mt-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
+        <button onClick={seedKeywords} disabled={seeding} className="mt-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg disabled:opacity-50">
           {seeding ? 'Adding…' : '+ Add all to keyword tracking'}
         </button>
       </Section>
@@ -138,10 +142,10 @@ export default function FlightPlanPage() {
       <Section icon="💬" title="Response Templates">
         <div className="space-y-2">
           {(plan.responseTemplates || []).map((t, i) => (
-            <div key={i} className="bg-slate-800 border border-white/10 rounded-lg p-2.5">
+            <div key={i} className="bg-white/5 border border-white/10 rounded-lg p-2.5">
               <p className="text-[11px] font-bold text-amber-300">{t.name}</p>
               <p className="text-xs text-slate-200 italic mt-0.5 leading-relaxed">"{t.text}"</p>
-              <button onClick={() => copy(t.text, 'Template copied')} className="mt-1.5 text-[10px] text-blue-400 hover:text-blue-300 font-semibold">📋 Copy</button>
+              <button onClick={() => copy(t.text, 'Template copied')} className="mt-1.5 text-[10px] text-amber-300 hover:text-amber-200 font-semibold">📋 Copy</button>
             </div>
           ))}
         </div>
@@ -152,12 +156,17 @@ export default function FlightPlanPage() {
         <div className="flex flex-wrap items-center gap-1.5">
           {(plan.pipelineStages || []).map((s, i) => (
             <span key={i} className="flex items-center gap-1.5">
-              <span className="text-[11px] px-2 py-1 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/25">{s}</span>
+              <span className="text-[11px] px-2 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">{s}</span>
               {i < (plan.pipelineStages.length - 1) && <span className="text-slate-600 text-xs">→</span>}
             </span>
           ))}
         </div>
       </Section>
+
+      </div>
+
+      {/* Right column */}
+      <div className="min-w-0 space-y-4">
 
       {/* Follow-up sequence */}
       <Section icon="🦅" title="Follow-Up Sequence">
@@ -188,7 +197,7 @@ export default function FlightPlanPage() {
             <li key={i} className="text-xs text-slate-300">{q}</li>
           ))}
         </ol>
-        <button onClick={() => copy((plan.intakeQuestions || []).join('\n'), 'Questions copied')} className="mt-1 text-[10px] text-blue-400 hover:text-blue-300 font-semibold">📋 Copy all</button>
+        <button onClick={() => copy((plan.intakeQuestions || []).join('\n'), 'Questions copied')} className="mt-1 text-[10px] text-amber-300 hover:text-amber-200 font-semibold">📋 Copy all</button>
       </Section>
 
       {/* Referral partners */}
@@ -205,6 +214,9 @@ export default function FlightPlanPage() {
         <button onClick={() => generate(true)} disabled={generating} className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 disabled:opacity-50">
           {generating ? 'Rebuilding…' : '↻ Rebuild my Flight Plan'}
         </button>
+      </div>
+
+      </div>
       </div>
     </div>
   );

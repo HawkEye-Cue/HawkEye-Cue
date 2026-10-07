@@ -36,10 +36,10 @@ const platformIcons: Record<string, string> = {
 };
 
 const platformColors: Record<string, string> = {
-  facebook: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+  facebook: 'bg-amber-500/10 border-amber-500/20 text-amber-300',
   instagram: 'bg-pink-500/10 border-pink-500/20 text-pink-400',
   linkedin: 'bg-sky-500/10 border-sky-500/20 text-sky-400',
-  tiktok: 'bg-slate-500/10 border-slate-500/20 text-slate-300',
+  tiktok: 'bg-white/5 border-white/10 text-slate-300',
 };
 
 export default function AppreciationsPage() {
@@ -305,7 +305,7 @@ export default function AppreciationsPage() {
             <li>🙌 Generate AI thank-you replies to keep relationships strong</li>
           </ul>
         </div>
-        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Soar — $24.99/mo</a>
+        <a href="/settings" className="inline-block bg-amber-500 text-black px-8 py-3 rounded-lg font-bold hover:bg-amber-400 transition-colors mt-4">Upgrade to Soar — $24.99/mo</a>
       </div>
     );
   }
@@ -334,26 +334,27 @@ export default function AppreciationsPage() {
       <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
         <button
           onClick={() => { setActiveTab('feed'); setSelectedAdvocate(null); }}
-          className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'feed' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-white'}`}
+          className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'feed' ? 'bg-amber-500 text-black font-medium' : 'text-slate-400 hover:text-white'}`}
         >
           📋 Feed
         </button>
         <button
           onClick={() => { setActiveTab('advocates'); setSelectedAdvocate(null); }}
-          className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'advocates' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-white'}`}
+          className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'advocates' ? 'bg-amber-500 text-black font-medium' : 'text-slate-400 hover:text-white'}`}
         >
           ⭐ Advocates
         </button>
       </div>
 
       {activeTab === 'feed' && (
-        <>
+        <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+          <div className="min-w-0 space-y-4">
           {/* Filters */}
           <div className="flex gap-2 flex-wrap">
             <select
               value={platformFilter}
               onChange={(e) => setPlatformFilter(e.target.value)}
-              className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
             >
               <option value="all">All Platforms</option>
               <option value="facebook">📘 Facebook</option>
@@ -366,14 +367,14 @@ export default function AppreciationsPage() {
               value={personFilterInput}
               onChange={(e) => setPersonFilterInput(e.target.value)}
               placeholder="Filter by name..."
-              className="flex-1 min-w-[120px] px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+              className="flex-1 min-w-[120px] px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
             />
           </div>
 
           {/* Add manually */}
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="w-full glass-card text-center py-3 text-blue-400 hover:text-blue-300 font-medium text-sm transition-colors"
+            className="w-full glass-card text-center py-3 text-amber-300 hover:text-amber-200 font-medium text-sm transition-colors"
           >
             {showAddForm ? '− Cancel' : '+ Cue a Mention Manually'}
           </button>
@@ -387,12 +388,12 @@ export default function AppreciationsPage() {
                   value={addName}
                   onChange={(e) => setAddName(e.target.value)}
                   placeholder="Who recommended you? *"
-                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                  className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
                 />
                 <select
                   value={addPlatform}
                   onChange={(e) => setAddPlatform(e.target.value)}
-                  className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                  className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                 >
                   <option value="facebook">📘 FB</option>
                   <option value="instagram">📷 IG</option>
@@ -405,25 +406,25 @@ export default function AppreciationsPage() {
                 value={addTrade}
                 onChange={(e) => setAddTrade(e.target.value)}
                 placeholder="Their trade (optional)"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
               />
               <textarea
                 value={addContent}
                 onChange={(e) => setAddContent(e.target.value)}
                 placeholder="Paste or type what they said... *"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20"
               />
               <input
                 type="url"
                 value={addUrl}
                 onChange={(e) => setAddUrl(e.target.value)}
                 placeholder="Link to the post (optional)"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
               />
               <button
                 onClick={handleAdd}
                 disabled={adding || !addName.trim() || !addContent.trim()}
-                className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
+                className="w-full bg-amber-500 text-black py-2.5 rounded-lg text-sm font-bold hover:bg-amber-400 disabled:opacity-50"
               >
                 {adding ? 'Saving...' : 'Save Appreciation'}
               </button>
@@ -440,7 +441,9 @@ export default function AppreciationsPage() {
               />
             </div>
           )}
+          </div>
 
+          <div className="min-w-0 space-y-4">
           {/* Pending Thanks */}
           {unthanked.length > 0 && (
             <details className="space-y-3" open>
@@ -458,7 +461,7 @@ export default function AppreciationsPage() {
                         <div className="min-w-0">
                           <button
                             onClick={() => { setActiveTab('advocates'); setSelectedAdvocate(mention.taggerName); }}
-                            className="text-sm font-semibold text-white hover:text-blue-400 transition-colors"
+                            className="text-sm font-semibold text-white hover:text-amber-300 transition-colors"
                           >
                             {mention.taggerName}
                           </button>
@@ -468,7 +471,7 @@ export default function AppreciationsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-xs px-2 py-0.5 rounded-full border ${platformColors[mention.platform] || 'bg-slate-500/10 border-slate-500/20 text-slate-400'}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${platformColors[mention.platform] || 'bg-white/5 border-white/10 text-slate-400'}`}>
                           {platformIcons[mention.platform] || '📱'} {mention.platform}
                         </span>
                       </div>
@@ -488,14 +491,14 @@ export default function AppreciationsPage() {
                           href={mention.postUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="bg-slate-700 text-slate-300 px-4 py-2 min-h-[44px] rounded-lg text-sm hover:bg-slate-600 flex items-center"
+                          className="bg-white/5 text-slate-300 px-4 py-2 min-h-[44px] rounded-lg text-sm hover:bg-white/10 flex items-center"
                         >
                           ↗ View Post
                         </a>
                       )}
                       <button
                         onClick={() => openEdit(mention)}
-                        className="bg-slate-700 text-slate-300 px-3 py-2 min-h-[44px] rounded-lg text-sm hover:bg-slate-600"
+                        className="bg-white/5 text-slate-300 px-3 py-2 min-h-[44px] rounded-lg text-sm hover:bg-white/10"
                       >
                         ✏️
                       </button>
@@ -529,7 +532,7 @@ export default function AppreciationsPage() {
                         <div>
                           <button
                             onClick={() => { setActiveTab('advocates'); setSelectedAdvocate(mention.taggerName); }}
-                            className="text-sm font-semibold text-white hover:text-blue-400"
+                            className="text-sm font-semibold text-white hover:text-amber-300"
                           >
                             {mention.taggerName}
                           </button>
@@ -559,7 +562,8 @@ export default function AppreciationsPage() {
               </div>
             </details>
           )}
-        </>
+          </div>
+        </div>
       )}
 
       {activeTab === 'advocates' && !selectedAdvocate && (
@@ -575,7 +579,7 @@ export default function AppreciationsPage() {
               />
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
               {advocates.map((adv) => (
                 <div
                   key={adv.name}
@@ -583,7 +587,7 @@ export default function AppreciationsPage() {
                 >
                   <div className="flex items-center justify-between gap-2 cursor-pointer" onClick={() => setSelectedAdvocate(adv.name)}>
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 shrink-0 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                      <div className="w-10 h-10 shrink-0 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
                         {adv.name[0]?.toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -630,18 +634,20 @@ export default function AppreciationsPage() {
         <>
           <button
             onClick={() => setSelectedAdvocate(null)}
-            className="text-sm text-blue-400 hover:text-blue-300"
+            className="text-sm text-amber-300 hover:text-amber-200"
           >
             ← Back to all advocates
           </button>
 
+          <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+          <div className="min-w-0 space-y-4">
           {(() => {
             const adv = advocates.find((a) => a.name === selectedAdvocate);
             if (!adv) return null;
             return (
-              <div className="glass-card-strong gradient-border">
+              <div className="glass-card-strong">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-xl font-bold text-white">
+                  <div className="w-14 h-14 bg-purple-600 rounded-full flex items-center justify-center text-xl font-bold text-white">
                     {adv.name[0]?.toUpperCase()}
                   </div>
                   <div>
@@ -656,7 +662,7 @@ export default function AppreciationsPage() {
                     <div className="text-xs text-slate-400">Mentions</div>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-white/5">
-                    <div className="text-lg font-bold text-blue-400">{adv.platforms.length}</div>
+                    <div className="text-lg font-bold text-amber-300">{adv.platforms.length}</div>
                     <div className="text-xs text-slate-400">Platforms</div>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-white/5">
@@ -672,14 +678,16 @@ export default function AppreciationsPage() {
               </div>
             );
           })()}
+          </div>
 
+          <div className="min-w-0 space-y-4">
           {/* Their mentions */}
           <h4 className="text-sm font-semibold text-slate-300">All mentions from {selectedAdvocate}</h4>
           <div className="space-y-2">
             {advocateMentions.map((mention) => (
               <div key={mention.id} className="glass-card">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${platformColors[mention.platform] || 'bg-slate-500/10 border-slate-500/20 text-slate-400'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${platformColors[mention.platform] || 'bg-white/5 border-white/10 text-slate-400'}`}>
                     {platformIcons[mention.platform]} {mention.platform}
                   </span>
                   <div className="flex items-center gap-2">
@@ -702,7 +710,7 @@ export default function AppreciationsPage() {
                     </button>
                   )}
                   {mention.postUrl && (
-                    <a href={mention.postUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300">
+                    <a href={mention.postUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-300 hover:text-amber-200">
                       View Post ↗
                     </a>
                   )}
@@ -710,13 +718,15 @@ export default function AppreciationsPage() {
               </div>
             ))}
           </div>
+          </div>
+          </div>
         </>
       )}
 
       {/* Edit Appreciation Modal */}
       {editingMention && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 px-3 py-4 overflow-y-auto">
-          <div className="w-full max-w-sm bg-slate-900 border border-purple-500/30 rounded-2xl p-5 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto">
+          <div className="w-full max-w-sm bg-black border border-purple-500/30 rounded-2xl p-5 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-white text-lg">✏️ Edit Appreciation</h3>
               <button onClick={() => setEditingMention(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
@@ -728,12 +738,12 @@ export default function AppreciationsPage() {
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="Who recommended you? *"
-                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                  className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
                 />
                 <select
                   value={editPlatform}
                   onChange={(e) => setEditPlatform(e.target.value)}
-                  className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                  className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                 >
                   <option value="facebook">📘 FB</option>
                   <option value="instagram">📷 IG</option>
@@ -746,20 +756,20 @@ export default function AppreciationsPage() {
                 value={editTrade}
                 onChange={(e) => setEditTrade(e.target.value)}
                 placeholder="Their trade (optional)"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
               />
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 placeholder="What they said... *"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20"
               />
               <input
                 type="url"
                 value={editUrl}
                 onChange={(e) => setEditUrl(e.target.value)}
                 placeholder="Link to the post (optional)"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
               />
               <div className="flex gap-2 pt-2">
                 <button
@@ -776,7 +786,7 @@ export default function AppreciationsPage() {
                   🗑️
                 </button>
               </div>
-              <button onClick={() => setEditingMention(null)} className="w-full py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 text-sm">Cancel</button>
+              <button onClick={() => setEditingMention(null)} className="w-full py-2 bg-white/5 text-slate-300 rounded-lg hover:bg-white/10 text-sm">Cancel</button>
             </div>
           </div>
         </div>

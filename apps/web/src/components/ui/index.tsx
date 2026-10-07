@@ -121,7 +121,7 @@ export function PrimaryButton({ children, onClick, disabled, className = '' }: {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`py-3 px-5 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-xl disabled:opacity-50 hover:opacity-90 active:scale-[0.99] transition-all shadow-lg shadow-amber-500/20 ${className}`}
+      className={`py-3 px-5 bg-amber-500 text-black text-sm font-bold rounded-xl disabled:opacity-50 hover:opacity-90 active:scale-[0.99] transition-all ${className}`}
     >
       {children}
     </button>
@@ -172,7 +172,7 @@ export function PillTabs<T extends string>({ tabs, active, onChange }: {
           onClick={() => onChange(t.id)}
           className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
             active === t.id
-              ? 'bg-amber-500 text-black shadow shadow-amber-500/30'
+              ? 'bg-amber-500 text-black'
               : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'
           }`}
         >

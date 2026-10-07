@@ -170,7 +170,7 @@ export default function TodayPage() {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto px-1 pb-24 space-y-6">
+    <div className="max-w-2xl lg:max-w-none mx-auto px-1 pb-24 space-y-6">
       {/* Greeting */}
       <div className="pt-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-400/80">🦅 The Nest</p>
@@ -179,6 +179,10 @@ export default function TodayPage() {
           Here's your daily flight plan{selectedTrade?.name ? ` for your ${selectedTrade.name.toLowerCase()} business` : ''}.
         </p>
       </div>
+
+      <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      {/* Left column */}
+      <div className="min-w-0 space-y-6">
 
       <SetupProgress />
 
@@ -199,10 +203,15 @@ export default function TodayPage() {
         ))}
       </div>
 
+      </div>
+
+      {/* Right column */}
+      <div className="min-w-0 space-y-6">
+
       {/* Send to HawkEye — analyze any post/screenshot from your phone */}
       <button
         onClick={() => navigate('/pipeline?radar=1')}
-        className="w-full py-3 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+        className="w-full py-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
       >
         <span className="text-lg">📸</span>
         <span className="text-sm font-bold text-amber-200">Analyze a post or screenshot</span>
@@ -212,13 +221,13 @@ export default function TodayPage() {
       {hasWork ? (
         <button
           onClick={() => setShowPlan(true)}
-          className="w-full py-4 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-base font-extrabold rounded-2xl shadow-lg shadow-amber-500/20 hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-black text-base font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           🦅 Start My Flight Plan
           <span className="text-xs font-bold bg-black/15 rounded-full px-2 py-0.5">{tasks.length}</span>
         </button>
       ) : (
-        <div className="glass-card text-center py-8 border border-emerald-500/20">
+        <div className="glass-card text-center py-8">
           <div className="text-4xl mb-2">🕊️</div>
           <h3 className="text-base font-bold text-white">You're all clear</h3>
           <p className="text-sm text-slate-400 mt-1">
@@ -226,8 +235,8 @@ export default function TodayPage() {
           </p>
           {!loading && (
             <div className="flex gap-2 justify-center mt-4">
-              <button onClick={() => navigate('/create')} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg">✨ Create a post</button>
-              <button onClick={() => navigate('/pipeline')} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg">🎯 Find opportunities</button>
+              <button onClick={() => navigate('/create')} className="px-4 py-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white text-sm font-medium rounded-lg">✨ Create a post</button>
+              <button onClick={() => navigate('/pipeline')} className="px-4 py-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white text-sm font-medium rounded-lg">🎯 Find opportunities</button>
             </div>
           )}
         </div>
@@ -247,6 +256,9 @@ export default function TodayPage() {
           </button>
         </div>
       )}
+
+      </div>
+      </div>
 
       {showPlan && <FlightPlan tasks={tasks} onClose={() => setShowPlan(false)} />}
     </div>

@@ -13,11 +13,11 @@ export default function LeadDetectionExplainer({ onClose }: Props) {
         </div>
 
         {/* Browser Extension */}
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xl">🌐</span>
-            <h3 className="font-bold text-blue-300">Browser Extension</h3>
-            <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full">Groups + Feeds</span>
+            <h3 className="font-bold text-amber-300">Browser Extension</h3>
+            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full">Groups + Feeds</span>
           </div>
           <p className="text-sm text-slate-300 mb-3">
             Scans posts <span className="text-white font-medium">while you scroll</span> on your computer. This is the only way to catch leads in Facebook groups and personal feeds.
@@ -29,7 +29,7 @@ export default function LeadDetectionExplainer({ onClose }: Props) {
             <p>✓ One click saves the post as a lead</p>
             <p>✓ Works on Facebook, Instagram, LinkedIn, TikTok</p>
           </div>
-          <div className="mt-3 p-2 bg-blue-500/10 rounded text-xs text-blue-400">
+          <div className="mt-3 p-2 bg-amber-500/10 rounded text-xs text-amber-300">
             💡 Best for: Finding leads in Facebook groups where people ask "who knows a good roofer?" — this is your #1 lead source
           </div>
         </div>
@@ -87,35 +87,35 @@ export default function LeadDetectionExplainer({ onClose }: Props) {
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Facebook Groups</span>
               <div className="flex gap-2">
-                <span className="text-blue-400">🌐 Extension ✓</span>
+                <span className="text-amber-300">🌐 Extension ✓</span>
                 <span className="text-slate-600">🔗 Scanner ✗</span>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Personal Feed</span>
               <div className="flex gap-2">
-                <span className="text-blue-400">🌐 Extension ✓</span>
+                <span className="text-amber-300">🌐 Extension ✓</span>
                 <span className="text-slate-600">🔗 Scanner ✗</span>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Business Page Comments</span>
               <div className="flex gap-2">
-                <span className="text-blue-400">🌐 Extension ✓</span>
+                <span className="text-amber-300">🌐 Extension ✓</span>
                 <span className="text-purple-400">🔗 Scanner ✓</span>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-400">LinkedIn Feed</span>
               <div className="flex gap-2">
-                <span className="text-blue-400">🌐 Extension ✓</span>
+                <span className="text-amber-300">🌐 Extension ✓</span>
                 <span className="text-slate-600">🔗 Scanner ✗</span>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Instagram/TikTok</span>
               <div className="flex gap-2">
-                <span className="text-blue-400">🌐 Extension ✓</span>
+                <span className="text-amber-300">🌐 Extension ✓</span>
                 <span className="text-purple-400">🔗 Scanner ✓</span>
               </div>
             </div>
@@ -133,7 +133,7 @@ export default function LeadDetectionExplainer({ onClose }: Props) {
 
         <button
           onClick={onClose}
-          className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 transition-colors"
+          className="w-full bg-amber-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-amber-400 transition-colors"
         >
           Got it
         </button>

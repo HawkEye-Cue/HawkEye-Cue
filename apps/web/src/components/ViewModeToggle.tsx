@@ -13,14 +13,14 @@ export default function ViewModeToggle({ value, onChange }: ViewModeToggleProps)
   ];
 
   return (
-    <div className="inline-flex rounded-full border border-amber-500/30 bg-slate-800 p-0.5">
+    <div className="inline-flex rounded-full border border-amber-500/30 bg-white/5 p-0.5">
       {modes.map((mode) => (
         <button
           key={mode.id}
           onClick={() => { if (mode.id !== value) onChange(mode.id); }}
           className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
             value === mode.id
-              ? 'bg-blue-600 text-white shadow-sm'
+              ? 'bg-amber-500 text-black'
               : 'text-slate-400 hover:text-white'
           }`}
         >

@@ -64,8 +64,8 @@ export default function FlightPlan({ tasks, onClose }: Props) {
           <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none px-2">✕</button>
         </div>
 
-        <div className="h-2 rounded-full bg-slate-800 overflow-hidden mb-5">
-          <div className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-500" style={{ width: `${pct}%` }} />
+        <div className="h-2 rounded-full bg-white/10 overflow-hidden mb-5">
+          <div className="h-full bg-amber-500 transition-all duration-500" style={{ width: `${pct}%` }} />
         </div>
 
         {!finished && current ? (
@@ -89,13 +89,13 @@ export default function FlightPlan({ tasks, onClose }: Props) {
             <div className="flex gap-2 pt-1">
               <button
                 onClick={goDoIt}
-                className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-sm font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all"
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-xl active:scale-95 transition-all"
               >
                 {current.actionLabel} →
               </button>
               <button
                 onClick={() => advance(false)}
-                className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-xl transition-all"
+                className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 text-sm font-medium rounded-xl transition-all"
               >
                 Skip
               </button>
@@ -124,7 +124,7 @@ export default function FlightPlan({ tasks, onClose }: Props) {
             {tasks.map((t, i) => (
               <div
                 key={t.id}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${i === index ? 'bg-slate-800 border border-amber-500/30 text-white' : done.has(t.id) ? 'text-slate-500' : 'text-slate-400'}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${i === index ? 'bg-amber-500/15 border border-amber-500/30 text-white' : done.has(t.id) ? 'text-slate-500' : 'text-slate-400'}`}
               >
                 <span>{done.has(t.id) ? '✅' : i === index ? '👉' : '•'}</span>
                 <span className={`truncate ${done.has(t.id) ? 'line-through' : ''}`}>{t.title}</span>

@@ -238,7 +238,7 @@ export default function NetworkPage() {
   }
 
   const typeColors: Record<string, string> = {
-    referral: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    referral: 'text-amber-300 bg-amber-500/10 border-amber-500/20',
     opportunity: 'text-green-400 bg-green-500/10 border-green-500/20',
     introduction: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
     question: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
@@ -255,7 +255,7 @@ export default function NetworkPage() {
         {userRegions.length > 0 && (
           <button
             onClick={() => { setPendingRegions(userRegions); setShowRegionPicker(true); }}
-            className="text-xs text-blue-400 hover:text-blue-300"
+            className="text-xs text-amber-300 hover:text-amber-200"
           >
             📍 {userRegions.join(', ')}
           </button>
@@ -271,7 +271,7 @@ export default function NetworkPage() {
         {showWingman && !hasWingmanAccess && (
           <div className="mt-3 text-center py-4">
             <p className="text-sm text-slate-400 mb-3">Wingman helps you build relationships that generate referrals. Available on the Soar plan.</p>
-            <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-6 py-2 rounded-lg text-sm font-bold hover:opacity-90">Upgrade to Soar</a>
+            <a href="/settings" className="inline-block bg-amber-500 text-black px-6 py-2 rounded-lg text-sm font-bold hover:bg-amber-400">Upgrade to Soar</a>
           </div>
         )}
         {showWingman && hasWingmanAccess && (
@@ -286,7 +286,7 @@ export default function NetworkPage() {
                 value={wingmanName}
                 onChange={(e) => { setWingmanName(e.target.value); localStorage.setItem(`hawkeye_wingman_name_${user?.sub}`, e.target.value); saveWingmanToServer(wingmanKeywords, e.target.value); }}
                 placeholder="e.g. Mike's Roofing, Sarah at State Farm..."
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
               />
             </div>
 
@@ -306,7 +306,7 @@ export default function NetworkPage() {
                   }
                 }}
                 placeholder="+ Add keyword to cue your Wingman..."
-                className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
               />
               <button
                 onClick={() => {
@@ -318,7 +318,7 @@ export default function NetworkPage() {
                   setNewWingmanKw('');
                 }}
                 disabled={!newWingmanKw.trim()}
-                className="px-3 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-500 disabled:opacity-50"
+                className="px-3 py-2 bg-amber-500 text-black rounded-lg text-sm font-medium hover:bg-amber-400 disabled:opacity-50"
               >
                 +
               </button>
@@ -367,7 +367,7 @@ export default function NetworkPage() {
                   onClick={() => togglePendingRegion(s)}
                   className={`px-2 py-2 rounded text-xs font-medium transition-all ${
                     pendingRegions.includes(s)
-                      ? 'bg-blue-600 text-white shadow-sm'
+                      ? 'bg-amber-500 text-black'
                       : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
                   }`}
                   title={STATE_NAMES[s]}
@@ -387,14 +387,14 @@ export default function NetworkPage() {
               <button
                 onClick={handleSaveRegions}
                 disabled={savingRegions || pendingRegions.length === 0}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
+                className="flex-1 bg-amber-500 text-black py-2.5 rounded-lg text-sm font-medium hover:bg-amber-400 disabled:opacity-50"
               >
                 {savingRegions ? 'Saving...' : `Save (${pendingRegions.length} state${pendingRegions.length !== 1 ? 's' : ''})`}
               </button>
               {userRegions.length > 0 && (
                 <button
                   onClick={() => setShowRegionPicker(false)}
-                  className="px-4 py-2.5 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600"
+                  className="px-4 py-2.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-sm hover:bg-white/10"
                 >
                   Cancel
                 </button>
@@ -410,7 +410,7 @@ export default function NetworkPage() {
           <p className="text-slate-400 mb-3">Set your state(s) to see posts from trades in your area</p>
           <button
             onClick={() => { setPendingRegions([]); setShowRegionPicker(true); }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            className="bg-amber-500 text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-400"
           >
             Select States
           </button>
@@ -423,26 +423,27 @@ export default function NetworkPage() {
           <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
             <button
               onClick={() => setActiveTab('board')}
-              className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'board' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-white'}`}
+              className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'board' ? 'bg-amber-500 text-black font-medium' : 'text-slate-400 hover:text-white'}`}
             >
               💬 Board
             </button>
             <button
               onClick={() => setActiveTab('appreciations')}
-              className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'appreciations' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-white'}`}
+              className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'appreciations' ? 'bg-amber-500 text-black font-medium' : 'text-slate-400 hover:text-white'}`}
             >
               🙏 Appreciations
             </button>
             <button
               onClick={() => setActiveTab('contacts')}
-              className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'contacts' ? 'bg-blue-600 text-white font-medium' : 'text-slate-400 hover:text-white'}`}
+              className={`flex-1 px-3 py-2 rounded text-sm transition-all ${activeTab === 'contacts' ? 'bg-amber-500 text-black font-medium' : 'text-slate-400 hover:text-white'}`}
             >
               📇 Contacts
             </button>
           </div>
 
           {activeTab === 'board' && (
-            <>
+            <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+              <div className="min-w-0 space-y-4">
               {/* Trade Filter */}
               <details className="glass-card">
                 <summary className="font-medium text-white cursor-pointer flex items-center justify-between text-sm">
@@ -456,7 +457,7 @@ export default function NetworkPage() {
                       onClick={() => setFilter((prev) => prev.includes(t.name) ? prev.filter((f) => f !== t.name) : [...prev, t.name])}
                       className={`px-2.5 py-1.5 rounded-full text-xs transition-all ${
                         filter.includes(t.name)
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-amber-500 text-black'
                           : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
                       }`}
                     >
@@ -481,13 +482,13 @@ export default function NetworkPage() {
                   onChange={(e) => setNewContent(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost(); } }}
                   placeholder="Post a referral request, opportunity, or introduction..."
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 resize-none h-20 focus:border-blue-500/50 focus:outline-none transition-colors"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 resize-none h-20 focus:border-amber-500/50 focus:outline-none transition-colors"
                 />
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   <select
                     value={newType}
                     onChange={(e) => setNewType(e.target.value)}
-                    className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                   >
                     {POST_TYPES.map((pt) => (
                       <option key={pt.value} value={pt.value}>{pt.label}</option>
@@ -496,7 +497,7 @@ export default function NetworkPage() {
                   <select
                     value={newTradeFilter}
                     onChange={(e) => setNewTradeFilter(e.target.value)}
-                    className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                   >
                     <option value="all">Visible to All</option>
                     {[...TRADES].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
@@ -506,14 +507,16 @@ export default function NetworkPage() {
                   <button
                     onClick={handlePost}
                     disabled={posting || !newContent.trim()}
-                    className="ml-auto bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50 active:scale-95 transition-all"
+                    className="ml-auto bg-amber-500 text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-400 disabled:opacity-50 active:scale-95 transition-all"
                   >
                     {posting ? 'Posting...' : 'Post'}
                   </button>
                 </div>
                 {postError && <p className="text-sm text-red-400 mt-2">{postError}</p>}
               </div>
+              </div>
 
+              <div className="min-w-0 space-y-4">
               {/* Posts Feed */}
               {postsLoading ? (
                 <div className="glass-card"><LoadingSkeleton rows={3} variant="card" /></div>
@@ -531,12 +534,12 @@ export default function NetworkPage() {
                     <div key={post.id} className="glass-card">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-9 h-9 shrink-0 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                          <div className="w-9 h-9 shrink-0 bg-white/10 border border-white/10 rounded-full flex items-center justify-center text-sm font-bold text-white">
                             {post.authorName[0]?.toUpperCase()}
                           </div>
                           <div className="min-w-0">
                             <span className="text-sm font-semibold text-white">{post.authorName}</span>
-                            <span className="text-xs text-blue-400 ml-2">{post.authorTrade}</span>
+                            <span className="text-xs text-amber-300 ml-2">{post.authorTrade}</span>
                             <p className="text-xs text-slate-500">
                               {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                               {(post as any).region && <span className="ml-1">• 📍 {(post as any).region}</span>}
@@ -572,7 +575,7 @@ export default function NetworkPage() {
                       <div className="mt-3 flex items-center gap-3">
                         <button
                           onClick={() => { setReplyingTo(replyingTo === post.id ? null : post.id); setReplyContent(''); }}
-                          className="text-xs text-slate-400 hover:text-blue-400 min-h-[44px] flex items-center transition-colors"
+                          className="text-xs text-slate-400 hover:text-amber-300 min-h-[44px] flex items-center transition-colors"
                         >
                           💬 Reply {post.replies?.length ? `(${post.replies.length})` : ''}
                         </button>
@@ -586,13 +589,13 @@ export default function NetworkPage() {
                             onChange={(e) => setReplyContent(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleReply(post.id); }}
                             placeholder="Write a reply..."
-                            className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                            className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
                             autoFocus
                           />
                           <button
                             onClick={() => handleReply(post.id)}
                             disabled={replyingLoading || !replyContent.trim()}
-                            className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-500 disabled:opacity-50"
+                            className="bg-amber-500 text-black px-3 py-2 rounded-lg text-sm hover:bg-amber-400 disabled:opacity-50"
                           >
                             Send
                           </button>
@@ -602,14 +605,16 @@ export default function NetworkPage() {
                   ))}
                 </div>
               )}
-            </>
+              </div>
+            </div>
           )}
 
           {activeTab === 'contacts' && (
-            <>
+            <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+              <div className="min-w-0 space-y-4">
               <button
                 onClick={() => setShowAddContact(!showAddContact)}
-                className="w-full glass-card text-center py-3 text-blue-400 hover:text-blue-300 font-medium text-sm transition-colors"
+                className="w-full glass-card text-center py-3 text-amber-300 hover:text-amber-200 font-medium text-sm transition-colors"
               >
                 {showAddContact ? '− Cancel' : '+ Add Referral Partner'}
               </button>
@@ -621,12 +626,12 @@ export default function NetworkPage() {
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
                     placeholder="Name *"
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
                   />
                   <select
                     value={contactTrade}
                     onChange={(e) => setContactTrade(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                   >
                     <option value="">Select their trade...</option>
                     {[...TRADES].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
@@ -639,32 +644,34 @@ export default function NetworkPage() {
                       value={contactPhone}
                       onChange={(e) => setContactPhone(e.target.value)}
                       placeholder="Phone"
-                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                      className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
                     />
                     <input
                       type="email"
                       value={contactEmail}
                       onChange={(e) => setContactEmail(e.target.value)}
                       placeholder="Email"
-                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                      className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
                     />
                   </div>
                   <textarea
                     value={contactNotes}
                     onChange={(e) => setContactNotes(e.target.value)}
                     placeholder="Notes (e.g. how you know them, specialties)"
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-16"
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-16"
                   />
                   <button
                     onClick={handleAddContact}
                     disabled={addingContact || !contactName.trim()}
-                    className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50 active:scale-95 transition-all"
+                    className="w-full bg-amber-500 text-black py-2.5 rounded-lg text-sm font-medium hover:bg-amber-400 disabled:opacity-50 active:scale-95 transition-all"
                   >
                     {addingContact ? 'Adding...' : 'Save Contact'}
                   </button>
                 </div>
               )}
+              </div>
 
+              <div className="min-w-0 space-y-4">
               {contactsLoading ? (
                 <div className="glass-card"><LoadingSkeleton rows={3} variant="list" /></div>
               ) : contacts.length === 0 ? (
@@ -683,7 +690,7 @@ export default function NetworkPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-white">{contact.name}</span>
-                            <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">{contact.trade}</span>
+                            <span className="text-xs text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full">{contact.trade}</span>
                           </div>
                           <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-slate-400">
                             {contact.phone && <span>📞 {contact.phone}</span>}
@@ -702,7 +709,8 @@ export default function NetworkPage() {
                   ))}
                 </div>
               )}
-            </>
+              </div>
+            </div>
           )}
 
           {activeTab === 'appreciations' && (

@@ -5,7 +5,7 @@ import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity } from '@social-lead-gen/shared';
 import { useTeamData } from '../hooks/useTeamData';
 import TeamMemberPipeline from '../components/TeamMemberPipeline';
-import { HeroHeader, LightStat, Panel, StatGrid, PeriodDropdown, DataBar, DonutChart, ComboChart, BAR_COLORS } from '../components/ui';
+import { HeroHeader, StatCard, Panel, StatGrid, PeriodDropdown, DataBar, DonutChart, ComboChart, BAR_COLORS } from '../components/ui';
 
 interface SavedFolio { name: string; start: string; end: string; }
 
@@ -227,10 +227,10 @@ export default function SalesDashboardPage() {
 
         {/* Team totals — the headline */}
         <StatGrid cols={4}>
-          <LightStat icon="$" label="Team Revenue" value={money(totalRevenue)} />
-          <LightStat icon="📄" label="Deals Won" value={wonDeals} />
-          <LightStat icon="🏷️" label="Avg Deal Value" value={money(avgDeal)} />
-          <LightStat icon="📈" label="Win Rate" value={winRate + '%'} />
+          <StatCard icon="$" label="Team Revenue" value={money(totalRevenue)} />
+          <StatCard icon="📄" label="Deals Won" value={wonDeals} />
+          <StatCard icon="🏷️" label="Avg Deal Value" value={money(avgDeal)} />
+          <StatCard icon="📈" label="Win Rate" value={winRate + '%'} />
         </StatGrid>
 
         {/* Leaderboard — who's producing */}
@@ -353,10 +353,10 @@ export default function SalesDashboardPage() {
       ) : (
         <>
           <StatGrid cols={4}>
-            <LightStat icon="$" label="Total Sales" value={money(personal.totalSales)} />
-            <LightStat icon="📄" label="Deals Won" value={personal.dealsWon} />
-            <LightStat icon="🏷️" label="Avg Deal Value" value={money(personal.avgDeal)} />
-            <LightStat icon="📈" label="Win Rate" value={personal.winRate + '%'} />
+            <StatCard icon="$" label="Total Sales" value={money(personal.totalSales)} />
+            <StatCard icon="📄" label="Deals Won" value={personal.dealsWon} />
+            <StatCard icon="🏷️" label="Avg Deal Value" value={money(personal.avgDeal)} />
+            <StatCard icon="📈" label="Win Rate" value={personal.winRate + '%'} />
           </StatGrid>
 
           <Panel title="Sales Over Time">

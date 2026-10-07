@@ -113,13 +113,15 @@ export default function CrmPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-8">
+    <div className="max-w-5xl mx-auto space-y-4 pb-8">
       <PageHeader icon="🔗" title="CRM Connections" subtitle="Push the opportunities HawkEye finds straight into your CRM. We never post on your behalf." />
 
       {loading ? (
         <div className="glass-card text-center text-slate-400 text-sm py-8">Loading…</div>
       ) : (
-        <>
+        <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+          {/* Left column */}
+          <div className="min-w-0 space-y-4">
           {/* Existing connections */}
           {connections.length > 0 && (
             <div className="space-y-3">
@@ -135,13 +137,16 @@ export default function CrmPage() {
               ))}
             </div>
           )}
+          </div>
 
+          {/* Right column */}
+          <div className="min-w-0 space-y-4">
           {/* Add connection */}
           <div className="glass-card space-y-3">
             <h3 className="text-sm font-semibold text-white">Add a connection</h3>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Destination</label>
-              <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+              <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                 <option value="">Select a CRM…</option>
                 {destinations.map((d) => (
                   <option key={d.type} value={d.type} disabled={d.availability !== 'available'}>
@@ -157,20 +162,20 @@ export default function CrmPage() {
             {selectedDest && selectedDest.availability === 'available' && selectedType === 'webhook' && (
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Webhook / Zapier URL</label>
-                <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://hooks.zapier.com/…" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://hooks.zapier.com/…" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
               </div>
             )}
 
             {selectedDest && selectedDest.availability === 'available' && selectedType !== 'webhook' && selectedType !== 'csv' && (
               <div>
                 <label className="block text-xs text-slate-400 mb-1">API key / token</label>
-                <input type="password" value={credential} onChange={(e) => setCredential(e.target.value)} placeholder="Paste your private token" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <input type="password" value={credential} onChange={(e) => setCredential(e.target.value)} placeholder="Paste your private token" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
                 <p className="text-[10px] text-slate-500 mt-1">Stored encrypted. We never show it back or include it in your data export.</p>
               </div>
             )}
 
             {selectedDest && selectedDest.availability === 'available' && (
-              <button onClick={createConnection} disabled={saving} className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-lg disabled:opacity-50">
+              <button onClick={createConnection} disabled={saving} className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg disabled:opacity-50">
                 {saving ? 'Saving…' : 'Save connection'}
               </button>
             )}
@@ -179,7 +184,8 @@ export default function CrmPage() {
           <div className="text-center pt-2">
             <button onClick={() => navigate('/settings')} className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2">Back to Settings</button>
           </div>
-        </>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -207,7 +213,7 @@ function ConnectionCard({ conn, destination, onSaveMapping, onActivate, onRemove
           <p className="text-[11px] text-slate-400">Credential: {conn.credentialMasked || '—'}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowMap((s) => !s)} className="text-xs text-blue-400 hover:text-blue-300">{showMap ? 'Done' : 'Map fields'}</button>
+          <button onClick={() => setShowMap((s) => !s)} className="text-xs text-amber-300 hover:text-amber-200">{showMap ? 'Done' : 'Map fields'}</button>
           {!conn.active && <button onClick={() => onActivate(conn)} className="text-xs text-emerald-400 hover:text-emerald-300">Activate</button>}
           <button onClick={() => onRemove(conn)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
         </div>
@@ -222,14 +228,14 @@ function ConnectionCard({ conn, destination, onSaveMapping, onActivate, onRemove
               <select
                 value={mapping[crmField] || ''}
                 onChange={(e) => setMapping((m) => ({ ...m, [crmField]: e.target.value }))}
-                className="flex-1 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs"
+                className="flex-1 px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs"
               >
                 <option value="">— not mapped —</option>
                 {HAWKEYE_FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
               </select>
             </div>
           ))}
-          <button onClick={() => onSaveMapping(conn, mapping)} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg">Save mapping</button>
+          <button onClick={() => onSaveMapping(conn, mapping)} className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg">Save mapping</button>
         </div>
       )}
     </div>

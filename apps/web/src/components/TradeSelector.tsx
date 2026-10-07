@@ -31,7 +31,7 @@ export default function TradeSelector({ onDone }: { onDone?: () => void } = {}) 
             <label className="block text-sm font-medium text-slate-300">Your Trade{selectedTrades.length > 1 ? 's' : ''}</label>
             <div className="flex flex-wrap gap-1.5 mt-1">
               {selectedTrades.map((trade) => (
-                <span key={trade.id} className="inline-flex items-center bg-blue-900/40 text-blue-300 px-3 py-1 rounded-full text-sm">
+                <span key={trade.id} className="inline-flex items-center bg-amber-500/15 text-amber-300 px-3 py-1 rounded-full text-sm">
                   {trade.name}
                 </span>
               ))}
@@ -39,7 +39,7 @@ export default function TradeSelector({ onDone }: { onDone?: () => void } = {}) 
           </div>
           <button
             onClick={() => setIsOpen(true)}
-            className="text-xs text-blue-400 hover:text-blue-300"
+            className="text-xs text-amber-300 hover:text-amber-200"
           >
             Change
           </button>
@@ -80,10 +80,10 @@ export default function TradeSelector({ onDone }: { onDone?: () => void } = {}) 
               {selectedTrades.map((trade) => (
                 <span
                   key={trade.id}
-                  className="inline-flex items-center gap-1 bg-blue-900/40 text-blue-300 px-3 py-1.5 rounded-full text-sm"
+                  className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 px-3 py-1.5 rounded-full text-sm"
                 >
                   {trade.name}
-                  <button onClick={() => toggleTrade(trade)} className="text-blue-400 hover:text-red-400 ml-1">×</button>
+                  <button onClick={() => toggleTrade(trade)} className="text-amber-300 hover:text-red-400 ml-1">×</button>
                 </span>
               ))}
             </div>
@@ -95,7 +95,7 @@ export default function TradeSelector({ onDone }: { onDone?: () => void } = {}) 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search trades..."
-            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 focus:border-blue-500/50 focus:outline-none mb-2"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 focus:border-amber-500/40 focus:outline-none mb-2"
           />
 
           {/* Trade list */}
@@ -108,7 +108,7 @@ export default function TradeSelector({ onDone }: { onDone?: () => void } = {}) 
                   onClick={() => toggleTrade(trade)}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
                     isSelected
-                      ? 'bg-blue-600/20 border border-blue-500/30 text-blue-300'
+                      ? 'bg-amber-500/20 border border-amber-500/30 text-amber-300'
                       : 'bg-white/5 border border-transparent text-slate-300 hover:bg-white/10'
                   }`}
                 >

@@ -161,7 +161,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-black">
       <HawkAnimations />
 
       {/* Desktop sidebar — black with yellow active state. Hidden on mobile (bottom tabs stay). */}
@@ -208,13 +208,24 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Top Bar — bright glassmorphism. Hidden on desktop (sidebar handles branding/profile). */}
       <header className="lg:hidden sticky top-0 z-40 border-b border-white/20 px-3 sm:px-4 py-3 flex flex-col items-center gap-1" style={{ background: 'rgba(30, 41, 59, 0.95)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
-        <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-wider uppercase gradient-text">HawkEye-Cue</h1>
+        <img
+          src="/logo.png"
+          alt="HawkEye-Cue"
+          className="h-9 sm:h-11 w-auto object-contain"
+          onError={(e) => {
+            const el = e.currentTarget;
+            el.style.display = 'none';
+            const sib = el.nextElementSibling as HTMLElement | null;
+            if (sib) sib.style.display = 'block';
+          }}
+        />
+        <h1 className="hidden text-xl sm:text-3xl font-extrabold text-white tracking-wider uppercase gradient-text">HawkEye-Cue</h1>
         <div className="flex items-center gap-3">
           {/* Mode pill — quick way to find the Guided/Pro toggle */}
           <Link
             to="/settings"
             title="Change app mode in Settings"
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${mode === 'guided' ? 'text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20' : 'text-blue-300 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20'}`}
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${mode === 'guided' ? 'text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20' : 'text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20'}`}
           >
             {mode === 'guided' ? '🧭 Guided' : '⚡ Pro'}
           </Link>
@@ -230,7 +241,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               )}
             </button>
             {showNotifs && (
-              <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-16 sm:top-full sm:mt-2 w-auto sm:w-72 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+              <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-16 sm:top-full sm:mt-2 w-auto sm:w-72 bg-black border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                 <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
                   <span className="text-xs font-bold text-white">Notifications</span>
                   <button onClick={() => setShowNotifs(false)} className="text-xs text-slate-400 hover:text-white">✕</button>
@@ -256,7 +267,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </div>
             )}
           </div>
-          <Link to="/profile" className="text-sm text-slate-400 hover:text-blue-400 transition-colors">
+          <Link to="/profile" className="text-sm text-slate-400 hover:text-amber-300 transition-colors">
             {user?.email}
           </Link>
           <button
@@ -270,9 +281,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Desktop Sidebar — black, logo + vertical nav, amber active item. lg+ only. */}
       <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-60 flex-col border-r border-white/10 bg-black z-40">
-        <div className="px-5 py-5 flex items-center gap-2 border-b border-white/5">
-          <span className="text-2xl">🦅</span>
-          <span className="text-lg font-extrabold tracking-wide text-white uppercase">HawkEye<span className="text-amber-400">-Cue</span></span>
+        <div className="px-4 py-5 flex items-center justify-center border-b border-white/5">
+          <img
+            src="/logo.png"
+            alt="HawkEye-Cue"
+            className="w-full max-w-[180px] h-auto object-contain"
+            onError={(e) => {
+              // Fallback to text wordmark if the logo image isn't present.
+              const el = e.currentTarget;
+              el.style.display = 'none';
+              const sib = el.nextElementSibling as HTMLElement | null;
+              if (sib) sib.style.display = 'flex';
+            }}
+          />
+          <span className="hidden items-center gap-2">
+            <span className="text-2xl">🦅</span>
+            <span className="text-lg font-extrabold tracking-wide text-white uppercase">HawkEye<span className="text-amber-400">-Cue</span></span>
+          </span>
         </div>
         {/* Primary nav only — Today / Create / Pipeline / Sales. Everything else
             lives under the Hawk menu at the bottom. */}
@@ -351,9 +376,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
         }}
       />
 
-      {/* Main Content — shifts right of the sidebar on desktop. Transparent so the hawk shows through. */}
-      <main key={location.pathname} className="p-3 sm:p-4 lg:p-6 max-w-4xl lg:max-w-5xl mx-auto lg:ml-60 w-full page-enter relative z-10" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
-        {children}
+      {/* Main Content — shifts right of the sidebar on desktop and fills the
+          available width (desktop app layout). Transparent so the hawk shows through. */}
+      <main key={location.pathname} className="p-3 sm:p-4 lg:p-8 max-w-2xl lg:max-w-none mx-auto lg:ml-60 lg:mr-0 w-full page-enter relative z-10" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="lg:max-w-[1400px] lg:mx-auto w-full">
+          {children}
+        </div>
       </main>
 
       {/* Bottom Navigation — mobile only (desktop uses the sidebar) */}
@@ -368,7 +396,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             data-tour={item.tour}
             className={`flex flex-col items-center min-w-[44px] min-h-[44px] justify-center px-1 sm:px-3 py-1 sm:py-2 rounded-xl text-xs sm:text-sm transition-all duration-200 ${
               location.pathname === item.path
-                ? 'text-blue-400 font-bold bg-blue-500/10 scale-105 shadow-sm shadow-blue-500/20'
+                ? 'text-amber-300 font-bold bg-amber-500/15 scale-105'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -382,7 +410,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           data-tour="more"
           className={`flex flex-col items-center min-w-[44px] min-h-[44px] justify-center px-1 sm:px-3 py-1 sm:py-2 rounded-xl text-xs sm:text-sm transition-all duration-200 ${
             moreItems.some((m) => m.path === location.pathname)
-              ? 'text-blue-400 font-bold bg-blue-500/10 scale-105'
+              ? 'text-amber-300 font-bold bg-amber-500/15 scale-105'
               : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
         >
@@ -394,7 +422,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* More menu — bottom sheet */}
       {showMore && (
         <div className="fixed inset-0 z-[9997] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={() => setShowMore(false)}>
-          <div className="w-full sm:max-w-sm bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl p-4 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full sm:max-w-sm bg-black border border-white/10 rounded-t-2xl sm:rounded-2xl p-4 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-white text-base">More</h3>
               <button onClick={() => setShowMore(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
@@ -405,7 +433,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   key={m.path}
                   to={m.path}
                   onClick={() => setShowMore(false)}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${location.pathname === m.path ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-slate-800 hover:bg-slate-700 border border-transparent'}`}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${location.pathname === m.path ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-black hover:bg-white/10 border border-transparent'}`}
                 >
                   <span className="text-2xl shrink-0">{m.icon}</span>
                   <div className="min-w-0">
@@ -425,7 +453,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* Quick Add Lead — floating button (mobile-friendly) */}
       <button
         onClick={() => setShowQuickAdd(true)}
-        className="fixed bottom-20 right-4 w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-500 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center z-40 active:scale-90 transition-transform"
+        className="fixed bottom-20 right-4 w-12 h-12 bg-amber-500 rounded-full shadow-lg flex items-center justify-center z-40 active:scale-90 transition-transform"
         title="Quick add a lead"
       >
         <span className="text-xl">🎯</span>
@@ -433,7 +461,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {showQuickAdd && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-[9998] px-3 pb-3 sm:pb-0" onClick={() => setShowQuickAdd(false)}>
-          <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm bg-black border border-white/10 rounded-2xl p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-white text-base">🎯 Quick Save Lead</h3>
               <button onClick={() => setShowQuickAdd(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
@@ -444,10 +472,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 value={quickName}
                 onChange={(e) => setQuickName(e.target.value)}
                 placeholder="Person's name *"
-                className="w-full px-3 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
                 autoFocus
               />
-              <select value={quickSource} onChange={(e) => setQuickSource(e.target.value)} className="w-full px-3 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+              <select value={quickSource} onChange={(e) => setQuickSource(e.target.value)} className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                 <option value="facebook">Facebook</option>
                 <option value="instagram">Instagram</option>
                 <option value="linkedin">LinkedIn</option>
@@ -460,7 +488,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 value={quickLink}
                 onChange={(e) => setQuickLink(e.target.value)}
                 placeholder="+ Link to post (optional)"
-                className="w-full px-3 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
               />
               <button
                 onClick={async () => {

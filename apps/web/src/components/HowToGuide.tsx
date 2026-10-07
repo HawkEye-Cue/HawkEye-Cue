@@ -115,7 +115,7 @@ export default function HowToGuide({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center z-[9999] px-3 py-4 overflow-y-auto" onClick={onClose}>
-      <div className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg bg-black border border-white/10 rounded-2xl shadow-2xl max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between shrink-0">
           <div>
@@ -143,7 +143,7 @@ export default function HowToGuide({ onClose }: { onClose: () => void }) {
                 <div className="px-4 pb-4 space-y-2">
                   {section.steps.map((step, j) => (
                     <div key={j} className="flex items-start gap-2">
-                      <span className="text-blue-400 text-xs mt-1 shrink-0">{j + 1}.</span>
+                      <span className="text-amber-300 text-xs mt-1 shrink-0">{j + 1}.</span>
                       <p className="text-xs text-slate-300 leading-relaxed">{step}</p>
                     </div>
                   ))}
@@ -157,7 +157,7 @@ export default function HowToGuide({ onClose }: { onClose: () => void }) {
         <div className="px-4 py-3 border-t border-white/10 shrink-0">
           <button
             onClick={onClose}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-lg transition-colors"
+            className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold rounded-lg transition-colors"
           >
             Got it! 🦅
           </button>

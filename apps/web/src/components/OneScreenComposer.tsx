@@ -76,7 +76,7 @@ export default function OneScreenComposer(props: Props) {
       </div>
 
       {/* Mode tabs */}
-      <div className="flex bg-slate-800 rounded-xl p-1 border border-white/10">
+      <div className="flex bg-black rounded-xl p-1 border border-white/10">
         {([
           { id: 'write', label: '✍️ Write' },
           { id: 'ai_draft', label: '✨ AI Draft' },
@@ -169,7 +169,7 @@ export default function OneScreenComposer(props: Props) {
               <button
                 key={p}
                 onClick={() => togglePlatform(p)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs capitalize transition-all ${on ? 'bg-blue-600/20 border border-blue-500/50 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs capitalize transition-all ${on ? 'bg-amber-500/20 border border-amber-500/40 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'}`}
               >
                 <span>{PLATFORM_ICONS[p] || ''}</span>{p}<span>{on ? '✓' : '○'}</span>
               </button>

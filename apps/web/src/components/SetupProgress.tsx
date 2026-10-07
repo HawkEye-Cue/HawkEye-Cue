@@ -52,7 +52,7 @@ export default function SetupProgress() {
   const nextTask = tasks.find((t) => !t.done);
 
   return (
-    <div className="glass-card border border-blue-500/20">
+    <div className="glass-card border border-white/10">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-lg">🦅</span>
@@ -62,9 +62,9 @@ export default function SetupProgress() {
       </div>
 
       {/* Progress bar */}
-      <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden mb-3">
+      <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden mb-3">
         <div
-          className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500"
+          className="h-full bg-amber-500 rounded-full transition-all duration-500"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -77,7 +77,7 @@ export default function SetupProgress() {
             className={`text-[10px] px-2 py-1 rounded-full border ${
               t.done
                 ? 'bg-green-500/15 text-green-300 border-green-500/30'
-                : 'bg-slate-700 text-slate-400 border-white/10'
+                : 'bg-white/5 text-slate-400 border-white/10'
             }`}
           >
             {t.done ? '✓' : '○'} {t.label}
@@ -89,7 +89,7 @@ export default function SetupProgress() {
       {nextTask && (
         <button
           onClick={() => navigate(nextTask.path)}
-          className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-lg transition-all active:scale-95"
+          className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95"
         >
           Next: {nextTask.label} →
         </button>

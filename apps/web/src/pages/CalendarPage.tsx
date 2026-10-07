@@ -5,8 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { ScheduledPost } from '@social-lead-gen/shared';
 import type { CalendarEvent } from '../contexts/CalendarContext';
-import { useTeamData, MEMBER_COLORS } from '../hooks/useTeamData';
-import type { TeamCalendarEvent } from '../hooks/useTeamData';
+import { useTeamData } from '../hooks/useTeamData';
 import HourlyTimeline from '../components/HourlyTimeline';
 import type { TimelineEvent } from '../components/HourlyTimeline';
 
@@ -17,7 +16,7 @@ export default function CalendarPage() {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const { events, addEvent, removeEvent, removeAllByTitle, updateEvent, refreshEvents, toggleComplete } = useCalendar();
+  const { events, addEvent, removeEvent, updateEvent, refreshEvents, toggleComplete } = useCalendar();
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
@@ -35,7 +34,7 @@ export default function CalendarPage() {
   const [editCalDate, setEditCalDate] = useState('');
 
   // Team data integration
-  const { isInTeam, teamMembers, teamCalendar, fetchCalendar, getMemberColorIndex } = useTeamData();
+  const { isInTeam, fetchCalendar } = useTeamData();
 
   // Fetch team calendar when month changes
   useEffect(() => {
@@ -274,43 +273,17 @@ export default function CalendarPage() {
     setFlockAnyday(false);
   };
 
-  const todayStr = (() => {
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${today.getFullYear()}-${mm}-${dd}`;
-  })();
-
-  const todayEvents = [
-    ...events.filter((e) => e.date === todayStr),
-    ...scheduledPosts
-      .filter((p) => p.scheduledAt && p.scheduledAt.startsWith(todayStr))
-      .map((p) => ({
-        id: p.id,
-        date: todayStr,
-        title: `📤 ${(p.content || 'Scheduled post').slice(0, 50)}`,
-        type: 'post' as const,
-        completed: p.status === 'published',
-      })),
-  ];
-
-  const typeColors: Record<string, string> = {
-    post: 'bg-blue-500',
-    meeting: 'bg-amber-500',
-    task: 'bg-amber-500',
-    reminder: 'bg-green-500',
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-bold text-white shrink-0">Calendar</h2>
-        <div className="flex gap-1.5 bg-black border-2 border-amber-500 rounded-xl p-2 shadow-xl shadow-amber-500/10">
+        <div className="flex gap-1.5 bg-black border border-white/10 rounded-xl p-2">
           {(['month', 'week', 'day'] as ViewMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
               className={`px-4 sm:px-5 py-2.5 min-h-[44px] rounded-lg text-sm sm:text-base capitalize font-bold transition-all duration-200 ${
-                viewMode === mode ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 scale-[1.02]' : 'text-white bg-slate-500 hover:bg-slate-400 border-2 border-slate-300'
+                viewMode === mode ? 'bg-amber-500 text-black' : 'text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10'
               }`}
             >
               {mode}
@@ -365,11 +338,11 @@ export default function CalendarPage() {
                     : isFolioEnd
                     ? 'bg-red-600/30 border border-red-500/50 text-red-300 font-bold'
                     : isToday
-                    ? 'bg-blue-600 text-white font-bold'
+                    ? 'bg-amber-500/15 border border-amber-500/40 text-amber-300 font-bold'
                     : isInFolio
                     ? 'bg-amber-500/10 border border-amber-500/20 text-slate-300 hover:bg-amber-500/20 cursor-pointer'
                     : future
-                    ? 'text-slate-300 hover:bg-slate-700 cursor-pointer'
+                    ? 'text-slate-300 hover:bg-white/5 cursor-pointer'
                     : 'text-slate-500 cursor-not-allowed'
                 }`}
               >
@@ -396,7 +369,7 @@ export default function CalendarPage() {
                 {future && (
                   <button
                     onClick={(e) => handleAddClick(day, e)}
-                    className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[10px] bg-blue-600/80 text-white px-1.5 py-0.5 rounded font-bold hover:bg-blue-500 transition-colors"
+                    className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[10px] bg-amber-500 text-black px-1.5 py-0.5 rounded font-bold hover:bg-amber-400 transition-colors"
                   >
                     +
                   </button>
@@ -428,10 +401,10 @@ export default function CalendarPage() {
                   <div
                     key={dateStr}
                     onClick={() => { setSelectedDay(d.getDate()); setCurrentMonth(d.getMonth()); setCurrentYear(d.getFullYear()); setShowModal(true); }}
-                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isToday ? 'bg-blue-500/15 border border-blue-500/30' : 'bg-white/5 border border-transparent hover:bg-white/10'}`}
+                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isToday ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-white/5 border border-transparent hover:bg-white/10'}`}
                   >
                     <div className="text-center w-10 shrink-0">
-                      <p className={`text-[10px] uppercase ${isToday ? 'text-blue-400' : 'text-slate-500'}`}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                      <p className={`text-[10px] uppercase ${isToday ? 'text-amber-300' : 'text-slate-500'}`}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</p>
                       <p className={`text-lg font-bold ${isToday ? 'text-white' : 'text-slate-300'}`}>{d.getDate()}</p>
                     </div>
                     <div className="flex-1 min-w-0 space-y-1">
@@ -527,23 +500,23 @@ export default function CalendarPage() {
                             const allReminders = dayEvents.filter((e) => e.type === 'reminder');
                             return (
                               <>
-                                <details className="rounded-xl border border-blue-500/30 bg-blue-500/10 overflow-hidden">
+                                <details className="rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
                                   <summary className="flex flex-col items-center justify-center p-3 cursor-pointer">
                                     <span className="text-2xl">📤</span>
-                                    <span className="text-lg font-bold text-blue-400">{allPosts.length}</span>
+                                    <span className="text-lg font-bold text-amber-300">{allPosts.length}</span>
                                     <span className="text-[10px] text-slate-400">Posts</span>
                                   </summary>
                                   {allPosts.length > 0 && (
-                                    <div className="px-2 pb-2 space-y-1.5 border-t border-blue-500/20 pt-2 max-h-40 overflow-y-auto">
+                                    <div className="px-2 pb-2 space-y-1.5 border-t border-amber-500/20 pt-2 max-h-40 overflow-y-auto">
                                       {allPosts.map((evt) => (
-                                        <div key={evt.id} className="p-1.5 rounded-lg bg-blue-500/5 border border-blue-500/10">
+                                        <div key={evt.id} className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
                                           {(evt as any).link ? (
-                                            <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className={`text-xs block hover:text-blue-300 ${evt.completed ? 'line-through text-slate-600' : 'text-blue-400 underline'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</a>
+                                            <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className={`text-xs block hover:text-amber-200 ${evt.completed ? 'line-through text-slate-600' : 'text-amber-300 underline'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</a>
                                           ) : (
                                             <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
                                           )}
                                           <div className="flex justify-between mt-2">
-                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-white/10 text-slate-300 text-[10px] font-medium hover:bg-white/20 min-w-[40px] text-center">✏️ Edit</button>
                                             <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
                                           </div>
                                         </div>
@@ -564,8 +537,8 @@ export default function CalendarPage() {
                                         <div key={evt.id} className="p-1.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
                                           <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '')}</span>
                                           <div className="flex justify-between mt-2">
-                                            {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
-                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                            {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-amber-500/10 text-amber-300 text-[10px] font-medium hover:bg-amber-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-white/10 text-slate-300 text-[10px] font-medium hover:bg-white/20 min-w-[40px] text-center">✏️ Edit</button>
                                             <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
                                           </div>
                                         </div>
@@ -586,8 +559,8 @@ export default function CalendarPage() {
                                         <div key={evt.id} className="p-1.5 rounded-lg bg-green-500/5 border border-green-500/10">
                                           <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
                                           <div className="flex justify-between mt-2">
-                                            {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
-                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                            {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-amber-500/10 text-amber-300 text-[10px] font-medium hover:bg-amber-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-white/10 text-slate-300 text-[10px] font-medium hover:bg-white/20 min-w-[40px] text-center">✏️ Edit</button>
                                             <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
                                           </div>
                                         </div>
@@ -613,7 +586,7 @@ export default function CalendarPage() {
                                 <span className={`text-[11px] w-14 shrink-0 pt-0.5 ${evts.length > 0 ? 'text-white font-medium' : 'text-slate-600'}`}>{timeLabel}</span>
                                 <div className="flex-1">
                                   {evts.length > 0 ? evts.map((evt) => {
-                                    const color = evt.type === 'post' ? 'border-blue-500/30 bg-blue-500/5' : (evt.type === 'meeting' || evt.type === 'task') ? 'border-amber-500/30 bg-amber-500/5' : 'border-green-500/30 bg-green-500/5';
+                                    const color = evt.type === 'post' ? 'border-amber-500/30 bg-amber-500/10' : (evt.type === 'meeting' || evt.type === 'task') ? 'border-amber-500/30 bg-amber-500/5' : 'border-green-500/30 bg-green-500/5';
                                     return (
                                       <div key={evt.id} className={`p-2 rounded-lg border ${color} mb-1`}>
                                         <div className="flex items-center gap-2">
@@ -621,8 +594,8 @@ export default function CalendarPage() {
                                           <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-white'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
                                         </div>
                                         <div className="flex justify-between mt-2 ml-6">
-                                          {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium hover:bg-blue-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
-                                          <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-slate-700 text-slate-300 text-[10px] font-medium hover:bg-slate-600 min-w-[40px] text-center">✏️ Edit</button>
+                                          {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-amber-500/10 text-amber-300 text-[10px] font-medium hover:bg-amber-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                                          <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-white/10 text-slate-300 text-[10px] font-medium hover:bg-white/20 min-w-[40px] text-center">✏️ Edit</button>
                                           <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
                                         </div>
                                       </div>
@@ -645,7 +618,7 @@ export default function CalendarPage() {
             ) : (
               <>
                 {/* Add Event Form */}
-                <button onClick={() => setShowAddForm(false)} className="text-xs text-blue-400 hover:text-blue-300 mb-2 mt-2">← Back to schedule</button>
+                <button onClick={() => setShowAddForm(false)} className="text-xs text-amber-300 hover:text-amber-200 mb-2 mt-2">← Back to schedule</button>
                 {isInTeam && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 mb-2">
                     <span className="text-xs">📢</span>
@@ -659,7 +632,7 @@ export default function CalendarPage() {
                     onChange={(e) => setNewEventTitle(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddEvent()}
                     placeholder="What's happening?"
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm"
                     autoFocus
                   />
                   <div>
@@ -668,7 +641,7 @@ export default function CalendarPage() {
                       type="time"
                       value={newEventTime}
                       onChange={(e) => setNewEventTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                     />
                     {newEventTime && (
                       <div className="flex gap-2 mt-2">
@@ -681,7 +654,7 @@ export default function CalendarPage() {
                               setNewEventTime(`${String(newHour).padStart(2, '0')}:${newEventTime.split(':')[1]}`);
                             }
                           }}
-                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(newEventTime.split(':')[0]) < 12 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(newEventTime.split(':')[0]) < 12 ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
                         >
                           ☀️ AM
                         </button>
@@ -694,7 +667,7 @@ export default function CalendarPage() {
                               setNewEventTime(`${String(newHour).padStart(2, '0')}:${newEventTime.split(':')[1]}`);
                             }
                           }}
-                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(newEventTime.split(':')[0]) >= 12 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(newEventTime.split(':')[0]) >= 12 ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
                         >
                           🌙 PM
                         </button>
@@ -703,8 +676,8 @@ export default function CalendarPage() {
                   </div>
                   <div className="flex gap-2">
                     {(['post', 'meeting', 'reminder'] as const).map((t) => {
-                      const colors = { post: 'bg-blue-600 text-white', meeting: 'bg-amber-500 text-black', reminder: 'bg-green-600 text-white' };
-                      const dimColors = { post: 'bg-blue-600/30 text-blue-300 border border-blue-500/40', meeting: 'bg-amber-500/30 text-amber-300 border border-amber-500/40', reminder: 'bg-green-600/30 text-green-300 border border-green-500/40' };
+                      const colors = { post: 'bg-amber-500 text-white', meeting: 'bg-amber-500 text-black', reminder: 'bg-green-600 text-white' };
+                      const dimColors = { post: 'bg-amber-500/20 text-amber-300 border border-amber-500/40', meeting: 'bg-amber-500/30 text-amber-300 border border-amber-500/40', reminder: 'bg-green-600/30 text-green-300 border border-green-500/40' };
                       return (
                       <button
                         key={t}
@@ -723,7 +696,7 @@ export default function CalendarPage() {
                     <select
                       value={repeatOption}
                       onChange={(e) => setRepeatOption(e.target.value as typeof repeatOption)}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                     >
                       <option value="none">Don't repeat</option>
                       <option value="daily">Daily</option>
@@ -741,7 +714,7 @@ export default function CalendarPage() {
                       value={newEventLink}
                       onChange={(e) => setNewEventLink(e.target.value)}
                       placeholder="https://facebook.com/groups/..."
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm"
                     />
                   </div>
                   )}
@@ -760,17 +733,17 @@ export default function CalendarPage() {
                             disabled={flockAnyday}
                             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                               flockAnyday
-                                ? 'bg-slate-700 text-slate-600 cursor-not-allowed'
+                                ? 'bg-white/5 text-slate-600 cursor-not-allowed'
                                 : flockPostingDays.includes(i)
-                                  ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30'
-                                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                  ? 'bg-amber-500 text-black'
+                                  : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
                             }`}
                           >
                             {label}
                           </button>
                         ))}
                       </div>
-                      <label className="flex items-center justify-between p-2 bg-slate-800 rounded-lg cursor-pointer">
+                      <label className="flex items-center justify-between p-2 bg-white/5 rounded-lg cursor-pointer">
                         <span className="text-xs text-slate-300">Any Day — post whenever</span>
                         <input
                           type="checkbox"
@@ -792,14 +765,14 @@ export default function CalendarPage() {
                           value={newEventLocation}
                           onChange={(e) => setNewEventLocation(e.target.value)}
                           placeholder="e.g. 123 Main St, Denver CO"
-                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm"
                         />
                         {newEventLocation.trim() && (
                           <a
                             href={`https://maps.google.com/maps?q=${encodeURIComponent(newEventLocation.trim())}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block"
+                            className="text-xs text-amber-300 hover:text-amber-200 mt-1 inline-block"
                           >
                             🗺️ Open in Maps →
                           </a>
@@ -812,7 +785,7 @@ export default function CalendarPage() {
                           value={newEventLink}
                           onChange={(e) => setNewEventLink(e.target.value)}
                           placeholder="https://zoom.us/j/..."
-                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm"
                         />
                       </div>
                       <div>
@@ -821,7 +794,7 @@ export default function CalendarPage() {
                           value={newEventNotes}
                           onChange={(e) => setNewEventNotes(e.target.value)}
                           placeholder="Meeting notes, agenda, who to meet..."
-                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm resize-none h-16"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm resize-none h-16"
                         />
                       </div>
                       <div>
@@ -831,7 +804,7 @@ export default function CalendarPage() {
                           value={newEventInviteEmail}
                           onChange={(e) => setNewEventInviteEmail(e.target.value)}
                           placeholder="client@email.com"
-                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm"
                         />
                         <p className="text-[10px] text-slate-500 mt-1">They'll receive an email to confirm the meeting</p>
                       </div>
@@ -841,7 +814,7 @@ export default function CalendarPage() {
                     <button
                       onClick={() => { handleAddEvent(); }}
                       disabled={!newEventTitle.trim()}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                      className="flex-1 bg-amber-500 text-black py-2 rounded-lg text-sm font-bold hover:bg-amber-400 disabled:opacity-50"
                     >
                       + Add Another
                     </button>
@@ -859,7 +832,7 @@ export default function CalendarPage() {
 
             <button
               onClick={() => { setShowModal(false); setShowAddForm(false); }}
-              className="w-full mt-3 bg-slate-700 text-slate-300 py-2 rounded-lg hover:bg-slate-600 text-sm"
+              className="w-full mt-3 bg-white/5 text-slate-300 py-2 rounded-lg hover:bg-white/10 text-sm"
             >
               Close
             </button>
@@ -881,7 +854,7 @@ export default function CalendarPage() {
                     });
                   }}
                   placeholder="Notes for this day..."
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20 focus:border-blue-500/50 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none h-20 focus:border-amber-500/50 focus:outline-none"
                 />
               </div>
             )}
@@ -892,7 +865,7 @@ export default function CalendarPage() {
       {/* Edit Event Modal */}
       {editingCalEvent && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] px-4">
-          <div className="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-2xl p-5 shadow-2xl">
+          <div className="w-full max-w-sm bg-black border border-amber-500/30 rounded-2xl p-5 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-white text-lg">✏️ Edit Event</h3>
               <button onClick={() => setEditingCalEvent(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
@@ -900,29 +873,29 @@ export default function CalendarPage() {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Title</label>
-                <input type="text" value={editCalTitle} onChange={(e) => setEditCalTitle(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                <input type="text" value={editCalTitle} onChange={(e) => setEditCalTitle(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">📅 Date</label>
-                <input type="date" value={editCalDate} onChange={(e) => setEditCalDate(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                <input type="date" value={editCalDate} onChange={(e) => setEditCalDate(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">⏰ Time</label>
-                <input type="time" value={editCalTime} onChange={(e) => setEditCalTime(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                <input type="time" value={editCalTime} onChange={(e) => setEditCalTime(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
                 {editCalTime && (
                   <div className="flex gap-2 mt-2">
-                    <button type="button" onClick={() => { const hour = parseInt(editCalTime.split(':')[0]); if (hour >= 12) { const nh = hour === 12 ? 0 : hour - 12; setEditCalTime(`${String(nh).padStart(2, '0')}:${editCalTime.split(':')[1]}`); } }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(editCalTime.split(':')[0]) < 12 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}>☀️ AM</button>
-                    <button type="button" onClick={() => { const hour = parseInt(editCalTime.split(':')[0]); if (hour < 12) { const nh = hour === 0 ? 12 : hour + 12; setEditCalTime(`${String(nh).padStart(2, '0')}:${editCalTime.split(':')[1]}`); } }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(editCalTime.split(':')[0]) >= 12 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 scale-105' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'}`}>🌙 PM</button>
+                    <button type="button" onClick={() => { const hour = parseInt(editCalTime.split(':')[0]); if (hour >= 12) { const nh = hour === 12 ? 0 : hour - 12; setEditCalTime(`${String(nh).padStart(2, '0')}:${editCalTime.split(':')[1]}`); } }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(editCalTime.split(':')[0]) < 12 ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}>☀️ AM</button>
+                    <button type="button" onClick={() => { const hour = parseInt(editCalTime.split(':')[0]); if (hour < 12) { const nh = hour === 0 ? 12 : hour + 12; setEditCalTime(`${String(nh).padStart(2, '0')}:${editCalTime.split(':')[1]}`); } }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all ${parseInt(editCalTime.split(':')[0]) >= 12 ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}>🌙 PM</button>
                   </div>
                 )}
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">📍 Location</label>
-                <input type="text" value={editCalLocation} onChange={(e) => setEditCalLocation(e.target.value)} placeholder="e.g. 123 Main St" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm" />
+                <input type="text" value={editCalLocation} onChange={(e) => setEditCalLocation(e.target.value)} placeholder="e.g. 123 Main St" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm" />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">🔗 Link</label>
-                <input type="url" value={editCalLink} onChange={(e) => setEditCalLink(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm" />
+                <input type="url" value={editCalLink} onChange={(e) => setEditCalLink(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 text-sm" />
               </div>
               <div className="flex gap-2 pt-2">
                 <button
@@ -945,7 +918,7 @@ export default function CalendarPage() {
                   🗑️
                 </button>
               </div>
-              <button onClick={() => setEditingCalEvent(null)} className="w-full py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 text-sm">Cancel</button>
+              <button onClick={() => setEditingCalEvent(null)} className="w-full py-2 bg-white/5 text-slate-300 rounded-lg hover:bg-white/10 text-sm">Cancel</button>
             </div>
           </div>
         </div>

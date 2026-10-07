@@ -8,7 +8,7 @@ import { ApiClient } from '@social-lead-gen/shared';
 import FlightPlan from '../components/FlightPlan';
 import type { FlightTask } from '../components/FlightPlan';
 import SetupProgress from '../components/SetupProgress';
-import { HeroHeader, StatGrid, StatCard, Panel } from '../components/ui';
+import { StatGrid, StatCard, Panel } from '../components/ui';
 
 interface TodayCounts {
   newOpps: number;
@@ -173,11 +173,22 @@ export default function TodayPage() {
   return (
     <div className="space-y-4 pb-8">
       {/* Sales-style hero header — "The Nest" greeting lives in an intentional
-          glass container instead of floating text over the hawk background. */}
-      <HeroHeader
-        title={`${greeting}, ${name} 👋`}
-        subtitle={`THE NEST · Here's your daily flight plan${selectedTrade?.name ? ` for your ${selectedTrade.name.toLowerCase()} business` : ''}.`}
-      />
+          glass container instead of floating text over the hawk background.
+          Built to visibly match the Sales/Team Sales hero: a wide, dark
+          translucent panel with white-alpha border that covers the hawk. */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md px-6 py-8 sm:px-8 sm:py-10 shadow-xl shadow-black/40">
+        {/* soft amber glow in the corner for brand warmth, like the Sales eye glow */}
+        <div className="pointer-events-none absolute -top-16 -right-16 w-64 h-64 rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="relative">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-400/90">🦅 The Nest</p>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight mt-1">
+            {greeting}, {name} 👋
+          </h1>
+          <p className="text-sm sm:text-base text-slate-300/90 mt-2 max-w-2xl">
+            Here's your daily flight plan{selectedTrade?.name ? ` for your ${selectedTrade.name.toLowerCase()} business` : ''}.
+          </p>
+        </div>
+      </div>
 
       <SetupProgress />
 

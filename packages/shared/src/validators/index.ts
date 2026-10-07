@@ -116,21 +116,48 @@ export const createKeywordRequestSchema = z.object({
 //
 // Privacy/data-minimization (D1): a Minimal-Save opportunity is valid with only a
 // usable sourceUrl + keywordId + platform. sourceContent and sourceAuthor are OPTIONAL
-// (Minimal Save does not store copied post text or author name). This still rejects
-// meaningless/empty records because a usable sourceUrl and a keywordId remain REQUIRED.
-export const opportunitySubmissionSchema = z.object({
-  keywordId: z.string().min(1, 'Keyword ID is required'),
-  sourceContent: z
-    .string()
-    .max(5000, 'Source content must be at most 5000 characters')
-    .optional(),
-  sourcePlatform: socialPlatformSchema,
-  sourceUrl: z.string().url('Source URL must be a valid URL'),
-  sourceAuthor: z.string().optional(),
-  // Explicit Opportunity → Lead promotion at save time. Defaults to false (Minimal Save
-  // creates an Opportunity only; it does NOT create a Lead follow-up protocol).
-  promoteToLead: z.boolean().optional(),
-});
+// (Minimal Save does not store copied post text or author name).
+//
+// To still reject meaningless/empty records (R14.7) WITHOUT breaking the hand-entered
+// manual-entry path (which has no post URL), a valid record must have a keywordId AND
+// EITHER a usable sourceUrl OR a meaningful manual reference (non-empty author name or
+// content). sourceUrl therefore becomes optional but, when present, must be a valid URL.
+export const opportunitySubmissionSchema = z
+  .object({
+    keywordId: z.string().min(1, 'Keyword ID is required'),
+    sourceContent: z
+      .string()
+      .max(5000, 'Source content must be at most 5000 characters')
+      .optional(),
+    sourcePlatform: socialPlatformSchema,
+    sourceUrl: z
+      .string()
+      .url('Source URL must be a valid URL')
+      .optional()
+      .or(z.literal('')),
+    sourceAuthor: z.string().optional(),
+    // Explicit Opportunity → Lead promotion at save time. Defaults to false (Minimal Save
+    // creates an Opportunity only; it does NOT create a Lead follow-up protocol).
+    promoteToLead: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    const hasUsableUrl =
+      typeof val.sourceUrl === 'string' &&
+      val.sourceUrl.trim().length > 0 &&
+      /^https?:\/\//i.test(val.sourceUrl.trim());
+    const hasAuthorRef =
+      typeof val.sourceAuthor === 'string' && val.sourceAuthor.trim().length > 0;
+    const hasContentRef =
+      typeof val.sourceContent === 'string' && val.sourceContent.trim().length > 0;
+    if (!hasUsableUrl && !hasAuthorRef && !hasContentRef) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'A usable source URL or a meaningful source reference (author or content) is required',
+        path: ['sourceUrl'],
+      });
+    }
+  });
 
 // --- Device Registration Schema ---
 

@@ -9,7 +9,6 @@ import { ApiClient } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
 import LeadProfilePopup from '../components/LeadProfilePopup';
-import { PageHeader, StatCard, StatGrid } from '../components/ui';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import ProNudge from '../components/ProNudge';
@@ -32,10 +31,10 @@ const platformIcons: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  new: 'bg-blue-900/40 text-blue-400 border-blue-500/20',
-  followed_up: 'bg-yellow-900/40 text-yellow-400 border-yellow-500/20',
-  converted: 'bg-green-900/40 text-green-400 border-green-500/20',
-  dismissed: 'bg-slate-900/40 text-slate-400 border-slate-500/20',
+  new: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  followed_up: 'bg-white/10 text-slate-200 border-white/15',
+  converted: 'bg-green-500/15 text-green-300 border-green-500/30',
+  dismissed: 'bg-black/40 text-slate-400 border-white/10',
 };
 
 // Default lead follow-up protocols by source type
@@ -569,13 +568,13 @@ export default function OpportunitiesPage() {
     const nextStep = steps.find((s: any) => !s.completed);
 
     return (
-      <div key={lead.id} className="rounded-xl border border-white/20 p-4 bg-slate-800 backdrop-blur-sm">
+      <div key={lead.id} className="rounded-xl border border-white/20 p-4 bg-neutral-900/60 backdrop-blur-sm">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-lg">{platformIcons[lead.sourcePlatform] || '📱'}</span>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-white">{lead.sourceAuthor}</p>
+                <p className="text-sm font-medium text-white">{lead.sourceAuthor || 'New Cue'}</p>
                 {(lead as any).policyType && (
                   <span className="text-xs font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">{(lead as any).policyType}</span>
                 )}
@@ -598,13 +597,13 @@ export default function OpportunitiesPage() {
               <span className="text-[10px] text-slate-400">{completedSteps}/{totalSteps} steps</span>
               <span className="text-[10px] text-slate-400">{progress}%</span>
             </div>
-            <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
             {nextStep && (
               <div className="mt-1.5 flex items-center gap-2">
                 <span className="text-xs">{nextStep.type === 'call' ? '📞' : nextStep.type === 'sms' ? '💬' : '✉️'}</span>
-                <span className="text-xs text-blue-300">Next: {nextStep.task}</span>
+                <span className="text-xs text-amber-200">Next: {nextStep.task}</span>
                 <span className="text-[10px] text-slate-500">Day {nextStep.day}</span>
                 <button
                   onClick={async () => {
@@ -624,7 +623,17 @@ export default function OpportunitiesPage() {
           </div>
         )}
 
-        <p className="text-sm text-slate-300 italic bg-white/5 p-2 rounded-lg mb-3">&quot;{(lead.sourceContent || '').slice(0, 150)}{(lead.sourceContent || '').length > 150 ? '...' : ''}&quot;</p>
+        {/* D1 privacy: don't render empty quotes when post text wasn't stored */}
+        {(lead.sourceContent || '').trim() ? (
+          <p className="text-sm text-slate-300 italic bg-white/5 p-2 rounded-lg mb-3">&quot;{(lead.sourceContent || '').slice(0, 150)}{(lead.sourceContent || '').length > 150 ? '...' : ''}&quot;</p>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-slate-400 bg-white/5 p-2 rounded-lg mb-3">
+            <span>🔒 Post content not stored</span>
+            {lead.sourceUrl && (
+              <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-amber-300 hover:text-amber-200 font-medium underline underline-offset-2">View original post ↗</a>
+            )}
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           {lead.status === 'new' && (
             <button onClick={() => handleUpdateStatus(lead.id, 'followed_up')} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-600/30 disabled:opacity-50">
@@ -639,18 +648,18 @@ export default function OpportunitiesPage() {
           {lead.sourceUrl && (
             <a href={lead.sourceUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10">View Post ↗</a>
           )}
-          <button onClick={() => setSelectedLead(lead)} className="px-3 py-1.5 bg-purple-600/20 border border-purple-500/30 text-purple-300 rounded-lg text-xs font-medium hover:bg-purple-600/30">👤 Profile</button>
+          <button onClick={() => setSelectedLead(lead)} className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-200 rounded-lg text-xs font-medium hover:bg-white/10">👤 Profile</button>
         </div>
         {/* Worked By */}
         {(lead as any).assignedTo && (
           <div className="mt-2 flex items-center gap-1.5">
             <span className="text-xs text-slate-500">Worked by:</span>
-            <span className="text-xs text-blue-400 font-medium">{(lead as any).assignedTo.split('@')[0]}</span>
+            <span className="text-xs text-amber-200 font-medium">{(lead as any).assignedTo.split('@')[0]}</span>
           </div>
         )}
         <details className="mt-3">
           <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">📝 Notes</summary>
-          <textarea defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''} onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)} placeholder="Add notes about this lead..." className="w-full mt-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16" />
+          <textarea defaultValue={localStorage.getItem(`hawkeye_lead_note_${lead.id}`) || ''} onBlur={(e) => localStorage.setItem(`hawkeye_lead_note_${lead.id}`, e.target.value)} placeholder="Add notes about this lead..." className="w-full mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16" />
         </details>
       </div>
     );
@@ -677,39 +686,54 @@ export default function OpportunitiesPage() {
   }
 
   return (
-    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
-      {/* Left column */}
+    <div className="space-y-4">
+      {/* Cue feed is the dominant full-width workspace; Flight Projection stacks
+          beneath it as a secondary section. (WS3 — Today/Sales visual language.) */}
       <div className="min-w-0 space-y-4">
-      <PageHeader
-        icon="🎯"
-        title="HawkSight"
-        subtitle="Who should I contact?"
-        right={
-          <div className="flex gap-2">
-            <button onClick={() => setShowRadar(true)} className="px-3 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-xl transition-all shadow-lg shadow-amber-500/30 active:scale-95 flex items-center gap-1" title="HawkEye Radar — score a post">
+      {/* Sales/Today-style contained hero — "HawkSight / Who should I contact?" */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-neutral-900/75 backdrop-blur-xl px-6 py-7 sm:px-8 sm:py-8 shadow-xl shadow-black/40 ring-1 ring-white/5">
+        <div className="pointer-events-none absolute -top-16 -right-16 w-64 h-64 rounded-full bg-amber-500/15 blur-3xl" />
+        <div className="relative flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">🎯 HawkSight</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight tracking-tight mt-1">Who should I contact?</h1>
+            <p className="text-xs sm:text-sm text-slate-300 mt-1">Your newest Cues, ranked by what needs attention now.</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => setShowRadar(true)} className="px-3 py-2.5 bg-white/10 hover:bg-white/15 border border-white/15 text-white text-sm font-bold rounded-xl transition-all active:scale-95 flex items-center gap-1" title="HawkEye Radar — analyze a Cue">
               📡 Radar
             </button>
-            <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95">
-              + Add Lead
+            <button onClick={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }} className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-xl transition-all active:scale-95">
+              + Add Cue
             </button>
           </div>
-        }
-      />
+        </div>
+      </div>
 
-      {/* Stat cards — the Sales vibe up top */}
-      <StatGrid cols={4}>
-        <StatCard icon="🆕" label="New" value={stats.new} accent="sky" />
-        <StatCard icon="📞" label="Followed Up" value={stats.followedUp} accent="amber" />
-        <StatCard icon="⭐" label="Clients" value={stats.converted} accent="green" />
-        <StatCard icon="💰" label="Pipeline Value" value={(() => {
-          const localLeadData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
-          const total = leads.reduce((sum, l) => {
-            const prem = (l as any).expectedPremium || localLeadData[(l.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;
-            return sum + (Number(prem) || 0);
-          }, 0);
-          return total > 0 ? '$' + Math.round(total).toLocaleString() : '—';
-        })()} accent="purple" />
-      </StatGrid>
+      {/* KPI row — Today's responsive treatment (2-up → xl 4-up, charcoal, amber icons) */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {[
+          { icon: '🆕', label: 'New Cues', value: stats.new },
+          { icon: '📞', label: 'Followed Up', value: stats.followedUp },
+          { icon: '⭐', label: 'Clients', value: stats.converted },
+          { icon: '💰', label: 'Pipeline Value', value: (() => {
+            const localLeadData = JSON.parse(localStorage.getItem(`hawkeye_lead_data_${user?.sub}`) || '{}');
+            const total = leads.reduce((sum, l) => {
+              const prem = (l as any).expectedPremium || localLeadData[(l.sourceAuthor || '').toLowerCase()]?.expectedPremium || 0;
+              return sum + (Number(prem) || 0);
+            }, 0);
+            return total > 0 ? '$' + Math.round(total).toLocaleString() : '—';
+          })() },
+        ].map((c) => (
+          <div key={c.label} className="flex items-center gap-3 rounded-2xl border border-white/15 bg-neutral-800/80 backdrop-blur-md px-4 py-3 shadow-lg shadow-black/20 min-w-0">
+            <span className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">{c.icon}</span>
+            <span className="min-w-0">
+              <span className="block text-xl font-extrabold text-white leading-tight truncate">{c.value}</span>
+              <span className="block text-[11px] text-slate-300 font-medium truncate">{c.label}</span>
+            </span>
+          </div>
+        ))}
+      </div>
 
       {/* Add Lead Modal */}
       {showAddLead && (
@@ -723,11 +747,11 @@ export default function OpportunitiesPage() {
               <div className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Lead Name / Contact</label>
-                <input type="text" value={newLeadName} onChange={(e) => setNewLeadName(e.target.value)} placeholder="e.g. John Smith" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <input type="text" value={newLeadName} onChange={(e) => setNewLeadName(e.target.value)} placeholder="e.g. John Smith" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Source / Pipeline</label>
-                <select value={newLeadSource} onChange={(e) => setNewLeadSource(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select value={newLeadSource} onChange={(e) => setNewLeadSource(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                   <option value="facebook-group">Facebook Group</option>
                   <option value="facebook-post">Facebook Post</option>
                   <option value="instagram-post">Instagram</option>
@@ -748,7 +772,7 @@ export default function OpportunitiesPage() {
               {newLeadSource === 'facebook-group' && (
                 <div>
                   <label className="block text-xs text-slate-400 mb-1">Which Group?</label>
-                  <select value={newLeadGroup} onChange={(e) => setNewLeadGroup(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <select value={newLeadGroup} onChange={(e) => setNewLeadGroup(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                     <option value="">Select a group...</option>
                     {userGroups.map((g) => (
                       <option key={g} value={g}>{g}</option>
@@ -759,7 +783,7 @@ export default function OpportunitiesPage() {
               {newLeadSource === 'internet-lead' && (
                 <div>
                   <label className="block text-xs text-slate-400 mb-1">Lead Vendor</label>
-                  <select value={newLeadGroup} onChange={(e) => setNewLeadGroup(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                  <select value={newLeadGroup} onChange={(e) => setNewLeadGroup(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                     <option value="">Select vendor...</option>
                     <option value="QuoteWizard">QuoteWizard</option>
                     <option value="EverQuote">EverQuote</option>
@@ -783,11 +807,11 @@ export default function OpportunitiesPage() {
               )}
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Note (optional)</label>
-                <input type="text" value={newLeadNote} onChange={(e) => setNewLeadNote(e.target.value)} placeholder="e.g. Asked about pricing" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <input type="text" value={newLeadNote} onChange={(e) => setNewLeadNote(e.target.value)} placeholder="e.g. Asked about pricing" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">How can you contact them? 🛡️</label>
-                <select value={newLeadConsent} onChange={(e) => setNewLeadConsent(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select value={newLeadConsent} onChange={(e) => setNewLeadConsent(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                   <option value="public-request">They publicly asked for this service</option>
                   <option value="opted-in">They gave me their info / opted in</option>
                   <option value="referral">Referred to me by someone they know</option>
@@ -799,7 +823,7 @@ export default function OpportunitiesPage() {
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Policy Type (optional)</label>
-                <select value={newLeadPolicyType} onChange={(e) => { setNewLeadPolicyType(e.target.value); if (e.target.value !== 'other') setNewLeadCustomType(''); }} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select value={newLeadPolicyType} onChange={(e) => { setNewLeadPolicyType(e.target.value); if (e.target.value !== 'other') setNewLeadCustomType(''); }} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                   <option value="">Select policy type...</option>
                   {policyTypes.map((pt) => (
                     <option key={pt} value={pt}>{pt}</option>
@@ -812,13 +836,13 @@ export default function OpportunitiesPage() {
                     value={newLeadCustomType}
                     onChange={(e) => setNewLeadCustomType(e.target.value)}
                     placeholder="Enter policy/product type..."
-                    className="w-full mt-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500"
+                    className="w-full mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500"
                   />
                 )}
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Bucket / Category</label>
-                <select value={newLeadBucket} onChange={(e) => setNewLeadBucket(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select value={newLeadBucket} onChange={(e) => setNewLeadBucket(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                   <option value="">Select bucket...</option>
                   {buckets.map((b) => (
                     <option key={b} value={b}>{b}</option>
@@ -827,16 +851,16 @@ export default function OpportunitiesPage() {
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Expected Premium / Value ($)</label>
-                <input type="number" id="newLeadPremium" placeholder="e.g. 1200" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <input type="number" id="newLeadPremium" placeholder="e.g. 1200" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Lead's Email (for auto-emails)</label>
-                <input type="email" id="newLeadContactEmail" placeholder="lead@example.com" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <input type="email" id="newLeadContactEmail" placeholder="lead@example.com" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
                 <p className="text-[10px] text-slate-500 mt-1">If provided, cadence emails will auto-send on scheduled days</p>
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Worked by</label>
-                <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select value={newLeadAssignee} onChange={(e) => setNewLeadAssignee(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                   <option value={user?.email || ''}>Me ({(() => { const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); return dn[user?.email || ''] || user?.email?.split('@')[0] || 'me'; })()})</option>
                   {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => {
                     const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
@@ -923,9 +947,9 @@ export default function OpportunitiesPage() {
                   }
                 }}
                 disabled={!newLeadName.trim()}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg disabled:opacity-50 transition-colors"
               >
-                Add Lead
+                Add Cue
               </button>
               <button onClick={() => setShowAddLead(false)} className="w-full py-2 text-slate-400 text-sm hover:text-white transition-colors">Cancel</button>
             </div>
@@ -946,11 +970,11 @@ export default function OpportunitiesPage() {
               <div className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Lead Name / Contact</label>
-                <input type="text" defaultValue={editingLead.sourceAuthor} id="editLeadName" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                <input type="text" defaultValue={editingLead.sourceAuthor} id="editLeadName" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm" />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Policy Type</label>
-                <select defaultValue={(editingLead as any).policyType || ''} id="editLeadPolicyType" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select defaultValue={(editingLead as any).policyType || ''} id="editLeadPolicyType" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                   <option value="">Select policy type...</option>
                   {policyTypes.map((pt) => (<option key={pt} value={pt}>{pt}</option>))}
                   <option value="other">Other</option>
@@ -958,18 +982,18 @@ export default function OpportunitiesPage() {
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Expected Premium ($)</label>
-                <input type="number" defaultValue={editingLead._localPremium || ''} id="editLeadPremium" placeholder="e.g. 1200" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <input type="number" defaultValue={editingLead._localPremium || ''} id="editLeadPremium" placeholder="e.g. 1200" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Bucket / Category</label>
-                <select defaultValue={editingLead._localBucket || ''} id="editLeadBucket" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select defaultValue={editingLead._localBucket || ''} id="editLeadBucket" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                   <option value="">Select bucket...</option>
                   {buckets.map((b) => (<option key={b} value={b}>{b}</option>))}
                 </select>
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Worked by</label>
-                <select defaultValue={editingLead._localAssignee || user?.email || ''} id="editLeadAssignee" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select defaultValue={editingLead._localAssignee || user?.email || ''} id="editLeadAssignee" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                   <option value={user?.email || ''}>Me ({(() => { const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); return dn[user?.email || ''] || user?.email?.split('@')[0] || 'me'; })()})</option>
                   {isInTeam && teamMembers.filter((m) => m.email !== user?.email).map((m) => {
                     const dn = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
@@ -979,7 +1003,7 @@ export default function OpportunitiesPage() {
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Status</label>
-                <select defaultValue={editingLead.status} id="editLeadStatus" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm">
+                <select defaultValue={editingLead.status} id="editLeadStatus" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
                   <option value="new">New</option>
                   <option value="followed_up">Followed Up</option>
                   <option value="converted">Client (Converted)</option>
@@ -987,7 +1011,7 @@ export default function OpportunitiesPage() {
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Lead's Email (for auto-emails)</label>
-                <input type="email" defaultValue={(editingLead as any).contactEmail || ''} id="editLeadContactEmail" placeholder="lead@example.com" className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500" />
+                <input type="email" defaultValue={(editingLead as any).contactEmail || ''} id="editLeadContactEmail" placeholder="lead@example.com" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500" />
                 <p className="text-[10px] text-slate-500 mt-1">Cadence emails auto-send to this address</p>
               </div>
               <button
@@ -1049,22 +1073,22 @@ export default function OpportunitiesPage() {
       {!loading && leads.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white">🪹 Lead Nests</h3>
+            <h3 className="text-sm font-semibold text-white">🪹 Cue Nests</h3>
             {isPro && (
-              <button onClick={() => setShowBucketManager(!showBucketManager)} className="text-xs text-blue-400 hover:text-blue-300">{showBucketManager ? 'Done' : 'Edit Nests'}</button>
+              <button onClick={() => setShowBucketManager(!showBucketManager)} className="text-xs text-amber-300 hover:text-amber-200">{showBucketManager ? 'Done' : 'Edit Nests'}</button>
             )}
           </div>
 
           {/* Bucket manager — Pro only */}
           {isPro && showBucketManager && (
-            <div className="rounded-xl border border-white/20 p-3 bg-slate-800 space-y-2">
+            <div className="rounded-xl border border-white/10 p-3 bg-neutral-900/60 space-y-2">
               <div className="flex gap-2">
-                <input type="text" value={newBucketName} onChange={(e) => setNewBucketName(e.target.value)} placeholder="New bucket name..." className="flex-1 px-3 py-1.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500" />
-                <button onClick={() => { if (newBucketName.trim() && !buckets.includes(newBucketName.trim())) { saveBuckets([...buckets, newBucketName.trim()]); setNewBucketName(''); } }} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs">Add</button>
+                <input type="text" value={newBucketName} onChange={(e) => setNewBucketName(e.target.value)} placeholder="New bucket name..." className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs placeholder-slate-500" />
+                <button onClick={() => { if (newBucketName.trim() && !buckets.includes(newBucketName.trim())) { saveBuckets([...buckets, newBucketName.trim()]); setNewBucketName(''); } }} className="px-3 py-1.5 bg-amber-500 text-black font-bold rounded-lg text-xs">Add</button>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {buckets.map((b) => (
-                  <span key={b} className="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded-full text-xs text-slate-300">
+                  <span key={b} className="inline-flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-slate-300">
                     {b}
                     <button onClick={() => saveBuckets(buckets.filter((x) => x !== b))} className="text-red-400 hover:text-red-300">✕</button>
                   </span>
@@ -1080,12 +1104,12 @@ export default function OpportunitiesPage() {
               return (
                 <button
                   onClick={() => { setActiveBucket(null); setShowWonNest(false); setShowPerchedNest(false); }}
-                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${!activeBucket && !showWonNest && !showPerchedNest ? 'border-amber-500 bg-gradient-to-br from-amber-500/20 to-orange-500/10 scale-[1.03] shadow-lg shadow-amber-500/25' : 'border-white/15 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-amber-500/40'}`}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${!activeBucket && !showWonNest && !showPerchedNest ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/10 bg-neutral-800/80 hover:border-amber-500/40'}`}
                 >
-                  <span className="text-3xl mb-1 drop-shadow-[0_0_8px_rgba(250,204,21,0.3)]">🪹</span>
+                  <span className="text-3xl mb-1">🪹</span>
                   <span className="text-xl absolute top-2 right-2 opacity-80">🦅</span>
                   <span className="text-2xl font-extrabold text-white">{activeLeads.length}</span>
-                  <span className="text-xs text-amber-100 mt-0.5 font-semibold">Active Leads</span>
+                  <span className="text-xs text-amber-100 mt-0.5 font-semibold">Active Cues</span>
                 </button>
               );
             })()}
@@ -1100,9 +1124,9 @@ export default function OpportunitiesPage() {
               return (
                 <button
                   onClick={() => { setShowWonNest(!showWonNest); setActiveBucket(null); setShowPerchedNest(false); }}
-                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${showWonNest ? 'border-green-500 bg-gradient-to-br from-green-500/20 to-emerald-500/10 scale-[1.03] shadow-lg shadow-green-500/25' : 'border-green-500/30 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-green-500/50'}`}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${showWonNest ? 'border-green-500 bg-green-500/15 scale-[1.03] shadow-lg shadow-green-500/20' : 'border-green-500/30 bg-neutral-800/80 hover:border-green-500/50'}`}
                 >
-                  <span className="text-3xl mb-1 drop-shadow-[0_0_8px_rgba(74,222,128,0.4)]">🏆</span>
+                  <span className="text-3xl mb-1">🏆</span>
                   <div className="absolute top-2 right-2 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-md shadow-green-500/40">
                     <span className="text-xs font-bold text-white">{wonLeads.length}</span>
                   </div>
@@ -1117,14 +1141,14 @@ export default function OpportunitiesPage() {
               return (
                 <button
                   onClick={() => { setShowPerchedNest(!showPerchedNest); setActiveBucket(null); setShowWonNest(false); }}
-                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${showPerchedNest ? 'border-sky-500 bg-gradient-to-br from-sky-500/20 to-blue-500/10 scale-[1.03] shadow-lg shadow-sky-500/25' : 'border-sky-500/30 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-sky-500/50'}`}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${showPerchedNest ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/10 bg-neutral-800/80 hover:border-amber-500/40'}`}
                 >
-                  <span className="text-3xl mb-1 drop-shadow-[0_0_8px_rgba(56,189,248,0.4)]">🌲</span>
-                  <div className="absolute top-2 right-2 w-7 h-7 bg-sky-500 rounded-full flex items-center justify-center shadow-md shadow-sky-500/40">
-                    <span className="text-xs font-bold text-white">{perchedCount}</span>
+                  <span className="text-3xl mb-1">🌲</span>
+                  <div className="absolute top-2 right-2 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center shadow-md shadow-amber-500/30">
+                    <span className="text-xs font-bold text-black">{perchedCount}</span>
                   </div>
                   <span className="text-xs text-white mt-1 font-semibold">Perched</span>
-                  <span className="text-[9px] text-sky-300 mt-0.5">Circle back</span>
+                  <span className="text-[9px] text-slate-400 mt-0.5">Circle back</span>
                 </button>
               );
             })()}
@@ -1149,9 +1173,9 @@ export default function OpportunitiesPage() {
                 <button
                   key={bucket}
                   onClick={() => { setActiveBucket(isActive ? null : bucket); setShowWonNest(false); setShowPerchedNest(false); }}
-                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${isActive ? 'border-amber-500 bg-gradient-to-br from-amber-500/20 to-orange-500/10 scale-[1.03] shadow-lg shadow-amber-500/25' : 'border-white/15 bg-gradient-to-br from-slate-800 to-slate-900 hover:border-amber-500/40'}`}
+                  className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all overflow-hidden ${isActive ? 'border-amber-500 bg-amber-500/15 scale-[1.03] shadow-lg shadow-amber-500/20' : 'border-white/10 bg-neutral-800/80 hover:border-amber-500/40'}`}
                 >
-                  <span className="text-3xl mb-1 drop-shadow-[0_0_8px_rgba(250,204,21,0.25)]">🪹</span>
+                  <span className="text-3xl mb-1">🪹</span>
                   <div className="absolute top-2 right-2 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center shadow-md shadow-amber-500/40">
                     <span className="text-xs font-bold text-black">{count}</span>
                   </div>
@@ -1170,9 +1194,9 @@ export default function OpportunitiesPage() {
         <div className="glass-card">
           <EmptyState
             icon="🎯"
-            title="No leads yet"
-            description="Save your first lead to start tracking. Use the browser extension while scrolling Facebook, or add one manually."
-            actionLabel="+ Save your first lead"
+            title="No Cues yet"
+            description="Save your first Cue to start tracking. Use the browser extension while scrolling Facebook, or add one manually."
+            actionLabel="+ Save your first Cue"
             onAction={() => { setShowAddLead(true); setNewLeadAssignee(user?.email || ''); }}
           />
         </div>
@@ -1242,6 +1266,11 @@ export default function OpportunitiesPage() {
                 const summary = (lead.sourceContent || '').trim();
                 const group = (lead as any).leadSourceGroup || '';
                 const when = relativeTime(lead.detectedAt || (lead as any).createdAt);
+                // WHY this Cue — the stored keyword/trigger that surfaced it.
+                // Reuse the same data the secondary renderer reads; never fabricate.
+                // 'manual-entry' is a sentinel for hand-added Cues, so it's not a real match.
+                const rawKeyword = ((lead as any).keywordText || (lead as any).keywordId || '').toString().trim();
+                const matchedKeyword = rawKeyword && rawKeyword !== 'manual-entry' ? rawKeyword : '';
                 const sc = leadScores[lead.id];
                 const quality = sc ? scoreQuality(sc.score) : null;
                 const reasonOpen = expandedReason.has(lead.id);
@@ -1251,7 +1280,7 @@ export default function OpportunitiesPage() {
                     key={lead.id}
                     className="group relative rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98))',
+                      background: 'linear-gradient(135deg, rgba(38,38,38,0.95), rgba(20,20,20,0.98))',
                       border: '1px solid rgba(255,255,255,0.08)',
                       boxShadow: accent ? `0 0 0 1px ${accent}33, 0 4px 16px -6px ${accent}44` : '0 2px 12px -6px rgba(0,0,0,0.5)',
                     }}
@@ -1266,7 +1295,7 @@ export default function OpportunitiesPage() {
                         <div className="platform-badge shrink-0">{platformIcons[lead.sourcePlatform] || '📱'}</div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[15px] text-white font-bold leading-tight">{lead.sourceAuthor}</span>
+                            <span className="text-[15px] text-white font-bold leading-tight">{lead.sourceAuthor || 'New Cue'}</span>
                             {(lead as any).policyType && (
                               <span className="text-[9px] font-bold text-amber-200 bg-gradient-to-r from-amber-500/30 to-orange-500/15 px-2 py-0.5 rounded-full border border-amber-400/40">{(lead as any).policyType}</span>
                             )}
@@ -1288,10 +1317,36 @@ export default function OpportunitiesPage() {
                         </div>
                       </div>
 
-                      {/* The need — the line that says what they want */}
-                      {summary && (
+                      {/* The need — the line that says what they want.
+                          D1 privacy: URL-only Cues store no post text. Never fabricate content —
+                          show a neutral "not stored" note and point to the original post instead. */}
+                      {summary ? (
                         <p className="text-sm text-slate-200 leading-snug line-clamp-2">
                           "{summary.slice(0, 160)}{summary.length > 160 ? '…' : ''}"
+                        </p>
+                      ) : (
+                        <div className="flex items-center gap-2 text-[13px] text-slate-400">
+                          <span>🔒 Post content not stored</span>
+                          {lead.sourceUrl && (
+                            <a
+                              href={lead.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-amber-300 hover:text-amber-200 font-medium underline underline-offset-2"
+                            >
+                              View original post ↗
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {/* WHY this Cue — triggering keyword. Small secondary chip, truthfully
+                          omitted when no real keyword is stored (e.g. manual entries). */}
+                      {matchedKeyword && (
+                        <p className="flex items-center gap-1 text-[11px] text-slate-500 min-w-0">
+                          <span className="shrink-0">🎯 Matched:</span>
+                          <span className="text-amber-300/90 font-medium truncate">{matchedKeyword}</span>
                         </p>
                       )}
 
@@ -1352,8 +1407,8 @@ export default function OpportunitiesPage() {
                           {premium > 0 && <span className="text-green-400 font-bold flex items-center gap-1">💰 ${Number(premium).toLocaleString()}</span>}
                           {totalSteps > 0 && (
                             <span className="flex items-center gap-1.5 text-slate-400">
-                              <span className="inline-block w-14 h-1.5 bg-slate-700/80 rounded-full overflow-hidden align-middle">
-                                <span className="block h-full bg-gradient-to-r from-amber-400 to-green-400 rounded-full" style={{ width: `${progress}%` }} />
+                              <span className="inline-block w-14 h-1.5 bg-white/10 rounded-full overflow-hidden align-middle">
+                                <span className="block h-full bg-amber-500 rounded-full" style={{ width: `${progress}%` }} />
                               </span>
                               <span className="text-[9px] font-medium">{completedSteps}/{totalSteps}</span>
                             </span>
@@ -1370,14 +1425,14 @@ export default function OpportunitiesPage() {
                               if (sc?.suggestedResponse) { navigator.clipboard.writeText(sc.suggestedResponse); showToast('✓ Suggested reply copied'); }
                               setSelectedLead(lead);
                             }}
-                            className="flex-1 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs font-bold rounded-lg transition-all active:scale-95"
+                            className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg transition-all active:scale-95"
                           >
                             ✍️ Write Response
                           </button>
                           <button
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePerched(lead.id); }}
                             title={perchedIds.has(lead.id) ? 'Return to active leads' : 'Save for later — circle back'}
-                            className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all ${perchedIds.has(lead.id) ? 'bg-sky-500/30 border-sky-500/50 text-sky-200' : 'bg-slate-700/60 border-white/10 text-slate-300 hover:bg-slate-700'}`}
+                            className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all ${perchedIds.has(lead.id) ? 'bg-amber-500/20 border-amber-500/40 text-amber-200' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
                           >
                             🌲 Save for Later
                           </button>
@@ -1398,18 +1453,15 @@ export default function OpportunitiesPage() {
 
             {/* Load more indicator */}
             {filtered.length > 25 && (
-              <p className="text-xs text-slate-500 text-center py-2">Scroll to see all {filtered.length} leads</p>
+              <p className="text-xs text-slate-500 text-center py-2">Scroll to see all {filtered.length} Cues</p>
             )}
           </div>
         );
       })()}
 
-      {/* Lead Flight Projection — Visual Timeline */}
-      </div>{/* end left column */}
-
-      {/* Right column */}
-      <div className="min-w-0 space-y-4">
-      <details className="rounded-xl border border-white/20 bg-slate-800 backdrop-blur-sm overflow-hidden" open>
+      {/* ─── Flight Projection — secondary supporting section, STACKED beneath the
+          Cue feed (not a 50% column). Collapsed by default so Cues stay the hero. */}
+      <details className="rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur-md overflow-hidden">
         <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5">
           <h3 className="text-sm font-semibold text-white">🦅 Flight Projection</h3>
           <div className="flex items-center gap-2">
@@ -1442,7 +1494,7 @@ export default function OpportunitiesPage() {
             >
               {flightProjectionEnabled ? 'On' : 'Off'}
             </button>
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowProtocolEditor(!showProtocolEditor); }} className="text-xs text-blue-400 hover:text-blue-300">
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowProtocolEditor(!showProtocolEditor); }} className="text-xs text-amber-300 hover:text-amber-200">
               {showProtocolEditor ? 'Close' : 'Edit'}
             </button>
             <span className="text-xs text-slate-500">▼</span>
@@ -1480,10 +1532,10 @@ export default function OpportunitiesPage() {
         {!showProtocolEditor && (
           <div className="relative">
             {/* Timeline line */}
-            <div className="absolute left-4 top-3 bottom-3 w-0.5 bg-gradient-to-b from-blue-500 via-amber-500 to-green-500 rounded-full" />
+            <div className="absolute left-4 top-3 bottom-3 w-0.5 bg-amber-500/60 rounded-full" />
             <div className="space-y-3 pl-10">
               {leadProtocol.map((step, i) => {
-                const colors = step.type === 'call' ? 'bg-blue-500 border-blue-400' : step.type === 'sms' ? 'bg-amber-500 border-amber-400' : 'bg-green-500 border-green-400';
+const colors = step.type === 'call' ? 'bg-amber-500 border-amber-400' : step.type === 'sms' ? 'bg-white/70 border-white/60' : 'bg-green-500 border-green-400';
                 const icon = step.type === 'call' ? '📞' : step.type === 'sms' ? '💬' : '✉️';
                 return (
                   <div key={i} className="relative">
@@ -1527,19 +1579,19 @@ export default function OpportunitiesPage() {
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {leadProtocol.map((step, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <input type="number" min="0" max="90" value={step.day} onChange={(e) => { const p = [...leadProtocol]; p[i] = { ...p[i], day: parseInt(e.target.value) || 0 }; setLeadProtocol(p); }} className="w-14 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-white text-center" />
-                  <select value={step.type} onChange={(e) => { const p = [...leadProtocol]; p[i] = { ...p[i], type: e.target.value }; setLeadProtocol(p); }} className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-white">
+                  <input type="number" min="0" max="90" value={step.day} onChange={(e) => { const p = [...leadProtocol]; p[i] = { ...p[i], day: parseInt(e.target.value) || 0 }; setLeadProtocol(p); }} className="w-14 px-2 py-1 bg-white/5 border border-white/10 rounded text-xs text-white text-center" />
+                  <select value={step.type} onChange={(e) => { const p = [...leadProtocol]; p[i] = { ...p[i], type: e.target.value }; setLeadProtocol(p); }} className="px-2 py-1 bg-white/5 border border-white/10 rounded text-xs text-white">
                     <option value="call">📞 Call</option>
                     <option value="sms">💬 Text</option>
                     <option value="email">✉️ Email</option>
                   </select>
-                  <input type="text" value={step.task} onChange={(e) => { const p = [...leadProtocol]; p[i] = { ...p[i], task: e.target.value }; setLeadProtocol(p); }} className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-white placeholder-slate-500" placeholder="Describe the step..." />
+                  <input type="text" value={step.task} onChange={(e) => { const p = [...leadProtocol]; p[i] = { ...p[i], task: e.target.value }; setLeadProtocol(p); }} className="flex-1 px-2 py-1 bg-white/5 border border-white/10 rounded text-xs text-white placeholder-slate-500" placeholder="Describe the step..." />
                   <button onClick={() => { const p = [...leadProtocol]; p.splice(i, 1); setLeadProtocol(p); }} className="text-red-400 hover:text-red-300 text-xs px-1">✕</button>
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setLeadProtocol([...leadProtocol, { day: (leadProtocol[leadProtocol.length - 1]?.day || 0) + 3, type: 'call', task: '' }])} className="px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-300 rounded text-xs hover:bg-blue-600/30">+ Add Step</button>
+              <button onClick={() => setLeadProtocol([...leadProtocol, { day: (leadProtocol[leadProtocol.length - 1]?.day || 0) + 3, type: 'call', task: '' }])} className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-200 rounded text-xs hover:bg-white/10">+ Add Step</button>
               <button onClick={async () => { 
                 localStorage.setItem(protocolKey, JSON.stringify(leadProtocol)); 
                 localStorage.setItem(`hawkeye_protocol_set_${user?.sub}`, 'true'); 
@@ -1580,9 +1632,9 @@ export default function OpportunitiesPage() {
                     <div
                       key={day.date}
                       onClick={() => dayEvents.length > 0 ? setSelectedFollowUpDay(day.date) : null}
-                      className={`flex flex-col items-center p-2 rounded-lg border transition-colors ${day.isToday ? 'border-blue-500/50 bg-blue-500/10' : 'border-white/10 bg-white/5'} ${dayEvents.length > 0 ? 'cursor-pointer hover:bg-amber-500/10 hover:border-amber-500/30' : ''}`}
+                      className={`flex flex-col items-center p-2 rounded-lg border transition-colors ${day.isToday ? 'border-amber-500/40 bg-amber-500/10' : 'border-white/10 bg-white/5'} ${dayEvents.length > 0 ? 'cursor-pointer hover:bg-amber-500/10 hover:border-amber-500/30' : ''}`}
                     >
-                      <span className={`text-[10px] font-medium ${day.isToday ? 'text-blue-400' : 'text-slate-500'}`}>{day.dayName}</span>
+                      <span className={`text-[10px] font-medium ${day.isToday ? 'text-amber-300' : 'text-slate-500'}`}>{day.dayName}</span>
                       <span className={`text-sm font-bold ${day.isToday ? 'text-white' : 'text-slate-300'}`}>{day.dayNum}</span>
                       {dayEvents.length > 0 ? (
                         <div className="mt-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
@@ -1604,7 +1656,7 @@ export default function OpportunitiesPage() {
                 const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
                 if (dayEvts.length === 0) { setSelectedFollowUpDay(null); return null; }
                 return (
-                  <div className="mt-3 p-3 rounded-xl border border-amber-500/30 bg-slate-700/80 backdrop-blur-sm animate-scale-in">
+                  <div className="mt-3 p-3 rounded-xl border border-amber-500/30 bg-white/5 backdrop-blur-sm animate-scale-in">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-bold text-amber-300">{dateLabel} — {dayEvts.length} Follow-Up{dayEvts.length !== 1 ? 's' : ''}</p>
                       <button onClick={() => setSelectedFollowUpDay(null)} className="text-xs text-slate-400 hover:text-white">✕</button>
@@ -1617,7 +1669,7 @@ export default function OpportunitiesPage() {
                         const taskMatch = evt.title.match(/—\s*(.+)$/);
                         const task = taskMatch ? taskMatch[1].trim() : '';
                         return (
-                          <div key={evt.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800 border border-white/10 hover:border-amber-500/30 transition-colors">
+                          <div key={evt.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-neutral-800/80 border border-white/10 hover:border-amber-500/30 transition-colors">
                             <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
                               <span className="text-sm">{icon}</span>
                             </div>
@@ -1648,12 +1700,12 @@ export default function OpportunitiesPage() {
 
       {/* Protocol Setup Prompt (first time) */}
       {showProtocolEditor && !hasSetProtocol && (
-        <div className="rounded-xl border-2 border-purple-500/40 p-4 bg-purple-500/10">
-          <p className="text-sm font-bold text-purple-300 mb-1">🎯 Set Up Your Lead Protocol</p>
+        <div className="rounded-xl border-2 border-amber-500/40 p-4 bg-amber-500/10">
+          <p className="text-sm font-bold text-amber-300 mb-1">🎯 Set Up Your Cue Protocol</p>
           <p className="text-xs text-slate-300">This is your follow-up sequence. Every time you add a lead, these steps will auto-schedule on your calendar so you never miss a touch.</p>
         </div>
       )}
-      </div>{/* end right column */}
+      </div>{/* end HawkSight single column */}
 
       {/* Lead Profile Popup */}
       {selectedLead && (

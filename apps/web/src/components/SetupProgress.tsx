@@ -85,14 +85,18 @@ export default function SetupProgress() {
         ))}
       </div>
 
-      {/* Next step button */}
+      {/* Next step — a normally-sized primary button (not a full-width bar) so the
+          setup CTA guides without overpowering the page. */}
       {nextTask && (
-        <button
-          onClick={() => navigate(nextTask.path)}
-          className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95"
-        >
-          Next: {nextTask.label} →
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-slate-400 min-w-0 truncate">Next: {nextTask.label}</span>
+          <button
+            onClick={() => navigate(nextTask.path)}
+            className="shrink-0 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg transition-all active:scale-95"
+          >
+            Continue Setup →
+          </button>
+        </div>
       )}
     </div>
   );

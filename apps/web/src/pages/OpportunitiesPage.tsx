@@ -4,9 +4,9 @@ import { useToast } from '../contexts/ToastContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useMode } from '../contexts/ModeContext';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { ApiClient } from '@social-lead-gen/shared';
-import type { Opportunity, OpportunityStatus, OpportunityStats } from '@social-lead-gen/shared';
+import type { Opportunity, OpportunityStatus, OpportunityStats, Deal } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
 import LeadProfilePopup from '../components/LeadProfilePopup';
 import EmptyState from '../components/EmptyState';
@@ -98,7 +98,6 @@ const DEFAULT_LEAD_PROTOCOL = LEAD_PROTOCOLS['default'].steps;
 export default function OpportunitiesPage() {
   const { getToken, user } = useAuth();
   const { showToast, showUndoToast } = useToast();
-  const navigate = useNavigate();
   const { selectedTrade } = useTrade();
   const { isPro } = useMode();
   const { events, addEvent, toggleComplete, removeAllByTitle } = useCalendar();
@@ -143,6 +142,16 @@ export default function OpportunitiesPage() {
   const [newBucketName, setNewBucketName] = useState('');
   const [selectedLead, setSelectedLead] = useState<Opportunity | null>(null);
   const [selectedFollowUpDay, setSelectedFollowUpDay] = useState<string | null>(null);
+  // Golden path: a converted Cue (Client) can have a logged Sale (won Deal).
+  // The persisted Deal (keyed by opportunityId) is the SINGLE source of truth for
+  // "Sale logged" — no localStorage flags. We hold the set of opportunityIds that
+  // already have a Deal, derived from GET /sales/deals.
+  const [loggedSaleOppIds, setLoggedSaleOppIds] = useState<Set<string>>(new Set());
+  // The Client Cue currently being logged as a Sale (opens the Log Sale modal).
+  const [logSaleLead, setLogSaleLead] = useState<Opportunity | null>(null);
+  const [logSaleValue, setLogSaleValue] = useState('');
+  const [logSaleDate, setLogSaleDate] = useState('');
+  const [loggingSale, setLoggingSale] = useState(false);
   const [flightProjectionEnabled, setFlightProjectionEnabled] = useState<boolean>(() => {
     return localStorage.getItem(`hawkeye_flight_enabled_${user?.sub}`) !== 'false';
   });
@@ -426,9 +435,27 @@ export default function OpportunitiesPage() {
     finally { setLoading(false); }
   }
 
+  // Load logged Sales (won Deals) so the Client cards can show "Sale Logged".
+  // The persisted Deal keyed by opportunityId is the source of truth.
+  async function fetchDeals() {
+    try {
+      const client = await buildClient();
+      const { deals } = await client.getDeals();
+      const linked = new Set<string>();
+      for (const d of deals || []) {
+        if (d.opportunityId) linked.add(d.opportunityId);
+      }
+      setLoggedSaleOppIds(linked);
+    } catch { /* best-effort; cards fall back to "no sale logged" */ }
+  }
+
   useEffect(() => {
     fetchData();
   }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    fetchDeals();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-open lead profile when navigated with ?lead=Name
   useEffect(() => {
@@ -549,7 +576,8 @@ export default function OpportunitiesPage() {
     }, 5000);
   }
 
-  // Move a lead into the Won nest (marks it converted). For older leads added before the Won-nest update.
+  // Move a lead into the Won nest (marks it converted = Client). This does NOT log a
+  // Sale or create a Deal — the user logs the Sale separately via "Log Sale".
   async function moveToWon(lead: Opportunity) {
     try {
       const client = await buildClient();
@@ -557,6 +585,71 @@ export default function OpportunitiesPage() {
       setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, status: 'converted' as any } : l));
       showToast('⭐ Moved to Clients');
     } catch { showToast('❌ Failed to move'); }
+  }
+
+  // Map a Cue's platform to the Sales "leadSource" category (reuses the SalesPage mapping).
+  function platformToLeadSource(platform?: string): string {
+    const map: Record<string, string> = {
+      facebook: 'facebook-post', instagram: 'instagram-post', linkedin: 'linkedin',
+      tiktok: 'tiktok', nextdoor: 'other',
+    };
+    return map[(platform || '').toLowerCase()] || 'extension-detected';
+  }
+
+  // Open the Log Sale modal for a converted Client Cue, pre-filling what we know.
+  function openLogSale(lead: Opportunity) {
+    setLogSaleLead(lead);
+    setLogSaleValue('');
+    const now = new Date();
+    setLogSaleDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
+  }
+
+  // Log a Sale from a converted Client Cue → creates a won Deal via the existing
+  // /sales/deals path (which fires the team win notification). Attribution is mapped
+  // from the Cue automatically. D1: no sourceContent is ever sent.
+  async function submitLogSale() {
+    if (!logSaleLead) return;
+    const lead = logSaleLead;
+    setLoggingSale(true);
+    try {
+      const client = await buildClient();
+      const group = (lead as any).leadSourceGroup || '';
+      const rawKeyword = ((lead as any).keywordText || (lead as any).keywordId || '').toString().trim();
+      const keyword = rawKeyword && rawKeyword !== 'manual-entry' ? rawKeyword : '';
+      const noteParts = [
+        group ? `Group: ${group}` : '',
+        keyword ? `Keyword: ${keyword}` : '',
+        lead.sourceUrl ? lead.sourceUrl : '',
+      ].filter(Boolean);
+      const res = await client.createDeal({
+        name: lead.sourceAuthor || 'New Client',
+        value: parseFloat(logSaleValue) || 0,
+        stage: 'won',
+        policyType: (lead as any).policyType || '',
+        trade: selectedTrade?.name || '',
+        contactName: lead.sourceAuthor || '',
+        leadSource: platformToLeadSource(lead.sourcePlatform),
+        leadSourceNote: noteParts.join(' · '),
+        soldBy: user?.email || '',
+        createdAt: logSaleDate ? new Date(logSaleDate + 'T12:00:00').toISOString() : undefined,
+        // Durable attribution (D1: no sourceContent).
+        opportunityId: lead.id,
+        sourcePlatform: lead.sourcePlatform || null,
+        sourceUrl: lead.sourceUrl || null,
+        sourceGroup: group || null,
+        keyword: keyword || null,
+      });
+      // Source of truth: mark this Cue as having a logged Sale from the server response.
+      setLoggedSaleOppIds((prev) => new Set(prev).add(lead.id));
+      if ((res as any).alreadyLogged) {
+        showToast('✓ Sale already logged for this Cue');
+      } else {
+        showToast('💵 Sale logged');
+      }
+      setLogSaleLead(null);
+    } catch {
+      showToast('❌ Could not log sale');
+    } finally { setLoggingSale(false); }
   }
 
   function renderLeadCard(lead: Opportunity) {
@@ -641,7 +734,7 @@ export default function OpportunitiesPage() {
             </button>
           )}
           {(lead.status === 'new' || lead.status === 'followed_up') && (
-            <button onClick={async () => { await handleUpdateStatus(lead.id, 'converted'); navigate(`/pipeline?newDeal=${encodeURIComponent(lead.sourceAuthor || '')}`); }} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">
+            <button onClick={async () => { await handleUpdateStatus(lead.id, 'converted'); }} disabled={updatingId === lead.id} className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50">
               {updatingId === lead.id ? '...' : '⭐ Convert to Client'}
             </button>
           )}
@@ -1445,6 +1538,26 @@ export default function OpportunitiesPage() {
                           </button>
                         </div>
                       )}
+
+                      {/* Converted Client → Log Sale handoff. The persisted Deal
+                          (opportunityId) is the source of truth for "Sale logged". */}
+                      {lead.status === 'converted' && (
+                        loggedSaleOppIds.has(lead.id) ? (
+                          <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-green-300 font-semibold">
+                            <span>✓ Sale Logged</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <span className="text-[11px] text-slate-400 flex-1 min-w-0 truncate">Client · No sale logged yet</span>
+                            <button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); openLogSale(lead); }}
+                              className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all active:scale-95 shrink-0"
+                            >
+                              💵 Log Sale
+                            </button>
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
                 );
@@ -1716,11 +1829,9 @@ const colors = step.type === 'call' ? 'bg-amber-500 border-amber-400' : step.typ
           onClose={() => setSelectedLead(null)}
           onStatusUpdate={async (leadId, status) => {
             await handleUpdateStatus(leadId, status);
-            const lead = leads.find((l) => l.id === leadId);
+            // Convert → Client stays inside HawkSight. No Deal, no team email, no
+            // navigation. Logging the Sale is a separate explicit action.
             setSelectedLead(null);
-            if (status === 'converted' && lead?.sourceAuthor) {
-              navigate(`/pipeline?newDeal=${encodeURIComponent(lead.sourceAuthor)}`);
-            }
           }}
           onFollowupComplete={async (leadId, stepIdx) => {
             try {
@@ -1777,6 +1888,66 @@ const colors = step.type === 'call' ? 'bg-amber-500 border-amber-400' : step.typ
             } catch { showToast('❌ Failed to add lead'); }
           }}
         />
+      )}
+
+      {/* ─── Log Sale modal — Client → Sale handoff. Small by design: the user
+          supplies revenue + sale date; everything else is pre-filled from the Cue.
+          Creates a won Deal via /sales/deals (fires team win notification). */}
+      {logSaleLead && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center px-3 py-6 overflow-y-auto" onClick={() => !loggingSale && setLogSaleLead(null)}>
+          <div className="glass-card-strong w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-bold text-white">💵 Log Sale</h3>
+              <button onClick={() => !loggingSale && setLogSaleLead(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            <p className="text-xs text-slate-400 mb-3">
+              Record the revenue for <span className="text-white font-medium">{logSaleLead.sourceAuthor || 'this client'}</span>. Source details carry over automatically.
+            </p>
+
+            {/* Pre-filled attribution preview (read-only) */}
+            <div className="mb-3 rounded-lg bg-white/5 border border-white/10 px-3 py-2 space-y-0.5">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wide">Attribution</p>
+              <p className="text-xs text-slate-300">
+                {platformIcons[logSaleLead.sourcePlatform] || '📱'} {logSaleLead.sourcePlatform || 'source'}
+                {(logSaleLead as any).leadSourceGroup ? ` · ${(logSaleLead as any).leadSourceGroup}` : ''}
+              </p>
+              {(() => {
+                const rawK = ((logSaleLead as any).keywordText || (logSaleLead as any).keywordId || '').toString().trim();
+                const k = rawK && rawK !== 'manual-entry' ? rawK : '';
+                return k ? <p className="text-[11px] text-slate-400">🎯 Matched: <span className="text-amber-300/90">{k}</span></p> : null;
+              })()}
+              {logSaleLead.sourceUrl && (
+                <a href={logSaleLead.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-amber-300 hover:text-amber-200 underline underline-offset-2">View original post ↗</a>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Sale amount ($)</label>
+                <input
+                  type="number" inputMode="decimal" min="0" step="0.01" autoFocus
+                  value={logSaleValue} onChange={(e) => setLogSaleValue(e.target.value)}
+                  placeholder="e.g. 4000"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 focus:border-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Sale date</label>
+                <input
+                  type="date" value={logSaleDate} onChange={(e) => setLogSaleDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <button
+                onClick={submitLogSale}
+                disabled={loggingSale}
+                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg disabled:opacity-50 transition-all active:scale-95"
+              >
+                {loggingSale ? 'Logging…' : '💵 Log Sale'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -8,6 +8,8 @@ import type {
   Opportunity,
   OpportunityStatus,
   OpportunityStats,
+  Deal,
+  CreateDealInput,
   DailyCue,
   Subscription,
   DeviceRegistration,
@@ -447,5 +449,18 @@ export class ApiClient {
 
   async exportLeadsCsv(opportunityIds: string[], connectionId?: string): Promise<{ csv: string; filename: string }> {
     return this.request('POST', '/crm/export/csv', { opportunityIds, connectionId });
+  }
+
+  // ── Sales / Deals ──────────────────────────────────────────────────────────
+  // Deals are the realized-revenue model. A won Deal = a logged Sale.
+  async getDeals(): Promise<{ deals: Deal[] }> {
+    return this.request<{ deals: Deal[] }>('GET', '/sales/deals');
+  }
+
+  // Log a Sale. When created with stage 'won' the backend fires the team win
+  // notification. Cue-originated deals pass opportunityId + source attribution;
+  // the backend dedupes so one Cue cannot produce two deals.
+  async createDeal(input: CreateDealInput): Promise<Deal & { alreadyLogged?: boolean }> {
+    return this.request<Deal & { alreadyLogged?: boolean }>('POST', '/sales/deals', input);
   }
 }

@@ -119,6 +119,63 @@ export interface OpportunityStats {
   converted: number;
 }
 
+// A logged Sale. Deals are the realized-revenue model (distinct from converted
+// Opportunities, which are Clients). A won Deal = a Sale with revenue.
+// Cue-originated deals carry durable attribution back to the originating Opportunity
+// so reporting can trace: platform → group → keyword → Cue → client → sale → revenue.
+export interface Deal {
+  id: string;
+  name: string;
+  value: number;
+  stage: string;
+  policyType?: string;
+  folio?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  notes?: string;
+  trade?: string;
+  // Legacy free-text attribution (kept for compatibility with the deal form).
+  leadSource?: string;
+  leadSourceNote?: string;
+  soldBy?: string;
+  bundleItems?: { type: string; value: number }[];
+  createdAt?: string;
+  updatedAt?: string;
+  // ── Durable Cue attribution (additive, optional, backward-compatible) ──
+  // Present when the Sale originated from a HawkSight Cue. D1: never includes
+  // post content; author/name only when it was actually stored.
+  opportunityId?: string | null;
+  sourcePlatform?: string | null;
+  sourceUrl?: string | null;
+  sourceGroup?: string | null;
+  keyword?: string | null;
+}
+
+// Request body for logging a Sale from a Cue (or manually).
+export interface CreateDealInput {
+  name: string;
+  value: number;
+  stage?: string;
+  policyType?: string;
+  folio?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  notes?: string;
+  trade?: string;
+  leadSource?: string;
+  leadSourceNote?: string;
+  soldBy?: string;
+  bundleItems?: { type: string; value: number }[];
+  createdAt?: string;
+  opportunityId?: string | null;
+  sourcePlatform?: string | null;
+  sourceUrl?: string | null;
+  sourceGroup?: string | null;
+  keyword?: string | null;
+}
+
 export interface DailyCue {
   id: string;
   userId: string;

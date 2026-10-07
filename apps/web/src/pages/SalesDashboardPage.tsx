@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiClient } from '@social-lead-gen/shared';
-import type { Opportunity } from '@social-lead-gen/shared';
+import type { Opportunity, Deal } from '@social-lead-gen/shared';
 import { useTeamData } from '../hooks/useTeamData';
 import TeamMemberPipeline from '../components/TeamMemberPipeline';
 import { HeroHeader, StatCard, Panel, StatGrid, PeriodDropdown, DataBar, DonutChart, ComboChart, BAR_COLORS } from '../components/ui';
@@ -24,12 +24,6 @@ const SOURCE_LABELS: Record<string, string> = {
   'manual-entry': 'Manual Entry', 'extension-detected': 'HawkEye Scan', other: 'Other',
 };
 
-function leadValue(l: any): number {
-  const v = l.expectedPremium ?? l.estimatedValue ?? 0;
-  const n = typeof v === 'string' ? parseFloat(v) : v;
-  return Number.isFinite(n) ? n : 0;
-}
-
 function monthLabel(ym: string): string {
   const parts = ym.split('-');
   const mi = parseInt(parts[1] || '1') - 1;
@@ -43,6 +37,9 @@ export default function SalesDashboardPage() {
   // Which teammate's pipeline is open in the slide-over (null = closed).
   const [openMember, setOpenMember] = useState<{ userId: string; name: string } | null>(null);
   const [leads, setLeads] = useState<Opportunity[]>([]);
+  // Won Deals are the realized-revenue source of truth (distinct from Clients =
+  // converted opportunities). A converted Cue is a Client; a won Deal is a Sale.
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedFolios, setSavedFolios] = useState<SavedFolio[]>([]);
   // How the user tracks production: folios, plain calendar, or a custom fiscal year.
@@ -62,6 +59,11 @@ export default function SalesDashboardPage() {
         const client = await buildClient();
         const res: any = await client.getOpportunities({});
         setLeads(res.items || res.opportunities || []);
+        // Won Deals drive Sales/Revenue (Clients come from converted opportunities).
+        try {
+          const { deals: d } = await client.getDeals();
+          setDeals(d || []);
+        } catch { /* no deals yet */ }
       } catch { /* ignore */ }
       finally { setLoading(false); }
       // Load how the user tracks periods (folio / calendar / fiscal).
@@ -152,29 +154,43 @@ export default function SalesDashboardPage() {
       return true;
     };
     const scoped = leads.filter(inWindow);
+    // Clients = converted opportunities (NOT revenue on their own).
     const clients = scoped.filter((l) => l.status === 'converted');
-    const totalSales = clients.reduce((s, l) => s + leadValue(l), 0);
-    const dealsWon = clients.length;
-    const avgDeal = dealsWon > 0 ? totalSales / dealsWon : 0;
-    const winRate = Math.round((dealsWon / (scoped.length || 1)) * 100);
+    const clientCount = clients.length;
+
+    // Sales / Revenue = won Deals in the window. A Client with no logged Sale
+    // contributes to Clients but $0 revenue.
+    const wonDeals = deals.filter((d) => d.stage === 'won').filter((d) => {
+      if (!start && !end) return true;
+      const dd = ((d.createdAt || '') + '').slice(0, 10);
+      if (!dd) return true;
+      if (start && dd < start) return false;
+      if (end && dd > end) return false;
+      return true;
+    });
+    const totalRevenue = wonDeals.reduce((s, d) => s + (Number(d.value) || 0), 0);
+    const salesCount = wonDeals.length;
+    const avgDeal = salesCount > 0 ? totalRevenue / salesCount : 0;
+    // Win rate = sales closed vs opportunities worked in the window.
+    const winRate = Math.round((salesCount / (scoped.length || 1)) * 100);
     const stage = {
       new: scoped.filter((l) => l.status === 'new').length,
       followed_up: scoped.filter((l) => l.status === 'followed_up').length,
-      converted: dealsWon,
+      converted: clientCount,
     };
     const now = new Date();
     const timeline: { label: string; bar: number; line: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const inMonth = clients.filter((c) => {
-        const cd = new Date((c as any).createdAt || (c as any).detectedAt || 0);
+      const inMonth = wonDeals.filter((deal) => {
+        const cd = new Date((deal.createdAt || 0) as any);
         return cd.getFullYear() === d.getFullYear() && cd.getMonth() === d.getMonth();
       });
-      const rev = inMonth.reduce((s, l) => s + leadValue(l), 0);
+      const rev = inMonth.reduce((s, deal) => s + (Number(deal.value) || 0), 0);
       timeline.push({ label: MONTHS[d.getMonth()], bar: rev, line: rev });
     }
-    return { totalSales, dealsWon, avgDeal, winRate, stage, timeline };
-  }, [leads, period, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
+    return { totalRevenue, salesCount, clientCount, avgDeal, winRate, stage, timeline };
+  }, [leads, deals, period, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading || (isInTeam && teamLoading)) {
     return <div className="text-center py-16 text-slate-400 text-sm">Loading sales…</div>;
@@ -343,23 +359,29 @@ export default function SalesDashboardPage() {
         right={<PeriodDropdown options={folioOptions} value={period} onChange={setPeriod} />}
       />
 
-      {personal.dealsWon === 0 ? (
+      {personal.clientCount === 0 && personal.salesCount === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-black text-center py-10">
           <div className="text-4xl mb-2">💰</div>
           <p className="text-sm font-semibold text-white">No sales yet</p>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Convert a lead to a Client in your Pipeline and it shows up here as a sale.</p>
+          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Convert a Cue to a Client in your Pipeline, then Log the Sale to record revenue here.</p>
           <button onClick={() => navigate('/pipeline')} className="mt-4 px-4 py-2 bg-amber-500 text-black text-sm font-bold rounded-lg hover:opacity-90">Go to Pipeline →</button>
         </div>
       ) : (
         <>
           <StatGrid cols={4}>
-            <StatCard icon="$" label="Total Sales" value={money(personal.totalSales)} />
-            <StatCard icon="📄" label="Deals Won" value={personal.dealsWon} />
-            <StatCard icon="🏷️" label="Avg Deal Value" value={money(personal.avgDeal)} />
+            <StatCard icon="$" label="Revenue" value={money(personal.totalRevenue)} />
+            <StatCard icon="🧾" label="Sales Logged" value={personal.salesCount} />
+            <StatCard icon="⭐" label="Clients" value={personal.clientCount} />
             <StatCard icon="📈" label="Win Rate" value={personal.winRate + '%'} />
           </StatGrid>
 
-          <Panel title="Sales Over Time">
+          {personal.clientCount > personal.salesCount && (
+            <p className="text-center text-[11px] text-amber-300/80">
+              {personal.clientCount - personal.salesCount} client{personal.clientCount - personal.salesCount === 1 ? '' : 's'} without a logged sale — log the sale in your Pipeline to count the revenue.
+            </p>
+          )}
+
+          <Panel title="Revenue Over Time">
             <ComboChart points={personal.timeline} />
           </Panel>
 
@@ -367,11 +389,11 @@ export default function SalesDashboardPage() {
             <div className="space-y-2.5">
               <DataBar label="New" value={personal.stage.new} max={maxStage} color="#38bdf8" />
               <DataBar label="Followed Up" value={personal.stage.followed_up} max={maxStage} color="#fbbf24" />
-              <DataBar label="Clients (Won)" value={personal.stage.converted} max={maxStage} color="#34d399" />
+              <DataBar label="Clients" value={personal.stage.converted} max={maxStage} color="#34d399" />
             </div>
           </Panel>
 
-          <p className="text-center text-[11px] text-slate-500">Updates automatically as you convert leads to Clients in your Pipeline.</p>
+          <p className="text-center text-[11px] text-slate-500">Clients come from converted Cues. Revenue comes from logged Sales.</p>
         </>
       )}
     </div>

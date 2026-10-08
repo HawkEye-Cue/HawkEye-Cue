@@ -6,9 +6,14 @@ on:
   workflow_dispatch:
     inputs:
       deploy_backend:
-        description: 'Deploy the CDK backend (Lambdas/API/EventBridge). Only enable after reviewing the cdk diff / change set. Leave false for web-only deploys.'
+        description: 'Deploy the CDK backend (Lambdas/API/EventBridge). Only enable after reviewing the cdk diff / change set.'
         type: boolean
         default: false
+        required: true
+      deploy_web:
+        description: 'Publish the web frontend to S3/CloudFront. For a coordinated release leave this ON together with deploy_backend; the backend deploys first and the web publishes only if it succeeds.'
+        type: boolean
+        default: true
         required: true
 
 jobs:
@@ -96,7 +101,19 @@ jobs:
           MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
         run: cd packages/cdk && npx cdk deploy --all --require-approval never
 
+      # Web (frontend) deploy — GATED, and ORDERED AFTER the backend.
+      #
+      # RELEASE-ORDER SAFETY: these steps run ONLY on a manual workflow_dispatch with
+      # deploy_web=true. They are declared AFTER the backend deploy step, and because the
+      # backend step is fail-stop, a coordinated run (deploy_backend=true + deploy_web=true)
+      # publishes the frontend ONLY after the backend deploy succeeds. A push to main no
+      # longer publishes the frontend at all, so a merge can never ship new UI (e.g. the
+      # billing portal / Smart Flock Import buttons) ahead of the backend routes it needs.
+      #
+      # For a web-only hotfix (no backend change), dispatch with deploy_backend=false and
+      # deploy_web=true — a deliberate, explicit choice rather than an implicit merge side effect.
       - name: Build web app
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_web }}
         env:
           VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
           VITE_COGNITO_CLIENT_ID: ${{ secrets.VITE_COGNITO_CLIENT_ID }}
@@ -107,7 +124,9 @@ jobs:
         run: pnpm --filter @social-lead-gen/web run build
 
       - name: Deploy to S3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_web }}
         run: aws s3 sync apps/web/dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
 
       - name: Invalidate CloudFront cache
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_web }}
         run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"

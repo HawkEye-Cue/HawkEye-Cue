@@ -234,7 +234,31 @@ jobs:
                     HAS_SECRET=$(printf '%s' "$META" | grep -q '"secret": true' && echo yes || echo no)
                     sumh "  - Extra client → name: \`${CNAME:-<unnamed>}\`; created: ${CCREATED:-?}; lastModified: ${CMOD:-?}; hasClientSecret: ${HAS_SECRET} (client id NOT shown)"
                     sumh "    - Auth flows (verbs only): $(printf '%s' "$META" | grep -oiE 'USER_[A-Z_]+|ALLOW_[A-Z_]+' | sort -u | tr '\n' ' ')"
-                    sumh "    - Classify: a current app name (Web/Mobile/Extension variant) ⇒ legitimate; an old/test/duplicate name or a stale lastModified ⇒ likely legacy. Do NOT remove without this evidence."
+                    # USAGE EVIDENCE (not just timestamps): sum the AWS/Cognito sign-in and
+                    # token-refresh success metrics for THIS client over the last 30 days.
+                    # Zero across both strongly indicates the client is not actively used.
+                    START=$(date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-30d +%Y-%m-%dT%H:%M:%SZ)
+                    ENDT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+                    sum_metric() {
+                      # $1 = metric name
+                      aws cloudwatch get-metric-statistics \
+                        --namespace AWS/Cognito --metric-name "$1" \
+                        --dimensions Name=UserPool,Value="$POOL_ID" Name=UserPoolClient,Value="$AID" \
+                        --start-time "$START" --end-time "$ENDT" --period 2592000 --statistics Sum \
+                        --query 'Datapoints[].Sum' --output text 2>/dev/null | tr '\t' '+' | sed 's/^$/0/'
+                    }
+                    SIGNINS=$(sum_metric SignInSuccesses); SIGNINS=${SIGNINS:-0}
+                    REFRESHES=$(sum_metric TokenRefreshSuccesses); REFRESHES=${REFRESHES:-0}
+                    # Reduce "a+b" style sums to a single number via awk; empty → 0.
+                    SIGNINS_N=$(echo "${SIGNINS:-0}" | awk '{n=0; m=split($0,a,"+"); for(i=1;i<=m;i++) n+=a[i]; printf "%d", n}')
+                    REFRESHES_N=$(echo "${REFRESHES:-0}" | awk '{n=0; m=split($0,a,"+"); for(i=1;i<=m;i++) n+=a[i]; printf "%d", n}')
+                    sumh "    - Usage (last 30d): SignInSuccesses=${SIGNINS_N}, TokenRefreshSuccesses=${REFRESHES_N}"
+                    if [ "${SIGNINS_N:-0}" -eq 0 ] && [ "${REFRESHES_N:-0}" -eq 0 ]; then
+                      sumh "    - **No sign-in or token activity in 30 days → consistent with an UNUSED client (safe-to-drop evidence).**"
+                    else
+                      sumh "    - **ACTIVE: this client shows real auth traffic → DO NOT drop; it must be codified/preserved.**"
+                    fi
+                    sumh "    - Classify: name is CDK's auto-generated \`UserPoolAuthorizerClient…\` AND zero 30-day usage ⇒ the auto-generated default (safe to drop). A real app name OR any usage ⇒ preserve."
                   fi
                 done
               else

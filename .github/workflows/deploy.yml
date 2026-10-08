@@ -35,6 +35,35 @@ jobs:
       - name: Build CDK package
         run: pnpm --filter @social-lead-gen/cdk run build
 
+      # Read-only visibility: show the CloudFormation changeset this deploy WOULD apply.
+      # This does NOT deploy and does NOT reconcile drift. It is advisory only — a failed
+      # diff must not block the pipeline, so its output is always surfaced to the log and
+      # the step never fails the job (Step 1 of deploy hardening; deploy command unchanged).
+      # NOTE: `cdk diff` compares synthesized templates to the deployed CloudFormation
+      # template; it is NOT CloudFormation drift detection and does not prove that live
+      # resources match the templates.
+      - name: CDK diff (read-only, advisory)
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: us-east-1
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+        run: |
+          cd packages/cdk
+          echo "::group::cdk diff --all (advisory, non-blocking)"
+          # `cdk diff` exits non-zero when there ARE differences, and also on genuine
+          # synth/credential errors. Either way this is advisory: capture the status,
+          # always print the output, and never fail the job.
+          npx cdk diff --all 2>&1; diff_status=$?
+          echo "cdk diff exit status: $diff_status (non-zero may mean 'changes detected' OR a diff error — review output above)"
+          if [ "$diff_status" -ne 0 ]; then
+            echo "::warning::cdk diff reported changes or could not be generated (advisory only; does not block deploy; NOT CloudFormation drift detection)"
+          fi
+          echo "::endgroup::"
+          exit 0
+
       - name: Deploy CDK stack (Lambdas + API + EventBridge)
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}

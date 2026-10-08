@@ -145,7 +145,10 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
             sourceContent: d.postContent || 'No content',
             sourcePlatform: d.platform || 'facebook',
             sourceUrl: d.postUrl || 'https://facebook.com',
-            sourceAuthor: d.authorName || 'Unknown'
+            // D1: never persist a fabricated author. When no real name was captured
+            // (null or the legacy 'Unknown' sentinel), store null so the web uses the
+            // approved privacy fallback instead of a fake identity.
+            sourceAuthor: (d.authorName && d.authorName !== 'Unknown') ? d.authorName : null
           })
         })
         .then(function(res) {
@@ -165,7 +168,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
                 fetch(API_BASE + '/opportunities', {
                   method: 'POST',
                   headers: { 'Authorization': 'Bearer ' + newToken, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ keywordId: 'extension-detected', sourceContent: d.postContent || 'No content', sourcePlatform: d.platform || 'facebook', sourceUrl: d.postUrl || 'https://facebook.com', sourceAuthor: d.authorName || 'Unknown' })
+                  body: JSON.stringify({ keywordId: 'extension-detected', sourceContent: d.postContent || 'No content', sourcePlatform: d.platform || 'facebook', sourceUrl: d.postUrl || 'https://facebook.com', sourceAuthor: (d.authorName && d.authorName !== 'Unknown') ? d.authorName : null })
                 })
                 .then(function(r2) { return r2.ok ? r2.json().then(function(j) { sendResponse({ success: true, result: j }); }) : r2.text().then(function(t2) { sendResponse({ success: false, error: 'API ' + r2.status }); }); })
                 .catch(function(e2) { sendResponse({ success: false, error: e2.message }); });

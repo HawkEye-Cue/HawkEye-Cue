@@ -82,7 +82,7 @@ export default function TodayPage() {
           next.followUps = deals.filter((d: any) => ['prospect', 'contacted', 'quoted'].includes(d.stage) && (d.createdAt || '') < twoDaysAgo).length;
           next.activeValue = deals
             .filter((d: any) => ['prospect', 'contacted', 'quoted', 'closing'].includes(d.stage))
-            .reduce((sum: number, d: any) => sum + (Number(d.dealValue) || 0), 0);
+            .reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
         } catch { /* ignore */ }
 
         // Posts ready to publish (scheduled)

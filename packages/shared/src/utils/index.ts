@@ -1,5 +1,29 @@
 import type { OpportunityStatus } from '../types/index.js';
 
+// --- Cue author display (D1 privacy) ---
+
+/**
+ * Whether a stored Cue/opportunity author name is a real, usable identity.
+ * D1: a Minimal/URL-only Cue stores no author, and legacy/extension records may
+ * contain the literal "Unknown" sentinel. Both should be treated as unavailable so
+ * the UI shows an approved privacy fallback instead of a fabricated identity.
+ */
+export function isCueAuthorAvailable(author?: string | null): boolean {
+  const a = (author ?? '').trim();
+  if (!a) return false;
+  if (a.toLowerCase() === 'unknown') return false;
+  return true;
+}
+
+/**
+ * Returns the author name to display, or the provided fallback when the stored
+ * author is unavailable (empty, null, or the legacy "Unknown" sentinel).
+ * Never fabricates a name.
+ */
+export function displayCueAuthor(author: string | null | undefined, fallback: string): string {
+  return isCueAuthorAvailable(author) ? (author as string).trim() : fallback;
+}
+
 // --- DynamoDB Key Builders ---
 
 export function buildUserPK(userId: string): string {

@@ -179,6 +179,105 @@ describe('opportunities-handler — D1 Minimal Save & Promote', () => {
     expect(protoPuts[0].input.ConditionExpression).toBe('attribute_not_exists(SK)');
   });
 
+  it('GET normalizes a historical background-scanner record into canonical fields', async () => {
+    const handler = loadHandler();
+    // A legacy lead-scanner item: scanner schema, NO canonical fields.
+    sendImpl = async (c) => {
+      if (c.name === 'QueryCommand') {
+        return {
+          Items: [
+            {
+              PK: 'USER#user-123',
+              SK: 'OPP#2024-01-01T00:00:00Z#scan1',
+              opportunityId: 'scan1',
+              sourceCommentId: 'cmt-1',
+              platform: 'facebook',
+              authorName: 'Jane Scanner',
+              postContent: 'Does anyone know a good roofer?',
+              matchedKeywords: ['roofer', 'roof leak'],
+              source: 'background-scan',
+              status: 'new',
+              createdAt: '2024-01-01T00:00:00Z',
+            },
+          ],
+        };
+      }
+      return { Items: [] };
+    };
+    const res = await handler(event('GET', '/opportunities'));
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    const o = body.opportunities[0];
+    expect(o.sourcePlatform).toBe('facebook'); // from item.platform
+    expect(o.sourceAuthor).toBe('Jane Scanner'); // from item.authorName
+    expect(o.sourceContent).toBe('Does anyone know a good roofer?'); // from item.postContent
+    expect(o.keywordId).toBe('extension-detected'); // scanner records had none
+    expect(o.keywordText).toBe('roofer'); // first matched keyword
+    expect(o.sourceUrl).toBe(''); // D1: never fabricated
+    expect(o.status).toBe('new');
+  });
+
+  it('GET leaves a canonical record unchanged', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => {
+      if (c.name === 'QueryCommand') {
+        return {
+          Items: [
+            {
+              PK: 'USER#user-123',
+              SK: 'OPP#2024-02-02T00:00:00Z#canon1',
+              opportunityId: 'canon1',
+              keywordId: 'kw1',
+              sourcePlatform: 'instagram',
+              sourceAuthor: 'John Canonical',
+              sourceContent: 'Looking for insurance',
+              sourceUrl: 'https://instagram.com/p/abc',
+              status: 'new',
+              createdAt: '2024-02-02T00:00:00Z',
+            },
+          ],
+        };
+      }
+      return { Items: [] };
+    };
+    const res = await handler(event('GET', '/opportunities'));
+    const o = JSON.parse(res.body).opportunities[0];
+    expect(o.sourcePlatform).toBe('instagram');
+    expect(o.sourceAuthor).toBe('John Canonical');
+    expect(o.sourceContent).toBe('Looking for insurance');
+    expect(o.sourceUrl).toBe('https://instagram.com/p/abc');
+    expect(o.keywordId).toBe('kw1');
+    expect(o.keywordText).toBe('kw1');
+  });
+
+  it('GET preserves manual-entry keywordText derivation', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => {
+      if (c.name === 'QueryCommand') {
+        return {
+          Items: [
+            {
+              PK: 'USER#user-123',
+              SK: 'OPP#2024-03-03T00:00:00Z#man1',
+              opportunityId: 'man1',
+              keywordId: 'manual-entry',
+              leadSource: 'referral',
+              sourcePlatform: 'facebook',
+              sourceAuthor: 'Walk In',
+              status: 'new',
+              createdAt: '2024-03-03T00:00:00Z',
+            },
+          ],
+        };
+      }
+      return { Items: [] };
+    };
+    const res = await handler(event('GET', '/opportunities'));
+    const o = JSON.parse(res.body).opportunities[0];
+    expect(o.keywordId).toBe('manual-entry');
+    expect(o.keywordText).toBe('referral'); // manual-entry → leadSource label
+  });
+
   it('explicit /promote creates LEAD_PROTOCOL (guarded) and is idempotent on retry', async () => {
     const handler = loadHandler();
     let protocolExists = false;

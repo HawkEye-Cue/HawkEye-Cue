@@ -945,6 +945,12 @@ export class ApiStack extends cdk.Stack {
       integration: subscriptionIntegration,
       authorizer,
     });
+    this.httpApi.addRoutes({
+      path: '/subscription/portal',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: subscriptionIntegration,
+      authorizer,
+    });
 
     // Stripe webhook route — NO auth (verified by Stripe signature)
     const stripeWebhookIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(

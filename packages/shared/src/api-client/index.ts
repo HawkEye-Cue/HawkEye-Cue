@@ -305,8 +305,18 @@ export class ApiClient {
     );
   }
 
-  async cancelSubscription(): Promise<void> {
-    return this.request<void>('POST', '/subscription/cancel');
+  async cancelSubscription(): Promise<{
+    message: string;
+    cancelAtPeriodEnd: boolean;
+    accessUntil: string | null;
+    wasTrialing: boolean;
+  }> {
+    return this.request('POST', '/subscription/cancel');
+  }
+
+  // Open the Stripe-hosted billing portal (manage payment methods, view invoices).
+  async createBillingPortal(): Promise<{ portalUrl: string }> {
+    return this.request<{ portalUrl: string }>('POST', '/subscription/portal');
   }
 
   // --- Account ---

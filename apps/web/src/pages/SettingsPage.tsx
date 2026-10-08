@@ -22,6 +22,8 @@ export default function SettingsPage() {
   const [switchingEdition, setSwitchingEdition] = useState(false);
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [cancelNotice, setCancelNotice] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -200,12 +202,19 @@ export default function SettingsPage() {
   }
 
   async function handleCancel() {
+    // Make the end-of-period timing explicit before the user confirms.
+    const confirmed = window.confirm(
+      "Cancel your plan? You'll keep full access until the end of your current billing period — you won't be charged again. You can resubscribe anytime.",
+    );
+    if (!confirmed) return;
+
     setCancelling(true);
     setCheckoutError(null);
     try {
       const client = await buildClient();
-      await client.cancelSubscription();
-      // Refresh subscription state
+      const result = await client.cancelSubscription();
+      setCancelNotice(result.message);
+      // Refresh subscription state (now reflects cancelAtPeriodEnd).
       const sub = await client.getSubscription();
       setSubscription(sub);
     } catch (e: unknown) {
@@ -213,6 +222,21 @@ export default function SettingsPage() {
       setCheckoutError(message);
     } finally {
       setCancelling(false);
+    }
+  }
+
+  // Open the Stripe-hosted billing portal (manage payment methods, view invoices).
+  async function handleManageBilling() {
+    setPortalLoading(true);
+    setCheckoutError(null);
+    try {
+      const client = await buildClient();
+      const { portalUrl } = await client.createBillingPortal();
+      window.location.href = portalUrl;
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Could not open billing management.';
+      setCheckoutError(message);
+      setPortalLoading(false);
     }
   }
 
@@ -450,23 +474,47 @@ export default function SettingsPage() {
       {currentTier !== 'free' && (
         <div className="glass-card">
           <h3 className="font-semibold mb-3 text-white">Manage Subscription</h3>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-sm text-slate-300">
                 You're on the <span className="text-white font-medium">{tierLabel(currentTier)}</span> plan.
               </p>
               <p className="text-xs text-slate-500 mt-1">
                 AI generations: {subscription?.aiGenerationsUsed ?? 0} / {subscription?.aiGenerationsLimit ?? 0} this period
               </p>
+              {subscription?.cancelAtPeriodEnd && (
+                <p className="text-xs text-amber-400 mt-1">
+                  Cancels at the end of the current period
+                  {subscription?.currentPeriodEnd
+                    ? ` (${new Date(subscription.currentPeriodEnd).toLocaleDateString()})`
+                    : ''}. You keep access until then.
+                </p>
+              )}
             </div>
-            <button
-              onClick={handleCancel}
-              disabled={cancelling}
-              className="text-sm text-red-400 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {cancelling ? 'Cancelling…' : 'Cancel Plan'}
-            </button>
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={handleManageBilling}
+                disabled={portalLoading}
+                className="text-sm text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {portalLoading ? 'Opening…' : 'Manage Billing'}
+              </button>
+              {!subscription?.cancelAtPeriodEnd && (
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  className="text-sm text-red-400 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {cancelling ? 'Cancelling…' : 'Cancel Plan'}
+                </button>
+              )}
+            </div>
           </div>
+          {cancelNotice && (
+            <div className="mt-3 p-3 rounded-lg bg-amber-950/30 border border-amber-500/30 text-sm text-amber-200">
+              {cancelNotice}
+            </div>
+          )}
         </div>
       )}
 

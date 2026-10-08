@@ -188,9 +188,14 @@ export interface DailyCue {
 
 export interface Subscription {
   tier: 'free' | 'nest' | 'soar' | 'summit' | 'team';
+  status?: string;
+  trialEndsAt?: string | null;
   aiGenerationsUsed: number;
   aiGenerationsLimit: number;
   currentPeriodEnd: string;
+  // Set when the user has scheduled an end-of-period cancellation; access continues
+  // until currentPeriodEnd. Driven by the subscription webhook.
+  cancelAtPeriodEnd?: boolean;
   stripeCustomerId: string | null;
 }
 

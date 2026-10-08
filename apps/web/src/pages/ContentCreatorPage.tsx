@@ -9,6 +9,7 @@ import { useMode } from '../contexts/ModeContext';
 import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
 import type { SocialPlatform, ScheduledPost, Trade } from '@social-lead-gen/shared';
 import FlockGroupManager from '../components/FlockGroupManager';
+import SmartFlockImport from '../components/SmartFlockImport';
 import OneScreenComposer from '../components/OneScreenComposer';
 
 const TONES = ['professional', 'casual', 'educational', 'urgent'] as const;
@@ -70,6 +71,7 @@ export default function ContentCreatorPage() {
   const [engageIndex, setEngageIndex] = useState(0);
   const [flocksTab, setFlocksTab] = useState<'today' | 'missed'>('today');
   const [showFlockManager, setShowFlockManager] = useState(false);
+  const [showSmartImport, setShowSmartImport] = useState(false);
   // The whole "create a post" toolset (ideas + AI photo + composer) is collapsed by
   // default so the page opens on Today's Flocks (the daily job). Auto-expands once
   // a post is generated so the Copy & Open flow is visible.
@@ -1164,6 +1166,21 @@ export default function ContentCreatorPage() {
           })()}
         </button>
 
+        {/* Smart Flock Import — upload screenshots, AI reads the rules */}
+        <button
+          onClick={() => setShowSmartImport(true)}
+          className="w-full mb-4 p-4 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border-2 border-purple-500/30 rounded-xl hover:border-purple-500/50 hover:bg-purple-500/15 transition-all active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">📸</span>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-white">Smart Flock Import</p>
+              <p className="text-xs text-slate-400 mt-0.5">Upload group screenshots · AI reads names, days &amp; rules · review before saving</p>
+            </div>
+            <span className="text-slate-500 text-lg">→</span>
+          </div>
+        </button>
+
         {flocksTab === 'today' && (
         <>
         <div className="flex items-center justify-between mb-2">
@@ -1638,6 +1655,9 @@ export default function ContentCreatorPage() {
 
       {/* Flock Group Manager Modal */}
       {showFlockManager && <FlockGroupManager onClose={() => setShowFlockManager(false)} />}
+
+      {/* Smart Flock Import Modal */}
+      {showSmartImport && <SmartFlockImport onClose={() => setShowSmartImport(false)} />}
     </div>
   );
 }

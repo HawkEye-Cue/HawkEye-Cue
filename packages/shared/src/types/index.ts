@@ -186,6 +186,19 @@ export interface DailyCue {
   date: string;
 }
 
+// A group suggestion returned by Smart Flock Import. postingDays are 0..6 (Sun..Sat).
+// When rulesFound is false, postingDays is [] and anyday is false — promotion is never
+// assumed; `warning` explains what the user must confirm.
+export interface ImportedFlockGroup {
+  name: string;
+  postingDays: number[];
+  anyday: boolean;
+  frequencyLimit: string;
+  restrictions: string;
+  rulesFound: boolean;
+  warning: string;
+}
+
 export interface Subscription {
   tier: 'free' | 'nest' | 'soar' | 'summit' | 'team';
   aiGenerationsUsed: number;

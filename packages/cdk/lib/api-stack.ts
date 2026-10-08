@@ -562,6 +562,28 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // ─── Smart Flock Import (image-capable group rules extraction) ─────────
+    // Reads user-supplied screenshots of Facebook groups/rules via Nova Lite (vision)
+    // and returns structured, reviewable group suggestions. No posting or scraping.
+    const flockImportFn = new lambda.Function(this, 'FlockImportFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-FlockImport',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/flock-import'),
+      description: 'Smart Flock Import — extract group names/rules from screenshots (AI vision)',
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+    } as lambda.FunctionProps);
+
+    // Stateless — no table access needed. Only needs Bedrock vision.
+    flockImportFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [`arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0`],
+      })
+    );
+
     // ─── Cadence Email Sender (EventBridge scheduled, daily at 2pm UTC / 8am MT) ─
     const cadenceEmailFn = new lambda.Function(this, 'CadenceEmailSenderFn', {
       ...lambdaDefaults,
@@ -1470,6 +1492,18 @@ export class ApiStack extends cdk.Stack {
       path: '/policy/comparison/{leadId}',
       methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE],
       integration: policyComparisonIntegration,
+      authorizer,
+    });
+
+    // Smart Flock Import route
+    const flockImportIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'FlockImportIntegration',
+      flockImportFn
+    );
+    this.httpApi.addRoutes({
+      path: '/flock/import',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: flockImportIntegration,
       authorizer,
     });
 

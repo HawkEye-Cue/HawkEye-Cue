@@ -1,7 +1,7 @@
 'use strict';
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, UpdateCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const Stripe = require('stripe');
 
@@ -39,6 +39,32 @@ async function updateUserSubscription(userId, fields) {
       ExpressionAttributeValues: values,
     })
   );
+}
+
+// Idempotency: record each processed Stripe event id exactly once. Stripe may deliver
+// the same event more than once; a conditional PutCommand (attribute_not_exists) lets us
+// atomically claim an event and skip any duplicate without double-processing.
+// Returns true if this is the FIRST time we've seen the event, false if it's a duplicate.
+const EVENT_TTL_DAYS = 30;
+async function claimEvent(eventId) {
+  try {
+    await dynamo.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: `STRIPE_EVENT#${eventId}`,
+        SK: 'EVENT',
+        processedAt: new Date().toISOString(),
+        // Expire the dedup marker after 30 days (requires TTL attribute 'ttl' on the table;
+        // harmless if TTL isn't configured — the item simply persists).
+        ttl: Math.floor(Date.now() / 1000) + EVENT_TTL_DAYS * 24 * 60 * 60,
+      },
+      ConditionExpression: 'attribute_not_exists(PK)',
+    }));
+    return true;
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') return false; // already processed
+    throw e;
+  }
 }
 
 // Secrets cached per warm instance
@@ -205,6 +231,19 @@ exports.handler = async (event) => {
       console.error('Webhook signature verification failed:', e.message, 'sigPrefix:', signature?.slice(0, 20), 'bodyPrefix:', rawBody?.slice(0, 50));
       // Return 400 for sig failure — this is a legitimate rejection
       return respond(400, { error: `Webhook signature verification failed: ${e.message}` });
+    }
+
+    // Idempotency guard — skip duplicates. Done AFTER signature verification so an
+    // unverified/forged event can never consume an id. If the claim write itself fails
+    // (not a duplicate, a real error), fall through and process rather than silently drop.
+    try {
+      const first = await claimEvent(stripeEvent.id);
+      if (!first) {
+        console.log(`Duplicate Stripe event ignored: ${stripeEvent.type} (${stripeEvent.id})`);
+        return respond(200, { received: true, duplicate: true });
+      }
+    } catch (e) {
+      console.error('Idempotency claim error (processing anyway):', e.message);
     }
 
     console.log(`Processing Stripe event: ${stripeEvent.type} (${stripeEvent.id})`);

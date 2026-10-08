@@ -149,20 +149,36 @@ async function saveLeadAndNotify(userId, lead) {
     return false; // Already saved
   }
 
-  // Save as opportunity
+  // Save as opportunity.
+  // Writes the CANONICAL Opportunity fields (sourcePlatform/sourceAuthor/sourceContent/
+  // keywordId/sourceUrl/leadSource) used by the HTTP + extension path, while RETAINING
+  // the scanner compatibility fields (platform/authorName/postContent/matchedKeywords/
+  // source/sourceCommentId) so dedupe, the notification-sender stream, and team views
+  // keep working unchanged.
+  // D1: no fabricated author/content/url — sourceAuthor is null when none was captured,
+  // and sourceUrl stays empty (background scans have no post URL).
+  const canonicalAuthor = (lead.authorName && lead.authorName !== 'Unknown') ? lead.authorName : null;
   await dynamo.send(new PutCommand({
     TableName: TABLE_NAME,
     Item: {
       PK: `USER#${userId}`,
       SK: `OPP#${now}#${id}`,
       opportunityId: id,
+      // Dedupe + compatibility fields (unchanged):
       sourceCommentId: lead.commentId,
       platform: lead.platform.toLowerCase(),
       authorName: lead.authorName,
       postContent: lead.text,
       matchedKeywords: lead.matchedKeywords,
-      status: 'new',
       source: 'background-scan',
+      // Canonical Opportunity fields (new, additive):
+      keywordId: 'extension-detected',
+      sourcePlatform: lead.platform.toLowerCase(),
+      sourceAuthor: canonicalAuthor,
+      sourceContent: lead.text,
+      sourceUrl: '',
+      leadSource: 'extension-detected',
+      status: 'new',
       detectedAt: now,
       createdAt: now,
     },

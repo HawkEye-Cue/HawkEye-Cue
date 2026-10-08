@@ -106,14 +106,29 @@ async function handleGetOpportunities(userId) {
     })
   );
 
-  const opportunities = (result.Items || []).map((item) => ({
+  const opportunities = (result.Items || []).map((item) => {
+    // Canonical-schema normalization. Historical background keyword-scanner records
+    // (lead-scanner) stored a different shape: platform/authorName/postContent/
+    // matchedKeywords/source:'background-scan' and no keywordId/sourcePlatform/
+    // sourceAuthor/sourceContent. Read-time fallbacks render those records correctly
+    // without any migration. D1: never fabricate a sourceUrl — scanner records have
+    // none, so sourceUrl stays empty and the "View original post" link simply hides.
+    const isScanRecord = item.source === 'background-scan' || Array.isArray(item.matchedKeywords);
+    const resolvedKeywordId = item.keywordId ?? (isScanRecord ? 'extension-detected' : item.keywordId);
+    const resolvedKeywordText =
+      resolvedKeywordId === 'manual-entry'
+        ? (item.leadSource || 'Manual')
+        : (Array.isArray(item.matchedKeywords) && item.matchedKeywords.length > 0
+            ? item.matchedKeywords[0]
+            : resolvedKeywordId);
+    return {
     id: item.opportunityId,
-    keywordId: item.keywordId,
-    keywordText: item.keywordId === 'manual-entry' ? (item.leadSource || 'Manual') : item.keywordId,
-    sourceContent: item.sourceContent ?? null,
-    sourcePlatform: item.sourcePlatform,
+    keywordId: resolvedKeywordId,
+    keywordText: resolvedKeywordText,
+    sourceContent: item.sourceContent ?? item.postContent ?? null,
+    sourcePlatform: item.sourcePlatform ?? item.platform ?? 'other',
     sourceUrl: item.sourceUrl || '',
-    sourceAuthor: item.sourceAuthor ?? null,
+    sourceAuthor: item.sourceAuthor ?? item.authorName ?? null,
     promotedToLead: item.promotedToLead === true,
     promotedAt: item.promotedAt || null,
     leadSource: item.leadSource || null,
@@ -133,7 +148,8 @@ async function handleGetOpportunities(userId) {
     lastPushError: item.lastPushError || null,
     pushedAt: item.pushedAt || null,
     pushedConnectionId: item.pushedConnectionId || null,
-  }));
+    };
+  });
 
   return respond(200, { opportunities });
 }

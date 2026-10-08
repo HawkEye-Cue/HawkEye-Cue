@@ -3,6 +3,13 @@ name: Deploy to AWS
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_backend:
+        description: 'Deploy the CDK backend (Lambdas/API/EventBridge). Only enable after reviewing the cdk diff / change set. Leave false for web-only deploys.'
+        type: boolean
+        default: false
+        required: true
 
 jobs:
   deploy:
@@ -52,11 +59,13 @@ jobs:
           MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
         run: |
           cd packages/cdk
-          echo "::group::cdk diff --all (advisory, non-blocking)"
+          echo "::group::cdk diff (advisory, non-blocking)"
           # `cdk diff` exits non-zero when there ARE differences, and also on genuine
           # synth/credential errors. Either way this is advisory: capture the status,
           # always print the output, and never fail the job.
-          npx cdk diff --all 2>&1; diff_status=$?
+          # NOTE: `--all` is not a valid flag for `cdk diff` (diff already covers all
+          # stacks); passing it was silently ignored. Use plain `cdk diff`.
+          npx cdk diff 2>&1; diff_status=$?
           echo "cdk diff exit status: $diff_status (non-zero may mean 'changes detected' OR a diff error — review output above)"
           if [ "$diff_status" -ne 0 ]; then
             echo "::warning::cdk diff reported changes or could not be generated (advisory only; does not block deploy; NOT CloudFormation drift detection)"
@@ -64,7 +73,20 @@ jobs:
           echo "::endgroup::"
           exit 0
 
+      # Backend (CDK) deploy — GATED and FAIL-STOP (deploy hardening Step 2).
+      #
+      # This step ONLY runs on a manual workflow_dispatch with deploy_backend=true, so a
+      # routine push to main never silently mutates backend infrastructure. Trigger it
+      # deliberately AFTER reviewing the advisory `cdk diff` / CloudFormation change set.
+      #
+      # Hardening changes vs. the previous pipeline:
+      #   - Removed `|| echo "CDK deploy failed ..."` — a backend failure now FAILS the
+      #     job and stops before the web deploy, so we never ship a frontend against a
+      #     backend that did not update.
+      #   - Removed `--hotswap-fallback` — hotswap can introduce CloudFormation drift and
+      #     is not safe for production releases; use a normal CloudFormation deployment.
       - name: Deploy CDK stack (Lambdas + API + EventBridge)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_backend }}
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: us-east-1
@@ -72,7 +94,7 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
-        run: cd packages/cdk && npx cdk deploy --all --require-approval never --hotswap-fallback || echo "CDK deploy failed - continuing with web deploy"
+        run: cd packages/cdk && npx cdk deploy --all --require-approval never
 
       - name: Build web app
         env:

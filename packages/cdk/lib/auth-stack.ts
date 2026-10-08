@@ -195,6 +195,44 @@ export class AuthStack extends cdk.Stack {
       preventUserExistenceErrors: true,
     });
 
+    // ─── PHASE 1 (temporary) — preserve the legacy auto-generated authorizer client ───
+    // Historically, the API stack's HttpUserPoolAuthorizer auto-created this client and
+    // the Auth stack exported its ref; the deployed API stack imported that export as its
+    // JWT audience. The launch change switched the API audience to the three real app
+    // clients, which would DELETE this client + its export. CloudFormation refuses to
+    // delete an export that the currently-deployed API still imports, so we must remove
+    // it in a SEPARATE second deploy (Phase 2).
+    //
+    // For Phase 1 we recreate the client at its EXACT original construct path
+    // (SocialLeadGenUserPool/UserPoolAuthorizerClient) and with its EXACT original
+    // properties, so CloudFormation sees the SAME logical id — no replacement, same
+    // physical client, same export value. We then re-publish the SAME export name so the
+    // export is retained. After Phase 1, the API no longer imports it; Phase 2 (which
+    // deletes this block) can then remove the client + export cleanly.
+    //
+    // DELETE THIS ENTIRE BLOCK (and the matching CfnOutput below) in Phase 2.
+    const legacyAuthorizerClient = this.userPool.addClient('UserPoolAuthorizerClient', {
+      oAuth: {
+        flows: { implicitCodeGrant: true, authorizationCodeGrant: true },
+        scopes: [
+          cognito.OAuthScope.PROFILE,
+          cognito.OAuthScope.PHONE,
+          cognito.OAuthScope.EMAIL,
+          cognito.OAuthScope.OPENID,
+          cognito.OAuthScope.COGNITO_ADMIN,
+        ],
+        callbackUrls: ['https://example.com'],
+      },
+      supportedIdentityProviders: [cognito.UserPoolClientIdentityProvider.COGNITO],
+    });
+    // Re-publish the EXACT legacy export name so it is retained through Phase 1. CDK
+    // originally generated this export automatically for the cross-stack reference; here
+    // we declare it explicitly with the identical name and the same client ref value.
+    new cdk.CfnOutput(this, 'ExportsOutputRefSocialLeadGenUserPoolUserPoolAuthorizerClient24F2266FB4E487AB', {
+      value: legacyAuthorizerClient.userPoolClientId,
+      exportName: 'SocialLeadGen-Auth:ExportsOutputRefSocialLeadGenUserPoolUserPoolAuthorizerClient24F2266FB4E487AB',
+    });
+
     // Stack outputs
     new cdk.CfnOutput(this, 'UserPoolId', {
       value: this.userPool.userPoolId,

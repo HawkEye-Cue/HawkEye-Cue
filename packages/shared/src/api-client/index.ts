@@ -272,7 +272,18 @@ export class ApiClient {
   }
 
   async getOpportunityStats(): Promise<OpportunityStats> {
-    return this.request<OpportunityStats>('GET', '/opportunities/stats');
+    // Normalize the response at the client boundary. The backend returns the stats
+    // wrapped as { stats: { ... } } with a snake_case `followed_up` field; the app
+    // expects a flat camelCase OpportunityStats. Unwrap, map followed_up -> followedUp,
+    // and coerce to numbers with a 0 fallback so KPI math never produces NaN.
+    const res = await this.request<any>('GET', '/opportunities/stats');
+    const s = (res && res.stats) ? res.stats : (res || {});
+    return {
+      total: Number(s.total) || 0,
+      new: Number(s.new) || 0,
+      followedUp: Number(s.followedUp ?? s.followed_up) || 0,
+      converted: Number(s.converted) || 0,
+    };
   }
 
   // --- Subscription ---

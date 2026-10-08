@@ -244,15 +244,48 @@ async function handleGetDeals(userId) {
     bundleItems: item.bundleItems || undefined,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    // Durable Cue attribution (optional; present on Cue-originated deals).
+    opportunityId: item.opportunityId || null,
+    sourcePlatform: item.sourcePlatform || null,
+    sourceUrl: item.sourceUrl || null,
+    sourceGroup: item.sourceGroup || null,
+    keyword: item.keyword || null,
   }));
 
   return ok({ deals });
+}
+
+// Shape a stored DEAL item into the API deal object (shared by create/get).
+function mapDealItem(item) {
+  return {
+    id: item.dealId,
+    name: item.dealName,
+    value: item.dealValue || 0,
+    stage: item.stage,
+    policyType: item.policyType || '',
+    leadSource: item.leadSource || '',
+    leadSourceNote: item.leadSourceNote || '',
+    bundleItems: item.bundleItems || undefined,
+    createdAt: item.createdAt,
+    opportunityId: item.opportunityId || null,
+    sourcePlatform: item.sourcePlatform || null,
+    sourceUrl: item.sourceUrl || null,
+    sourceGroup: item.sourceGroup || null,
+    keyword: item.keyword || null,
+  };
 }
 
 // POST /sales/deals
 async function handleCreateDeal(userId, body) {
   const { name, value, stage, policyType, folio, contactName, contactEmail, contactPhone, notes, trade, leadSource, leadSourceNote, soldBy, bundleItems } = body || {};
   if (!name || !name.trim()) return err(400, 'INVALID_INPUT', 'Deal name is required');
+
+  // Durable Cue attribution (optional, additive). D1: no post content is ever stored.
+  const opportunityId = (body.opportunityId || '').toString().trim() || null;
+  const sourcePlatform = body.sourcePlatform || null;
+  const sourceUrl = body.sourceUrl || null;
+  const sourceGroup = body.sourceGroup || null;
+  const keyword = body.keyword || null;
 
   const dealId = randomUUID();
   const now = body.createdAt || new Date().toISOString();
@@ -262,32 +295,62 @@ async function handleCreateDeal(userId, body) {
     ? bundleItems.reduce((sum, i) => sum + (parseFloat(i.value) || 0), 0)
     : (value || 0);
 
-  await dynamo.send(new PutCommand({
-    TableName: TABLE_NAME,
-    Item: {
-      PK: `USER#${userId}`,
-      SK: `DEAL#${now}#${dealId}`,
-      dealId,
-      dealName: name.trim(),
-      dealValue,
-      stage: STAGES.includes(stage) ? stage : 'prospect',
-      policyType: policyType || '',
-      folio: folio || new Date().toISOString().slice(0, 7),
-      contactName: contactName || '',
-      contactEmail: contactEmail || '',
-      contactPhone: contactPhone || '',
-      notes: notes || '',
-      trade: trade || '',
-      leadSource: leadSource || '',
-      leadSourceNote: leadSourceNote || '',
-      bundleItems: (policyType === 'Bundle' && Array.isArray(bundleItems)) ? bundleItems.filter((i) => i.type && i.value) : undefined,
-      soldBy: soldBy || '',
-      createdAt: now,
-      updatedAt: now,
-    },
-  }));
+  // One logged Sale per originating Cue. Cue-originated deals use a deterministic SK
+  // so a conditional write cannot create a duplicate. Manual deals keep the
+  // timestamp-based SK (no dedupe needed, multiple allowed).
+  const sk = opportunityId ? `DEAL#CUE#${opportunityId}` : `DEAL#${now}#${dealId}`;
 
-  // If deal is created as 'won', notify team
+  const item = {
+    PK: `USER#${userId}`,
+    SK: sk,
+    dealId,
+    dealName: name.trim(),
+    dealValue,
+    stage: STAGES.includes(stage) ? stage : 'prospect',
+    policyType: policyType || '',
+    folio: folio || new Date().toISOString().slice(0, 7),
+    contactName: contactName || '',
+    contactEmail: contactEmail || '',
+    contactPhone: contactPhone || '',
+    notes: notes || '',
+    trade: trade || '',
+    leadSource: leadSource || '',
+    leadSourceNote: leadSourceNote || '',
+    bundleItems: (policyType === 'Bundle' && Array.isArray(bundleItems)) ? bundleItems.filter((i) => i.type && i.value) : undefined,
+    soldBy: soldBy || '',
+    createdAt: now,
+    updatedAt: now,
+    opportunityId,
+    sourcePlatform,
+    sourceUrl,
+    sourceGroup,
+    keyword,
+  };
+
+  try {
+    await dynamo.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: item,
+      // Idempotency guard for Cue-originated deals: fail if one already exists for
+      // this opportunity. Manual deals have a unique timestamp SK and never collide.
+      ...(opportunityId ? { ConditionExpression: 'attribute_not_exists(SK)' } : {}),
+    }));
+  } catch (e) {
+    if (opportunityId && e.name === 'ConditionalCheckFailedException') {
+      // A Sale was already logged for this Cue. Return the existing deal, do NOT
+      // create a duplicate and do NOT fire a second team notification.
+      const existing = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND SK = :sk',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': sk },
+      }));
+      const prior = (existing.Items || [])[0];
+      return ok({ ...(prior ? mapDealItem(prior) : { id: dealId, name: name.trim() }), alreadyLogged: true });
+    }
+    throw e;
+  }
+
+  // If deal is created as 'won', notify team (only on a genuinely new deal).
   if (stage === 'won') {
     try {
       await notifyTeamDealWon(userId, name.trim(), dealValue);
@@ -296,7 +359,7 @@ async function handleCreateDeal(userId, body) {
     }
   }
 
-  return ok({ id: dealId, name: name.trim(), value: dealValue, stage: stage || 'prospect', policyType: policyType || '', leadSource: leadSource || '', leadSourceNote: leadSourceNote || '', bundleItems: bundleItems || undefined, createdAt: now });
+  return ok({ ...mapDealItem(item), alreadyLogged: false });
 }
 
 // PUT /sales/deals/{id}

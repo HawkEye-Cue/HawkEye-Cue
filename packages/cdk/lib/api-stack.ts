@@ -13,6 +13,10 @@ import { Construct } from 'constructs';
 
 export interface ApiStackProps extends cdk.StackProps {
   readonly userPool: cognito.UserPool;
+  // The three real app clients whose tokens the API must accept. Passing these as the
+  // authorizer audience codifies the live configuration (previously set out-of-band via
+  // the CLI) so a deploy does not reset the authorizer to CDK's auto-generated default.
+  readonly userPoolClients: cognito.IUserPoolClient[];
   readonly table: dynamodb.Table;
   readonly mediaBucket: s3.Bucket;
 }
@@ -24,7 +28,7 @@ export class ApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
-    const { userPool, table, mediaBucket } = props;
+    const { userPool, userPoolClients, table, mediaBucket } = props;
 
     // ─── HTTP API with CORS ───────────────────────────────────────────────
     this.httpApi = new apigatewayv2.HttpApi(this, 'HttpApi', {
@@ -48,14 +52,18 @@ export class ApiStack extends cdk.Stack {
     });
 
     // ─── Cognito JWT Authorizer ───────────────────────────────────────────
-    // Note: We do NOT restrict userPoolClients here — the API Gateway authorizer
-    // audience is managed manually (via aws apigatewayv2 update-authorizer) to accept
-    // tokens from the Web, Mobile, and Extension clients.
+    // Codify the authorizer audience as the three real app clients (Web, Mobile,
+    // Extension). This was previously managed out-of-band via the AWS CLI, which caused
+    // CloudFormation drift (the live authorizer accepted the 3 app clients plus CDK's
+    // auto-generated default, while the template only referenced the auto-generated
+    // default). Passing userPoolClients makes the template's JwtConfiguration.Audience
+    // equal {Web, Mobile, Extension} so a normal deploy no longer resets live auth.
     const authorizer = new apigatewayv2Authorizers.HttpUserPoolAuthorizer(
       'CognitoAuthorizer',
       userPool,
       {
         identitySource: ['$request.header.Authorization'],
+        userPoolClients,
       }
     );
 
@@ -562,6 +570,28 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
+    // ─── Smart Flock Import (image-capable group rules extraction) ─────────
+    // Reads user-supplied screenshots of Facebook groups/rules via Nova Lite (vision)
+    // and returns structured, reviewable group suggestions. No posting or scraping.
+    const flockImportFn = new lambda.Function(this, 'FlockImportFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-FlockImport',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/flock-import'),
+      description: 'Smart Flock Import — extract group names/rules from screenshots (AI vision)',
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+    } as lambda.FunctionProps);
+
+    // Stateless — no table access needed. Only needs Bedrock vision.
+    flockImportFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [`arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0`],
+      })
+    );
+
     // ─── Cadence Email Sender (EventBridge scheduled, daily at 2pm UTC / 8am MT) ─
     const cadenceEmailFn = new lambda.Function(this, 'CadenceEmailSenderFn', {
       ...lambdaDefaults,
@@ -941,6 +971,12 @@ export class ApiStack extends cdk.Stack {
     });
     this.httpApi.addRoutes({
       path: '/subscription/cancel',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: subscriptionIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/subscription/portal',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: subscriptionIntegration,
       authorizer,
@@ -1470,6 +1506,18 @@ export class ApiStack extends cdk.Stack {
       path: '/policy/comparison/{leadId}',
       methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE],
       integration: policyComparisonIntegration,
+      authorizer,
+    });
+
+    // Smart Flock Import route
+    const flockImportIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
+      'FlockImportIntegration',
+      flockImportFn
+    );
+    this.httpApi.addRoutes({
+      path: '/flock/import',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: flockImportIntegration,
       authorizer,
     });
 

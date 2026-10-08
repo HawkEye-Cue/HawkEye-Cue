@@ -56,6 +56,9 @@ function sdkStubs() {
       QueryCommand: cmd('QueryCommand'),
       UpdateCommand: cmd('UpdateCommand'),
       DeleteCommand: cmd('DeleteCommand'),
+      // GetCommand is used by the server-side entitlement check (profile lookup) that
+      // guards the paid followUp routes (promote / promoteToLead).
+      GetCommand: cmd('GetCommand'),
     },
   } as Record<string, any>;
 }
@@ -85,9 +88,18 @@ function event(method: string, path: string, body?: any) {
   };
 }
 
+// Default profile returned by GetCommand(PROFILE). Paid (soar) so the entitlement
+// gate on the followUp routes passes; individual tests can still override sendImpl but
+// should delegate PROFILE Gets back here (see paidProfileGet).
+const PAID_PROFILE = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'soar', subscriptionStatus: 'active' };
+function paidProfileGet(c: SentCommand) {
+  if (c.name === 'GetCommand' && c.input?.Key?.SK === 'PROFILE') return { Item: PAID_PROFILE };
+  return undefined;
+}
+
 beforeEach(() => {
   sent = [];
-  sendImpl = async () => ({ Items: [] });
+  sendImpl = async (c) => paidProfileGet(c) ?? { Items: [] };
 });
 
 describe('opportunities-handler — D1 Minimal Save & Promote', () => {
@@ -160,6 +172,8 @@ describe('opportunities-handler — D1 Minimal Save & Promote', () => {
   it('create with promoteToLead:true writes the LEAD_PROTOCOL (guarded) when a template exists', async () => {
     const handler = loadHandler();
     sendImpl = async (c) => {
+      const prof = paidProfileGet(c);
+      if (prof) return prof;
       if (c.name === 'QueryCommand' && c.input.ExpressionAttributeValues?.[':sk'] === 'LEAD_PROTOCOL_TEMPLATE') {
         return { Items: [{ steps: [{ day: 0, type: 'call', task: 'Call' }] }] };
       }
@@ -282,6 +296,8 @@ describe('opportunities-handler — D1 Minimal Save & Promote', () => {
     const handler = loadHandler();
     let protocolExists = false;
     sendImpl = async (c) => {
+      const prof = paidProfileGet(c);
+      if (prof) return prof;
       if (c.name === 'QueryCommand' && c.input.ExpressionAttributeValues?.[':oppId']) {
         return { Items: [{ PK: 'USER#user-123', SK: 'OPP#t#opp1', opportunityId: 'opp1', sourceAuthor: null }] };
       }

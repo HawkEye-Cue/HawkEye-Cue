@@ -207,7 +207,60 @@ jobs:
               sumh "- Web client present: ${WEB_OK}; Mobile client present: ${MOB_OK}; Extension client present: ${EXT_OK} (IDs redacted)"
               sumh "- Matched expected clients: ${MATCHED}/3"
               if [ "$EXTRA" -gt 0 ]; then
-                sumh "- **Unexpected audience entries present: ${EXTRA}** — investigate before codifying."
+                sumh "- **Unexpected audience entries present: ${EXTRA}** — identifying by metadata (no IDs printed):"
+                # Resolve the user pool id so we can describe each unmatched client by its
+                # NAME + timestamps only — enough to classify legitimate vs legacy/obsolete
+                # WITHOUT exposing any client id. Pull the pool id from the authorizer's
+                # IssuerUrl (…/<region>_<poolId>) rather than printing it anywhere.
+                ISSUER=$(aws apigatewayv2 get-authorizer --api-id "$AUDAPI" --authorizer-id "$AUTHID" --query 'JwtConfiguration.Issuer' --output text 2>/dev/null)
+                POOL_ID=$(printf '%s' "$ISSUER" | sed -nE 's#.*/([A-Za-z0-9_-]+)$#\1#p')
+                # Iterate the live audience IDs; for any that is NOT one of the 3 exports,
+                # describe it and print ONLY name + created/last-modified dates + auth flows.
+                for AID in $(printf '%s' "$AUD" | grep -oE '"[^"]+"' | tr -d '"'); do
+                  if [ "$AID" = "$WEBID" ] || [ "$AID" = "$MOBID" ] || [ "$AID" = "$EXTID" ]; then continue; fi
+                  if [ -z "$POOL_ID" ]; then
+                    sumh "  - Unmatched entry found, but pool id could not be resolved to describe it (INSPECTION_PARTIAL)."
+                    continue
+                  fi
+                  META=$(aws cognito-idp describe-user-pool-client --user-pool-id "$POOL_ID" --client-id "$AID" \
+                           --query 'UserPoolClient.{name:ClientName,created:CreationDate,modified:LastModifiedDate,flows:ExplicitAuthFlows,oauth:AllowedOAuthFlows,secret:(ClientSecret!=null)}' \
+                           --output json 2>/dev/null || echo "ERR")
+                  if [ "$META" = "ERR" ] || [ -z "$META" ]; then
+                    sumh "  - An unmatched audience entry exists but describe-user-pool-client failed (it may be a DELETED client id still listed in the authorizer, or a client in another pool). INSPECTION_PARTIAL — treat as **needs manual confirmation**."
+                  else
+                    CNAME=$(printf '%s' "$META" | sed -nE 's/.*"name"[: ]*"([^"]*)".*/\1/p')
+                    CCREATED=$(printf '%s' "$META" | sed -nE 's/.*"created"[: ]*"?([^",}]*)"?.*/\1/p')
+                    CMOD=$(printf '%s' "$META" | sed -nE 's/.*"modified"[: ]*"?([^",}]*)"?.*/\1/p')
+                    HAS_SECRET=$(printf '%s' "$META" | grep -q '"secret": true' && echo yes || echo no)
+                    sumh "  - Extra client → name: \`${CNAME:-<unnamed>}\`; created: ${CCREATED:-?}; lastModified: ${CMOD:-?}; hasClientSecret: ${HAS_SECRET} (client id NOT shown)"
+                    sumh "    - Auth flows (verbs only): $(printf '%s' "$META" | grep -oiE 'USER_[A-Z_]+|ALLOW_[A-Z_]+' | sort -u | tr '\n' ' ')"
+                    # USAGE EVIDENCE (not just timestamps): sum the AWS/Cognito sign-in and
+                    # token-refresh success metrics for THIS client over the last 30 days.
+                    # Zero across both strongly indicates the client is not actively used.
+                    START=$(date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-30d +%Y-%m-%dT%H:%M:%SZ)
+                    ENDT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+                    sum_metric() {
+                      # $1 = metric name
+                      aws cloudwatch get-metric-statistics \
+                        --namespace AWS/Cognito --metric-name "$1" \
+                        --dimensions Name=UserPool,Value="$POOL_ID" Name=UserPoolClient,Value="$AID" \
+                        --start-time "$START" --end-time "$ENDT" --period 2592000 --statistics Sum \
+                        --query 'Datapoints[].Sum' --output text 2>/dev/null | tr '\t' '+' | sed 's/^$/0/'
+                    }
+                    SIGNINS=$(sum_metric SignInSuccesses); SIGNINS=${SIGNINS:-0}
+                    REFRESHES=$(sum_metric TokenRefreshSuccesses); REFRESHES=${REFRESHES:-0}
+                    # Reduce "a+b" style sums to a single number via awk; empty → 0.
+                    SIGNINS_N=$(echo "${SIGNINS:-0}" | awk '{n=0; m=split($0,a,"+"); for(i=1;i<=m;i++) n+=a[i]; printf "%d", n}')
+                    REFRESHES_N=$(echo "${REFRESHES:-0}" | awk '{n=0; m=split($0,a,"+"); for(i=1;i<=m;i++) n+=a[i]; printf "%d", n}')
+                    sumh "    - Usage (last 30d): SignInSuccesses=${SIGNINS_N}, TokenRefreshSuccesses=${REFRESHES_N}"
+                    if [ "${SIGNINS_N:-0}" -eq 0 ] && [ "${REFRESHES_N:-0}" -eq 0 ]; then
+                      sumh "    - **No sign-in or token activity in 30 days → consistent with an UNUSED client (safe-to-drop evidence).**"
+                    else
+                      sumh "    - **ACTIVE: this client shows real auth traffic → DO NOT drop; it must be codified/preserved.**"
+                    fi
+                    sumh "    - Classify: name is CDK's auto-generated \`UserPoolAuthorizerClient…\` AND zero 30-day usage ⇒ the auto-generated default (safe to drop). A real app name OR any usage ⇒ preserve."
+                  fi
+                done
               else
                 sumh "- No unexpected audience entries."
               fi

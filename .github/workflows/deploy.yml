@@ -3,6 +3,18 @@ name: Deploy to AWS
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_backend:
+        description: 'Deploy the CDK backend (Lambdas/API/EventBridge). Only enable after reviewing the cdk diff / change set.'
+        type: boolean
+        default: false
+        required: true
+      deploy_web:
+        description: 'Publish the web frontend to S3/CloudFront. For a coordinated release leave this ON together with deploy_backend; the backend deploys first and the web publishes only if it succeeds.'
+        type: boolean
+        default: true
+        required: true
 
 jobs:
   deploy:
@@ -52,11 +64,13 @@ jobs:
           MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
         run: |
           cd packages/cdk
-          echo "::group::cdk diff --all (advisory, non-blocking)"
+          echo "::group::cdk diff (advisory, non-blocking)"
           # `cdk diff` exits non-zero when there ARE differences, and also on genuine
           # synth/credential errors. Either way this is advisory: capture the status,
           # always print the output, and never fail the job.
-          npx cdk diff --all 2>&1; diff_status=$?
+          # NOTE: `--all` is not a valid flag for `cdk diff` (diff already covers all
+          # stacks); passing it was silently ignored. Use plain `cdk diff`.
+          npx cdk diff 2>&1; diff_status=$?
           echo "cdk diff exit status: $diff_status (non-zero may mean 'changes detected' OR a diff error — review output above)"
           if [ "$diff_status" -ne 0 ]; then
             echo "::warning::cdk diff reported changes or could not be generated (advisory only; does not block deploy; NOT CloudFormation drift detection)"
@@ -64,7 +78,20 @@ jobs:
           echo "::endgroup::"
           exit 0
 
+      # Backend (CDK) deploy — GATED and FAIL-STOP (deploy hardening Step 2).
+      #
+      # This step ONLY runs on a manual workflow_dispatch with deploy_backend=true, so a
+      # routine push to main never silently mutates backend infrastructure. Trigger it
+      # deliberately AFTER reviewing the advisory `cdk diff` / CloudFormation change set.
+      #
+      # Hardening changes vs. the previous pipeline:
+      #   - Removed `|| echo "CDK deploy failed ..."` — a backend failure now FAILS the
+      #     job and stops before the web deploy, so we never ship a frontend against a
+      #     backend that did not update.
+      #   - Removed `--hotswap-fallback` — hotswap can introduce CloudFormation drift and
+      #     is not safe for production releases; use a normal CloudFormation deployment.
       - name: Deploy CDK stack (Lambdas + API + EventBridge)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_backend }}
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: us-east-1
@@ -72,9 +99,21 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
-        run: cd packages/cdk && npx cdk deploy --all --require-approval never --hotswap-fallback || echo "CDK deploy failed - continuing with web deploy"
+        run: cd packages/cdk && npx cdk deploy --all --require-approval never
 
+      # Web (frontend) deploy — GATED, and ORDERED AFTER the backend.
+      #
+      # RELEASE-ORDER SAFETY: these steps run ONLY on a manual workflow_dispatch with
+      # deploy_web=true. They are declared AFTER the backend deploy step, and because the
+      # backend step is fail-stop, a coordinated run (deploy_backend=true + deploy_web=true)
+      # publishes the frontend ONLY after the backend deploy succeeds. A push to main no
+      # longer publishes the frontend at all, so a merge can never ship new UI (e.g. the
+      # billing portal / Smart Flock Import buttons) ahead of the backend routes it needs.
+      #
+      # For a web-only hotfix (no backend change), dispatch with deploy_backend=false and
+      # deploy_web=true — a deliberate, explicit choice rather than an implicit merge side effect.
       - name: Build web app
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_web }}
         env:
           VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
           VITE_COGNITO_CLIENT_ID: ${{ secrets.VITE_COGNITO_CLIENT_ID }}
@@ -85,7 +124,9 @@ jobs:
         run: pnpm --filter @social-lead-gen/web run build
 
       - name: Deploy to S3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_web }}
         run: aws s3 sync apps/web/dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
 
       - name: Invalidate CloudFront cache
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_web }}
         run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"

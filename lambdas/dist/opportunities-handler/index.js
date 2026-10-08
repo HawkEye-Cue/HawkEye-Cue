@@ -7,6 +7,7 @@ const {
   QueryCommand,
   UpdateCommand,
   DeleteCommand,
+  GetCommand,
 } = require('@aws-sdk/lib-dynamodb');
 const { randomUUID } = require('crypto');
 
@@ -25,6 +26,49 @@ function respond(statusCode, body) {
 
 function getUserId(event) {
   return event.requestContext?.authorizer?.jwt?.claims?.sub ?? null;
+}
+
+// ─── Server-side subscription entitlement ───────────────────────────────────────
+// This handler is MIXED. Capturing, listing, status-changing and deleting Cues
+// (Opportunities) is INCLUDED in Nest (free). The Lead follow-up protocol surface
+// (promote-to-Lead, follow-up steps, protocol templates) is the paid "followUp"
+// feature (Soar+). We enforce only those paid routes server-side so Nest keeps its
+// legitimate free functionality. Effective tier is read from the account's own
+// profile (legacy labels + trial expiry handled); a browser-supplied tier is ignored.
+const PAID_TIERS = new Set(['soar', 'summit', 'team']);
+function normalizeTier(raw) {
+  const t = (raw || 'free').toString().toLowerCase();
+  if (t === 'nest' || t === 'none' || t === 'expired' || t === '') return 'free';
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t;
+  return 'free';
+}
+function effectiveTier(profile) {
+  if (!profile) return 'free';
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+  if (status === 'trial' && profile.trialEndsAt) {
+    if (new Date(profile.trialEndsAt).getTime() < Date.now()) return 'free';
+  }
+  return normalizeTier(profile.subscriptionTier);
+}
+async function getEffectiveTier(userId) {
+  const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
+  return effectiveTier(res.Item);
+}
+// Guard the paid followUp routes. Returns an error response to short-circuit, else null.
+async function requireFollowUp(userId) {
+  let tier;
+  try {
+    tier = await getEffectiveTier(userId);
+  } catch (e) {
+    console.error('Entitlement check failed (denying):', e.message);
+    return respond(503, { error: { code: 'ENTITLEMENT_UNAVAILABLE', message: 'Could not verify subscription. Please try again.' } });
+  }
+  if (!PAID_TIERS.has(tier)) {
+    return respond(403, { error: { code: 'UPGRADE_REQUIRED', message: 'Lead follow-ups require a Soar or Summit plan. Upgrade in Settings.' } });
+  }
+  return null;
 }
 
 const VALID_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'tiktok', 'nextdoor', 'other'];
@@ -474,6 +518,20 @@ exports.handler = async (event) => {
 
     if (!userId) return respond(401, { error: { code: 'UNAUTHORIZED', message: 'Missing user identity' } });
 
+    // Paid followUp surface (Soar+): promote-to-Lead, follow-up steps, protocol +
+    // protocol templates. Capture/list/stats/status/delete stay free for Nest. We gate
+    // these specific routes server-side; everything else falls through unguarded.
+    const isFollowUpRoute =
+      (/^\/opportunities\/[^/]+\/promote$/.test(path) && method === 'POST') ||
+      (/^\/opportunities\/[^/]+\/followups$/.test(path) && method === 'GET') ||
+      (/^\/opportunities\/[^/]+\/followups\/\d+$/.test(path) && method === 'PUT') ||
+      (/^\/opportunities\/[^/]+\/protocol$/.test(path) && method === 'PUT') ||
+      (path === '/opportunities/protocol-template' && (method === 'GET' || method === 'PUT'));
+    if (isFollowUpRoute) {
+      const gate = await requireFollowUp(userId);
+      if (gate) return gate;
+    }
+
     // GET /opportunities/stats
     if (method === 'GET' && path === '/opportunities/stats') {
       return handleGetStats(userId);
@@ -487,6 +545,12 @@ exports.handler = async (event) => {
     // POST /opportunities
     if (method === 'POST' && path === '/opportunities') {
       const body = event.body ? JSON.parse(event.body) : null;
+      // Capturing a Cue is free (Nest). But promoting to a Lead at save time creates
+      // the paid follow-up protocol, so that specific option requires Soar+.
+      if (body && body.promoteToLead === true) {
+        const gate = await requireFollowUp(userId);
+        if (gate) return gate;
+      }
       return handleCreateOpportunity(userId, body);
     }
 

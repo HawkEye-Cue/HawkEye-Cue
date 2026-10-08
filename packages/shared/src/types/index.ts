@@ -186,11 +186,29 @@ export interface DailyCue {
   date: string;
 }
 
+// A group suggestion returned by Smart Flock Import. postingDays are 0..6 (Sun..Sat).
+// When rulesFound is false, postingDays is [] and anyday is false — promotion is never
+// assumed; `warning` explains what the user must confirm.
+export interface ImportedFlockGroup {
+  name: string;
+  postingDays: number[];
+  anyday: boolean;
+  frequencyLimit: string;
+  restrictions: string;
+  rulesFound: boolean;
+  warning: string;
+}
+
 export interface Subscription {
   tier: 'free' | 'nest' | 'soar' | 'summit' | 'team';
+  status?: string;
+  trialEndsAt?: string | null;
   aiGenerationsUsed: number;
   aiGenerationsLimit: number;
   currentPeriodEnd: string;
+  // Set when the user has scheduled an end-of-period cancellation; access continues
+  // until currentPeriodEnd. Driven by the subscription webhook.
+  cancelAtPeriodEnd?: boolean;
   stripeCustomerId: string | null;
 }
 

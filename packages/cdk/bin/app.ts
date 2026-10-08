@@ -21,6 +21,9 @@ const authStack = new AuthStack(app, 'SocialLeadGen-Auth', { env });
 const apiStack = new ApiStack(app, 'SocialLeadGen-Api', {
   env,
   userPool: authStack.userPool,
+  // Codify the authorizer audience as the three real app clients so a deploy preserves
+  // live authentication instead of resetting it to CDK's auto-generated default.
+  userPoolClients: [authStack.webClient, authStack.mobileClient, authStack.extensionClient],
   table: databaseStack.table,
   mediaBucket: storageStack.mediaBucket,
 });

@@ -36,6 +36,44 @@ function err(statusCode, code, message, extra) {
   return respond(statusCode, { error: { code, message, ...(extra || {}) } });
 }
 
+// ─── Server-side subscription entitlement ───────────────────────────────────────
+// CRM push/integration is a paid (Soar+) capability (crmPush). Enforced server-side
+// from the account's authoritative subscription state (never a browser-supplied tier).
+const PAID_TIERS = new Set(['soar', 'summit', 'team']);
+function normalizeTier(raw) {
+  const t = (raw || 'free').toString().toLowerCase();
+  if (t === 'nest' || t === 'none' || t === 'expired' || t === '') return 'free';
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t;
+  return 'free';
+}
+function effectiveTier(profile) {
+  if (!profile) return 'free';
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+  if (status === 'trial' && profile.trialEndsAt) {
+    if (new Date(profile.trialEndsAt).getTime() < Date.now()) return 'free';
+  }
+  return normalizeTier(profile.subscriptionTier);
+}
+async function getEffectiveTier(userId) {
+  const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
+  return effectiveTier(res.Item);
+}
+async function requirePaid(userId) {
+  let tier;
+  try {
+    tier = await getEffectiveTier(userId);
+  } catch (e) {
+    console.error('Entitlement check failed (denying):', e.message);
+    return err(503, 'ENTITLEMENT_UNAVAILABLE', 'Could not verify subscription. Please try again.');
+  }
+  if (!PAID_TIERS.has(tier)) {
+    return err(403, 'UPGRADE_REQUIRED', 'CRM integrations require a Soar or Summit plan. Upgrade in Settings.');
+  }
+  return null;
+}
+
 // ─── Connection storage helpers ─────────────────────────────────────────────
 
 async function getConnection(userId, connectionId) {
@@ -405,7 +443,14 @@ exports.handler = async (event) => {
     const userId = getUserId(event);
     if (!userId) return err(401, 'UNAUTHORIZED', 'Missing user identity');
 
+    // The static destination catalog is harmless metadata (names/field schemas) and
+    // stays open so the UI can render upgrade prompts. Everything else — connecting a
+    // CRM, pushing, exporting — is a paid (Soar+) capability enforced server-side.
     if (method === 'GET' && path === '/crm/destinations') return handleListDestinations();
+
+    const crmGate = await requirePaid(userId);
+    if (crmGate) return crmGate;
+
     if (method === 'GET' && path === '/crm/connections') return handleListConnections(userId);
     if (method === 'POST' && path === '/crm/connections') {
       return handleCreateConnection(userId, event.body ? JSON.parse(event.body) : {});

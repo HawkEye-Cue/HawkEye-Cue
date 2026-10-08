@@ -59,25 +59,42 @@ async function getOrCreateUser(userId, event) {
   const email = event.requestContext?.authorizer?.jwt?.claims?.email ?? '';
   const now = new Date().toISOString();
 
+  // Safety-net profile creation must mirror the canonical signup path
+  // (auth-post-confirmation): a brand-new account gets a one-time 7-day Soar trial.
+  // This path only runs when NO profile exists yet (getUser returned null) and writes
+  // with attribute_not_exists(PK), so it can never re-grant a trial to an existing
+  // account or downgrade a paid subscriber — the conditional write loses the race and
+  // we re-read the authoritative profile below.
   const newProfile = {
     PK: `USER#${userId}`,
     SK: 'PROFILE',
     userId,
     email,
     createdAt: now,
-    subscriptionTier: 'free',
-    subscriptionStatus: 'none',
+    subscriptionTier: 'soar',
+    subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     aiGenerationsUsed: 0,
     selectedTradeId: null,
   };
 
-  await dynamo.send(new PutCommand({
-    TableName: TABLE_NAME,
-    Item: newProfile,
-    ConditionExpression: 'attribute_not_exists(PK)',
-  })).catch(() => {}); // ignore if race condition
-
-  return newProfile;
+  try {
+    await dynamo.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: newProfile,
+      ConditionExpression: 'attribute_not_exists(PK)',
+    }));
+    return newProfile;
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') {
+      // A profile was created concurrently (likely by auth-post-confirmation). Return
+      // the authoritative stored profile rather than our would-be new one.
+      const existing = await getUser(userId);
+      if (existing) return existing;
+    }
+    // Any other error: fall back to returning the intended profile shape.
+    return newProfile;
+  }
 }
 
 // ─── Bundle.social API helpers ────────────────────────────────────────────────

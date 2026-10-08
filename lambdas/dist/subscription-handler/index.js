@@ -51,6 +51,21 @@ function getUserId(event) {
   return event.requestContext?.authorizer?.jwt?.claims?.sub ?? null;
 }
 
+// Allowlist of origins we will redirect back to after Stripe-hosted flows. Prevents
+// an attacker-supplied Origin header from turning our checkout/portal return into an
+// open redirect. Anything not on the list falls back to the canonical app origin.
+const DEFAULT_APP_ORIGIN = 'https://app.hawkeyecue.com';
+const ALLOWED_RETURN_ORIGINS = new Set([
+  'https://app.hawkeyecue.com',
+  'https://hawkeyecue.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+]);
+function safeReturnBase(origin) {
+  if (origin && ALLOWED_RETURN_ORIGINS.has(origin)) return origin;
+  return DEFAULT_APP_ORIGIN;
+}
+
 // Fetch Stripe secret key from Secrets Manager (cached per Lambda warm instance)
 let stripeInstance = null;
 async function getStripe() {
@@ -127,6 +142,7 @@ async function handleGetSubscription(userId) {
     aiGenerationsUsed: user.aiGenerationsUsed ?? 0,
     aiGenerationsLimit: AI_GENERATION_LIMITS[tier] ?? 2,
     currentPeriodEnd: user.subscriptionCurrentPeriodEnd ?? null,
+    cancelAtPeriodEnd: Boolean(user.subscriptionCancelAtPeriodEnd),
     stripeCustomerId: user.stripeCustomerId ?? null,
   });
 }
@@ -148,7 +164,7 @@ async function handleCheckout(userId, body, origin) {
   const user = await getUser(userId);
   if (!user) return err(404, 'USER_NOT_FOUND', 'User not found');
 
-  const baseUrl = origin || 'https://app.hawkeyecue.com';
+  const baseUrl = safeReturnBase(origin);
   const successUrl = `${baseUrl}/settings?checkout=success`;
   const cancelUrl = `${baseUrl}/settings?checkout=cancelled`;
 
@@ -204,6 +220,12 @@ async function handleCheckout(userId, body, origin) {
 }
 
 // POST /subscription/cancel
+// Graceful, end-of-period cancellation. We do NOT revoke access immediately: a paid
+// subscriber keeps their tier until the period they've already paid for ends. Stripe
+// drives the entitlement transition — scheduling the cancel fires a
+// customer.subscription.updated (cancel_at_period_end=true) now, and a
+// customer.subscription.deleted at period end, both handled by the webhook. We avoid
+// locally downgrading here so there is a single source of truth for entitlement.
 async function handleCancel(userId) {
   const stripe = await getStripe();
   const user = await getUser(userId);
@@ -213,17 +235,65 @@ async function handleCancel(userId) {
     return err(400, 'NO_SUBSCRIPTION', 'No active subscription to cancel');
   }
 
-  // Cancel immediately
-  await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+  // Retrieve current state so we can treat trials explicitly and report timing.
+  let subscription;
+  try {
+    subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+  } catch (e) {
+    console.error('Failed to retrieve subscription for cancel:', e.message);
+    return err(502, 'STRIPE_ERROR', 'Could not reach the billing provider. Please try again.');
+  }
 
-  // Update DynamoDB to free tier
-  await updateUserSubscription(userId, {
-    subscriptionTier: 'free',
-    stripeSubscriptionId: null,
-    subscriptionCurrentPeriodEnd: null,
+  const isTrialing = subscription.status === 'trialing';
+
+  // Schedule cancellation at the end of the current paid (or trial) period. For a
+  // trial this means access continues until the trial ends, then it will not renew —
+  // the customer is never charged. Stripe emits the lifecycle webhooks that flip our
+  // stored entitlement; we only mark the scheduled flag for immediate UI feedback.
+  const updated = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+    cancel_at_period_end: true,
   });
 
-  return ok({ message: 'Subscription cancelled' });
+  const periodEnd = updated.current_period_end
+    ? new Date(updated.current_period_end * 1000).toISOString()
+    : (user.subscriptionCurrentPeriodEnd ?? null);
+
+  await updateUserSubscription(userId, {
+    subscriptionCancelAtPeriodEnd: true,
+    subscriptionCurrentPeriodEnd: periodEnd,
+  });
+
+  return ok({
+    message: isTrialing
+      ? 'Your trial will end as scheduled and will not convert to a paid plan. You keep access until the trial ends.'
+      : 'Your subscription will cancel at the end of the current billing period. You keep full access until then.',
+    cancelAtPeriodEnd: true,
+    accessUntil: periodEnd,
+    wasTrialing: isTrialing,
+  });
+}
+
+// POST /subscription/portal
+// Create a Stripe Billing Portal session so the customer can self-serve: update
+// payment methods and view invoices. The Stripe customer identity is derived ONLY
+// from the authenticated account's stored stripeCustomerId — never from request
+// input — so a user can never open another customer's portal. The return URL is
+// restricted to our own app origin (allowlisted) to prevent open-redirect abuse.
+async function handlePortal(userId, origin) {
+  const stripe = await getStripe();
+  const user = await getUser(userId);
+  if (!user) return err(404, 'USER_NOT_FOUND', 'User not found');
+
+  if (!user.stripeCustomerId) {
+    return err(400, 'NO_CUSTOMER', 'No billing account found. Subscribe first to manage billing.');
+  }
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer: user.stripeCustomerId,
+    return_url: `${safeReturnBase(origin)}/settings`,
+  });
+
+  return ok({ portalUrl: session.url });
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -251,6 +321,12 @@ exports.handler = async (event) => {
     // POST /subscription/cancel
     if (method === 'POST' && path === '/subscription/cancel') {
       return handleCancel(userId);
+    }
+
+    // POST /subscription/portal
+    if (method === 'POST' && path === '/subscription/portal') {
+      const origin = event.headers?.origin ?? event.headers?.Origin ?? null;
+      return handlePortal(userId, origin);
     }
 
     return err(404, 'NOT_FOUND', `No route for ${method} ${path}`);

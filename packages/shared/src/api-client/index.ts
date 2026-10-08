@@ -11,6 +11,7 @@ import type {
   Deal,
   CreateDealInput,
   DailyCue,
+  ImportedFlockGroup,
   Subscription,
   DeviceRegistration,
   SocialAccount,
@@ -139,6 +140,16 @@ export class ApiClient {
     req: ContentGenerationRequest,
   ): Promise<GeneratedContent> {
     return this.request<GeneratedContent>('POST', '/content/generate', req);
+  }
+
+  // --- Smart Flock Import ---
+  // Send screenshots of Facebook groups/rules; receive reviewable group suggestions.
+  // Never assumes promotion is allowed — groups without clear rules come back with
+  // empty postingDays, anyday=false, and a warning for the user to resolve.
+  async importFlockGroups(
+    images: { data: string; format: string }[],
+  ): Promise<{ groups: ImportedFlockGroup[] }> {
+    return this.request<{ groups: ImportedFlockGroup[] }>('POST', '/flock/import', { images });
   }
 
   async getContentHistory(): Promise<GeneratedContent[]> {
@@ -305,8 +316,18 @@ export class ApiClient {
     );
   }
 
-  async cancelSubscription(): Promise<void> {
-    return this.request<void>('POST', '/subscription/cancel');
+  async cancelSubscription(): Promise<{
+    message: string;
+    cancelAtPeriodEnd: boolean;
+    accessUntil: string | null;
+    wasTrialing: boolean;
+  }> {
+    return this.request('POST', '/subscription/cancel');
+  }
+
+  // Open the Stripe-hosted billing portal (manage payment methods, view invoices).
+  async createBillingPortal(): Promise<{ portalUrl: string }> {
+    return this.request<{ portalUrl: string }>('POST', '/subscription/portal');
   }
 
   // --- Account ---

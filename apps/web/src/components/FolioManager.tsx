@@ -189,7 +189,7 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
           <div className="flex flex-col items-end gap-1 shrink-0">
             <button
               onClick={() => { if (folioEnded) rollForward(); setEditing(true); }}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg"
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-medium rounded-lg"
             >
               {folioEnded ? '↻ New Folio' : start ? 'Edit' : 'Set Dates'}
             </button>
@@ -213,17 +213,17 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
 
           <div>
             <label className="block text-[10px] text-slate-400 mb-1">Folio Name (optional)</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder='e.g. "Aug 26 Folio"' className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs placeholder-slate-500" />
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder='e.g. "Aug 26 Folio"' className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs placeholder-slate-500" />
           </div>
 
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <label className="block text-[10px] text-slate-400 mb-1">Start</label>
-              <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
+              <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs" />
             </div>
             <div className="flex-1">
               <label className="block text-[10px] text-slate-400 mb-1">End</label>
-              <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
+              <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs" />
             </div>
           </div>
 
@@ -245,14 +245,14 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
 
           {/* Cycle type */}
           <div className="flex gap-2">
-            <button onClick={() => setCycleType('monthly')} className={`flex-1 py-2 rounded-lg text-[11px] font-medium transition-all ${cycleType === 'monthly' ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-300'}`}>Monthly</button>
-            <button onClick={() => setCycleType('custom')} className={`flex-1 py-2 rounded-lg text-[11px] font-medium transition-all ${cycleType === 'custom' ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-300'}`}>Custom cycle</button>
+            <button onClick={() => setCycleType('monthly')} className={`flex-1 py-2 rounded-lg text-[11px] font-medium transition-all ${cycleType === 'monthly' ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-300'}`}>Monthly</button>
+            <button onClick={() => setCycleType('custom')} className={`flex-1 py-2 rounded-lg text-[11px] font-medium transition-all ${cycleType === 'custom' ? 'bg-amber-500 text-black' : 'bg-white/5 text-slate-300'}`}>Custom cycle</button>
           </div>
 
           {cycleType === 'custom' && (
             <div>
               <label className="block text-[10px] text-slate-400 mb-1">Cycle length (days)</label>
-              <input type="number" min={7} max={90} value={cycleDays} onChange={(e) => setCycleDays(Math.max(7, parseInt(e.target.value) || 30))} className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs" />
+              <input type="number" min={7} max={90} value={cycleDays} onChange={(e) => setCycleDays(Math.max(7, parseInt(e.target.value) || 30))} className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs" />
             </div>
           )}
 
@@ -264,7 +264,7 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
           </div>
 
           <div className="flex gap-2">
-            <button onClick={generateSchedule} className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg">⚡ Auto-Generate</button>
+            <button onClick={generateSchedule} className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg">⚡ Auto-Generate</button>
             <button
               onClick={() => setScheduled((prev) => {
                 // Add a blank folio starting the day after the last one (or today)
@@ -283,14 +283,14 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
               <p className="text-[10px] text-slate-400">Tap any field to edit — name, start, and end are all yours to set.</p>
               <div className="max-h-72 overflow-y-auto space-y-2">
                 {scheduled.map((f, i) => (
-                  <div key={i} className="bg-slate-800 border border-white/10 rounded-lg p-2.5 space-y-2">
+                  <div key={i} className="bg-white/5 border border-white/10 rounded-lg p-2.5 space-y-2">
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
                         value={f.name}
                         onChange={(e) => setScheduled((prev) => prev.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x))}
                         placeholder="Folio name"
-                        className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-[11px] text-white font-medium focus:border-amber-500 outline-none"
+                        className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-[11px] text-white font-medium focus:border-amber-500 outline-none"
                       />
                       <button onClick={() => setScheduled((prev) => prev.filter((_, xi) => xi !== i))} className="text-red-400 hover:text-red-300 text-sm shrink-0 px-1">✕</button>
                     </div>
@@ -301,7 +301,7 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
                           type="date"
                           value={f.start}
                           onChange={(e) => setScheduled((prev) => prev.map((x, xi) => xi === i ? { ...x, start: e.target.value } : x))}
-                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-[10px] text-white focus:border-amber-500 outline-none"
+                          className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-[10px] text-white focus:border-amber-500 outline-none"
                         />
                       </div>
                       <span className="text-slate-500 text-[10px] pt-4">→</span>
@@ -311,7 +311,7 @@ export default function FolioManager({ onSaved, compact }: FolioManagerProps) {
                           type="date"
                           value={f.end}
                           onChange={(e) => setScheduled((prev) => prev.map((x, xi) => xi === i ? { ...x, end: e.target.value } : x))}
-                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-[10px] text-white focus:border-amber-500 outline-none"
+                          className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-[10px] text-white focus:border-amber-500 outline-none"
                         />
                       </div>
                     </div>

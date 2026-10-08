@@ -109,13 +109,17 @@ export default function KeywordsPage() {
     <div className="space-y-4">
       <PageHeader icon="🔑" title="Keywords" subtitle="What HawkEye watches for across social media to find you leads." />
 
+      <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      {/* Left column */}
+      <div className="min-w-0 space-y-4">
+
       {error && (
         <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
           {error}
           {error.includes('🔒') && (
             <button
               onClick={() => navigate('/settings')}
-              className="block mt-2 text-blue-400 hover:text-blue-300 font-medium"
+              className="block mt-2 text-amber-300 hover:text-amber-200 font-medium"
             >
               Upgrade Plan →
             </button>
@@ -132,14 +136,14 @@ export default function KeywordsPage() {
             onChange={(e) => setNewKeyword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addKeyword()}
             placeholder="Enter a keyword to track..."
-            className="flex-1 min-w-[150px] px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
+            className="flex-1 min-w-[150px] px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:border-amber-500/50 focus:outline-none"
             maxLength={100}
           />
           {selectedTrades.length > 1 && (
             <select
               value={newKeywordTrade}
               onChange={(e) => setNewKeywordTrade(e.target.value)}
-              className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm"
+              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
             >
               <option value="">For: {selectedTrade?.name || 'Select trade'}</option>
               {selectedTrades.map((t) => (
@@ -150,7 +154,7 @@ export default function KeywordsPage() {
           <button
             onClick={addKeyword}
             disabled={adding || !newKeyword.trim()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
+            className="bg-amber-500 text-black font-bold px-4 py-2 rounded-lg text-sm hover:bg-amber-400 disabled:opacity-50"
           >
             {adding ? '...' : 'Add'}
           </button>
@@ -178,10 +182,10 @@ export default function KeywordsPage() {
                     {tradeKeywords.map((kw) => (
                       <span
                         key={kw.id}
-                        className="inline-flex items-center gap-1 bg-blue-900/40 text-blue-300 px-3 py-1.5 rounded-full text-sm"
+                        className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-slate-300 px-3 py-1.5 rounded-full text-sm"
                       >
                         {kw.keyword}
-                        <button onClick={() => removeKeyword(kw.id)} className="text-blue-400 hover:text-red-400 ml-1">×</button>
+                        <button onClick={() => removeKeyword(kw.id)} className="text-slate-400 hover:text-red-400 ml-1">×</button>
                       </span>
                     ))}
                   </div>
@@ -197,9 +201,9 @@ export default function KeywordsPage() {
                   <p className="text-xs text-slate-500 mb-1 font-medium">Other</p>
                   <div className="flex flex-wrap gap-2">
                     {otherKeywords.map((kw) => (
-                      <span key={kw.id} className="inline-flex items-center gap-1 bg-blue-900/40 text-blue-300 px-3 py-1.5 rounded-full text-sm">
+                      <span key={kw.id} className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-slate-300 px-3 py-1.5 rounded-full text-sm">
                         {kw.keyword}
-                        <button onClick={() => removeKeyword(kw.id)} className="text-blue-400 hover:text-red-400 ml-1">×</button>
+                        <button onClick={() => removeKeyword(kw.id)} className="text-slate-400 hover:text-red-400 ml-1">×</button>
                       </span>
                     ))}
                   </div>
@@ -209,6 +213,11 @@ export default function KeywordsPage() {
           </div>
         )}
       </div>
+
+      </div>
+
+      {/* Right column */}
+      <div className="min-w-0 space-y-4">
 
       {selectedTrades.length > 0 && (
         <div className="glass-card">
@@ -225,7 +234,7 @@ export default function KeywordsPage() {
                   }
                 }
               }}
-              className="text-xs text-blue-400 hover:text-blue-300 font-medium"
+              className="text-xs text-slate-300 hover:text-white font-medium"
             >
               + Add all
             </button>
@@ -272,7 +281,7 @@ export default function KeywordsPage() {
                       className={`px-3 py-1.5 rounded-full text-sm transition-all ${
                         alreadyAdded
                           ? 'bg-green-900/30 text-green-400 border border-green-500/20'
-                          : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-blue-900/40 hover:text-blue-300'
+                          : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
                       }`}
                     >
                       {alreadyAdded ? '✓ ' : '+ '}{kw}
@@ -284,6 +293,9 @@ export default function KeywordsPage() {
           ))}
         </div>
       )}
+
+      </div>
+      </div>
     </div>
   );
 }

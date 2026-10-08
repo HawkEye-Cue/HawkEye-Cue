@@ -35,7 +35,7 @@ export default function ProNudge({ id, when, message }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 p-3 flex items-start gap-3">
+    <div className="rounded-xl border border-white/10 bg-white/5 p-3 flex items-start gap-3">
       <span className="text-xl shrink-0">⚡</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-white">Ready for more power?</p>
@@ -43,13 +43,13 @@ export default function ProNudge({ id, when, message }: Props) {
         <div className="flex gap-2 mt-2">
           <button
             onClick={() => { setMode('pro'); close(); showToast('⚡ Pro mode on — advanced tools unlocked'); }}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-lg transition-all active:scale-95"
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-bold rounded-lg transition-all active:scale-95"
           >
             Turn on Pro
           </button>
           <button
             onClick={close}
-            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-[11px] font-medium rounded-lg"
+            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 text-[11px] font-medium rounded-lg"
           >
             Not now
           </button>

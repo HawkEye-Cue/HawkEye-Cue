@@ -72,7 +72,7 @@ export default function InstallPrompt() {
 
   return (
     <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9996] w-[calc(100%-1.5rem)] max-w-sm px-3">
-      <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-slate-900 to-slate-800 shadow-2xl p-4 flex items-start gap-3">
+      <div className="rounded-2xl border border-amber-500/30 bg-black shadow-2xl p-4 flex items-start gap-3">
         <span className="text-2xl shrink-0">🦅</span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white">Add HawkEye-Cue to your phone</p>
@@ -95,7 +95,7 @@ export default function InstallPrompt() {
                 Install app
               </button>
             )}
-            <button onClick={dismiss} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-[11px] font-medium rounded-lg">
+            <button onClick={dismiss} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 text-[11px] font-medium rounded-lg">
               {iosHint ? 'Got it' : 'Not now'}
             </button>
           </div>

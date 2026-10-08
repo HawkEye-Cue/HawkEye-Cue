@@ -58,8 +58,9 @@ body::after {
 /* ─── Glassmorphism card style ───────────────────────────────────────── */
 @layer components {
   .glass-card {
-    @apply rounded-xl border border-white/20 p-4;
-    background: rgb(51, 65, 85);
+    @apply rounded-xl p-4;
+    background: rgba(10, 10, 10, 0.70);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -77,13 +78,15 @@ body::after {
   }
 
   .glass-card-strong {
-    @apply rounded-xl border border-white/25 p-6;
-    background: rgb(51, 65, 85);
+    @apply rounded-xl p-6;
+    background: rgba(10, 10, 10, 0.70);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
 
-  /* Gradient border effect */
+  /* Decorative border effect — flat neutral border (no gradient, no blue
+     decoration) so it is safe on in-app surfaces per the branding rules. */
   .gradient-border {
     position: relative;
     border: none;
@@ -95,7 +98,7 @@ body::after {
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(168, 85, 247, 0.5), rgba(59, 130, 246, 0.2));
+    background: rgba(255, 255, 255, 0.1);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -105,10 +108,10 @@ body::after {
 
   /* Button micro-interactions */
   .btn-primary {
-    @apply bg-blue-600 text-white font-medium rounded-xl transition-all duration-200;
+    @apply bg-amber-500 text-black font-bold rounded-xl transition-all duration-200;
   }
   .btn-primary:hover {
-    @apply bg-blue-500 shadow-lg shadow-blue-600/25 -translate-y-0.5;
+    @apply bg-amber-400 -translate-y-0.5;
   }
   .btn-primary:active {
     @apply scale-95 translate-y-0;
@@ -135,10 +138,12 @@ body::after {
   }
 
   /* ─── Branded lead row (hawk perch cards) ───────────────────────────── */
+  /* Flat dark surface (no gradient fill); amber hover accent is a legitimate
+     selection affordance and stays amber. */
   .lead-row {
     position: relative;
     border-radius: 0.75rem;
-    background: linear-gradient(135deg, rgba(51, 65, 85, 0.9), rgba(30, 41, 59, 0.95));
+    background: #0a0a0a;
     border: 1px solid rgba(255, 255, 255, 0.08);
     transition: all 0.2s ease;
     overflow: hidden;
@@ -148,15 +153,14 @@ body::after {
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 3px;
-    background: linear-gradient(180deg, #FACC15, #f59e0b);
+    background: #f59e0b;
     opacity: 0;
     transition: opacity 0.2s ease;
   }
   .lead-row:hover {
     border-color: rgba(250, 204, 21, 0.35);
-    background: linear-gradient(135deg, rgba(51, 65, 85, 1), rgba(30, 41, 59, 1));
+    background: #111111;
     transform: translateX(2px);
-    box-shadow: 0 4px 20px -4px rgba(250, 204, 21, 0.15);
   }
   .lead-row:hover::before { opacity: 1; }
 

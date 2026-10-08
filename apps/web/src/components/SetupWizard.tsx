@@ -123,7 +123,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     return (
       <button
         onClick={() => setMinimized(false)}
-        className="fixed bottom-24 right-4 z-50 bg-blue-600 text-white w-12 h-12 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-lg hover:bg-blue-500 transition-colors animate-bounce"
+        className="fixed bottom-24 right-4 z-50 bg-amber-500 text-white w-12 h-12 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center text-lg hover:bg-amber-400 transition-colors animate-bounce"
         title="Setup Guide"
       >
         🦅
@@ -133,7 +133,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
 
   return (
     <div className="fixed bottom-20 left-3 right-3 z-50 max-w-sm mx-auto animate-scale-in">
-      <div className="bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-2xl shadow-black/50">
+      <div className="bg-black border border-white/10 rounded-xl p-4 shadow-2xl shadow-black/50">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -148,9 +148,9 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
         </div>
 
         {/* Progress bar */}
-        <div className="w-full h-1.5 bg-slate-700 rounded-full mb-3 overflow-hidden">
+        <div className="w-full h-1.5 bg-white/5 rounded-full mb-3 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500"
+            className="h-full bg-gradient-to-r from-amber-500 to-green-500 rounded-full transition-all duration-500"
             style={{ width: `${(completedCount / steps.length) * 100}%` }}
           />
         </div>
@@ -167,7 +167,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
         {/* Action button */}
         <button
           onClick={() => navigate(step.navigateTo)}
-          className="w-full mt-3 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-500 transition-colors"
+          className="w-full mt-3 bg-amber-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-amber-400 transition-colors"
         >
           {step.action} →
         </button>
@@ -193,7 +193,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
             <div
               key={s.id}
               className={`w-2 h-2 rounded-full transition-all ${
-                s.checkComplete() ? 'bg-green-500' : i === currentStep ? 'bg-blue-500 w-4' : 'bg-slate-600'
+                s.checkComplete() ? 'bg-green-500' : i === currentStep ? 'bg-amber-500 w-4' : 'bg-white/10'
               }`}
             />
           ))}

@@ -30,7 +30,7 @@ const URGENCY = {
   now: { label: '🔥 NOW', color: 'text-red-300 bg-red-500/15 border-red-500/30' },
   soon: { label: '⚡ SOON', color: 'text-amber-300 bg-amber-500/15 border-amber-500/30' },
   nurture: { label: '🌱 NURTURE', color: 'text-sky-300 bg-sky-500/15 border-sky-500/30' },
-  not_a_lead: { label: '🚫 NOT A LEAD', color: 'text-slate-400 bg-slate-500/15 border-slate-500/30' },
+  not_a_lead: { label: '🚫 NOT A LEAD', color: 'text-slate-400 bg-white/10 border-white/15' },
 };
 
 export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
@@ -217,7 +217,7 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex flex-col" style={{ paddingTop: '5rem' }} onClick={onClose}>
-      <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-white/10 mx-2 rounded-t-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-black border-b border-white/10 mx-2 rounded-t-xl" onClick={(e) => e.stopPropagation()}>
         <div>
           <h3 className="font-bold text-white flex items-center gap-2 text-sm">📡 HawkEye Radar</h3>
           <p className="text-[11px] text-slate-400">Find the conversations most likely to make you money</p>
@@ -260,13 +260,13 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
               value={postText}
               onChange={(e) => setPostText(e.target.value)}
               placeholder='e.g. "Does anyone know a good roofer? Ours is leaking after the storm."'
-              className="w-full h-24 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 resize-none"
+              className="w-full h-24 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-slate-500 resize-none"
             />
             <div className="flex gap-2">
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Person's name (optional)" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500" />
-              <input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="Group / neighborhood (optional)" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500" />
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Person's name (optional)" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs placeholder-slate-500" />
+              <input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="Group / neighborhood (optional)" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs placeholder-slate-500" />
             </div>
-            <button onClick={score} disabled={loading} className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-lg disabled:opacity-50 hover:opacity-90">
+            <button onClick={score} disabled={loading} className="w-full py-2.5 bg-amber-500 text-black text-sm font-bold rounded-lg disabled:opacity-50 hover:bg-amber-400">
               {loading ? '📡 Scanning…' : '📡 Scan This Post'}
             </button>
           </div>
@@ -296,7 +296,7 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
 
               {/* Why this score? — transparent factor breakdown */}
               {result.factors && result.factors.length > 0 && (
-                <div className="bg-slate-800/60 border border-white/10 rounded-lg p-3">
+                <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Why this score?</p>
                   <div className="space-y-1">
                     {result.factors.map((f, i) => (
@@ -315,11 +315,11 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
 
               {/* Detail grid */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="bg-slate-800 rounded-lg p-2.5">
+                <div className="bg-white/5 rounded-lg p-2.5">
                   <p className="text-[9px] text-slate-500 uppercase tracking-wide">Est. Value</p>
                   <p className="text-sm font-bold text-green-400">${(result.estimatedValue || 0).toLocaleString()}</p>
                 </div>
-                <div className="bg-slate-800 rounded-lg p-2.5">
+                <div className="bg-white/5 rounded-lg p-2.5">
                   <p className="text-[9px] text-slate-500 uppercase tracking-wide">Follow up</p>
                   <p className="text-sm font-bold text-white">{result.followUpDays === 0 ? 'Today' : new Date(result.followUpDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                 </div>
@@ -327,12 +327,12 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
 
               {/* Suggested response */}
               {result.isLead && (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                  <p className="text-[10px] font-bold text-blue-300 mb-1">💬 Suggested Response</p>
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                  <p className="text-[10px] font-bold text-amber-300 mb-1">💬 Suggested Response</p>
                   <p className="text-xs text-slate-200 italic leading-relaxed">"{result.suggestedResponse}"</p>
                   <button
                     onClick={() => { navigator.clipboard.writeText(result.suggestedResponse); showToast('✓ Copied — paste it as your reply'); }}
-                    className="mt-2 px-3 py-1.5 bg-blue-600/30 border border-blue-500/40 text-blue-200 rounded-lg text-[11px] font-bold hover:bg-blue-600/40"
+                    className="mt-2 px-3 py-1.5 bg-amber-500/30 border border-amber-500/40 text-amber-200 rounded-lg text-[11px] font-bold hover:bg-amber-500/30"
                   >
                     📋 Copy Response
                   </button>
@@ -405,16 +405,16 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
                   value={newTestimonial}
                   onChange={(e) => setNewTestimonial(e.target.value)}
                   placeholder='e.g. "They saved us $600 a year and made switching painless."'
-                  className="w-full h-16 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none"
+                  className="w-full h-16 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs placeholder-slate-500 resize-none"
                 />
                 <div className="flex gap-2">
-                  <input value={newTestimonialAuthor} onChange={(e) => setNewTestimonialAuthor(e.target.value)} placeholder="Customer name (optional)" className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500" />
+                  <input value={newTestimonialAuthor} onChange={(e) => setNewTestimonialAuthor(e.target.value)} placeholder="Customer name (optional)" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs placeholder-slate-500" />
                   <button onClick={addTestimonial} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shrink-0">+ Add</button>
                 </div>
                 {testimonials.length > 0 && (
                   <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
                     {testimonials.map((t) => (
-                      <div key={t.id} className="flex items-start gap-2 bg-slate-800 border border-white/10 rounded-lg px-3 py-2">
+                      <div key={t.id} className="flex items-start gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] text-slate-200 italic leading-relaxed">"{t.text}"</p>
                           <p className="text-[9px] text-emerald-400 mt-0.5">— {t.author}</p>

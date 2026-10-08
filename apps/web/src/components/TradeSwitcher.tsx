@@ -25,7 +25,7 @@ export default function TradeSwitcher({ value, onChange }: Props) {
         const trade = selectedTrades.find((t) => t.id === e.target.value);
         if (trade && onChange) onChange(trade);
       }}
-      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-blue-300 focus:border-blue-500/50 focus:outline-none"
+      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-amber-300 focus:border-amber-500/40 focus:outline-none"
     >
       {selectedTrades.map((t) => (
         <option key={t.id} value={t.id}>{t.name}</option>

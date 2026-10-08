@@ -158,7 +158,7 @@ export default function HawkInsightsPage() {
             <li>📈 Weekly and monthly trend reports</li>
           </ul>
         </div>
-        <a href="/settings" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-black px-8 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity mt-4">Upgrade to Soar — $24.99/mo</a>
+        <a href="/settings" className="inline-block bg-amber-500 hover:bg-amber-400 text-black px-8 py-3 rounded-lg font-bold transition-colors mt-4">Upgrade to Soar — $24.99/mo</a>
       </div>
     );
   }
@@ -169,6 +169,9 @@ export default function HawkInsightsPage() {
       <div>
         {!isPro && <p className="text-[10px] text-slate-600 mt-1">Showing the essentials · switch to Pro in Settings for deep analytics</p>}
       </div>
+
+      <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      <div className="min-w-0 space-y-4">
 
       {/* Top Lead Sources */}
       <div className="glass-card">
@@ -184,8 +187,8 @@ export default function HawkInsightsPage() {
                     <span className="text-sm text-slate-300 truncate">{sourceLabels[s.source] || s.source}</span>
                     <span className="text-xs text-green-400">${s.value.toLocaleString()}</span>
                   </div>
-                  <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full" style={{ width: `${Math.round((s.count / (topSources[0]?.count || 1)) * 100)}%` }} />
+                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.round((s.count / (topSources[0]?.count || 1)) * 100)}%` }} />
                   </div>
                   <div className="flex justify-between mt-0.5">
                     <span className="text-xs text-slate-500">{s.count} deals</span>
@@ -211,10 +214,10 @@ export default function HawkInsightsPage() {
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-0.5">
                     <span className="text-sm text-slate-300 capitalize">{p.platform}</span>
-                    <span className="text-xs text-blue-400">{Math.round((p.count / totalLeads) * 100)}%</span>
+                    <span className="text-xs text-amber-400">{Math.round((p.count / totalLeads) * 100)}%</span>
                   </div>
-                  <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.round((p.count / totalLeads) * 100)}%` }} />
+                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.round((p.count / totalLeads) * 100)}%` }} />
                   </div>
                   <span className="text-xs text-slate-500">{p.count} leads</span>
                 </div>
@@ -235,8 +238,8 @@ export default function HawkInsightsPage() {
             {peakHours.map((h) => (
               <div key={h.hour} className="flex items-center gap-3">
                 <span className="text-sm text-slate-400 w-12">{formatHour(h.hour)}</span>
-                <div className="flex-1 h-4 bg-slate-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full" style={{ width: `${Math.round((h.count / maxHourCount) * 100)}%` }} />
+                <div className="flex-1 h-4 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.round((h.count / maxHourCount) * 100)}%` }} />
                 </div>
                 <span className="text-xs text-slate-500 w-8 text-right">{h.count}</span>
               </div>
@@ -303,8 +306,8 @@ export default function HawkInsightsPage() {
                 {sortedHours.slice(0, 6).map(([hour, count]) => (
                   <div key={hour} className="flex items-center gap-2">
                     <span className="text-xs text-slate-400 w-12 shrink-0">{hour}</span>
-                    <div className="flex-1 h-4 bg-slate-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full" style={{ width: `${(count / maxHourCount) * 100}%` }} />
+                    <div className="flex-1 h-4 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500 rounded-full" style={{ width: `${(count / maxHourCount) * 100}%` }} />
                     </div>
                     <span className="text-xs text-slate-400 w-6 text-right">{count}</span>
                   </div>
@@ -336,8 +339,8 @@ export default function HawkInsightsPage() {
                         <span className="text-xs text-white truncate flex-1">{group}</span>
                         <span className="text-[10px] text-slate-500 shrink-0">{count} posts</span>
                       </div>
-                      <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden mt-1">
-                        <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" style={{ width: `${(count / maxGroupCount) * 100}%` }} />
+                      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden mt-1">
+                        <div className="h-full bg-amber-500 rounded-full" style={{ width: `${(count / maxGroupCount) * 100}%` }} />
                       </div>
                     </div>
                   </div>
@@ -347,6 +350,9 @@ export default function HawkInsightsPage() {
           </>
         );
       })()}
+
+      </div>
+      <div className="min-w-0 space-y-4">
 
       {/* Flock Analytics */}
       <div className="glass-card">
@@ -404,8 +410,8 @@ export default function HawkInsightsPage() {
                   <div className="text-xl font-bold text-green-400">{completionRate}%</div>
                   <div className="text-xs text-slate-400">Completion</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
-                  <div className="text-xl font-bold text-blue-400">{completedPosts.length}</div>
+                <div className="text-center p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <div className="text-xl font-bold text-amber-300">{completedPosts.length}</div>
                   <div className="text-xs text-slate-400">Posted</div>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-red-500/5 border border-red-500/10">
@@ -466,21 +472,21 @@ export default function HawkInsightsPage() {
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
-                <div className="text-center p-3 rounded-lg bg-slate-800 border border-green-500/30">
+                <div className="text-center p-3 rounded-lg bg-white/5 border border-green-500/30">
                   <div className="text-xl font-bold text-green-400">${teamAnalytics.totalRevenue.toLocaleString()}</div>
                   <div className="text-xs text-slate-400">Team Revenue</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-slate-800 border border-blue-500/30">
-                  <div className="text-xl font-bold text-blue-400">{teamAnalytics.wonDeals}</div>
+                <div className="text-center p-3 rounded-lg bg-white/5 border border-amber-500/30">
+                  <div className="text-xl font-bold text-amber-300">{teamAnalytics.wonDeals}</div>
                   <div className="text-xs text-slate-400">Team Deals Won</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="text-center p-3 rounded-lg bg-slate-800 border border-purple-500/30">
+                <div className="text-center p-3 rounded-lg bg-white/5 border border-purple-500/30">
                   <div className="text-xl font-bold text-purple-400">{teamAnalytics.flockCompletionRate}%</div>
                   <div className="text-xs text-slate-400">Team Flock Rate</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-slate-800 border border-amber-500/30">
+                <div className="text-center p-3 rounded-lg bg-white/5 border border-amber-500/30">
                   <div className="text-xl font-bold text-amber-400">{teamAnalytics.totalDeals}</div>
                   <div className="text-xs text-slate-400">Total Team Deals</div>
                 </div>
@@ -521,14 +527,14 @@ export default function HawkInsightsPage() {
         const entries = Object.entries(typeMap).sort((a, b) => b[1].total - a[1].total);
         const maxCount = entries[0]?.[1].total || 1;
         const totalLeadsCount = leads.length;
-        const colors: Record<string, string> = { 'Bundle': 'bg-purple-500', 'Auto': 'bg-blue-500', 'Home': 'bg-green-500', 'Life': 'bg-amber-500', 'Commercial': 'bg-red-500', 'Renters': 'bg-cyan-500', 'Umbrella': 'bg-indigo-500', 'Motorcycle': 'bg-pink-500' };
+        const colors: Record<string, string> = { 'Bundle': 'bg-purple-500', 'Auto': 'bg-amber-500', 'Home': 'bg-green-500', 'Life': 'bg-amber-500', 'Commercial': 'bg-red-500', 'Renters': 'bg-cyan-500', 'Umbrella': 'bg-indigo-500', 'Motorcycle': 'bg-pink-500' };
 
         return (
           <div className="glass-card">
             <h3 className="font-semibold text-white mb-3">📋 Policy Type Breakdown</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               {entries.slice(0, 8).map(([type, data]) => (
-                <div key={type} className="bg-slate-700 rounded-lg p-3 text-center">
+                <div key={type} className="bg-white/5 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-white">{data.total}</p>
                   <p className="text-[10px] text-slate-400">{type}</p>
                   <p className="text-[9px] text-green-400">{data.converted} won</p>
@@ -540,11 +546,11 @@ export default function HawkInsightsPage() {
             <div className="space-y-2">
               {entries.map(([type, data]) => {
                 const pct = (data.total / totalLeadsCount) * 100;
-                const barColor = colors[type] || 'bg-blue-500';
+                const barColor = colors[type] || 'bg-amber-500';
                 return (
                   <div key={type} className="flex items-center gap-2">
                     <span className="text-xs text-slate-300 w-20 truncate text-right">{type}</span>
-                    <div className="flex-1 bg-slate-700 rounded-full h-4 overflow-hidden">
+                    <div className="flex-1 bg-white/10 rounded-full h-4 overflow-hidden">
                       <div className={`h-full ${barColor} rounded-full flex items-center justify-end pr-1`} style={{ width: `${(data.total / maxCount) * 100}%` }}>
                         <span className="text-[9px] text-white font-bold">{data.total}</span>
                       </div>
@@ -563,7 +569,7 @@ export default function HawkInsightsPage() {
                   {entries.filter(([_, d]) => d.total >= 2).map(([type, data]) => {
                     const rate = data.total > 0 ? Math.round((data.converted / data.total) * 100) : 0;
                     return (
-                      <div key={type} className="text-center bg-slate-700 rounded-lg p-2">
+                      <div key={type} className="text-center bg-white/5 rounded-lg p-2">
                         <p className="text-sm font-bold text-white">{rate}%</p>
                         <p className="text-[9px] text-slate-400">{type}</p>
                       </div>
@@ -581,15 +587,15 @@ export default function HawkInsightsPage() {
         <div className="glass-card">
           <h3 className="font-semibold text-white mb-3">🙏 Appreciation Insights</h3>
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
+            <div className="bg-white/5 rounded-lg p-3 text-center">
               <p className="text-xl font-bold text-purple-400">{appreciations.length}</p>
               <p className="text-xs text-slate-400">Total</p>
             </div>
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-blue-400">{new Set(appreciations.map(a => a.taggerName)).size}</p>
+            <div className="bg-white/5 rounded-lg p-3 text-center">
+              <p className="text-xl font-bold text-amber-300">{new Set(appreciations.map(a => a.taggerName)).size}</p>
               <p className="text-xs text-slate-400">Advocates</p>
             </div>
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
+            <div className="bg-white/5 rounded-lg p-3 text-center">
               <p className="text-xl font-bold text-green-400">{new Set(appreciations.map(a => a.platform)).size}</p>
               <p className="text-xs text-slate-400">Platforms</p>
             </div>
@@ -608,8 +614,8 @@ export default function HawkInsightsPage() {
                   {topAdvocates.map(([name, count]) => (
                     <div key={name} className="flex items-center gap-2">
                       <span className="text-xs text-white w-28 truncate">{name}</span>
-                      <div className="flex-1 bg-slate-700 rounded-full h-3 overflow-hidden">
-                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${(count / maxCount) * 100}%` }} />
+                      <div className="flex-1 bg-white/10 rounded-full h-3 overflow-hidden">
+                        <div className="h-full bg-amber-500 rounded-full" style={{ width: `${(count / maxCount) * 100}%` }} />
                       </div>
                       <span className="text-xs text-slate-400 w-6 text-right">{count}</span>
                     </div>
@@ -630,7 +636,7 @@ export default function HawkInsightsPage() {
                 <p className="text-xs text-slate-400 font-semibold mb-2">By Platform</p>
                 <div className="flex gap-3">
                   {platEntries.map(([plat, count]) => (
-                    <div key={plat} className="text-center bg-slate-700 rounded-lg px-3 py-2">
+                    <div key={plat} className="text-center bg-white/5 rounded-lg px-3 py-2">
                       <span className="text-lg">{platIcons[plat] || '🌐'}</span>
                       <p className="text-sm font-bold text-white">{count}</p>
                       <p className="text-[10px] text-slate-400 capitalize">{plat}</p>
@@ -671,10 +677,13 @@ export default function HawkInsightsPage() {
       )}
 
       {/* Summary */}
-      <div className="glass-card border-blue-500/20 text-center">
+      <div className="glass-card text-center">
         <p className="text-sm text-slate-400">Total Deals: <span className="text-white font-medium">{deals.length}</span></p>
         <p className="text-sm text-slate-400">Total Leads Detected: <span className="text-white font-medium">{leads.length}</span></p>
         <p className="text-sm text-slate-400">Won Revenue: <span className="text-green-400 font-medium">${deals.filter((d) => d.stage === 'won').reduce((s, d) => s + d.value, 0).toLocaleString()}</span></p>
+      </div>
+
+      </div>
       </div>
     </div>
   );

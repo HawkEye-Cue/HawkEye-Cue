@@ -105,7 +105,7 @@ export default function HourlyTimeline({
                   <span className={`text-xs block truncate ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>
                     {evt.title}
                   </span>
-                  {evt.memberName && <span className="text-[9px] text-blue-400">{evt.memberName}</span>}
+                  {evt.memberName && <span className="text-[9px] text-amber-300">{evt.memberName}</span>}
                 </div>
                 {showActions && (
                   <div className="flex items-center gap-1 shrink-0">
@@ -132,7 +132,7 @@ export default function HourlyTimeline({
       )}
 
       {/* Hourly timeline */}
-      <div className="relative border-l-2 border-blue-500/30 ml-4 space-y-0">
+      <div className="relative border-l-2 border-amber-500/30 ml-4 space-y-0">
         {Array.from({ length: endHour - startHour + 1 }, (_, i) => i + startHour).map((hour) => {
           const hourEvents = hourSlots.get(hour) || [];
           const hourLabel = formatHourLabel(hour);
@@ -143,8 +143,8 @@ export default function HourlyTimeline({
                 {hourEvents.map((evt) => {
                   const icon = getEventIcon(evt.type);
                   const cleanTitle = evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '').replace(/\s*\|.*$/, '');
-                  const bgClass = evt.color || 'bg-blue-500/10';
-                  const borderClass = evt.borderColor || 'border-blue-500/20';
+                  const bgClass = evt.color || 'bg-amber-500/10';
+                  const borderClass = evt.borderColor || 'border-amber-500/20';
                   return (
                     <div key={evt.id} className={`flex items-center gap-2 ${bgClass} border ${borderClass} rounded px-2.5 py-1.5 mb-1`}>
                       <span className="text-sm">{icon}</span>
@@ -152,7 +152,7 @@ export default function HourlyTimeline({
                         <span className={`text-xs block truncate ${evt.completed ? 'line-through text-slate-600' : 'text-white'}`}>
                           {cleanTitle}
                         </span>
-                        {evt.memberName && <span className="text-[9px] text-blue-400">{evt.memberName}</span>}
+                        {evt.memberName && <span className="text-[9px] text-amber-300">{evt.memberName}</span>}
                       </div>
                       {showActions && (
                         <div className="flex items-center gap-1 shrink-0">

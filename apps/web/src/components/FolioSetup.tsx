@@ -119,7 +119,7 @@ export default function FolioSetup() {
             className={`py-2 rounded-lg text-[11px] font-bold transition-all border ${
               mode === t.id
                 ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black border-transparent'
-                : 'bg-slate-800 text-slate-300 border-white/10 hover:bg-slate-700'
+                : 'bg-black text-slate-300 border-white/10 hover:bg-white/10'
             }`}
           >
             <span className="block text-base leading-none mb-0.5">{t.icon}</span>
@@ -129,13 +129,13 @@ export default function FolioSetup() {
       </div>
 
       {mode === 'folio' && (
-        <div className="rounded-xl bg-slate-800/60 border border-white/10 p-3">
+        <div className="rounded-xl bg-white/5 border border-white/10 p-3">
           <FolioManager />
         </div>
       )}
 
       {mode === 'calendar' && (
-        <div className="rounded-xl bg-slate-800/40 border border-white/5 p-4 text-center">
+        <div className="rounded-xl bg-white/5 border border-white/5 p-4 text-center">
           <span className="text-2xl">📅</span>
           <p className="text-sm font-medium text-white mt-2">Calendar periods</p>
           <p className="text-xs text-slate-400 mt-1">
@@ -145,7 +145,7 @@ export default function FolioSetup() {
       )}
 
       {mode === 'fiscal' && (
-        <div className="rounded-xl bg-slate-800/60 border border-white/10 p-4">
+        <div className="rounded-xl bg-white/5 border border-white/10 p-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xl">🗓️</span>
             <p className="text-sm font-medium text-white">Fiscal year</p>
@@ -157,10 +157,10 @@ export default function FolioSetup() {
           <select
             value={fiscalStart}
             onChange={(e) => chooseFiscalStart(parseInt(e.target.value))}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:border-amber-500 outline-none"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:border-amber-500 outline-none"
           >
             {MONTH_NAMES.map((name, i) => (
-              <option key={i} value={i + 1} className="bg-slate-900">{name}</option>
+              <option key={i} value={i + 1} className="bg-black">{name}</option>
             ))}
           </select>
           <p className="text-[10px] text-slate-500 mt-2">

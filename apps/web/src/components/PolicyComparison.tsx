@@ -152,7 +152,7 @@ Rental Car Coverage: Yes ($40/day)`;
   return (
     <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex flex-col" style={{ paddingTop: '5rem' }} onClick={onClose}>
       {/* Header bar — sits below the site header, always visible */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-white/10 mx-2 rounded-t-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-black border-b border-white/10 mx-2 rounded-t-xl" onClick={(e) => e.stopPropagation()}>
         <div className="min-w-0">
           <h3 className="font-bold text-white flex items-center gap-2 text-sm">⚖️ Policy Comparison</h3>
           <p className="text-xs text-slate-400 truncate">{leadName}</p>
@@ -170,10 +170,10 @@ Rental Car Coverage: Yes ($40/day)`;
           ) : mode === 'input' ? (
             <div className="space-y-4">
               {/* How it works */}
-              <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 overflow-hidden">
-                <button onClick={() => setShowHelp(!showHelp)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-blue-500/5">
-                  <span className="text-xs font-bold text-blue-300">💡 How does this work?</span>
-                  <span className="text-blue-400 text-xs">{showHelp ? '▼' : '▶'}</span>
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 overflow-hidden">
+                <button onClick={() => setShowHelp(!showHelp)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-amber-500/10">
+                  <span className="text-xs font-bold text-amber-300">💡 How does this work?</span>
+                  <span className="text-amber-300 text-xs">{showHelp ? '▼' : '▶'}</span>
                 </button>
                 {showHelp && (
                   <div className="px-3 pb-3 space-y-2 text-[11px] text-slate-300 leading-relaxed">
@@ -198,28 +198,28 @@ Rental Car Coverage: Yes ($40/day)`;
               <div>
                 <label className="flex items-center justify-between text-xs font-semibold text-white mb-1">
                   <span>📄 Current Policy</span>
-                  <label className="text-[10px] text-blue-400 hover:text-blue-300 cursor-pointer">
+                  <label className="text-[10px] text-amber-300 hover:text-amber-200 cursor-pointer">
                     ⬆ Upload file
                     <input type="file" accept=".txt,.csv,.md,text/plain" className="hidden" onChange={(e) => handleFile(e, 'current')} />
                   </label>
                 </label>
-                <textarea value={currentPolicy} onChange={(e) => setCurrentPolicy(e.target.value)} placeholder="Paste the lead's current policy details, coverages, premium, deductible…" className="w-full h-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none" />
+                <textarea value={currentPolicy} onChange={(e) => setCurrentPolicy(e.target.value)} placeholder="Paste the lead's current policy details, coverages, premium, deductible…" className="w-full h-28 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs placeholder-slate-500 resize-none" />
               </div>
 
               {/* Quoted policy */}
               <div>
                 <label className="flex items-center justify-between text-xs font-semibold text-white mb-1">
                   <span>💬 Your New Quote</span>
-                  <label className="text-[10px] text-blue-400 hover:text-blue-300 cursor-pointer">
+                  <label className="text-[10px] text-amber-300 hover:text-amber-200 cursor-pointer">
                     ⬆ Upload file
                     <input type="file" accept=".txt,.csv,.md,text/plain" className="hidden" onChange={(e) => handleFile(e, 'quoted')} />
                   </label>
                 </label>
-                <textarea value={quotedPolicy} onChange={(e) => setQuotedPolicy(e.target.value)} placeholder="Paste the quote you're offering — coverages, premium, deductible…" className="w-full h-28 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-xs placeholder-slate-500 resize-none" />
+                <textarea value={quotedPolicy} onChange={(e) => setQuotedPolicy(e.target.value)} placeholder="Paste the quote you're offering — coverages, premium, deductible…" className="w-full h-28 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs placeholder-slate-500 resize-none" />
               </div>
 
               <div className="flex gap-2">
-                <button onClick={generate} disabled={generating} className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-sm font-bold rounded-lg disabled:opacity-50 hover:opacity-90">
+                <button onClick={generate} disabled={generating} className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg disabled:opacity-50">
                   {generating ? '🦅 Analyzing…' : '🤖 AI Compare'}
                 </button>
                 <button onClick={() => { setComparison({ summary: '', rows: [{ label: 'Monthly Premium', current: '', quoted: '', better: 'same' }], pros: [''], cons: [''], recommendation: '' }); setMode('result'); }} className="flex-1 py-2.5 bg-white/5 border border-white/10 text-white text-sm font-bold rounded-lg hover:bg-white/10">
@@ -229,7 +229,7 @@ Rental Car Coverage: Yes ($40/day)`;
             </div>
           ) : comparison && (
             <div className="space-y-4">
-              <button onClick={() => setMode('input')} className="text-xs text-blue-400 hover:text-blue-300">← Edit inputs</button>
+              <button onClick={() => setMode('input')} className="text-xs text-amber-300 hover:text-amber-200">← Edit inputs</button>
 
               {/* Summary */}
               <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -238,19 +238,19 @@ Rental Car Coverage: Yes ($40/day)`;
 
               {/* Side-by-side table */}
               <div className="rounded-lg border border-white/10 overflow-hidden">
-                <div className="grid grid-cols-[1fr_1fr_1fr] bg-slate-700 text-[10px] font-bold uppercase tracking-wide text-slate-300">
+                <div className="grid grid-cols-[1fr_1fr_1fr] bg-white/5 text-[10px] font-bold uppercase tracking-wide text-slate-300">
                   <div className="px-2 py-2">Detail</div>
                   <div className="px-2 py-2 text-center border-l border-white/10">📄 Current</div>
                   <div className="px-2 py-2 text-center border-l border-white/10">💬 Your Quote</div>
                 </div>
                 {comparison.rows.map((row, i) => (
                   <div key={i} className="grid grid-cols-[1fr_1fr_1fr] border-t border-white/5 text-xs">
-                    <input value={row.label} onChange={(e) => { const rows = [...comparison.rows]; rows[i] = { ...row, label: e.target.value }; setComparison({ ...comparison, rows }); }} className="px-2 py-2 bg-slate-800 text-white font-medium outline-none" />
-                    <input value={row.current} onChange={(e) => { const rows = [...comparison.rows]; rows[i] = { ...row, current: e.target.value }; setComparison({ ...comparison, rows }); }} className={`px-2 py-2 bg-slate-800/60 border-l border-white/10 outline-none ${betterStyle('current', row.better)}`} />
-                    <input value={row.quoted} onChange={(e) => { const rows = [...comparison.rows]; rows[i] = { ...row, quoted: e.target.value }; setComparison({ ...comparison, rows }); }} className={`px-2 py-2 bg-slate-800/60 border-l border-white/10 outline-none ${betterStyle('quoted', row.better)}`} />
+                    <input value={row.label} onChange={(e) => { const rows = [...comparison.rows]; rows[i] = { ...row, label: e.target.value }; setComparison({ ...comparison, rows }); }} className="px-2 py-2 bg-white/5 text-white font-medium outline-none" />
+                    <input value={row.current} onChange={(e) => { const rows = [...comparison.rows]; rows[i] = { ...row, current: e.target.value }; setComparison({ ...comparison, rows }); }} className={`px-2 py-2 bg-white/5 border-l border-white/10 outline-none ${betterStyle('current', row.better)}`} />
+                    <input value={row.quoted} onChange={(e) => { const rows = [...comparison.rows]; rows[i] = { ...row, quoted: e.target.value }; setComparison({ ...comparison, rows }); }} className={`px-2 py-2 bg-white/5 border-l border-white/10 outline-none ${betterStyle('quoted', row.better)}`} />
                   </div>
                 ))}
-                <button onClick={() => setComparison({ ...comparison, rows: [...comparison.rows, { label: '', current: '', quoted: '', better: 'same' }] })} className="w-full py-1.5 bg-slate-800 border-t border-white/5 text-[10px] text-blue-400 hover:text-blue-300">+ Add row</button>
+                <button onClick={() => setComparison({ ...comparison, rows: [...comparison.rows, { label: '', current: '', quoted: '', better: 'same' }] })} className="w-full py-1.5 bg-white/5 border-t border-white/5 text-[10px] text-amber-300 hover:text-amber-200">+ Add row</button>
               </div>
 
               {/* Pros / Cons */}
@@ -272,8 +272,8 @@ Rental Car Coverage: Yes ($40/day)`;
               </div>
 
               {/* Recommendation */}
-              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <p className="text-xs font-bold text-blue-300 mb-1">🦅 Recommendation</p>
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <p className="text-xs font-bold text-amber-300 mb-1">🦅 Recommendation</p>
                 <textarea value={comparison.recommendation} onChange={(e) => setComparison({ ...comparison, recommendation: e.target.value })} placeholder="Should they switch? Why?" className="w-full bg-transparent text-sm text-white resize-none outline-none" rows={2} />
               </div>
 

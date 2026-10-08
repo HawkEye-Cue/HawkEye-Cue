@@ -65,14 +65,14 @@ export default function ExtensionTour({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] px-4">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl animate-scale-in">
+      <div className="max-w-md w-full bg-black border border-white/10 rounded-2xl p-6 shadow-2xl animate-scale-in">
         {/* Progress */}
         <div className="flex justify-center gap-1.5 mb-6">
           {STEPS.map((_, i) => (
             <div
               key={i}
               className={`h-1.5 rounded-full transition-all ${
-                i === step ? 'bg-blue-500 w-6' : i < step ? 'bg-blue-500/50 w-2' : 'bg-slate-700 w-2'
+                i === step ? 'bg-amber-500 w-6' : i < step ? 'bg-amber-500/50 w-2' : 'bg-white/5 w-2'
               }`}
             />
           ))}
@@ -102,14 +102,14 @@ export default function ExtensionTour({ onClose }: { onClose: () => void }) {
           {step > 0 && (
             <button
               onClick={() => setStep(step - 1)}
-              className="px-4 py-2.5 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600"
+              className="px-4 py-2.5 bg-white/5 text-slate-300 rounded-lg text-sm hover:bg-white/10"
             >
               Back
             </button>
           )}
           <button
             onClick={() => isLast ? onClose() : setStep(step + 1)}
-            className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 transition-colors"
+            className="flex-1 bg-amber-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-amber-400 transition-colors"
           >
             {isLast ? 'Done' : 'Next'}
           </button>

@@ -15,7 +15,7 @@ const STAGE_LABELS: Record<string, string> = {
   prospect: 'Prospect', contacted: 'Contacted', quoted: 'Quoted', closing: 'Closing', won: 'Won', lost: 'Lost',
 };
 const STAGE_COLORS: Record<string, string> = {
-  prospect: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+  prospect: 'bg-white/10 text-slate-300 border-white/15',
   contacted: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   quoted: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   closing: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
@@ -61,9 +61,9 @@ export default function TeamMemberPipeline({ memberUserId, memberName, folioStar
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
 
       {/* Panel */}
-      <div className="relative w-full max-w-md bg-slate-950 border-l border-white/10 h-full overflow-y-auto">
+      <div className="relative w-full max-w-md bg-black border-l border-white/10 h-full overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-slate-950/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-black/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between z-10">
           <div className="min-w-0">
             <p className="text-sm font-bold text-white truncate">{memberName}'s Pipeline</p>
             {data && <p className="text-[11px] text-slate-400">{money(data.totalRevenue)} sold · {data.clientsSold.length} client{data.clientsSold.length !== 1 ? 's' : ''}</p>}
@@ -96,13 +96,13 @@ export default function TeamMemberPipeline({ memberUserId, memberName, folioStar
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   onClick={() => setView('sold')}
-                  className={`py-2 rounded-lg text-xs font-bold border ${view === 'sold' ? 'bg-emerald-500 text-black border-transparent' : 'bg-slate-800 text-slate-300 border-white/10'}`}
+                  className={`py-2 rounded-lg text-xs font-bold border ${view === 'sold' ? 'bg-emerald-500 text-black border-transparent' : 'bg-white/5 text-slate-300 border-white/10'}`}
                 >
                   ✓ Clients Sold ({data.clientsSold.length})
                 </button>
                 <button
                   onClick={() => setView('pipeline')}
-                  className={`py-2 rounded-lg text-xs font-bold border ${view === 'pipeline' ? 'bg-amber-500 text-black border-transparent' : 'bg-slate-800 text-slate-300 border-white/10'}`}
+                  className={`py-2 rounded-lg text-xs font-bold border ${view === 'pipeline' ? 'bg-amber-500 text-black border-transparent' : 'bg-white/5 text-slate-300 border-white/10'}`}
                 >
                   ▸ In Pipeline ({data.pipeline.length})
                 </button>

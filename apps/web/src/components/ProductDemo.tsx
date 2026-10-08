@@ -76,11 +76,11 @@ export default function ProductDemo({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[9999] px-4">
-      <div className="max-w-lg w-full bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
+      <div className="max-w-lg w-full bg-black border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
         {/* Progress bar */}
-        <div className="h-1 bg-slate-800">
+        <div className="h-1 bg-black">
           <div
-            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+            className="h-full bg-gradient-to-r from-amber-500 to-purple-500 transition-all duration-300"
             style={{ width: `${((step + 1) / DEMO_STEPS.length) * 100}%` }}
           />
         </div>
@@ -95,7 +95,7 @@ export default function ProductDemo({ onClose }: { onClose: () => void }) {
 
           {/* Mock content preview */}
           {(current as any).mockContent && (
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-4 text-sm text-slate-300 italic">
+            <div className="bg-black border border-white/10 rounded-lg p-4 mb-4 text-sm text-slate-300 italic">
               {(current as any).mockContent}
             </div>
           )}
@@ -103,8 +103,8 @@ export default function ProductDemo({ onClose }: { onClose: () => void }) {
           {/* Stats */}
           {(current as any).stats && (
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="text-center p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <div className="text-lg font-bold text-blue-400">{(current as any).stats.leads}</div>
+              <div className="text-center p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="text-lg font-bold text-amber-300">{(current as any).stats.leads}</div>
                 <div className="text-xs text-slate-400">Leads/week</div>
               </div>
               <div className="text-center p-3 rounded-lg bg-green-500/10 border border-green-500/20">
@@ -123,7 +123,7 @@ export default function ProductDemo({ onClose }: { onClose: () => void }) {
             <div className="space-y-3">
               <button
                 onClick={() => { onClose(); navigate('/register'); }}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-bold text-base hover:opacity-90 transition-opacity btn-shimmer"
+                className="w-full bg-gradient-to-r from-amber-500 to-purple-600 text-white py-3 rounded-lg font-bold text-base hover:opacity-90 transition-opacity btn-shimmer"
               >
                 Sign Up Now →
               </button>
@@ -139,14 +139,14 @@ export default function ProductDemo({ onClose }: { onClose: () => void }) {
               {step > 0 && (
                 <button
                   onClick={() => setStep(step - 1)}
-                  className="px-4 py-2.5 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600"
+                  className="px-4 py-2.5 bg-white/5 text-slate-300 rounded-lg text-sm hover:bg-white/10"
                 >
                   Back
                 </button>
               )}
               <button
                 onClick={() => setStep(step + 1)}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 transition-colors"
+                className="flex-1 bg-amber-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-amber-400 transition-colors"
               >
                 {step === 0 ? 'Show Me' : 'Next'}
               </button>

@@ -35,7 +35,7 @@ const platformIcons: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  new: 'bg-blue-900/40 text-blue-400 border-blue-500/20',
+  new: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
   followed_up: 'bg-yellow-900/40 text-yellow-400 border-yellow-500/20',
   converted: 'bg-green-900/40 text-green-400 border-green-500/20',
   dismissed: 'bg-slate-900/40 text-slate-400 border-slate-500/20',
@@ -182,7 +182,7 @@ export default function LeadProfilePopup({
         {/* Close button */}
         <button
           ref={closeButtonRef}
-          className="absolute top-3 right-3 text-slate-400 hover:text-white text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none rounded"
+          className="absolute top-3 right-3 text-slate-400 hover:text-white text-lg focus:ring-2 focus:ring-amber-500 focus:outline-none rounded"
           onClick={onClose}
           aria-label="Close lead profile"
         >
@@ -240,8 +240,8 @@ export default function LeadProfilePopup({
           <div className="text-center">
             <p className="text-[10px] text-slate-400 mb-0.5">🦅 Flight</p>
             <p className="text-xs text-white">{completedSteps}/{totalSteps} ({progress}%)</p>
-            <div className="w-full h-1 bg-slate-700 rounded-full mt-1 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-400 to-green-400 rounded-full" style={{ width: `${progress}%` }} />
+            <div className="w-full h-1 bg-white/10 rounded-full mt-1 overflow-hidden">
+              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${progress}%` }} />
             </div>
           </div>
         </div>
@@ -259,7 +259,7 @@ export default function LeadProfilePopup({
           const cb = (lead as any).consentBasis as string;
           const isCold = cb === 'cold-outreach';
           return (
-            <div className={`mt-3 mx-2 flex items-center gap-2 rounded-lg px-3 py-2 border ${isCold ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-700/40 border-white/10'}`}>
+            <div className={`mt-3 mx-2 flex items-center gap-2 rounded-lg px-3 py-2 border ${isCold ? 'bg-amber-500/10 border-amber-500/30' : 'bg-white/5 border-white/10'}`}>
               <span className="text-sm shrink-0">🛡️</span>
               <div className="min-w-0">
                 <p className="text-[10px] text-slate-400">Contact basis</p>
@@ -274,15 +274,15 @@ export default function LeadProfilePopup({
           const nextStep = followupSteps.find(s => !s.completed);
           if (!nextStep) return null;
           return (
-            <div className="mt-4 mx-2 flex items-center gap-2 bg-blue-500/15 border border-blue-500/30 rounded-lg px-3 py-2">
+            <div className="mt-4 mx-2 flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
               <span className="text-sm">{nextStep.type === 'call' ? '📞' : nextStep.type === 'sms' ? '💬' : '✉️'}</span>
               <div className="flex-1 min-w-0">
-                <span className="text-xs text-blue-200 font-medium">Next: {nextStep.task}</span>
+                <span className="text-xs text-amber-200 font-medium">Next: {nextStep.task}</span>
                 <span className="text-[10px] text-slate-400 ml-1.5">Day {nextStep.day}</span>
               </div>
               <button
                 onClick={() => onFollowupComplete(lead.id, nextStep.idx)}
-                className="text-xs text-green-400 bg-green-600/20 px-2.5 py-1 rounded font-medium hover:bg-green-600/30 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="text-xs text-green-400 bg-green-600/20 px-2.5 py-1 rounded font-medium hover:bg-green-600/30 transition-colors focus:ring-2 focus:ring-amber-500 focus:outline-none"
               >
                 Done ✓
               </button>
@@ -297,7 +297,7 @@ export default function LeadProfilePopup({
           {notes.length > 0 && (
             <div className="space-y-1.5 mb-2 max-h-40 overflow-y-auto">
               {notes.map((note, idx) => (
-                <div key={idx} className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2">
+                <div key={idx} className="bg-neutral-900/60 border border-white/10 rounded-lg px-3 py-2">
                   <p className="text-[10px] text-slate-500 mb-0.5">{note.date}</p>
                   <p className="text-xs text-slate-200">{note.text}</p>
                 </div>
@@ -309,7 +309,7 @@ export default function LeadProfilePopup({
             <textarea
               ref={noteInputRef}
               placeholder="Add a note..."
-              className="flex-1 px-3 py-2 bg-slate-800 border border-white/20 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs placeholder-slate-500 resize-none h-16 focus:border-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <button
               onClick={() => {
@@ -333,7 +333,7 @@ export default function LeadProfilePopup({
                 });
                 showToast('✓ Note saved');
               }}
-              className="self-end px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="self-end px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-lg transition-colors focus:ring-2 focus:ring-amber-500 focus:outline-none"
             >
               Save
             </button>
@@ -346,7 +346,7 @@ export default function LeadProfilePopup({
             <button
               onClick={() => onStatusUpdate(lead.id, 'followed_up')}
               disabled={updatingId === lead.id}
-              className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-600/30 disabled:opacity-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="px-3 py-1.5 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg text-xs font-medium hover:bg-yellow-600/30 disabled:opacity-50 focus:ring-2 focus:ring-amber-500 focus:outline-none"
             >
               {updatingId === lead.id ? '...' : '📞 Mark Followed Up'}
             </button>
@@ -355,7 +355,7 @@ export default function LeadProfilePopup({
             <button
               onClick={() => onStatusUpdate(lead.id, 'converted')}
               disabled={updatingId === lead.id}
-              className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="px-3 py-1.5 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg text-xs font-medium hover:bg-green-600/30 disabled:opacity-50 focus:ring-2 focus:ring-amber-500 focus:outline-none"
             >
               {updatingId === lead.id ? '...' : '✓ Mark Converted'}
             </button>
@@ -363,14 +363,14 @@ export default function LeadProfilePopup({
           <button
             onClick={() => pushToCrm(false)}
             disabled={pushing}
-            className="px-3 py-1.5 bg-blue-500/15 border border-blue-500/30 text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-500/25 disabled:opacity-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-200 rounded-lg text-xs font-medium hover:bg-white/10 disabled:opacity-50 focus:ring-2 focus:ring-amber-500 focus:outline-none"
             title="Push this lead to your connected CRM"
           >
             {pushing ? '…' : pushStatus === 'pushed' ? '🔗 Pushed ✓' : pushStatus === 'failed' ? '🔗 Retry push' : '🔗 Push to CRM'}
           </button>
           <button
             onClick={() => onEdit(lead)}
-            className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10 focus:ring-2 focus:ring-amber-500 focus:outline-none"
           >
             ✏️ Edit
           </button>
@@ -385,7 +385,7 @@ export default function LeadProfilePopup({
           <button
             onClick={() => onDelete(lead.id)}
             disabled={updatingId === lead.id}
-            className="px-3 py-1.5 bg-red-600/20 border border-red-500/30 text-red-300 rounded-lg text-xs font-medium hover:bg-red-600/30 disabled:opacity-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="px-3 py-1.5 bg-red-600/20 border border-red-500/30 text-red-300 rounded-lg text-xs font-medium hover:bg-red-600/30 disabled:opacity-50 focus:ring-2 focus:ring-amber-500 focus:outline-none"
           >
             🗑 Delete
           </button>
@@ -394,7 +394,7 @@ export default function LeadProfilePopup({
               href={lead.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg text-xs hover:bg-white/10 focus:ring-2 focus:ring-amber-500 focus:outline-none"
             >
               View Post ↗
             </a>

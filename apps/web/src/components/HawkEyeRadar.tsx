@@ -230,8 +230,8 @@ export default function HawkEyeRadar({ onClose, onAddLead }: Props) {
 
           {/* Learned insights banner */}
           {insights.length > 0 && (
-            <div className="glass-card border border-purple-500/20">
-              <p className="text-xs font-bold text-purple-300 mb-1">🧠 What HawkEye has learned about your wins</p>
+            <div className="glass-card border border-amber-500/20">
+              <p className="text-xs font-bold text-amber-300 mb-1">🧠 What HawkEye has learned about your wins</p>
               {insights.map((ins, i) => (
                 <p key={i} className="text-[11px] text-slate-300 leading-relaxed">• {ins}</p>
               ))}

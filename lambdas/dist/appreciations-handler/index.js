@@ -29,6 +29,46 @@ function getUserId(event) {
   return event.requestContext?.authorizer?.jwt?.claims?.sub ?? null;
 }
 
+// ─── Server-side subscription entitlement ───────────────────────────────────────
+// Appreciations is part of the paid (Soar+) revenue/advocacy surface. We read the
+// account's authoritative subscription state (never a browser-supplied tier), resolve
+// the effective tier (legacy labels + trial expiry), and deny Nest/free accounts.
+const PAID_TIERS = new Set(['soar', 'summit', 'team']);
+function normalizeTier(raw) {
+  const t = (raw || 'free').toString().toLowerCase();
+  if (t === 'nest' || t === 'none' || t === 'expired' || t === '') return 'free';
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t;
+  return 'free';
+}
+function effectiveTier(profile) {
+  if (!profile) return 'free';
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+  if (status === 'trial' && profile.trialEndsAt) {
+    if (new Date(profile.trialEndsAt).getTime() < Date.now()) return 'free';
+  }
+  return normalizeTier(profile.subscriptionTier);
+}
+async function getEffectiveTier(userId) {
+  const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
+  return effectiveTier(res.Item);
+}
+// Guard: deny unless the account's effective tier is paid. Fails closed on read error.
+async function requirePaid(userId) {
+  let tier;
+  try {
+    tier = await getEffectiveTier(userId);
+  } catch (e) {
+    console.error('Entitlement check failed (denying):', e.message);
+    return err(503, 'ENTITLEMENT_UNAVAILABLE', 'Could not verify subscription. Please try again.');
+  }
+  if (!PAID_TIERS.has(tier)) {
+    return err(403, 'UPGRADE_REQUIRED', 'This feature requires a Soar or Summit plan. Upgrade in Settings.');
+  }
+  return null;
+}
+
 let cachedSecret = null;
 async function getBundleSocialSecret() {
   if (cachedSecret) return cachedSecret;
@@ -331,6 +371,10 @@ exports.handler = async (event) => {
     const userId = getUserId(event);
 
     if (!userId) return err(401, 'UNAUTHORIZED', 'Missing user identity');
+
+    // Appreciations is a paid (Soar+) surface — enforce before any route.
+    const paidGate = await requirePaid(userId);
+    if (paidGate) return paidGate;
 
     // GET /appreciations/settings
     if (method === 'GET' && path === '/appreciations/settings') {

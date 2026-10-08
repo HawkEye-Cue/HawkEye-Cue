@@ -31,8 +31,16 @@ jobs:
           aws-region: us-east-1
 
       - name: Inspect PropertyDifferences for the four drifted resources (redacted)
+        # Use a bash shell WITHOUT GitHub's default `-e -o pipefail`. This diagnostic
+        # does its own explicit error handling (per-resource guards + INSPECTION_FAILED/
+        # PARSE_FAILED reporting). Under the default `-eo pipefail`, a benign `grep` with
+        # zero matches (exit 1) inside a redaction pipeline would abort the whole step —
+        # which is exactly what caused run #2 to die at the first empty-value property.
+        shell: bash --noprofile --norc {0}
         run: |
-          set -uo pipefail
+          # Intentionally NOT using -e or -o pipefail (see shell: above). We guard
+          # every external command explicitly so one failure can never abort the run.
+          set +e +o pipefail
 
           # stack|logicalId|kind  (kind drives the redaction strategy)
           TARGETS="SocialLeadGen-Api|CalendarHandlerFnServiceRole2E2A686C|iam SocialLeadGen-Api|HttpApiCognitoAuthorizer935FA0F6|authorizer SocialLeadGen-Api|HttpApiF5A9A8A7|cors SocialLeadGen-Frontend|SecurityHeadersE66B69D3|cloudfront"
@@ -98,8 +106,9 @@ jobs:
               echo "|---------------|------------|--------------|"
             } >> "$GITHUB_STEP_SUMMARY"
 
-            # Number of property differences.
+            # Number of property differences (force a clean integer).
             NDIFF=$(jq '.[0].PropertyDifferences | length' "$RAW" 2>/dev/null || echo 0)
+            case "$NDIFF" in (''|*[!0-9]*) NDIFF=0 ;; esac
             if [ "${NDIFF:-0}" = "0" ]; then
               echo "| (none) | — | No property-level differences reported |" >> "$GITHUB_STEP_SUMMARY"
               echo "" >> "$GITHUB_STEP_SUMMARY"
@@ -122,8 +131,14 @@ jobs:
                   # Report audience COUNTS only, never client IDs. We count comma-
                   # separated tokens in the raw value via grep/tr (no nested jq quoting),
                   # treating the value as opaque — the IDs themselves are never emitted.
-                  EXPN=$(jq -r ".[0].PropertyDifferences[$i].ExpectedValue // empty" "$RAW" 2>/dev/null | grep -oE '[A-Za-z0-9]{6,}' | wc -l | tr -d ' ')
-                  ACTN=$(jq -r ".[0].PropertyDifferences[$i].ActualValue // empty" "$RAW" 2>/dev/null | grep -oE '[A-Za-z0-9]{6,}' | wc -l | tr -d ' ')
+                  # `grep` exits 1 on zero matches; the trailing `|| true` keeps the
+                  # pipeline status clean so it is safe even if errexit/pipefail is ever
+                  # re-enabled (defense in depth; the step shell already omits them).
+                  EXP_RAW=$(jq -r ".[0].PropertyDifferences[$i].ExpectedValue // empty" "$RAW" 2>/dev/null || true)
+                  ACT_RAW=$(jq -r ".[0].PropertyDifferences[$i].ActualValue // empty" "$RAW" 2>/dev/null || true)
+                  EXPN=$(printf '%s' "$EXP_RAW" | grep -oE '[A-Za-z0-9]{6,}' | wc -l | tr -d ' ' || true)
+                  ACTN=$(printf '%s' "$ACT_RAW" | grep -oE '[A-Za-z0-9]{6,}' | wc -l | tr -d ' ' || true)
+                  EXPN="${EXPN:-0}"; ACTN="${ACTN:-0}"
                   if echo "$PPATH" | grep -qi 'audience'; then
                     SUMMARY="audience list changed: expected token-count=${EXPN:-0}, actual token-count=${ACTN:-0} (client IDs redacted)"
                   else

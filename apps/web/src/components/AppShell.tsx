@@ -161,7 +161,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black overflow-x-hidden">
       <HawkAnimations />
 
       {/* Desktop sidebar — black with yellow active state. Hidden on mobile (bottom tabs stay). */}
@@ -376,10 +376,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
         }}
       />
 
-      {/* Main Content — shifts right of the sidebar on desktop and fills the
-          available width (desktop app layout). Transparent so the hawk shows through. */}
-      <main key={location.pathname} className="p-3 sm:p-4 lg:p-8 max-w-2xl lg:max-w-none mx-auto lg:ml-60 lg:mr-0 w-full page-enter relative z-10" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
-        <div className="lg:max-w-[1400px] lg:mx-auto w-full">
+      {/* Main Content — reserves the fixed-sidebar width via LEFT PADDING (not margin)
+          so the box stays exactly viewport-wide (border-box) and never overflows.
+          Previously used lg:ml-60 + w-full, which made the box viewport-width PLUS the
+          240px sidebar offset → right-edge clipping. Transparent so the hawk shows through. */}
+      <main key={location.pathname} className="p-3 sm:p-4 lg:py-8 lg:pr-8 lg:pl-60 w-full min-w-0 page-enter relative z-10" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="max-w-2xl lg:max-w-[1400px] mx-auto w-full min-w-0">
           {children}
         </div>
       </main>

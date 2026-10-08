@@ -25,6 +25,10 @@ const handlerPath = resolve(here, '../../../../lambdas/dist/flock-import/index.j
 let aiResponse: any = { groups: [] };
 let bedrockShouldThrow = false;
 let lastSentContent: any[] = [];
+// Entitlement state: the PROFILE item returned for the authed user, and a read-failure flag.
+let profile: any = { subscriptionTier: 'soar', subscriptionStatus: 'active' };
+let profileReadFails = false;
+const DAY = 24 * 60 * 60 * 1000;
 
 function cmd(name: string) {
   return class { input: any; __name = name; constructor(input: any) { this.input = input; } };
@@ -45,10 +49,23 @@ function sdkStubs() {
       },
       InvokeModelCommand: cmd('InvokeModelCommand'),
     },
+    '@aws-sdk/client-dynamodb': { DynamoDBClient: class {} },
+    '@aws-sdk/lib-dynamodb': {
+      DynamoDBDocumentClient: {
+        from: () => ({
+          send: async () => {
+            if (profileReadFails) throw new Error('DynamoDB unavailable');
+            return { Item: profile };
+          },
+        }),
+      },
+      GetCommand: cmd('GetCommand'),
+    },
   } as Record<string, any>;
 }
 
 function loadHandler() {
+  process.env.TABLE_NAME = 'TestTable';
   const source = readFileSync(handlerPath, 'utf8');
   const stubs = sdkStubs();
   const realRequire = createRequire(handlerPath);
@@ -75,6 +92,66 @@ beforeEach(() => {
   aiResponse = { groups: [] };
   bedrockShouldThrow = false;
   lastSentContent = [];
+  // Default to a paid, active Soar account so existing behavior tests reach the AI path.
+  profile = { subscriptionTier: 'soar', subscriptionStatus: 'active' };
+  profileReadFails = false;
+});
+
+describe('flock-import — paid entitlement (Soar+ / active trial)', () => {
+  it('Nest (free) is denied with 403 UPGRADE_REQUIRED before any AI call', async () => {
+    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+    const handler = loadHandler();
+    const res = await handler(event([img()]));
+    expect(res.statusCode).toBe(403);
+    expect(body(res).error.code).toBe('UPGRADE_REQUIRED');
+    expect(lastSentContent).toHaveLength(0); // no Bedrock invocation
+  });
+
+  it('active Soar trial is allowed', async () => {
+    profile = { subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: new Date(Date.now() + 3 * DAY).toISOString() };
+    aiResponse = { groups: [{ name: 'G', permittedDays: ['Monday'], anyDay: false, rulesFound: true }] };
+    const handler = loadHandler();
+    const res = await handler(event([img()]));
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('expired trial is denied', async () => {
+    profile = { subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: new Date(Date.now() - DAY).toISOString() };
+    const handler = loadHandler();
+    const res = await handler(event([img()]));
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('paid Summit (stored as team) is allowed', async () => {
+    profile = { subscriptionTier: 'team', subscriptionStatus: 'active' };
+    aiResponse = { groups: [{ name: 'G', permittedDays: ['Monday'], anyDay: false, rulesFound: true }] };
+    const handler = loadHandler();
+    const res = await handler(event([img()]));
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('unauthenticated request is rejected with 401', async () => {
+    const handler = loadHandler();
+    const res = await handler(event([img()], null));
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('fails closed with 503 if the subscription profile cannot be read', async () => {
+    profileReadFails = true;
+    const handler = loadHandler();
+    const res = await handler(event([img()]));
+    expect(res.statusCode).toBe(503);
+    expect(body(res).error.code).toBe('ENTITLEMENT_UNAVAILABLE');
+  });
+
+  it('enforces a combined payload cap across images (cost guard)', async () => {
+    // Two images each ~9 MB base64 → combined exceeds the 16 MB total cap.
+    const big = { data: 'A'.repeat(12_000_000), format: 'png' };
+    const handler = loadHandler();
+    const res = await handler(event([big, big]));
+    expect(res.statusCode).toBe(400);
+    expect(['PAYLOAD_TOO_LARGE', 'IMAGE_TOO_LARGE']).toContain(body(res).error.code);
+  });
 });
 
 describe('flock-import — never assume promotion when rules are missing', () => {

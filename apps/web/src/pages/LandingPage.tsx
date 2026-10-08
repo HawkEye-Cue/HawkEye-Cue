@@ -169,9 +169,10 @@ export default function LandingPage() {
             <ul className="text-xs text-slate-300 space-y-1.5 my-4">
               <li>✓ Everything in Nest</li>
               <li>🦅 Unlimited Flocks</li>
-              <li>🔑 Keyword tracking</li>
-              <li>🎯 Lead management</li>
-              <li>💰 Sales pipeline</li>
+              <li>📸 Smart Flock Import — snap group screenshots, AI reads the rules</li>
+              <li>🔑 Unlimited keyword tracking</li>
+              <li>🎯 Social-to-sale lead management</li>
+              <li>💰 Sales pipeline & revenue tracking</li>
               <li>📊 Hawk Insights</li>
               <li>🙏 Appreciations</li>
               <li>🤝 Wingman</li>

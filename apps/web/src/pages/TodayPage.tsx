@@ -162,102 +162,116 @@ export default function TodayPage() {
 
   const hasWork = tasks.length > 0;
 
-  const summaryCards = [
-    { label: 'New opportunities', value: counts.newOpps, icon: '🎯', accent: 'text-amber-300', route: '/pipeline' },
-    { label: 'Need follow-up', value: counts.followUps, icon: '📞', accent: 'text-sky-300', route: '/pipeline?view=deals' },
-    { label: 'Posts ready', value: counts.postsReady, icon: '✨', accent: 'text-purple-300', route: '/create' },
-    { label: 'Active pipeline', value: `$${counts.activeValue.toLocaleString()}`, icon: '💰', accent: 'text-emerald-300', route: '/pipeline?view=deals' },
+  const summaryCards: { label: string; value: string | number; icon: string; accent: string; route: string }[] = [
+    { label: 'New opportunities', value: counts.newOpps, icon: '🎯', accent: 'amber', route: '/pipeline' },
+    { label: 'Need follow-up', value: counts.followUps, icon: '📞', accent: 'sky', route: '/pipeline?view=deals' },
+    { label: 'Posts ready', value: counts.postsReady, icon: '✨', accent: 'purple', route: '/create' },
+    { label: 'Active pipeline', value: `$${counts.activeValue.toLocaleString()}`, icon: '💰', accent: 'green', route: '/pipeline?view=deals' },
   ];
 
   return (
-    <div className="max-w-2xl lg:max-w-none mx-auto px-1 pb-24 space-y-6">
-      {/* Greeting */}
-      <div className="pt-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-400/80">🦅 The Nest</p>
-        <h1 className="text-2xl font-bold text-white mt-0.5">{greeting}, {name} 👋</h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Here's your daily flight plan{selectedTrade?.name ? ` for your ${selectedTrade.name.toLowerCase()} business` : ''}.
-        </p>
+    <div className="space-y-4 pb-8">
+      {/* Sales-style hero header — "The Nest" greeting lives in an intentional
+          glass container instead of floating text over the hawk background.
+          Built to visibly match the Sales/Team Sales hero: a wide, dark
+          translucent panel with white-alpha border that covers the hawk. */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-neutral-900/75 backdrop-blur-xl px-6 py-8 sm:px-8 sm:py-10 shadow-xl shadow-black/40 ring-1 ring-white/5">
+        {/* soft amber glow in the corner for brand warmth, like the Sales eye glow */}
+        <div className="pointer-events-none absolute -top-16 -right-16 w-64 h-64 rounded-full bg-amber-500/15 blur-3xl" />
+        <div className="relative">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">🦅 The Nest</p>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight mt-1">
+            {greeting}, {name} 👋
+          </h1>
+          <p className="text-sm sm:text-base text-slate-200 mt-2 max-w-2xl">
+            Here's your daily flight plan{selectedTrade?.name ? ` for your ${selectedTrade.name.toLowerCase()} business` : ''}.
+          </p>
+        </div>
       </div>
-
-      <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
-      {/* Left column */}
-      <div className="min-w-0 space-y-6">
 
       <SetupProgress />
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Metrics — KPI card family. Brightest layer in the page's contrast
+          hierarchy (lighter than hero + section panels) so numbers pop. */}
+      {/* 2-up on small/standard widths; 4-up only at xl (≥1280) where the sidebar
+          leaves enough room for four comfortable cards. minmax(0,1fr) via min-w-0
+          children so a card can never force the grid past the viewport. */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {summaryCards.map((c) => (
           <button
             key={c.label}
             onClick={() => navigate(c.route)}
-            className="glass-card text-left hover:border-amber-500/30 transition-all active:scale-[0.98]"
+            className="flex items-center gap-3 rounded-2xl border border-white/15 bg-neutral-800/80 backdrop-blur-md px-4 py-3 text-left shadow-lg shadow-black/20 transition-all active:scale-[0.98] hover:bg-neutral-700/80 hover:border-amber-500/40 min-w-0"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xl">{c.icon}</span>
-            </div>
-            <p className={`text-2xl font-extrabold mt-2 ${c.accent}`}>{loading ? '—' : c.value}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">{c.label}</p>
+            <span className="w-10 h-10 rounded-xl bg-amber-500 text-black flex items-center justify-center text-lg font-black shrink-0">{c.icon}</span>
+            <span className="min-w-0">
+              <span className="block text-xl font-extrabold text-white leading-tight truncate">{loading ? '—' : c.value}</span>
+              <span className="block text-[11px] text-slate-300 font-medium truncate">{c.label}</span>
+            </span>
           </button>
         ))}
       </div>
 
-      </div>
+      {/* Two intentional sections — stacked until xl (≥1280) where there's room for a
+          comfortable two-column working area beside the fixed sidebar. */}
+      <div className="space-y-4 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-4 xl:items-start">
+        {/* Quick action: analyze a post / screenshot. Mid-tone charcoal glass —
+            lighter than the page background, distinct from the darker hero. */}
+        <div className="rounded-2xl border border-white/12 bg-neutral-900/60 backdrop-blur-md p-4 shadow-lg shadow-black/30">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wide mb-3">Send to HawkEye</h3>
+          <button
+            onClick={() => navigate('/pipeline?radar=1')}
+            className="w-full py-3 rounded-xl border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            <span className="text-lg">📸</span>
+            <span className="text-sm font-bold text-amber-200">Analyze a post or screenshot</span>
+          </button>
+          <p className="text-[11px] text-slate-400 mt-2">Paste or upload anything you spotted — HawkEye scores it for you.</p>
+        </div>
 
-      {/* Right column */}
-      <div className="min-w-0 space-y-6">
-
-      {/* Send to HawkEye — analyze any post/screenshot from your phone */}
-      <button
-        onClick={() => navigate('/pipeline?radar=1')}
-        className="w-full py-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-      >
-        <span className="text-lg">📸</span>
-        <span className="text-sm font-bold text-amber-200">Analyze a post or screenshot</span>
-      </button>
-
-      {/* Flight plan CTA or all-clear */}
-      {hasWork ? (
-        <button
-          onClick={() => setShowPlan(true)}
-          className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-black text-base font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        >
-          🦅 Start My Flight Plan
-          <span className="text-xs font-bold bg-black/15 rounded-full px-2 py-0.5">{tasks.length}</span>
-        </button>
-      ) : (
-        <div className="glass-card text-center py-8">
-          <div className="text-4xl mb-2">🕊️</div>
-          <h3 className="text-base font-bold text-white">You're all clear</h3>
-          <p className="text-sm text-slate-400 mt-1">
-            {loading ? 'Checking your skies…' : 'Nothing needs your attention right now. Want to get ahead?'}
-          </p>
-          {!loading && (
-            <div className="flex gap-2 justify-center mt-4">
-              <button onClick={() => navigate('/create')} className="px-4 py-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white text-sm font-medium rounded-lg">✨ Create a post</button>
-              <button onClick={() => navigate('/pipeline')} className="px-4 py-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white text-sm font-medium rounded-lg">🎯 Find opportunities</button>
+        {/* Daily flight plan */}
+        <div className="rounded-2xl border border-white/12 bg-neutral-900/60 backdrop-blur-md p-4 shadow-lg shadow-black/30">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wide mb-3">Today's Flight Plan</h3>
+          {hasWork ? (
+            <>
+              <button
+                onClick={() => setShowPlan(true)}
+                className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-black text-base font-extrabold rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                🦅 Start My Flight Plan
+                <span className="text-xs font-bold bg-black/15 rounded-full px-2 py-0.5">{tasks.length}</span>
+              </button>
+              {isGuided && (
+                <p className="text-center text-[11px] text-slate-400 mt-2">
+                  💡 Tip: tap <span className="text-amber-400 font-semibold">Start My Flight Plan</span> and HawkEye walks you through each task, one at a time.
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-1">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl">🕊️</span>
+                <h3 className="text-base font-bold text-white">You're all clear</h3>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                {loading ? 'Checking your skies…' : 'Nothing needs your attention right now. Want to get ahead?'}
+              </p>
+              {!loading && (
+                <div className="flex gap-2 justify-center mt-3">
+                  <button onClick={() => navigate('/create')} className="px-3 py-1.5 border border-white/10 bg-white/5 hover:bg-white/10 text-white text-xs font-medium rounded-lg">✨ Create a post</button>
+                  <button onClick={() => navigate('/pipeline')} className="px-3 py-1.5 border border-white/10 bg-white/5 hover:bg-white/10 text-white text-xs font-medium rounded-lg">🎯 Find opportunities</button>
+                </div>
+              )}
+            </div>
+          )}
+          {!isGuided && (
+            <div className="text-center mt-3">
+              <button onClick={() => navigate('/dashboard')} className="text-xs text-slate-400 hover:text-white underline underline-offset-2">
+                See full dashboard & calendar
+              </button>
             </div>
           )}
         </div>
-      )}
-
-      {/* Guided mode: a gentle tip. Pro mode: the full-dashboard power link. */}
-      {isGuided ? (
-        hasWork && (
-          <p className="text-center text-[11px] text-slate-500">
-            💡 Tip: tap <span className="text-amber-400 font-semibold">Start My Flight Plan</span> and HawkEye will walk you through each task, one at a time.
-          </p>
-        )
-      ) : (
-        <div className="text-center">
-          <button onClick={() => navigate('/dashboard')} className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2">
-            See full dashboard & calendar
-          </button>
-        </div>
-      )}
-
-      </div>
       </div>
 
       {showPlan && <FlightPlan tasks={tasks} onClose={() => setShowPlan(false)} />}

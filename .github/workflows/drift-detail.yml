@@ -1,0 +1,188 @@
+name: CloudFormation Drift Detail (manual, read-only, redacted)
+
+# Temporary, manually-triggered diagnostic. Retrieves CloudFormation
+# PropertyDifferences for the FOUR known-drifted resources and reports ONLY
+# redacted, safe-to-share summaries — never raw expected/actual values.
+#
+# READ-ONLY: only CloudFormation describe-stack-resource-drifts is called. No
+# deploy, no reconcile, no --revert-drift, no resource mutation.
+#
+# Safety model: the raw PropertyDifferences JSON is captured into a file and is
+# NEVER echoed to logs, step summary, or artifacts. Only jq-extracted property
+# PATHS, difference TYPES, and value-free category summaries are emitted. If a
+# value cannot be safely summarized, only the path + difference type is shown.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  drift-detail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Inspect PropertyDifferences for the four drifted resources (redacted)
+        run: |
+          set -uo pipefail
+
+          # stack|logicalId|kind  (kind drives the redaction strategy)
+          TARGETS="SocialLeadGen-Api|CalendarHandlerFnServiceRole2E2A686C|iam SocialLeadGen-Api|HttpApiCognitoAuthorizer935FA0F6|authorizer SocialLeadGen-Api|HttpApiF5A9A8A7|cors SocialLeadGen-Frontend|SecurityHeadersE66B69D3|cloudfront"
+
+          WORK="$(mktemp -d)"
+
+          {
+            echo "# CloudFormation Drift Detail (redacted, read-only)"
+            echo ""
+            echo "Only property paths, difference types, and value-free category summaries are shown."
+            echo "Raw expected/actual property values are intentionally never printed."
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for ENTRY in $TARGETS; do
+            STACK="${ENTRY%%|*}"
+            REST="${ENTRY#*|}"
+            LID="${REST%%|*}"
+            KIND="${REST##*|}"
+
+            echo "::group::$STACK / $LID ($KIND)"
+            RAW="$WORK/raw.json"
+
+            # Fetch ONLY this resource's drift record. Capture to a file; never echo it.
+            if ! aws cloudformation describe-stack-resource-drifts \
+                  --stack-name "$STACK" \
+                  --query "StackResourceDrifts[?LogicalResourceId=='$LID']" \
+                  --output json > "$RAW" 2>"$WORK/err.txt"; then
+              echo "::warning::describe-stack-resource-drifts FAILED for $LID — inspection error, NOT 'no drift'"
+              {
+                echo "## $LID ($STACK)"
+                echo "- **INSPECTION_FAILED** — AWS API error (see run logs). This is NOT 'no drift'."
+                echo ""
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Any records at all?
+            COUNT=$(jq 'length' "$RAW" 2>/dev/null || echo "ERR")
+            if [ "$COUNT" = "ERR" ]; then
+              echo "::warning::could not parse drift JSON for $LID"
+              { echo "## $LID ($STACK)"; echo "- **PARSE_FAILED** — could not parse response (NOT 'no drift')."; echo ""; } >> "$GITHUB_STEP_SUMMARY"
+              echo "::endgroup::"
+              continue
+            fi
+            if [ "$COUNT" = "0" ]; then
+              { echo "## $LID ($STACK)"; echo "- No drift record returned for this logical id."; echo ""; } >> "$GITHUB_STEP_SUMMARY"
+              echo "::endgroup::"
+              continue
+            fi
+
+            RTYPE=$(jq -r '.[0].ResourceType // "unknown"' "$RAW")
+            RSTATUS=$(jq -r '.[0].StackResourceDriftStatus // "unknown"' "$RAW")
+
+            {
+              echo "## $LID"
+              echo "- Stack: \`$STACK\`"
+              echo "- Resource type: \`$RTYPE\`"
+              echo "- Drift status: \`$RSTATUS\`"
+              echo ""
+              echo "| Property path | Difference | Safe summary |"
+              echo "|---------------|------------|--------------|"
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            # Number of property differences.
+            NDIFF=$(jq '.[0].PropertyDifferences | length' "$RAW" 2>/dev/null || echo 0)
+            if [ "${NDIFF:-0}" = "0" ]; then
+              echo "| (none) | — | No property-level differences reported |" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Iterate each PropertyDifference by index; extract path + diff type only.
+            i=0
+            while [ "$i" -lt "$NDIFF" ]; do
+              PPATH=$(jq -r ".[0].PropertyDifferences[$i].PropertyPath // \"?\"" "$RAW")
+              DTYPE=$(jq -r ".[0].PropertyDifferences[$i].DifferenceType // \"?\"" "$RAW")
+
+              # Value-free category summary per resource kind. We read Expected/Actual
+              # ONLY to compute counts / verb lists / field names — never to print them.
+              SUMMARY="path + difference type only (values redacted)"
+
+              case "$KIND" in
+                authorizer)
+                  # Report audience COUNTS only, never client IDs. We count comma-
+                  # separated tokens in the raw value via grep/tr (no nested jq quoting),
+                  # treating the value as opaque — the IDs themselves are never emitted.
+                  EXPN=$(jq -r ".[0].PropertyDifferences[$i].ExpectedValue // empty" "$RAW" 2>/dev/null | grep -oE '[A-Za-z0-9]{6,}' | wc -l | tr -d ' ')
+                  ACTN=$(jq -r ".[0].PropertyDifferences[$i].ActualValue // empty" "$RAW" 2>/dev/null | grep -oE '[A-Za-z0-9]{6,}' | wc -l | tr -d ' ')
+                  if echo "$PPATH" | grep -qi 'audience'; then
+                    SUMMARY="audience list changed: expected token-count=${EXPN:-0}, actual token-count=${ACTN:-0} (client IDs redacted)"
+                  else
+                    SUMMARY="authorizer config field changed (values redacted)"
+                  fi
+                  ;;
+                iam)
+                  # Extract only IAM action verbs + service prefixes from the diff; no ARNs/secret names/account IDs.
+                  ACTIONS=$(jq -r ".[0].PropertyDifferences[$i].ActualValue, .[0].PropertyDifferences[$i].ExpectedValue" "$RAW" 2>/dev/null \
+                    | grep -oE '\"[a-z0-9-]+:[A-Za-z0-9*]+\"' 2>/dev/null \
+                    | tr -d '"' | sort -u | head -n 12 | tr '\n' ' ' || echo "")
+                  SERVICES=$(echo "$ACTIONS" | tr ' ' '\n' | sed -n 's/^\([a-z0-9-]*\):.*/\1/p' | sort -u | tr '\n' ' ')
+                  if [ -n "${ACTIONS// /}" ]; then
+                    SUMMARY="IAM actions in diff: ${ACTIONS}| services: ${SERVICES}(ARNs/secret names/account IDs redacted)"
+                  else
+                    SUMMARY="IAM policy property changed; no action verbs safely extractable (ARNs redacted)"
+                  fi
+                  ;;
+                cors)
+                  # Report which CORS field changed + origin CATEGORIES only, never raw origins.
+                  CORSFIELD=$(echo "$PPATH" | grep -oiE 'AllowOrigins|AllowHeaders|AllowMethods|AllowCredentials|ExposeHeaders|MaxAge' | head -n1 || echo "CorsConfiguration")
+                  RAWVAL=$(jq -r ".[0].PropertyDifferences[$i].ActualValue // empty, .[0].PropertyDifferences[$i].ExpectedValue // empty" "$RAW" 2>/dev/null || echo "")
+                  CATS=""
+                  if echo "$RAWVAL" | grep -qi 'localhost'; then CATS="${CATS}localhost "; fi
+                  if echo "$RAWVAL" | grep -qi 'hawkeyecue'; then CATS="${CATS}production-domain "; fi
+                  if echo "$RAWVAL" | grep -qiE 'https?://' && ! echo "$RAWVAL" | grep -qiE 'localhost|hawkeyecue'; then CATS="${CATS}other-origin "; fi
+                  if [ -n "${CATS// /}" ]; then
+                    SUMMARY="CORS field: ${CORSFIELD}; origin categories in diff: ${CATS}(raw origins redacted)"
+                  else
+                    SUMMARY="CORS field changed: ${CORSFIELD} (raw values redacted)"
+                  fi
+                  ;;
+                cloudfront)
+                  # Report which security header / CSP directive NAMES differ, never full policy strings.
+                  HDRS=$(jq -r ".[0].PropertyDifferences[$i].ActualValue, .[0].PropertyDifferences[$i].ExpectedValue" "$RAW" 2>/dev/null \
+                    | grep -oiE 'content-security-policy|strict-transport-security|x-frame-options|x-content-type-options|referrer-policy|x-xss-protection|frame-src|script-src|connect-src|style-src|img-src|font-src|default-src|object-src|base-uri' 2>/dev/null \
+                    | tr 'A-Z' 'a-z' | sort -u | head -n 20 | tr '\n' ' ' || echo "")
+                  if [ -n "${HDRS// /}" ]; then
+                    SUMMARY="header/CSP tokens present in diff: ${HDRS}(full policy string redacted)"
+                  else
+                    SUMMARY="response-headers policy property changed at this path (policy string redacted)"
+                  fi
+                  ;;
+              esac
+
+              echo "| \`$PPATH\` | $DTYPE | $SUMMARY |" >> "$GITHUB_STEP_SUMMARY"
+              i=$((i + 1))
+            done
+
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "::endgroup::"
+          done
+
+          # Scrub the raw JSON working dir so nothing sensitive lingers.
+          rm -rf "$WORK"
+
+          {
+            echo "---"
+            echo "_Read-only. Raw expected/actual values were captured to an ephemeral file, used only to compute counts/verbs/field names, and never printed. No infrastructure was modified, deployed, or reconciled._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit 0

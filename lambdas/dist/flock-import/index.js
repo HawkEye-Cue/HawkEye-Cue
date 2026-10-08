@@ -24,12 +24,18 @@
  */
 
 const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, GetCommand } = require('@aws-sdk/lib-dynamodb');
 
 const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
+const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const TABLE_NAME = process.env.TABLE_NAME;
 
 const MODEL_ID = 'amazon.nova-lite-v1:0';
-const MAX_IMAGES = 8;                 // cap per request (cost + payload safety)
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB per image (decoded)
+const MAX_IMAGES = 8;                      // cap per request (cost + payload safety)
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;   // 5 MB per image (decoded)
+const MAX_TOTAL_BYTES = 16 * 1024 * 1024;  // 16 MB combined cap across all images (AI-cost guard)
+
 const ALLOWED_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'gif']);
 
 function respond(statusCode, body) {
@@ -37,6 +43,42 @@ function respond(statusCode, body) {
 }
 function err(statusCode, code, message) {
   return respond(statusCode, { error: { code, message } });
+}
+
+// ─── Server-side subscription entitlement ───────────────────────────────────────
+// Smart Flock Import is a paid (Soar+) AI feature. We verify the account's own
+// subscription state (legacy labels normalized, expired trials reverted to free; an
+// ACTIVE Soar trial counts as paid). A browser-supplied tier/app mode is never trusted.
+const PAID_TIERS = new Set(['soar', 'summit', 'team']);
+function normalizeTier(raw) {
+  const t = (raw || 'free').toString().toLowerCase();
+  if (t === 'nest' || t === 'none' || t === 'expired' || t === '') return 'free';
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t;
+  return 'free';
+}
+function effectiveTier(profile) {
+  if (!profile) return 'free';
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+  if (status === 'trial' && profile.trialEndsAt) {
+    if (new Date(profile.trialEndsAt).getTime() < Date.now()) return 'free';
+  }
+  return normalizeTier(profile.subscriptionTier);
+}
+async function requirePaid(userId) {
+  let tier;
+  try {
+    const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
+    tier = effectiveTier(res.Item);
+  } catch (e) {
+    console.error('Entitlement check failed (denying):', e.message);
+    return err(503, 'ENTITLEMENT_UNAVAILABLE', 'Could not verify subscription. Please try again.');
+  }
+  if (!PAID_TIERS.has(tier)) {
+    return err(403, 'UPGRADE_REQUIRED', 'Smart Flock Import requires a Soar or Summit plan. Upgrade in Settings.');
+  }
+  return null;
 }
 function getUserId(event) {
   return event.requestContext?.authorizer?.jwt?.claims?.sub ?? null;
@@ -148,6 +190,7 @@ function validateImages(body) {
     return { error: err(400, 'TOO_MANY_IMAGES', `A maximum of ${MAX_IMAGES} screenshots can be imported at once.`) };
   }
   const clean = [];
+  let totalBytes = 0;
   for (const img of images) {
     const data = img && typeof img.data === 'string' ? img.data : '';
     let format = img && typeof img.format === 'string' ? img.format.toLowerCase() : '';
@@ -160,6 +203,12 @@ function validateImages(body) {
     const approxBytes = Math.floor((data.length * 3) / 4);
     if (approxBytes > MAX_IMAGE_BYTES) {
       return { error: err(400, 'IMAGE_TOO_LARGE', 'Each screenshot must be under 5 MB.') };
+    }
+    totalBytes += approxBytes;
+    // Combined-size guard: bounds total tokens/cost sent to the vision model even if
+    // each individual image is under the per-image cap.
+    if (totalBytes > MAX_TOTAL_BYTES) {
+      return { error: err(400, 'PAYLOAD_TOO_LARGE', 'Combined screenshots are too large. Upload fewer or smaller images.') };
     }
     clean.push({ data, format });
   }
@@ -174,6 +223,11 @@ exports.handler = async (event) => {
     if (!userId) return err(401, 'UNAUTHORIZED', 'Missing user identity');
 
     if (method === 'POST' && path === '/flock/import') {
+      // Paid-feature gate (Soar+ / active Soar trial) — before any parsing or AI call,
+      // so an unentitled request never incurs Bedrock cost.
+      const gate = await requirePaid(userId);
+      if (gate) return gate;
+
       let body;
       try {
         body = event.body ? JSON.parse(event.body) : {};

@@ -69,6 +69,50 @@ function ok(body) { return { statusCode: 200, headers: { 'Content-Type': 'applic
 function err(status, code, message) { return { statusCode: status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: { code, message } }) }; }
 function getUserId(event) { return event.requestContext?.authorizer?.jwt?.claims?.sub ?? null; }
 
+// ─── Server-side subscription entitlement ───────────────────────────────────────
+// Every route in this handler powers Wingman AI, Hawk Insights, Hawk Memory, Social
+// Proof, screenshot OCR, and the Industry Flight Plan — all paid (Soar+) features that
+// invoke AI and/or are advertised as paid. None is a Nest free allowance, so the whole
+// handler is gated. Effective tier is read from the account's own profile (legacy
+// labels normalized, expired trials reverted to free); a browser-supplied tier/app mode
+// is never trusted. An ACTIVE Soar trial resolves to 'soar' and is allowed.
+const PAID_TIERS = new Set(['soar', 'summit', 'team']);
+function normalizeTier(raw) {
+  const t = (raw || 'free').toString().toLowerCase();
+  if (t === 'nest' || t === 'none' || t === 'expired' || t === '') return 'free';
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t;
+  return 'free';
+}
+function effectiveTier(profile) {
+  if (!profile) return 'free';
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+  if (status === 'trial' && profile.trialEndsAt) {
+    if (new Date(profile.trialEndsAt).getTime() < Date.now()) return 'free';
+  }
+  return normalizeTier(profile.subscriptionTier);
+}
+async function getEffectiveTier(userId) {
+  const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
+  return effectiveTier(res.Item);
+}
+// Deny unless the account's effective tier is paid. Fails CLOSED (retryable 503) if the
+// profile cannot be read, so a storage error can never silently grant paid AI.
+async function requirePaid(userId) {
+  let tier;
+  try {
+    tier = await getEffectiveTier(userId);
+  } catch (e) {
+    console.error('Entitlement check failed (denying):', e.message);
+    return err(503, 'ENTITLEMENT_UNAVAILABLE', 'Could not verify subscription. Please try again.');
+  }
+  if (!PAID_TIERS.has(tier)) {
+    return err(403, 'UPGRADE_REQUIRED', 'This feature requires a Soar or Summit plan. Upgrade in Settings.');
+  }
+  return null;
+}
+
 // ─── AI Classification ──────────────────────────────────────────────────────
 async function classifyPost({ postText, tradeName, userCity, learnedContext }) {
   const prompt = `You are HawkEye Radar, an expert at spotting sales opportunities in social media posts for a ${tradeName || 'local business'}.
@@ -256,6 +300,12 @@ exports.handler = async (event) => {
     const path = event.requestContext?.http?.path ?? event.path;
     const userId = getUserId(event);
     if (!userId) return err(401, 'UNAUTHORIZED', 'Not authenticated');
+
+    // Paid-feature gate (Soar+ / active Soar trial). Applies to EVERY route here —
+    // Wingman scoring/learning/memory, Hawk Insights, Social Proof, OCR, Flight Plan —
+    // so no route can invoke the paid AI operations without a verified entitlement.
+    const gate = await requirePaid(userId);
+    if (gate) return gate;
 
     // POST /radar/score
     if (method === 'POST' && path === '/radar/score') {

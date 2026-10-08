@@ -553,19 +553,21 @@ export default function SettingsPage() {
               <span className="text-lg font-bold text-white">🚀 Soar</span>
               <span className="ml-1 bg-amber-500 text-black px-1.5 py-0.5 rounded text-xs font-bold">Popular</span>
               <p className="text-sm text-amber-400">$24.99/mo</p>
+              <p className="text-xs text-amber-300 font-medium">🎁 7-day free trial</p>
             </div>
             {['growth', 'flight', 'base', 'soar'].includes(currentTier) && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
             <ul className="text-xs text-slate-300 space-y-1 mb-3">
               <li>✓ Everything in Nest</li>
-              <li>🦅 Keyword tracking & alerts</li>
+              <li>🦅 Unlimited keyword tracking & alerts</li>
               <li>🦅 Browser extension & lead detection</li>
+              <li>📸 Smart Flock Import (screenshot → groups)</li>
               <li>🙏 Appreciations</li>
               <li>💰 Sales Tracker & Pipeline</li>
               <li>🤝 Wingman relationships</li>
               <li>📊 Hawk Insights</li>
               <li>💰 Folio recaps</li>
               <li>🔗 Linked accounts</li>
-              <li>📋 Copy & Open workflow</li>
+              <li>📋 Unlimited Copy & Open workflow</li>
             </ul>
             {!['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(currentTier) && (
               <button onClick={() => handleUpgrade('soar')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">

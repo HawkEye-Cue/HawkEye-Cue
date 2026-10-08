@@ -5,7 +5,7 @@ import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useMode } from '../contexts/ModeContext';
 import { useSearchParams } from 'react-router-dom';
-import { ApiClient } from '@social-lead-gen/shared';
+import { ApiClient, displayCueAuthor } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats, Deal } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
 import LeadProfilePopup from '../components/LeadProfilePopup';
@@ -667,7 +667,7 @@ export default function OpportunitiesPage() {
             <span className="text-lg">{platformIcons[lead.sourcePlatform] || '📱'}</span>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-white">{lead.sourceAuthor || 'New Cue'}</p>
+                <p className="text-sm font-medium text-white">{displayCueAuthor(lead.sourceAuthor, 'New Cue')}</p>
                 {(lead as any).policyType && (
                   <span className="text-xs font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">{(lead as any).policyType}</span>
                 )}
@@ -1388,7 +1388,7 @@ export default function OpportunitiesPage() {
                         <div className="platform-badge shrink-0">{platformIcons[lead.sourcePlatform] || '📱'}</div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[15px] text-white font-bold leading-tight">{lead.sourceAuthor || 'New Cue'}</span>
+                            <span className="text-[15px] text-white font-bold leading-tight">{displayCueAuthor(lead.sourceAuthor, 'New Cue')}</span>
                             {(lead as any).policyType && (
                               <span className="text-[9px] font-bold text-amber-200 bg-gradient-to-r from-amber-500/30 to-orange-500/15 px-2 py-0.5 rounded-full border border-amber-400/40">{(lead as any).policyType}</span>
                             )}

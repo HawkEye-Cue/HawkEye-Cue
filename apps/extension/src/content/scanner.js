@@ -161,7 +161,8 @@
 
       chrome.runtime.sendMessage({
         type: 'SAVE_LEAD',
-        data: { authToken: authToken, platform: platform, authorName: authorName, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
+        // D1: send the real name only; never persist the 'Unknown' sentinel.
+        data: { authToken: authToken, platform: platform, authorName: (authorName && authorName !== 'Unknown') ? authorName : null, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
       }, function(response) {
         if (chrome.runtime.lastError || !response || !response.success) {
           btn.textContent = '💼 Save as Lead';
@@ -394,7 +395,8 @@
         }
         chrome.runtime.sendMessage({
           type: 'SAVE_LEAD',
-          data: { authToken: res.authToken, platform: platform, authorName: authorName, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
+          // D1: send the real name only; never persist the 'Unknown' sentinel.
+          data: { authToken: res.authToken, platform: platform, authorName: (authorName && authorName !== 'Unknown') ? authorName : null, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
         }, function(saveResp) {
           if (saveResp && saveResp.success) {
             // Bump the flight counter for the popup.

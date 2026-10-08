@@ -15,7 +15,35 @@ import {
   isFutureDate,
   formatDate,
   isValidStatusTransition,
+  isCueAuthorAvailable,
+  displayCueAuthor,
 } from './index.js';
+
+describe('Cue author display (D1)', () => {
+  it('isCueAuthorAvailable: real names are available', () => {
+    expect(isCueAuthorAvailable('Jane Doe')).toBe(true);
+    expect(isCueAuthorAvailable('  Bob  ')).toBe(true);
+  });
+  it('isCueAuthorAvailable: empty/null/whitespace are unavailable', () => {
+    expect(isCueAuthorAvailable('')).toBe(false);
+    expect(isCueAuthorAvailable('   ')).toBe(false);
+    expect(isCueAuthorAvailable(null)).toBe(false);
+    expect(isCueAuthorAvailable(undefined)).toBe(false);
+  });
+  it('isCueAuthorAvailable: "Unknown" sentinel is unavailable (case-insensitive)', () => {
+    expect(isCueAuthorAvailable('Unknown')).toBe(false);
+    expect(isCueAuthorAvailable('unknown')).toBe(false);
+    expect(isCueAuthorAvailable('UNKNOWN')).toBe(false);
+    expect(isCueAuthorAvailable(' Unknown ')).toBe(false);
+  });
+  it('displayCueAuthor: returns name when available, fallback otherwise', () => {
+    expect(displayCueAuthor('Jane Doe', 'New Cue')).toBe('Jane Doe');
+    expect(displayCueAuthor('  Jane  ', 'New Cue')).toBe('Jane');
+    expect(displayCueAuthor('Unknown', 'New Cue')).toBe('New Cue');
+    expect(displayCueAuthor(null, 'Opportunity')).toBe('Opportunity');
+    expect(displayCueAuthor('', 'Opportunity')).toBe('Opportunity');
+  });
+});
 
 describe('DynamoDB Key Builders', () => {
   it('buildUserPK returns USER#{userId}', () => {

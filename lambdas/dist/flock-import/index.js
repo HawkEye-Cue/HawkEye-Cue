@@ -25,7 +25,7 @@
 
 const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 
 const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -66,11 +66,34 @@ function effectiveTier(profile) {
   }
   return normalizeTier(profile.subscriptionTier);
 }
-async function requirePaid(userId) {
+// One-time Soar trial self-heal for a brand-new account with no profile yet (its
+// Cognito post-confirmation trigger did not run). Idempotent + single-grant.
+async function provisionTrialIfMissing(userId, email) {
+  const now = new Date().toISOString();
+  const profile = {
+    PK: `USER#${userId}`, SK: 'PROFILE', userId, email: email || '', createdAt: now,
+    subscriptionTier: 'soar', subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    aiGenerationsUsed: 0, selectedTradeId: null,
+  };
+  try {
+    await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: profile, ConditionExpression: 'attribute_not_exists(PK)' }));
+    return profile;
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') {
+      const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
+      return res.Item;
+    }
+    throw e;
+  }
+}
+async function requirePaid(userId, email) {
   let tier;
   try {
     const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
-    tier = effectiveTier(res.Item);
+    let item = res.Item;
+    if (!item) item = await provisionTrialIfMissing(userId, email);
+    tier = effectiveTier(item);
   } catch (e) {
     console.error('Entitlement check failed (denying):', e.message);
     return err(503, 'ENTITLEMENT_UNAVAILABLE', 'Could not verify subscription. Please try again.');
@@ -225,7 +248,8 @@ exports.handler = async (event) => {
     if (method === 'POST' && path === '/flock/import') {
       // Paid-feature gate (Soar+ / active Soar trial) — before any parsing or AI call,
       // so an unentitled request never incurs Bedrock cost.
-      const gate = await requirePaid(userId);
+      const email = event.requestContext?.authorizer?.jwt?.claims?.email ?? '';
+      const gate = await requirePaid(userId, email);
       if (gate) return gate;
 
       let body;

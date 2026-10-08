@@ -1,0 +1,147 @@
+name: CloudFormation Drift Check (manual, read-only)
+
+# Temporary, manually-triggered diagnostic workflow for deployment hardening.
+#
+# READ-ONLY. It only calls CloudFormation drift DETECT/DESCRIBE APIs plus the
+# resource-level Describe/Get APIs those invoke under the hood. It never deploys,
+# never reconciles, and never uses --revert-drift. Safe to delete after assessment.
+#
+# NOTE: CloudFormation drift detection compares LIVE resources to the deployed
+# template. It is a different check from `cdk diff` (template vs template).
+# Some resource types are unsupported and are reported as NOT_CHECKED.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    # Hard upper bound so the job can never run indefinitely, independent of the
+    # per-stack polling timeout below.
+    timeout-minutes: 20
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Detect CloudFormation drift (all six stacks, read-only)
+        env:
+          # Per-stack polling budget. detect-stack-drift is async; we poll
+          # describe-stack-drift-detection-status until complete or this many seconds.
+          POLL_TIMEOUT_SECONDS: '240'
+          POLL_INTERVAL_SECONDS: '10'
+        run: |
+          set -uo pipefail
+
+          STACKS="SocialLeadGen-Database SocialLeadGen-Storage SocialLeadGen-Auth SocialLeadGen-Api SocialLeadGen-Frontend SocialLeadGen-Main"
+
+          # Table header for the GitHub Actions run summary.
+          {
+            echo "# CloudFormation Drift Check (read-only)"
+            echo ""
+            echo "CloudFormation compares LIVE resources to the deployed template."
+            echo "This is NOT cdk diff. Unsupported resource types report as NOT_CHECKED."
+            echo ""
+            echo "| Stack | Result | Modified | Deleted | Not Checked |"
+            echo "|-------|--------|----------|---------|-------------|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for STACK in $STACKS; do
+            echo "::group::Drift detection — $STACK"
+            RESULT="DETECTION_FAILED"
+            MODIFIED_COUNT=0
+            DELETED_COUNT=0
+            NOTCHECKED_COUNT=0
+
+            # 1) Start detection (read-only async operation).
+            DETECT_ID=$(aws cloudformation detect-stack-drift --stack-name "$STACK" --query StackDriftDetectionId --output text 2>/dev/null)
+
+            if [ -z "${DETECT_ID:-}" ] || [ "$DETECT_ID" = "None" ]; then
+              echo "Could not start drift detection for $STACK (missing stack or permissions)."
+              RESULT="DETECTION_FAILED"
+            else
+              # 2) Poll status with a bounded loop so we can never hang.
+              ELAPSED=0
+              STATUS="DETECTION_IN_PROGRESS"
+              while [ "$ELAPSED" -lt "$POLL_TIMEOUT_SECONDS" ]; do
+                STATUS=$(aws cloudformation describe-stack-drift-detection-status --stack-drift-detection-id "$DETECT_ID" --query DetectionStatus --output text 2>/dev/null || echo "QUERY_FAILED")
+                if [ "$STATUS" = "DETECTION_COMPLETE" ] || [ "$STATUS" = "DETECTION_FAILED" ]; then
+                  break
+                fi
+                sleep "$POLL_INTERVAL_SECONDS"
+                ELAPSED=$((ELAPSED + POLL_INTERVAL_SECONDS))
+              done
+
+              if [ "$STATUS" = "DETECTION_COMPLETE" ]; then
+                DRIFT_STATUS=$(aws cloudformation describe-stack-drift-detection-status --stack-drift-detection-id "$DETECT_ID" --query StackDriftStatus --output text 2>/dev/null || echo "UNKNOWN")
+                if [ "$DRIFT_STATUS" = "IN_SYNC" ]; then
+                  RESULT="IN_SYNC"
+                elif [ "$DRIFT_STATUS" = "DRIFTED" ]; then
+                  RESULT="DRIFTED"
+                else
+                  RESULT="DETECTION_FAILED"
+                fi
+              elif [ "$STATUS" = "DETECTION_FAILED" ]; then
+                RESULT="DETECTION_FAILED"
+              else
+                RESULT="TIMED_OUT"
+                echo "Polling timed out after ${POLL_TIMEOUT_SECONDS}s for $STACK (last status: $STATUS)."
+              fi
+
+              # 3) Per-resource breakdown. We request ONLY identity + type + drift status
+              #    (LogicalResourceId, ResourceType, StackResourceDriftStatus) — never
+              #    PropertyDifferences — so no sensitive property VALUES are logged.
+              if [ "$RESULT" = "DRIFTED" ] || [ "$RESULT" = "IN_SYNC" ]; then
+                MODDEL=$(aws cloudformation describe-stack-resource-drifts --stack-name "$STACK" --stack-resource-drift-status-filters MODIFIED DELETED --query "StackResourceDrifts[].{L:LogicalResourceId,T:ResourceType,S:StackResourceDriftStatus}" --output json 2>/dev/null || echo "[]")
+                MODIFIED_COUNT=$(printf '%s' "$MODDEL" | grep -c '"S": *"MODIFIED"' || true)
+                DELETED_COUNT=$(printf '%s' "$MODDEL" | grep -c '"S": *"DELETED"' || true)
+
+                NOTCHECKED=$(aws cloudformation describe-stack-resource-drifts --stack-name "$STACK" --stack-resource-drift-status-filters NOT_CHECKED --query "StackResourceDrifts[].{L:LogicalResourceId,T:ResourceType}" --output json 2>/dev/null || echo "[]")
+                NOTCHECKED_COUNT=$(printf '%s' "$NOTCHECKED" | grep -c '"T":' || true)
+
+                echo "Result: $RESULT"
+                echo "Modified/Deleted resources (identity + type only):"
+                printf '%s\n' "$MODDEL"
+                echo "Not-checked resources (identity + type only):"
+                printf '%s\n' "$NOTCHECKED"
+
+                {
+                  echo ""
+                  echo "### ${STACK} — ${RESULT}"
+                  echo "Modified: ${MODIFIED_COUNT} · Deleted: ${DELETED_COUNT} · Not checked: ${NOTCHECKED_COUNT}"
+                  echo ""
+                  echo "Modified/Deleted (identity + type only):"
+                  echo '```json'
+                  printf '%s\n' "$MODDEL"
+                  echo '```'
+                } >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "Result: $RESULT (no per-resource breakdown available)"
+                {
+                  echo ""
+                  echo "### ${STACK} — ${RESULT}"
+                  echo "No per-resource breakdown (detection did not complete)."
+                } >> "$GITHUB_STEP_SUMMARY"
+              fi
+            fi
+
+            # Append the summary table row. A per-stack failure never aborts the loop,
+            # so the remaining stacks are always checked.
+            echo "| ${STACK} | ${RESULT} | ${MODIFIED_COUNT} | ${DELETED_COUNT} | ${NOTCHECKED_COUNT} |" >> "$GITHUB_STEP_SUMMARY"
+            echo "::endgroup::"
+          done
+
+          {
+            echo ""
+            echo "_Read-only diagnostic. No infrastructure was modified, deployed, or reconciled. Property values are intentionally omitted; only resource identities and types are shown._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # The job itself always succeeds; findings live in the summary + logs.
+          # (DRIFTED is a finding to review, not a workflow failure.)
+          exit 0

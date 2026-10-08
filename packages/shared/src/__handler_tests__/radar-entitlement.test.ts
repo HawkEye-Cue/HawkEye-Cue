@@ -17,6 +17,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const handlerPath = resolve(here, '../../../../lambdas/dist/opportunity-score/index.js');
 
 let profile: any;
+let provisioned: any = null;
 let profileReadFails = false;
 let bedrockText = '{"score":5,"classification":"lead","isLead":true,"followUpDays":2}';
 const DAY = 24 * 60 * 60 * 1000;
@@ -35,6 +36,15 @@ function sdkStubs() {
           return { Item: profile };
         }
         return { Item: undefined };
+      }
+      if (c.__name === 'PutCommand') {
+        // Self-heal provisioning: record it and make the profile exist thereafter.
+        if (String(c.input.Item?.SK) === 'PROFILE') {
+          if (profile) { const e: any = new Error('exists'); e.name = 'ConditionalCheckFailedException'; throw e; }
+          provisioned = c.input.Item;
+          profile = c.input.Item;
+        }
+        return {};
       }
       if (c.__name === 'QueryCommand') return { Items: [] };
       return {};
@@ -90,6 +100,7 @@ function code(res: any) { try { return JSON.parse(res.body).error?.code; } catch
 
 beforeEach(() => {
   profile = { subscriptionTier: 'soar', subscriptionStatus: 'active' };
+  provisioned = null;
   profileReadFails = false;
 });
 
@@ -159,5 +170,16 @@ describe('radar entitlement — paid gate on every route', () => {
     const res = await loadHandler()(ev('POST', '/radar/score', 'user-A', { postText: 'x' }));
     expect(res.statusCode).toBe(503);
     expect(code(res)).toBe('ENTITLEMENT_UNAVAILABLE');
+  });
+
+  it('REGRESSION: a brand-new account with NO profile is self-healed to a Soar trial and allowed', async () => {
+    profile = null; // simulate the missing-profile bug (post-confirmation trigger did not run)
+    const res = await loadHandler()(ev('POST', '/radar/score', 'user-A', { postText: 'need a roofer' }));
+    expect(res.statusCode).toBe(200); // NOT 403 — the trial was provisioned on the fly
+    // Exactly one Soar trial profile was created, single-grant via attribute_not_exists.
+    expect(provisioned).toBeTruthy();
+    expect(provisioned.subscriptionTier).toBe('soar');
+    expect(provisioned.subscriptionStatus).toBe('trial');
+    expect(provisioned.trialEndsAt).toBeTruthy();
   });
 });

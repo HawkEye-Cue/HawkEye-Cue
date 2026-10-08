@@ -29,6 +29,7 @@ const handlerPath = resolve(here, '../../../../lambdas/dist/subscription-handler
 type Call = { method: string; args: any[] };
 let stripeCalls: Call[];
 let userItem: any;
+let provisioned: any = null;
 let retrievedSubscription: any;
 let portalSessionArgs: any;
 let updateArgs: any;
@@ -46,12 +47,22 @@ function sdkStubs() {
           send: async (c: any) => {
             if (c.__name === 'GetCommand') return { Item: userItem };
             if (c.__name === 'UpdateCommand') { userItem = { ...userItem }; return {}; }
+            if (c.__name === 'PutCommand') {
+              // Self-heal provisioning (GET /subscription when no profile exists).
+              if (String(c.input.Item?.SK) === 'PROFILE') {
+                if (userItem) { const e: any = new Error('exists'); e.name = 'ConditionalCheckFailedException'; throw e; }
+                provisioned = c.input.Item;
+                userItem = c.input.Item;
+              }
+              return {};
+            }
             return {};
           },
         }),
       },
       GetCommand: cmd('GetCommand'),
       UpdateCommand: cmd('UpdateCommand'),
+      PutCommand: cmd('PutCommand'),
     },
     '@aws-sdk/client-secrets-manager': {
       SecretsManagerClient: class { async send() { return { SecretString: JSON.stringify({ STRIPE_SECRET_KEY: 'sk_test_x' }) }; } },
@@ -101,8 +112,45 @@ beforeEach(() => {
   stripeCalls = [];
   portalSessionArgs = null;
   updateArgs = null;
+  provisioned = null;
   userItem = { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', stripeCustomerId: 'cus_live', stripeSubscriptionId: 'sub_live' };
   retrievedSubscription = { id: 'sub_live', status: 'active', current_period_end: 1_900_000_000 };
+});
+
+describe('subscription-handler — GET /subscription trial self-heal', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  it('provisions a one-time 7-day Soar trial when no profile exists', async () => {
+    userItem = null; // brand-new account, post-confirmation trigger never ran
+    const handler = loadHandler();
+    const res = await handler(apiEvent('GET', '/subscription'));
+    expect(res.statusCode).toBe(200);
+    const b = JSON.parse(res.body);
+    expect(b.tier).toBe('soar');
+    expect(b.status).toBe('trial');
+    expect(b.trialEndsAt).toBeTruthy();
+    // Exactly one provisioning write happened, single-grant via attribute_not_exists.
+    expect(provisioned).toBeTruthy();
+    expect(provisioned.subscriptionTier).toBe('soar');
+  });
+
+  it('does NOT re-grant or overwrite an existing paid profile', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'team', subscriptionStatus: 'active' };
+    const handler = loadHandler();
+    const res = await handler(apiEvent('GET', '/subscription'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).tier).toBe('team');
+    expect(provisioned).toBeNull(); // no provisioning write for an existing account
+  });
+
+  it('expired trial still reverts to free (not re-provisioned)', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: new Date(Date.now() - DAY).toISOString() };
+    const handler = loadHandler();
+    const res = await handler(apiEvent('GET', '/subscription'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).tier).toBe('free');
+    expect(provisioned).toBeNull();
+  });
 });
 
 describe('subscription-handler — graceful cancellation', () => {

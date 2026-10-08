@@ -93,16 +93,41 @@ function effectiveTier(profile) {
   }
   return normalizeTier(profile.subscriptionTier);
 }
-async function getEffectiveTier(userId) {
+// One-time Soar trial self-heal: if a brand-new account has no profile yet (its
+// Cognito post-confirmation trigger did not run), materialize the 7-day Soar trial via
+// an idempotent conditional write. Single-grant (attribute_not_exists) so it never
+// re-grants on repeat requests and never overwrites an existing profile.
+async function provisionTrialIfMissing(userId, email) {
+  const now = new Date().toISOString();
+  const profile = {
+    PK: `USER#${userId}`, SK: 'PROFILE', userId, email: email || '', createdAt: now,
+    subscriptionTier: 'soar', subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    aiGenerationsUsed: 0, selectedTradeId: null,
+  };
+  try {
+    await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: profile, ConditionExpression: 'attribute_not_exists(PK)' }));
+    return profile;
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') {
+      const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
+      return res.Item;
+    }
+    throw e;
+  }
+}
+async function getEffectiveTier(userId, email) {
   const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
-  return effectiveTier(res.Item);
+  let item = res.Item;
+  if (!item) item = await provisionTrialIfMissing(userId, email); // new account → one-time trial
+  return effectiveTier(item);
 }
 // Deny unless the account's effective tier is paid. Fails CLOSED (retryable 503) if the
 // profile cannot be read, so a storage error can never silently grant paid AI.
-async function requirePaid(userId) {
+async function requirePaid(userId, email) {
   let tier;
   try {
-    tier = await getEffectiveTier(userId);
+    tier = await getEffectiveTier(userId, email);
   } catch (e) {
     console.error('Entitlement check failed (denying):', e.message);
     return err(503, 'ENTITLEMENT_UNAVAILABLE', 'Could not verify subscription. Please try again.');
@@ -304,7 +329,8 @@ exports.handler = async (event) => {
     // Paid-feature gate (Soar+ / active Soar trial). Applies to EVERY route here —
     // Wingman scoring/learning/memory, Hawk Insights, Social Proof, OCR, Flight Plan —
     // so no route can invoke the paid AI operations without a verified entitlement.
-    const gate = await requirePaid(userId);
+    const email = event.requestContext?.authorizer?.jwt?.claims?.email ?? '';
+    const gate = await requirePaid(userId, email);
     if (gate) return gate;
 
     // POST /radar/score

@@ -1,7 +1,7 @@
 'use strict';
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const Stripe = require('stripe');
 
@@ -114,10 +114,52 @@ async function updateUserSubscription(userId, fields) {
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
+// Grant the one-time 7-day Soar trial to a brand-new account. Idempotent and
+// single-grant: the conditional write (attribute_not_exists) means it can only ever
+// create the FIRST profile for an account, so it can never re-grant a trial on repeat
+// logins/signups and can never overwrite an existing (free, trial, or paid) profile.
+// This is the authoritative self-heal for accounts whose Cognito post-confirmation
+// trigger did not run (the trigger is attached out-of-band and is not guaranteed).
+async function provisionTrialIfMissing(userId, event) {
+  const email = event?.requestContext?.authorizer?.jwt?.claims?.email ?? '';
+  const now = new Date().toISOString();
+  const profile = {
+    PK: `USER#${userId}`,
+    SK: 'PROFILE',
+    userId,
+    email,
+    createdAt: now,
+    subscriptionTier: 'soar',
+    subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    aiGenerationsUsed: 0,
+    selectedTradeId: null,
+  };
+  try {
+    await dynamo.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: profile,
+      ConditionExpression: 'attribute_not_exists(PK)',
+    }));
+    return profile;
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') {
+      // Another path created it first (race) — return the authoritative record.
+      return await getUser(userId);
+    }
+    throw e;
+  }
+}
+
 // GET /subscription
-async function handleGetSubscription(userId) {
-  const user = await getUser(userId);
-  if (!user) return err(404, 'USER_NOT_FOUND', 'User not found');
+async function handleGetSubscription(userId, event) {
+  let user = await getUser(userId);
+  if (!user) {
+    // No profile yet — the post-confirmation trigger may not have run. Materialize the
+    // one-time Soar trial now so the account gets its promised entitlement on first load.
+    user = await provisionTrialIfMissing(userId, event);
+    if (!user) return err(404, 'USER_NOT_FOUND', 'User not found');
+  }
 
   let tier = user.subscriptionTier ?? 'free';
 
@@ -308,7 +350,7 @@ exports.handler = async (event) => {
 
     // GET /subscription
     if (method === 'GET' && path === '/subscription') {
-      return handleGetSubscription(userId);
+      return handleGetSubscription(userId, event);
     }
 
     // POST /subscription/checkout

@@ -41,6 +41,66 @@ function ok(body) { return { statusCode: 200, headers: { 'Content-Type': 'applic
 function err(status, code, message) { return { statusCode: status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: { code, message } }) }; }
 function getUserId(event) { return event.requestContext?.authorizer?.jwt?.claims?.sub ?? null; }
 
+// ─── Server-side subscription entitlement ───────────────────────────────────────
+// Authoritative access control. The browser's app mode (guided/pro) and any
+// client-supplied tier are IGNORED here — we read the account's stored subscription
+// state and resolve the EFFECTIVE tier (handling legacy values + trial expiry), then
+// check it against the shared feature→tier table (mirrors packages/shared gating.ts).
+const { GetCommand: EntGetCommand } = require('@aws-sdk/lib-dynamodb');
+// Paid features require soar/summit/team. (pipeline/followUp/scheduling/revenue/crmPush)
+const PAID_FEATURES = new Set(['pipeline', 'followUp', 'scheduling', 'revenue', 'crmPush']);
+const PAID_TIERS = new Set(['soar', 'summit', 'team']);
+const TEAM_TIERS = new Set(['summit', 'team']);
+// Normalize historical/legacy tier labels to the canonical set.
+function normalizeTier(raw) {
+  const t = (raw || 'free').toString().toLowerCase();
+  if (t === 'nest' || t === 'none' || t === 'expired' || t === '') return 'free';
+  if (t === 'summit') return 'team';
+  // Legacy paid labels all map to soar-equivalent paid access.
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t;
+  return 'free'; // unknown → least privilege
+}
+// Resolve the effective tier for a profile, applying trial expiry. Expired trials
+// revert to free regardless of the stored tier.
+function effectiveTier(profile) {
+  if (!profile) return 'free';
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+  if (status === 'trial' && profile.trialEndsAt) {
+    if (new Date(profile.trialEndsAt).getTime() < Date.now()) return 'free';
+  }
+  return normalizeTier(profile.subscriptionTier);
+}
+function tierEntitles(tier, feature) {
+  if (!PAID_FEATURES.has(feature)) return true; // ungated
+  return PAID_TIERS.has(tier);
+}
+function tierEntitlesTeam(tier) { return TEAM_TIERS.has(tier); }
+// Read the authoritative profile and return the effective tier. Fails CLOSED: if the
+// profile cannot be read, callers should deny rather than grant.
+async function getEffectiveTier(userId) {
+  const res = await dynamo.send(new EntGetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+  }));
+  return effectiveTier(res.Item);
+}
+// Guard: ensure the account's effective tier entitles a paid feature. Returns an
+// error response to short-circuit, or null to proceed.
+async function requirePaidFeature(userId, feature) {
+  let tier;
+  try {
+    tier = await getEffectiveTier(userId);
+  } catch (e) {
+    console.error('Entitlement check failed (denying):', e.message);
+    return err(503, 'ENTITLEMENT_UNAVAILABLE', 'Could not verify subscription. Please try again.');
+  }
+  if (!tierEntitles(tier, feature)) {
+    return err(403, 'UPGRADE_REQUIRED', 'This feature requires a Soar or Summit plan. Upgrade in Settings.');
+  }
+  return null;
+}
+
 const STAGES = ['prospect', 'contacted', 'quoted', 'closing', 'won', 'lost'];
 
 // ─── Team Deal Won Notification ───────────────────────────────────────────────
@@ -466,6 +526,12 @@ exports.handler = async (event) => {
     const path = event.requestContext?.http?.path ?? event.path;
     const userId = getUserId(event);
     if (!userId) return err(401, 'UNAUTHORIZED', 'Missing user identity');
+
+    // The Sales Tracker / revenue surface is a paid (Soar+) feature in its entirety.
+    // Enforce server-side before any route so a Nest account cannot read or write
+    // deals, stats, folios, links, or notifications by calling the API directly.
+    const salesGate = await requirePaidFeature(userId, 'revenue');
+    if (salesGate) return salesGate;
 
     if (method === 'GET' && path === '/sales/deals') return handleGetDeals(userId);
     if (method === 'POST' && path === '/sales/deals') {

@@ -39,6 +39,29 @@ function ok(body) { return { statusCode: 200, headers: { 'Content-Type': 'applic
 function err(status, code, message) { return { statusCode: status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: { code, message } }) }; }
 function getUserId(event) { return event.requestContext?.authorizer?.jwt?.claims?.sub ?? null; }
 
+// ─── Server-side subscription entitlement ───────────────────────────────────────
+// Creating a team requires the Summit/Team tier. We resolve the effective tier from
+// the account's own profile so legacy labels (summit) and expired trials are handled
+// consistently — e.g. a profile stored as 'summit' is treated as 'team', and an
+// expired trial does not grant team access.
+function normalizeTier(raw) {
+  const t = (raw || 'free').toString().toLowerCase();
+  if (t === 'nest' || t === 'none' || t === 'expired' || t === '') return 'free';
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t;
+  return 'free';
+}
+function effectiveTier(profile) {
+  if (!profile) return 'free';
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+  if (status === 'trial' && profile.trialEndsAt) {
+    if (new Date(profile.trialEndsAt).getTime() < Date.now()) return 'free';
+  }
+  return normalizeTier(profile.subscriptionTier);
+}
+function isTeamTier(profile) { return effectiveTier(profile) === 'team'; }
+
 // ─── Get user's team info ─────────────────────────────────────────────────────
 async function getUserTeam(userId) {
   // Check if user is a team admin (owns a team)
@@ -538,8 +561,8 @@ exports.handler = async (event) => {
         TableName: TABLE_NAME,
         Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
       }));
-      if (profile.Item?.subscriptionTier !== 'team') {
-        return err(403, 'NOT_TEAM_TIER', 'You need a Team subscription to create a team. Upgrade in Settings.');
+      if (!isTeamTier(profile.Item)) {
+        return err(403, 'NOT_TEAM_TIER', 'You need a Summit (Team) subscription to create a team. Upgrade in Settings.');
       }
 
       const body = event.body ? JSON.parse(event.body) : {};

@@ -1,0 +1,255 @@
+name: CloudFormation Live Compare (manual, read-only, redacted)
+
+# Temporary, manually-triggered diagnostic. For the four drifted resources it reads
+# the LIVE AWS configuration (not CloudFormation drift records) and reports ONLY
+# redacted conclusions — never ARNs, secret values, client IDs, hostnames, or full
+# CSP strings.
+#
+# READ-ONLY: only describe/list/get calls. No deploy, update, reconcile, or
+# --revert-drift. Safe to delete after the comparison.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  live-compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Live configuration comparison (redacted)
+        # No -e / -o pipefail (GitHub injects them by default); this diagnostic does its
+        # own per-check guards so one failure never aborts the rest.
+        shell: bash --noprofile --norc {0}
+        run: |
+          set +e +o pipefail
+
+          API_STACK="SocialLeadGen-Api"
+          FE_STACK="SocialLeadGen-Frontend"
+
+          sumh() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+
+          sumh "# Live Configuration Comparison (redacted, read-only)"
+          sumh ""
+          sumh "Only redacted conclusions are shown. No ARNs, secret values, client IDs,"
+          sumh "hostnames, or full CSP strings are printed."
+          sumh ""
+
+          # Helper: resolve a stack resource's physical id (prints nothing sensitive here —
+          # physical ids like role names are needed internally; we do not echo them to summary).
+          phys() {
+            aws cloudformation describe-stack-resource \
+              --stack-name "$1" --logical-resource-id "$2" \
+              --query 'StackResourceDetail.PhysicalResourceId' --output text 2>/dev/null
+          }
+
+          # ───────────────────────── 1) CALENDAR IAM ─────────────────────────
+          echo "::group::1) Calendar IAM role"
+          sumh "## 1) Calendar IAM role (CalendarHandlerFnServiceRole2E2A686C)"
+          ROLE=$(phys "$API_STACK" "CalendarHandlerFnServiceRole2E2A686C")
+          if [ -z "$ROLE" ] || [ "$ROLE" = "None" ]; then
+            sumh "- **INSPECTION_FAILED** — could not resolve role physical id (NOT a 'no issue' result)."
+          else
+            INLINE=$(aws iam list-role-policies --role-name "$ROLE" --query 'PolicyNames' --output json 2>/dev/null || echo "ERR")
+            ATTACHED=$(aws iam list-attached-role-policies --role-name "$ROLE" --query 'AttachedPolicies[].PolicyName' --output json 2>/dev/null || echo "ERR")
+            if [ "$INLINE" = "ERR" ]; then
+              sumh "- **INSPECTION_FAILED** — iam:ListRolePolicies failed (permissions?). NOT 'no issue'."
+            else
+              NINLINE=$(printf '%s' "$INLINE" | grep -oE '"' | wc -l); NINLINE=$((NINLINE/2))
+              sumh "- Inline policies present: ${NINLINE}; managed attachments present: $( printf '%s' "$ATTACHED" | grep -c '"' )(names redacted)"
+              # Inspect each inline policy for Resend-secret read, reporting verbs/service only.
+              FOUND_RESEND="no"; ACTIONS_ALL=""
+              for PN in $(printf '%s' "$INLINE" | grep -oE '"[^"]+"' | tr -d '"'); do
+                DOC=$(aws iam get-role-policy --role-name "$ROLE" --policy-name "$PN" --query 'PolicyDocument' --output json 2>/dev/null || echo "")
+                VERBS=$(printf '%s' "$DOC" | grep -oE '"[a-z0-9-]+:[A-Za-z0-9*]+"' | tr -d '"' | sort -u | tr '\n' ' ')
+                ACTIONS_ALL="${ACTIONS_ALL}${VERBS}"
+                # Detect the Resend secret resource category WITHOUT printing the ARN.
+                if printf '%s' "$DOC" | grep -qi 'secret:SocialLeadGen/Resend'; then FOUND_RESEND="yes"; fi
+              done
+              SERVICES=$(echo "$ACTIONS_ALL" | tr ' ' '\n' | sed -n 's/^\([a-z0-9-]*\):.*/\1/p' | sort -u | tr '\n' ' ')
+              SECRETVERBS=$(echo "$ACTIONS_ALL" | tr ' ' '\n' | grep -i '^secretsmanager:' | sort -u | tr '\n' ' ')
+              sumh "- Inline action services (verbs only): ${SERVICES:-none}"
+              sumh "- Secrets Manager verbs present: ${SECRETVERBS:-none}"
+              sumh "- Grants read of the Resend secret category (SocialLeadGen/Resend*): **${FOUND_RESEND}**"
+              sumh "- Classification: $( [ "$FOUND_RESEND" = "yes" ] && echo 'matches the Resend access the handler needs (inline role policy)' || echo 'does NOT clearly grant the expected Resend secret — investigate' )"
+            fi
+          fi
+          sumh ""
+          echo "::endgroup::"
+
+          # ───────────────────────── 2) HTTP API CORS ────────────────────────
+          echo "::group::2) HTTP API CORS AllowHeaders"
+          sumh "## 2) HTTP API CORS AllowHeaders"
+          APIID=$(phys "$API_STACK" "HttpApiF5A9A8A7")
+          if [ -z "$APIID" ] || [ "$APIID" = "None" ]; then
+            sumh "- **INSPECTION_FAILED** — could not resolve HTTP API id (NOT 'no diff')."
+          else
+            HDRS=$(aws apigatewayv2 get-api --api-id "$APIID" --query 'CorsConfiguration.AllowHeaders' --output json 2>/dev/null || echo "ERR")
+            if [ "$HDRS" = "ERR" ]; then
+              sumh "- **INSPECTION_FAILED** — apigatewayv2:GetApi failed. NOT 'no diff'."
+            else
+              # Header names are not secrets — safe to show. Normalize for comparison.
+              LIVE_SORTED=$(printf '%s' "$HDRS" | grep -oE '"[^"]+"' | tr -d '"' | tr 'A-Z' 'a-z' | sort | tr '\n' ',')
+              LIVE_RAW=$(printf '%s' "$HDRS" | grep -oE '"[^"]+"' | tr -d '"' | tr '\n' ',')
+              EXPECTED_SORTED="authorization,content-type,"
+              sumh "- Live AllowHeaders (as returned): \`${LIVE_RAW}\`"
+              sumh "- CDK AllowHeaders: \`Authorization,Content-Type\`"
+              if [ "$LIVE_SORTED" = "$EXPECTED_SORTED" ]; then
+                # Same set case-insensitively → check if it's pure casing or also order.
+                if printf '%s' "$HDRS" | grep -q 'Authorization'; then
+                  sumh "- Verdict: **cosmetic (ordering only; same casing set)** — functionally identical."
+                else
+                  sumh "- Verdict: **cosmetic (capitalization/normalization)** — same header set, CORS matching is case-insensitive; functionally identical."
+                fi
+              else
+                sumh "- Verdict: **FUNCTIONAL DIFFERENCE** — the live header set differs from {Authorization, Content-Type}. Review before normalizing."
+              fi
+            fi
+          fi
+          sumh ""
+          echo "::endgroup::"
+
+          # ───────────────────────── 3) CLOUDFRONT CSP ───────────────────────
+          echo "::group::3) CloudFront CSP"
+          sumh "## 3) CloudFront Content-Security-Policy"
+          POLID=$(phys "$FE_STACK" "SecurityHeadersE66B69D3")
+          if [ -z "$POLID" ] || [ "$POLID" = "None" ]; then
+            sumh "- **INSPECTION_FAILED** — could not resolve response-headers-policy id (NOT 'no diff')."
+          else
+            CSP=$(aws cloudfront get-response-headers-policy-config --id "$POLID" \
+                   --query 'ResponseHeadersPolicyConfig.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy' \
+                   --output text 2>/dev/null || echo "ERR")
+            if [ "$CSP" = "ERR" ] || [ -z "$CSP" ]; then
+              sumh "- **INSPECTION_FAILED** — cloudfront:GetResponseHeadersPolicyConfig failed/empty. NOT 'no diff'."
+            else
+              # Classify sources into CATEGORIES per directive; never print hosts/full string.
+              # Expected (template) directives are known from CDK; we report presence of
+              # category tokens the live CSP contains, per directive.
+              classify() {
+                # $1 = directive name; prints space-separated category tokens found in that directive's live value
+                local d="$1" seg cats="" residual=""
+                seg=$(printf '%s' "$CSP" | tr ';' '\n' | grep -iE "^[[:space:]]*${d}[[:space:]]" || true)
+                echo "$seg" | grep -qi "'self'"            && cats="${cats}self "
+                echo "$seg" | grep -qi "'none'"            && cats="${cats}none "
+                echo "$seg" | grep -qi "'unsafe-inline'"   && cats="${cats}unsafe-inline "
+                echo "$seg" | grep -qi "data:"             && cats="${cats}data: "
+                echo "$seg" | grep -qi "cognito-idp"       && cats="${cats}cognito "
+                echo "$seg" | grep -qi "execute-api"       && cats="${cats}api-gateway "
+                echo "$seg" | grep -qi "stripe"            && cats="${cats}stripe "
+                # Detect ANY https host that is NOT one of the known categories, even when
+                # known hosts are also present. Enumerate each https token in the segment
+                # and keep only those that don't match the known-host patterns.
+                residual=$(echo "$seg" | grep -oiE "https?://[^[:space:]']+" \
+                  | grep -viE "cognito-idp|execute-api|stripe" | head -n1)
+                if [ -n "$residual" ]; then cats="${cats}other-3p "; fi
+                echo "$cats"
+              }
+              sumh "| Directive | Live source categories |"
+              sumh "|-----------|-------------------------|"
+              for D in default-src script-src style-src img-src font-src connect-src frame-src object-src base-uri; do
+                C=$(classify "$D")
+                PRESENT=$(printf '%s' "$CSP" | tr ';' '\n' | grep -ciE "^[[:space:]]*${D}[[:space:]]")
+                if [ "${PRESENT:-0}" = "0" ]; then
+                  sumh "| \`$D\` | (directive absent in live) |"
+                else
+                  sumh "| \`$D\` | ${C:-'(sources present; uncategorized)'} |"
+                fi
+              done
+              # Highlight the likely functional directive: connect-src 'other-3p' presence.
+              CONNECT_CATS=$(classify connect-src)
+              if echo "$CONNECT_CATS" | grep -q 'other-3p'; then
+                sumh ""
+                sumh "- Note: \`connect-src\` contains an **other-3p (non-Cognito/API/Stripe) source category** not in the CDK template → **likely FUNCTIONAL** (a source was added live). Confirm the category before remediating."
+              else
+                sumh ""
+                sumh "- \`connect-src\` categories map to the known template set (self/cognito/api-gateway/stripe). Any remaining diff is likely **cosmetic** (ordering/whitespace), but confirm against template."
+              fi
+            fi
+          fi
+          sumh ""
+          echo "::endgroup::"
+
+          # ───────────────────────── 4) COGNITO AUTHORIZER ───────────────────
+          echo "::group::4) Cognito authorizer audience"
+          sumh "## 4) Cognito authorizer audience"
+          AUDAPI=$(phys "$API_STACK" "HttpApiF5A9A8A7")
+          AUTHID=$(phys "$API_STACK" "HttpApiCognitoAuthorizer935FA0F6")
+          if [ -z "$AUDAPI" ] || [ "$AUDAPI" = "None" ] || [ -z "$AUTHID" ] || [ "$AUTHID" = "None" ]; then
+            sumh "- **INSPECTION_FAILED** — could not resolve api/authorizer id (NOT 'no diff')."
+          else
+            AUD=$(aws apigatewayv2 get-authorizer --api-id "$AUDAPI" --authorizer-id "$AUTHID" --query 'JwtConfiguration.Audience' --output json 2>/dev/null || echo "ERR")
+            WEBID=$(aws cloudformation list-exports --query "Exports[?Name=='SocialLeadGen-WebClientId'].Value" --output text 2>/dev/null)
+            MOBID=$(aws cloudformation list-exports --query "Exports[?Name=='SocialLeadGen-MobileClientId'].Value" --output text 2>/dev/null)
+            EXTID=$(aws cloudformation list-exports --query "Exports[?Name=='SocialLeadGen-ExtensionClientId'].Value" --output text 2>/dev/null)
+            if [ "$AUD" = "ERR" ]; then
+              sumh "- **INSPECTION_FAILED** — apigatewayv2:GetAuthorizer failed. NOT 'no diff'."
+            elif [ -z "$WEBID" ] || [ -z "$MOBID" ] || [ -z "$EXTID" ]; then
+              sumh "- **INSPECTION_FAILED** — could not read one or more client-id exports. NOT 'no diff'."
+            else
+              # Membership checks only — never print the IDs.
+              AUDCOUNT=$(printf '%s' "$AUD" | grep -oE '"[^"]+"' | wc -l | tr -d ' ')
+              WEB_OK=no; MOB_OK=no; EXT_OK=no
+              printf '%s' "$AUD" | grep -qF "$WEBID" && WEB_OK=yes
+              printf '%s' "$AUD" | grep -qF "$MOBID" && MOB_OK=yes
+              printf '%s' "$AUD" | grep -qF "$EXTID" && EXT_OK=yes
+              MATCHED=0; for v in $WEB_OK $MOB_OK $EXT_OK; do [ "$v" = yes ] && MATCHED=$((MATCHED+1)); done
+              EXTRA=$((AUDCOUNT - MATCHED))
+              sumh "- Live audience entry count: ${AUDCOUNT}"
+              sumh "- Web client present: ${WEB_OK}; Mobile client present: ${MOB_OK}; Extension client present: ${EXT_OK} (IDs redacted)"
+              sumh "- Matched expected clients: ${MATCHED}/3"
+              if [ "$EXTRA" -gt 0 ]; then
+                sumh "- **Unexpected audience entries present: ${EXTRA}** — identifying by metadata (no IDs printed):"
+                # Resolve the user pool id so we can describe each unmatched client by its
+                # NAME + timestamps only — enough to classify legitimate vs legacy/obsolete
+                # WITHOUT exposing any client id. Pull the pool id from the authorizer's
+                # IssuerUrl (…/<region>_<poolId>) rather than printing it anywhere.
+                ISSUER=$(aws apigatewayv2 get-authorizer --api-id "$AUDAPI" --authorizer-id "$AUTHID" --query 'JwtConfiguration.Issuer' --output text 2>/dev/null)
+                POOL_ID=$(printf '%s' "$ISSUER" | sed -nE 's#.*/([A-Za-z0-9_-]+)$#\1#p')
+                # Iterate the live audience IDs; for any that is NOT one of the 3 exports,
+                # describe it and print ONLY name + created/last-modified dates + auth flows.
+                for AID in $(printf '%s' "$AUD" | grep -oE '"[^"]+"' | tr -d '"'); do
+                  if [ "$AID" = "$WEBID" ] || [ "$AID" = "$MOBID" ] || [ "$AID" = "$EXTID" ]; then continue; fi
+                  if [ -z "$POOL_ID" ]; then
+                    sumh "  - Unmatched entry found, but pool id could not be resolved to describe it (INSPECTION_PARTIAL)."
+                    continue
+                  fi
+                  META=$(aws cognito-idp describe-user-pool-client --user-pool-id "$POOL_ID" --client-id "$AID" \
+                           --query 'UserPoolClient.{name:ClientName,created:CreationDate,modified:LastModifiedDate,flows:ExplicitAuthFlows,oauth:AllowedOAuthFlows,secret:(ClientSecret!=null)}' \
+                           --output json 2>/dev/null || echo "ERR")
+                  if [ "$META" = "ERR" ] || [ -z "$META" ]; then
+                    sumh "  - An unmatched audience entry exists but describe-user-pool-client failed (it may be a DELETED client id still listed in the authorizer, or a client in another pool). INSPECTION_PARTIAL — treat as **needs manual confirmation**."
+                  else
+                    CNAME=$(printf '%s' "$META" | sed -nE 's/.*"name"[: ]*"([^"]*)".*/\1/p')
+                    CCREATED=$(printf '%s' "$META" | sed -nE 's/.*"created"[: ]*"?([^",}]*)"?.*/\1/p')
+                    CMOD=$(printf '%s' "$META" | sed -nE 's/.*"modified"[: ]*"?([^",}]*)"?.*/\1/p')
+                    HAS_SECRET=$(printf '%s' "$META" | grep -q '"secret": true' && echo yes || echo no)
+                    sumh "  - Extra client → name: \`${CNAME:-<unnamed>}\`; created: ${CCREATED:-?}; lastModified: ${CMOD:-?}; hasClientSecret: ${HAS_SECRET} (client id NOT shown)"
+                    sumh "    - Auth flows (verbs only): $(printf '%s' "$META" | grep -oiE 'USER_[A-Z_]+|ALLOW_[A-Z_]+' | sort -u | tr '\n' ' ')"
+                    sumh "    - Classify: a current app name (Web/Mobile/Extension variant) ⇒ legitimate; an old/test/duplicate name or a stale lastModified ⇒ likely legacy. Do NOT remove without this evidence."
+                  fi
+                done
+              else
+                sumh "- No unexpected audience entries."
+              fi
+              if [ "$MATCHED" = "3" ] && [ "$EXTRA" = "0" ]; then
+                sumh "- Verdict: live audience == {Web, Mobile, Extension} exactly → safe to codify via userPoolClients references."
+              else
+                sumh "- Verdict: live audience does NOT cleanly equal the three expected clients → confirm before codifying."
+              fi
+            fi
+          fi
+          sumh ""
+          echo "::endgroup::"
+
+          sumh "---"
+          sumh "_Read-only. No ARNs, secret values, client IDs, hostnames, or full CSP strings were printed. No infrastructure was modified, deployed, or reconciled._"
+          exit 0

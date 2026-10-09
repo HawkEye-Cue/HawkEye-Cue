@@ -120,33 +120,65 @@ async function updateUserSubscription(userId, fields) {
 // logins/signups and can never overwrite an existing (free, trial, or paid) profile.
 // This is the authoritative self-heal for accounts whose Cognito post-confirmation
 // trigger did not run (the trigger is attached out-of-band and is not guaranteed).
-async function provisionTrialIfMissing(userId, event) {
-  const email = event?.requestContext?.authorizer?.jwt?.claims?.email ?? '';
+// A profile is eligible for the one-time 7-day Soar trial if it has NEVER consumed a
+// trial and has NO billing history. This is true for:
+//   (a) a missing profile (post-confirmation trigger never ran), and
+//   (b) a stale bare-Nest profile created by the OLD social-accounts safety-net that
+//       wrote subscriptionTier:'free' before trials were unified — such a profile has
+//       no trialEndsAt and no Stripe identifiers, so it never actually got its trial.
+// A legitimately-ended account is NOT eligible and is left untouched:
+//   - expired trial  → has trialEndsAt (+ status 'expired')
+//   - canceled/paid  → has stripeCustomerId / stripeSubscriptionId (+ status)
+// Granting sets trialEndsAt, so this can fire at most once per account.
+function isTrialEligible(user) {
+  if (!user) return true; // missing profile → brand-new account
+  const status = (user.subscriptionStatus || '').toLowerCase();
+  const everTrialed = Boolean(user.trialEndsAt);
+  const everPaid = Boolean(user.stripeCustomerId || user.stripeSubscriptionId);
+  const endState = status === 'expired' || status === 'canceled';
+  const tier = (user.subscriptionTier || 'free').toLowerCase();
+  const isFreeish = tier === 'free' || tier === 'nest' || tier === 'none' || tier === '';
+  return isFreeish && !everTrialed && !everPaid && !endState;
+}
+
+// Grant the one-time Soar trial. Handles both the missing-profile case (conditional
+// create) and the stale bare-Nest case (conditional update that only applies while the
+// record still looks un-trialed and un-paid — so a concurrent checkout/trial can never
+// be clobbered). Returns the resulting profile.
+async function grantTrial(userId, event, existing) {
+  const email = existing?.email || event?.requestContext?.authorizer?.jwt?.claims?.email || '';
   const now = new Date().toISOString();
-  const profile = {
-    PK: `USER#${userId}`,
-    SK: 'PROFILE',
-    userId,
-    email,
-    createdAt: now,
-    subscriptionTier: 'soar',
-    subscriptionStatus: 'trial',
-    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    aiGenerationsUsed: 0,
-    selectedTradeId: null,
-  };
-  try {
-    await dynamo.send(new PutCommand({
-      TableName: TABLE_NAME,
-      Item: profile,
-      ConditionExpression: 'attribute_not_exists(PK)',
-    }));
-    return profile;
-  } catch (e) {
-    if (e.name === 'ConditionalCheckFailedException') {
-      // Another path created it first (race) — return the authoritative record.
-      return await getUser(userId);
+  const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  if (!existing) {
+    // Create path — single-grant via attribute_not_exists.
+    const profile = {
+      PK: `USER#${userId}`, SK: 'PROFILE', userId, email, createdAt: now,
+      subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt,
+      aiGenerationsUsed: 0, selectedTradeId: null,
+    };
+    try {
+      await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: profile, ConditionExpression: 'attribute_not_exists(PK)' }));
+      return profile;
+    } catch (e) {
+      if (e.name === 'ConditionalCheckFailedException') return await getUser(userId);
+      throw e;
     }
+  }
+
+  // Upgrade path — only applies while the record is still un-trialed and un-paid. The
+  // condition guards against racing a checkout/trial that may have just landed.
+  try {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      UpdateExpression: 'SET subscriptionTier = :soar, subscriptionStatus = :trial, trialEndsAt = :te',
+      ConditionExpression: 'attribute_not_exists(trialEndsAt) AND attribute_not_exists(stripeCustomerId) AND attribute_not_exists(stripeSubscriptionId)',
+      ExpressionAttributeValues: { ':soar': 'soar', ':trial': 'trial', ':te': trialEndsAt },
+    }));
+    return { ...existing, subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt };
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') return await getUser(userId); // raced — use authoritative
     throw e;
   }
 }
@@ -154,10 +186,11 @@ async function provisionTrialIfMissing(userId, event) {
 // GET /subscription
 async function handleGetSubscription(userId, event) {
   let user = await getUser(userId);
-  if (!user) {
-    // No profile yet — the post-confirmation trigger may not have run. Materialize the
-    // one-time Soar trial now so the account gets its promised entitlement on first load.
-    user = await provisionTrialIfMissing(userId, event);
+
+  // Self-heal: grant the one-time Soar trial to brand-new OR stale-bare-Nest accounts
+  // that never consumed a trial and never paid. Never touches expired/canceled/paid.
+  if (isTrialEligible(user)) {
+    user = await grantTrial(userId, event, user);
     if (!user) return err(404, 'USER_NOT_FOUND', 'User not found');
   }
 

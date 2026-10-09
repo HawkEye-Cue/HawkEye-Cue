@@ -93,33 +93,55 @@ function effectiveTier(profile) {
   }
   return normalizeTier(profile.subscriptionTier);
 }
-// One-time Soar trial self-heal: if a brand-new account has no profile yet (its
-// Cognito post-confirmation trigger did not run), materialize the 7-day Soar trial via
-// an idempotent conditional write. Single-grant (attribute_not_exists) so it never
-// re-grants on repeat requests and never overwrites an existing profile.
-async function provisionTrialIfMissing(userId, email) {
+// One-time Soar trial self-heal. Eligible = never consumed a trial AND never paid:
+// a missing profile (trigger never ran) OR a stale bare-Nest profile from the old
+// social-accounts path. Expired/canceled/paid profiles are NOT eligible (left as-is).
+// Granting sets trialEndsAt, so it fires at most once per account.
+function isTrialEligible(user) {
+  if (!user) return true;
+  const status = (user.subscriptionStatus || '').toLowerCase();
+  const everTrialed = Boolean(user.trialEndsAt);
+  const everPaid = Boolean(user.stripeCustomerId || user.stripeSubscriptionId);
+  const endState = status === 'expired' || status === 'canceled';
+  const tier = (user.subscriptionTier || 'free').toLowerCase();
+  const isFreeish = tier === 'free' || tier === 'nest' || tier === 'none' || tier === '';
+  return isFreeish && !everTrialed && !everPaid && !endState;
+}
+async function grantTrial(userId, email, existing) {
   const now = new Date().toISOString();
-  const profile = {
-    PK: `USER#${userId}`, SK: 'PROFILE', userId, email: email || '', createdAt: now,
-    subscriptionTier: 'soar', subscriptionStatus: 'trial',
-    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    aiGenerationsUsed: 0, selectedTradeId: null,
-  };
-  try {
-    await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: profile, ConditionExpression: 'attribute_not_exists(PK)' }));
-    return profile;
-  } catch (e) {
-    if (e.name === 'ConditionalCheckFailedException') {
-      const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
-      return res.Item;
+  const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  if (!existing) {
+    const profile = {
+      PK: `USER#${userId}`, SK: 'PROFILE', userId, email: email || '', createdAt: now,
+      subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt,
+      aiGenerationsUsed: 0, selectedTradeId: null,
+    };
+    try {
+      await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: profile, ConditionExpression: 'attribute_not_exists(PK)' }));
+      return profile;
+    } catch (e) {
+      if (e.name === 'ConditionalCheckFailedException') { const r = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } })); return r.Item; }
+      throw e;
     }
+  }
+  try {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      UpdateExpression: 'SET subscriptionTier = :soar, subscriptionStatus = :trial, trialEndsAt = :te',
+      ConditionExpression: 'attribute_not_exists(trialEndsAt) AND attribute_not_exists(stripeCustomerId) AND attribute_not_exists(stripeSubscriptionId)',
+      ExpressionAttributeValues: { ':soar': 'soar', ':trial': 'trial', ':te': trialEndsAt },
+    }));
+    return { ...existing, subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt };
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') { const r = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } })); return r.Item; }
     throw e;
   }
 }
 async function getEffectiveTier(userId, email) {
   const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
   let item = res.Item;
-  if (!item) item = await provisionTrialIfMissing(userId, email); // new account → one-time trial
+  if (isTrialEligible(item)) item = await grantTrial(userId, email, item); // new/stale-Nest → one-time trial
   return effectiveTier(item);
 }
 // Deny unless the account's effective tier is paid. Fails CLOSED (retryable 503) if the

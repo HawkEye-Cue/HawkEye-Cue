@@ -27,6 +27,7 @@ let bedrockShouldThrow = false;
 let lastSentContent: any[] = [];
 // Entitlement state: the PROFILE item returned for the authed user, and a read-failure flag.
 let profile: any = { subscriptionTier: 'soar', subscriptionStatus: 'active' };
+let provisioned: any = null;
 let profileReadFails = false;
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -53,13 +54,27 @@ function sdkStubs() {
     '@aws-sdk/lib-dynamodb': {
       DynamoDBDocumentClient: {
         from: () => ({
-          send: async () => {
-            if (profileReadFails) throw new Error('DynamoDB unavailable');
-            return { Item: profile };
+          send: async (c: any) => {
+            if (c.__name === 'GetCommand') {
+              if (profileReadFails) throw new Error('DynamoDB unavailable');
+              return { Item: profile };
+            }
+            if (c.__name === 'PutCommand' && String(c.input.Item?.SK) === 'PROFILE') {
+              if (profile) { const e: any = new Error('exists'); e.name = 'ConditionalCheckFailedException'; throw e; }
+              provisioned = c.input.Item; profile = c.input.Item; return {};
+            }
+            if (c.__name === 'UpdateCommand' && String(c.input.Key?.SK) === 'PROFILE'
+                && profile && !profile.trialEndsAt && !profile.stripeCustomerId && !profile.stripeSubscriptionId) {
+              profile = { ...profile, subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: c.input.ExpressionAttributeValues?.[':te'] };
+              provisioned = profile; return {};
+            }
+            return {};
           },
         }),
       },
       GetCommand: cmd('GetCommand'),
+      PutCommand: cmd('PutCommand'),
+      UpdateCommand: cmd('UpdateCommand'),
     },
   } as Record<string, any>;
 }
@@ -94,17 +109,30 @@ beforeEach(() => {
   lastSentContent = [];
   // Default to a paid, active Soar account so existing behavior tests reach the AI path.
   profile = { subscriptionTier: 'soar', subscriptionStatus: 'active' };
+  provisioned = null;
   profileReadFails = false;
 });
 
 describe('flock-import — paid entitlement (Soar+ / active trial)', () => {
-  it('Nest (free) is denied with 403 UPGRADE_REQUIRED before any AI call', async () => {
-    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+  it('expired-trial Nest is denied with 403 UPGRADE_REQUIRED before any AI call', async () => {
+    // A legitimately-ended Nest user (expired trial) is NOT trial-eligible → denied.
+    profile = { subscriptionTier: 'free', subscriptionStatus: 'expired', trialEndsAt: new Date(Date.now() - DAY).toISOString() };
     const handler = loadHandler();
     const res = await handler(event([img()]));
     expect(res.statusCode).toBe(403);
     expect(body(res).error.code).toBe('UPGRADE_REQUIRED');
     expect(lastSentContent).toHaveLength(0); // no Bedrock invocation
+    expect(provisioned).toBeNull(); // not re-granted
+  });
+
+  it('STALE-NEST HEAL: a bare free profile (no trial/Stripe history) is upgraded to Soar trial and allowed', async () => {
+    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+    aiResponse = { groups: [{ name: 'G', permittedDays: ['Monday'], anyDay: false, rulesFound: true }] };
+    const handler = loadHandler();
+    const res = await handler(event([img()]));
+    expect(res.statusCode).toBe(200);
+    expect(provisioned.subscriptionTier).toBe('soar');
+    expect(provisioned.subscriptionStatus).toBe('trial');
   });
 
   it('active Soar trial is allowed', async () => {

@@ -46,9 +46,32 @@ function sdkStubs() {
         from: () => ({
           send: async (c: any) => {
             if (c.__name === 'GetCommand') return { Item: userItem };
-            if (c.__name === 'UpdateCommand') { userItem = { ...userItem }; return {}; }
+
+            if (c.__name === 'UpdateCommand') {
+              // Faithfully evaluate the ConditionExpression against the current record
+              // and persist the SET assignments, so trial-upgrade and expiry updates are
+              // actually simulated (not silently accepted).
+              const cond = c.input.ConditionExpression || '';
+              const values = c.input.ExpressionAttributeValues || {};
+              const cur = userItem || {};
+              // Trial-upgrade guard: only applies while un-trialed AND un-paid.
+              if (cond.includes('attribute_not_exists(trialEndsAt)')) {
+                const ok = !cur.trialEndsAt && !cur.stripeCustomerId && !cur.stripeSubscriptionId;
+                if (!ok) { const e: any = new Error('cond'); e.name = 'ConditionalCheckFailedException'; throw e; }
+              }
+              // Apply the SET fields from the expression (supports the specific SETs used).
+              const expr = String(c.input.UpdateExpression || '');
+              const next = { ...cur };
+              if (/subscriptionTier\s*=\s*:(soar|tier)/.test(expr)) next.subscriptionTier = values[':soar'] ?? values[':tier'];
+              if (/subscriptionStatus\s*=\s*:(trial|status)/.test(expr)) next.subscriptionStatus = values[':trial'] ?? values[':status'];
+              if (/trialEndsAt\s*=\s*:te/.test(expr)) next.trialEndsAt = values[':te'];
+              userItem = next;
+              upgraded = cond.includes('attribute_not_exists(trialEndsAt)') ? next : upgraded;
+              return {};
+            }
+
             if (c.__name === 'PutCommand') {
-              // Self-heal provisioning (GET /subscription when no profile exists).
+              // Self-heal CREATE (GET /subscription when no profile exists). Single-grant.
               if (String(c.input.Item?.SK) === 'PROFILE') {
                 if (userItem) { const e: any = new Error('exists'); e.name = 'ConditionalCheckFailedException'; throw e; }
                 provisioned = c.input.Item;

@@ -46,6 +46,16 @@ function sdkStubs() {
         }
         return {};
       }
+      if (c.__name === 'UpdateCommand') {
+        // Model the stale-Nest trial upgrade: only applies when the record is still
+        // un-trialed and un-paid (matches the handler's ConditionExpression).
+        if (String(c.input.Key?.SK) === 'PROFILE' && profile && !profile.trialEndsAt && !profile.stripeCustomerId && !profile.stripeSubscriptionId) {
+          profile = { ...profile, subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: c.input.ExpressionAttributeValues?.[':te'] };
+          provisioned = profile;
+          return {};
+        }
+        return {};
+      }
       if (c.__name === 'QueryCommand') return { Items: [] };
       return {};
     },
@@ -105,29 +115,44 @@ beforeEach(() => {
 });
 
 describe('radar entitlement — paid gate on every route', () => {
-  it('Nest (free) denied on /radar/score with 403 UPGRADE_REQUIRED', async () => {
-    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+  // A legitimately-ended Nest user (EXPIRED trial) is NOT trial-eligible → stays denied.
+  const expiredNest = () => ({ subscriptionTier: 'free', subscriptionStatus: 'expired', trialEndsAt: new Date(Date.now() - DAY).toISOString() });
+
+  it('expired-trial Nest denied on /radar/score with 403 UPGRADE_REQUIRED', async () => {
+    profile = expiredNest();
     const res = await loadHandler()(ev('POST', '/radar/score', 'user-A', { postText: 'need a roofer' }));
     expect(res.statusCode).toBe(403);
     expect(code(res)).toBe('UPGRADE_REQUIRED');
+    expect(provisioned).toBeNull(); // not re-granted
   });
 
-  it('Nest (free) denied on /radar/insights', async () => {
-    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+  it('expired-trial Nest denied on /radar/insights', async () => {
+    profile = expiredNest();
     const res = await loadHandler()(ev('GET', '/radar/insights'));
     expect(res.statusCode).toBe(403);
   });
 
-  it('Nest (free) denied on /radar/memory (data route still part of Wingman)', async () => {
-    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+  it('expired-trial Nest denied on /radar/memory (data route still part of Wingman)', async () => {
+    profile = expiredNest();
     const res = await loadHandler()(ev('GET', '/radar/memory'));
     expect(res.statusCode).toBe(403);
   });
 
-  it('Nest (free) denied on /flight-plan', async () => {
-    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+  it('expired-trial Nest denied on /flight-plan', async () => {
+    profile = expiredNest();
     const res = await loadHandler()(ev('POST', '/flight-plan', 'user-A', { tradeName: 'Roofer' }));
     expect(res.statusCode).toBe(403);
+  });
+
+  it('STALE-NEST HEAL: a bare free profile with no trial/Stripe history is upgraded to Soar trial and allowed', async () => {
+    // This is the exact production bug: an old social-accounts path created a Nest
+    // profile with no trialEndsAt and no Stripe fields. It must now self-heal.
+    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+    const res = await loadHandler()(ev('POST', '/radar/score', 'user-A', { postText: 'need a roofer' }));
+    expect(res.statusCode).toBe(200);
+    expect(provisioned.subscriptionTier).toBe('soar');
+    expect(provisioned.subscriptionStatus).toBe('trial');
+    expect(provisioned.trialEndsAt).toBeTruthy();
   });
 
   it('active Soar trial allowed on /radar/score', async () => {

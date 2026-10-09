@@ -25,7 +25,7 @@
 
 const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
 const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -66,24 +66,47 @@ function effectiveTier(profile) {
   }
   return normalizeTier(profile.subscriptionTier);
 }
-// One-time Soar trial self-heal for a brand-new account with no profile yet (its
-// Cognito post-confirmation trigger did not run). Idempotent + single-grant.
-async function provisionTrialIfMissing(userId, email) {
+// One-time Soar trial self-heal. Eligible = never consumed a trial AND never paid:
+// a missing profile OR a stale bare-Nest profile from the old social-accounts path.
+// Expired/canceled/paid profiles are NOT eligible. Granting sets trialEndsAt → fires once.
+function isTrialEligible(user) {
+  if (!user) return true;
+  const status = (user.subscriptionStatus || '').toLowerCase();
+  const everTrialed = Boolean(user.trialEndsAt);
+  const everPaid = Boolean(user.stripeCustomerId || user.stripeSubscriptionId);
+  const endState = status === 'expired' || status === 'canceled';
+  const tier = (user.subscriptionTier || 'free').toLowerCase();
+  const isFreeish = tier === 'free' || tier === 'nest' || tier === 'none' || tier === '';
+  return isFreeish && !everTrialed && !everPaid && !endState;
+}
+async function grantTrial(userId, email, existing) {
   const now = new Date().toISOString();
-  const profile = {
-    PK: `USER#${userId}`, SK: 'PROFILE', userId, email: email || '', createdAt: now,
-    subscriptionTier: 'soar', subscriptionStatus: 'trial',
-    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    aiGenerationsUsed: 0, selectedTradeId: null,
-  };
-  try {
-    await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: profile, ConditionExpression: 'attribute_not_exists(PK)' }));
-    return profile;
-  } catch (e) {
-    if (e.name === 'ConditionalCheckFailedException') {
-      const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
-      return res.Item;
+  const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  if (!existing) {
+    const profile = {
+      PK: `USER#${userId}`, SK: 'PROFILE', userId, email: email || '', createdAt: now,
+      subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt,
+      aiGenerationsUsed: 0, selectedTradeId: null,
+    };
+    try {
+      await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: profile, ConditionExpression: 'attribute_not_exists(PK)' }));
+      return profile;
+    } catch (e) {
+      if (e.name === 'ConditionalCheckFailedException') { const r = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } })); return r.Item; }
+      throw e;
     }
+  }
+  try {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      UpdateExpression: 'SET subscriptionTier = :soar, subscriptionStatus = :trial, trialEndsAt = :te',
+      ConditionExpression: 'attribute_not_exists(trialEndsAt) AND attribute_not_exists(stripeCustomerId) AND attribute_not_exists(stripeSubscriptionId)',
+      ExpressionAttributeValues: { ':soar': 'soar', ':trial': 'trial', ':te': trialEndsAt },
+    }));
+    return { ...existing, subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt };
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') { const r = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } })); return r.Item; }
     throw e;
   }
 }
@@ -92,7 +115,7 @@ async function requirePaid(userId, email) {
   try {
     const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' } }));
     let item = res.Item;
-    if (!item) item = await provisionTrialIfMissing(userId, email);
+    if (isTrialEligible(item)) item = await grantTrial(userId, email, item);
     tier = effectiveTier(item);
   } catch (e) {
     console.error('Entitlement check failed (denying):', e.message);

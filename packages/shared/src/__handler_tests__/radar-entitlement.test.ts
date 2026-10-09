@@ -18,6 +18,7 @@ const handlerPath = resolve(here, '../../../../lambdas/dist/opportunity-score/in
 
 let profile: any;
 let provisioned: any = null;
+let upgrades = 0;
 let profileReadFails = false;
 let bedrockText = '{"score":5,"classification":"lead","isLead":true,"followUpDays":2}';
 const DAY = 24 * 60 * 60 * 1000;
@@ -43,6 +44,24 @@ function sdkStubs() {
           if (profile) { const e: any = new Error('exists'); e.name = 'ConditionalCheckFailedException'; throw e; }
           provisioned = c.input.Item;
           profile = c.input.Item;
+        }
+        return {};
+      }
+      if (c.__name === 'UpdateCommand') {
+        // Faithfully model the stale-Nest trial-upgrade ConditionExpression:
+        // attribute_not_exists(trialEndsAt) AND attribute_not_exists(stripeCustomerId)
+        // AND attribute_not_exists(stripeSubscriptionId). If the condition is present and
+        // NOT satisfied, DynamoDB rejects with ConditionalCheckFailedException.
+        if (String(c.input.Key?.SK) === 'PROFILE') {
+          const cond = c.input.ConditionExpression || '';
+          const guarded = cond.includes('attribute_not_exists(trialEndsAt)');
+          const eligible = profile && !profile.trialEndsAt && !profile.stripeCustomerId && !profile.stripeSubscriptionId;
+          if (guarded && !eligible) {
+            const e: any = new Error('cond'); e.name = 'ConditionalCheckFailedException'; throw e;
+          }
+          upgrades += 1;
+          profile = { ...profile, subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: c.input.ExpressionAttributeValues?.[':te'] };
+          provisioned = profile;
         }
         return {};
       }
@@ -101,33 +120,49 @@ function code(res: any) { try { return JSON.parse(res.body).error?.code; } catch
 beforeEach(() => {
   profile = { subscriptionTier: 'soar', subscriptionStatus: 'active' };
   provisioned = null;
+  upgrades = 0;
   profileReadFails = false;
 });
 
 describe('radar entitlement — paid gate on every route', () => {
-  it('Nest (free) denied on /radar/score with 403 UPGRADE_REQUIRED', async () => {
-    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+  // A legitimately-ended Nest user (EXPIRED trial) is NOT trial-eligible → stays denied.
+  const expiredNest = () => ({ subscriptionTier: 'free', subscriptionStatus: 'expired', trialEndsAt: new Date(Date.now() - DAY).toISOString() });
+
+  it('expired-trial Nest denied on /radar/score with 403 UPGRADE_REQUIRED', async () => {
+    profile = expiredNest();
     const res = await loadHandler()(ev('POST', '/radar/score', 'user-A', { postText: 'need a roofer' }));
     expect(res.statusCode).toBe(403);
     expect(code(res)).toBe('UPGRADE_REQUIRED');
+    expect(provisioned).toBeNull(); // not re-granted
   });
 
-  it('Nest (free) denied on /radar/insights', async () => {
-    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+  it('expired-trial Nest denied on /radar/insights', async () => {
+    profile = expiredNest();
     const res = await loadHandler()(ev('GET', '/radar/insights'));
     expect(res.statusCode).toBe(403);
   });
 
-  it('Nest (free) denied on /radar/memory (data route still part of Wingman)', async () => {
-    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+  it('expired-trial Nest denied on /radar/memory (data route still part of Wingman)', async () => {
+    profile = expiredNest();
     const res = await loadHandler()(ev('GET', '/radar/memory'));
     expect(res.statusCode).toBe(403);
   });
 
-  it('Nest (free) denied on /flight-plan', async () => {
-    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+  it('expired-trial Nest denied on /flight-plan', async () => {
+    profile = expiredNest();
     const res = await loadHandler()(ev('POST', '/flight-plan', 'user-A', { tradeName: 'Roofer' }));
     expect(res.statusCode).toBe(403);
+  });
+
+  it('STALE-NEST HEAL: a bare free profile with no trial/Stripe history is upgraded to Soar trial and allowed', async () => {
+    // This is the exact production bug: an old social-accounts path created a Nest
+    // profile with no trialEndsAt and no Stripe fields. It must now self-heal.
+    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+    const res = await loadHandler()(ev('POST', '/radar/score', 'user-A', { postText: 'need a roofer' }));
+    expect(res.statusCode).toBe(200);
+    expect(provisioned.subscriptionTier).toBe('soar');
+    expect(provisioned.subscriptionStatus).toBe('trial');
+    expect(provisioned.trialEndsAt).toBeTruthy();
   });
 
   it('active Soar trial allowed on /radar/score', async () => {
@@ -172,14 +207,50 @@ describe('radar entitlement — paid gate on every route', () => {
     expect(code(res)).toBe('ENTITLEMENT_UNAVAILABLE');
   });
 
-  it('REGRESSION: a brand-new account with NO profile is self-healed to a Soar trial and allowed', async () => {
+  it('REGRESSION: a brand-new account with NO profile is self-healed (CREATE) to a Soar trial and allowed', async () => {
     profile = null; // simulate the missing-profile bug (post-confirmation trigger did not run)
     const res = await loadHandler()(ev('POST', '/radar/score', 'user-A', { postText: 'need a roofer' }));
     expect(res.statusCode).toBe(200); // NOT 403 — the trial was provisioned on the fly
-    // Exactly one Soar trial profile was created, single-grant via attribute_not_exists.
     expect(provisioned).toBeTruthy();
     expect(provisioned.subscriptionTier).toBe('soar');
     expect(provisioned.subscriptionStatus).toBe('trial');
     expect(provisioned.trialEndsAt).toBeTruthy();
+  });
+
+  it('REGRESSION: an eligible legacy bare-Nest account is self-healed (UPGRADE) and allowed', async () => {
+    // Stale profile from the old social-accounts path: free, no trialEndsAt, no Stripe.
+    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+    const res = await loadHandler()(ev('GET', '/radar/insights'));
+    expect(res.statusCode).toBe(200); // upgraded to Soar trial, not 403
+    expect(upgrades).toBe(1);
+    expect(profile.subscriptionTier).toBe('soar');
+    expect(profile.trialEndsAt).toBeTruthy();
+  });
+
+  it('an expired-trial Nest account is NOT upgraded and stays denied (403)', async () => {
+    profile = { subscriptionTier: 'free', subscriptionStatus: 'expired', trialEndsAt: new Date(Date.now() - DAY).toISOString() };
+    const res = await loadHandler()(ev('POST', '/radar/score', 'user-A', { postText: 'x' }));
+    expect(res.statusCode).toBe(403);
+    expect(upgrades).toBe(0);
+  });
+
+  it('a paid-history (Stripe) free account is NOT upgraded', async () => {
+    profile = { subscriptionTier: 'free', subscriptionStatus: 'canceled', stripeCustomerId: 'cus_x' };
+    const res = await loadHandler()(ev('POST', '/radar/score', 'user-A', { postText: 'x' }));
+    expect(res.statusCode).toBe(403);
+    expect(upgrades).toBe(0);
+  });
+
+  it('concurrent requests on an eligible bare-Nest account grant exactly one trial', async () => {
+    profile = { subscriptionTier: 'free', subscriptionStatus: 'none' };
+    const handler = loadHandler();
+    const [r1, r2] = await Promise.all([
+      handler(ev('POST', '/radar/score', 'user-A', { postText: 'x' })),
+      handler(ev('GET', '/radar/insights')),
+    ]);
+    expect(r1.statusCode).toBe(200);
+    expect(r2.statusCode).toBe(200);
+    // The conditional guard means the second UPDATE is rejected → only one grant applied.
+    expect(upgrades).toBe(1);
   });
 });

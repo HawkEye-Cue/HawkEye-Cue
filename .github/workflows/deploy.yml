@@ -90,6 +90,24 @@ jobs:
       #     backend that did not update.
       #   - Removed `--hotswap-fallback` — hotswap can introduce CloudFormation drift and
       #     is not safe for production releases; use a normal CloudFormation deployment.
+      # Install runtime dependencies that are NOT provided by the Lambda Node runtime
+      # into the handler asset dirs BEFORE synth/deploy. The AWS SDK v3 is runtime-
+      # provided, but `stripe` is not — subscription-handler and stripe-webhook both
+      # require('stripe'). Handler node_modules are gitignored (installed at deploy time),
+      # so on a clean CI checkout these dirs have no node_modules; without this step CDK
+      # would package the asset WITHOUT stripe and the Lambda would crash at require().
+      # (Mirrors scripts/deploy.sh, which the CI pipeline did not previously run.)
+      - name: Install Lambda runtime dependencies (stripe)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_backend }}
+        run: |
+          set -euo pipefail
+          for dir in lambdas/dist/subscription-handler lambdas/dist/stripe-webhook; do
+            if [ -f "$dir/package.json" ]; then
+              echo "Installing production deps in $dir"
+              (cd "$dir" && npm install --omit=dev --no-package-lock --quiet)
+            fi
+          done
+
       - name: Deploy CDK stack (Lambdas + API + EventBridge)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_backend }}
         env:

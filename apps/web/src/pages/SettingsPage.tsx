@@ -191,8 +191,20 @@ export default function SettingsPage() {
     setCheckoutError(null);
     try {
       const client = await buildClient();
-      const { checkoutUrl } = await client.createCheckout(tier, couponCode.trim() || undefined);
-      window.location.href = checkoutUrl;
+      const res = await client.createCheckout(tier, couponCode.trim() || undefined);
+      // Account already has an active paid subscription → route to the billing portal
+      // for a safe plan change instead of starting a second subscription.
+      if (res.planChangeRequired) {
+        setCheckoutError(res.message || 'You already have an active subscription. Use Manage Billing to change your plan.');
+        setLoadingTier(null);
+        return;
+      }
+      if (res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+      } else {
+        setCheckoutError('Could not start checkout. Please try again.');
+        setLoadingTier(null);
+      }
     } catch (e: unknown) {
       console.error('[Checkout] Error:', e);
       const message = e instanceof Error ? e.message : 'Something went wrong. Please try again.';
@@ -241,6 +253,13 @@ export default function SettingsPage() {
   }
 
   const currentTier = subscription?.tier ?? 'free';
+  // One trial per account: only advertise the 7-day trial to accounts that have NEVER
+  // started one. Once trialEndsAt exists (active or expired) or the account has paid,
+  // upgrading does not grant a new trial, so we must not advertise it.
+  const everTrialed = Boolean(subscription?.trialEndsAt);
+  const trialEligible = !everTrialed && !subscription?.stripeCustomerId;
+  const trialMsRemaining = subscription?.trialEndsAt ? new Date(subscription.trialEndsAt).getTime() - Date.now() : 0;
+  const trialDaysRemaining = trialMsRemaining > 0 ? Math.ceil(trialMsRemaining / (24 * 60 * 60 * 1000)) : 0;
 
   function tierLabel(tier: string) {
     const labels: Record<string, string> = { free: 'Nest (Free)', nest: 'Nest (Free)', base: 'Soar', flight: 'Soar', growth: 'Soar', soar: 'Soar', team: 'Summit', summit: 'Summit' };
@@ -553,7 +572,13 @@ export default function SettingsPage() {
               <span className="text-lg font-bold text-white">🚀 Soar</span>
               <span className="ml-1 bg-amber-500 text-black px-1.5 py-0.5 rounded text-xs font-bold">Popular</span>
               <p className="text-sm text-amber-400">$24.99/mo</p>
-              <p className="text-xs text-amber-300 font-medium">🎁 7-day free trial</p>
+              {trialEligible ? (
+                <p className="text-xs text-amber-300 font-medium">🎁 7-day free trial</p>
+              ) : trialDaysRemaining > 0 ? (
+                <p className="text-xs text-amber-300 font-medium">🎁 {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''} left on your trial · then $24.99/mo</p>
+              ) : (
+                <p className="text-xs text-slate-400 font-medium">$24.99/mo billed now</p>
+              )}
             </div>
             {['growth', 'flight', 'base', 'soar'].includes(currentTier) && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
             <ul className="text-xs text-slate-300 space-y-1 mb-3">
@@ -581,7 +606,13 @@ export default function SettingsPage() {
             <div className="mb-2">
               <span className="text-lg font-bold text-white">🏔️ Summit</span>
               <p className="text-sm text-purple-400">$99.99/mo</p>
-              <p className="text-xs text-purple-300 font-medium">🎁 7-day free trial</p>
+              {trialEligible ? (
+                <p className="text-xs text-purple-300 font-medium">🎁 7-day free trial</p>
+              ) : trialDaysRemaining > 0 ? (
+                <p className="text-xs text-purple-300 font-medium">🎁 Keeps your {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''} left · then $99.99/mo (no new trial)</p>
+              ) : (
+                <p className="text-xs text-slate-400 font-medium">$99.99/mo billed now</p>
+              )}
             </div>
             {['team', 'summit'].includes(currentTier) && <span className="inline-block bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold mb-2">Active</span>}
             <ul className="text-xs text-slate-300 space-y-1 mb-3">

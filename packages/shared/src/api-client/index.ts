@@ -306,10 +306,21 @@ export class ApiClient {
   async createCheckout(
     tier: 'base' | 'growth' | 'soar' | 'team',
     couponCode?: string,
-  ): Promise<{ checkoutUrl: string }> {
+  ): Promise<{
+    checkoutUrl?: string;
+    // Set when the account already has an active paid subscription — the UI should route
+    // to the billing portal for a safe plan change instead of a second subscription.
+    planChangeRequired?: boolean;
+    message?: string;
+    // First-charge disclosure (one-trial-per-account).
+    firstChargeAmount?: number | null;
+    firstChargeAt?: string;
+    trialPreserved?: boolean;
+    trialEndsAt?: string | null;
+  }> {
     const body: { tier: string; couponCode?: string } = { tier };
     if (couponCode) body.couponCode = couponCode;
-    return this.request<{ checkoutUrl: string }>(
+    return this.request(
       'POST',
       '/subscription/checkout',
       body,

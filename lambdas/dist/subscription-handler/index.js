@@ -239,9 +239,55 @@ async function handleCheckout(userId, body, origin) {
   const user = await getUser(userId);
   if (!user) return err(404, 'USER_NOT_FOUND', 'User not found');
 
+  // ─── One trial per account (authoritative) ──────────────────────────────────
+  // trialEndsAt is the durable trial-history marker: it is set exactly once when the
+  // account's single trial is granted and is NEVER erased by expiry, cancellation,
+  // downgrade, or any webhook. So its presence means "this account has already started
+  // its one trial" regardless of current tier/status.
+  //   - no trialEndsAt + no paid history  → eligible for the one 7-day trial.
+  //   - trialEndsAt in the FUTURE         → trial still active: preserve its ORIGINAL
+  //                                         expiration; upgrading must not extend it.
+  //   - trialEndsAt in the PAST (or any   → trial already consumed: NO new trial, the
+  //     prior paid history)                 first charge happens immediately.
+  const now = Date.now();
+  const priorTrialEndMs = user.trialEndsAt ? new Date(user.trialEndsAt).getTime() : null;
+  const everTrialed = Boolean(user.trialEndsAt);
+  const everPaid = Boolean(user.stripeCustomerId || user.stripeSubscriptionId);
+  const trialActive = priorTrialEndMs !== null && priorTrialEndMs > now;
+
+  // ─── Existing active paid subscription → plan change, not a 2nd subscription ──
+  // If the account already has a live Stripe subscription that is NOT merely a trial,
+  // changing tiers must modify that subscription (safe plan change) rather than create
+  // an unrelated duplicate. We surface this to the client to route through the portal /
+  // plan-change flow instead of a fresh checkout.
+  if (user.stripeSubscriptionId && (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'past_due')) {
+    return ok({
+      planChangeRequired: true,
+      message: 'You already have an active subscription. Manage or change your plan from the billing portal — we will not create a second subscription.',
+    });
+  }
+
   const baseUrl = safeReturnBase(origin);
   const successUrl = `${baseUrl}/settings?checkout=success`;
   const cancelUrl = `${baseUrl}/settings?checkout=cancelled`;
+
+  // Build subscription_data honoring the one-trial-per-account rule.
+  const subscriptionData = { metadata: { userId, tier } };
+  let firstChargeAt; // epoch seconds for disclosure
+  if (!everTrialed && !everPaid) {
+    // Brand-new eligible account → the one 7-day trial.
+    subscriptionData.trial_period_days = 7;
+    firstChargeAt = Math.floor(now / 1000) + 7 * 24 * 60 * 60;
+  } else if (trialActive) {
+    // Mid-trial upgrade/downgrade → preserve the ORIGINAL expiration; no fresh 7 days.
+    // Stripe's trial_end pins the first charge to the original trial expiry.
+    subscriptionData.trial_end = Math.floor(priorTrialEndMs / 1000);
+    firstChargeAt = Math.floor(priorTrialEndMs / 1000);
+  } else {
+    // Trial already consumed OR prior paid history → NO trial, charge immediately.
+    // (Leave trial_period_days/trial_end unset.)
+    firstChargeAt = Math.floor(now / 1000);
+  }
 
   const sessionParams = {
     mode: 'subscription',
@@ -249,11 +295,10 @@ async function handleCheckout(userId, body, origin) {
     success_url: successUrl,
     cancel_url: cancelUrl,
     client_reference_id: userId,
-    metadata: { userId, tier },
-    subscription_data: {
-      metadata: { userId, tier },
-      trial_period_days: (tier === 'soar' || tier === 'team') ? 7 : undefined,
-    },
+    // Stamp the session so duplicate/concurrent sessions for the same account+tier are
+    // detectable and so the webhook can reconcile instead of double-provisioning.
+    metadata: { userId, tier, trialPreserved: trialActive ? 'true' : 'false' },
+    subscription_data: subscriptionData,
     // Always allow the Stripe promo code field on checkout page
     allow_promotion_codes: true,
   };
@@ -291,7 +336,16 @@ async function handleCheckout(userId, body, origin) {
 
   const session = await stripe.checkout.sessions.create(sessionParams);
 
-  return ok({ checkoutUrl: session.url });
+  // Disclose the first charge (amount + date) so the UI can show it before the user
+  // confirms. Stripe Checkout also shows this, but returning it lets our UI be explicit.
+  const TIER_PRICE_USD = { soar: 24.99, team: 99.99, summit: 99.99 };
+  return ok({
+    checkoutUrl: session.url,
+    firstChargeAmount: TIER_PRICE_USD[tier] ?? null,
+    firstChargeAt: new Date(firstChargeAt * 1000).toISOString(),
+    trialPreserved: trialActive,
+    trialEndsAt: user.trialEndsAt ?? null,
+  });
 }
 
 // POST /subscription/cancel

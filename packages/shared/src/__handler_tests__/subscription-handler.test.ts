@@ -33,6 +33,7 @@ let provisioned: any = null;
 let upgraded: any = null;
 let retrievedSubscription: any;
 let portalSessionArgs: any;
+let checkoutSessionArgs: any;
 let updateArgs: any;
 
 function cmd(name: string) {
@@ -104,7 +105,7 @@ function sdkStubs() {
             create: async (...args: any[]) => { stripeCalls.push({ method: 'billingPortal.sessions.create', args }); portalSessionArgs = args[0]; return { url: 'https://billing.stripe.com/session/xyz' }; },
           },
         },
-        checkout: { sessions: { create: async () => ({ url: 'https://checkout' }) } },
+        checkout: { sessions: { create: async (...args: any[]) => { stripeCalls.push({ method: 'checkout.sessions.create', args }); checkoutSessionArgs = args[0]; return { url: 'https://checkout' }; } } },
         promotionCodes: { list: async () => ({ data: [] }) },
       };
     },
@@ -113,6 +114,8 @@ function sdkStubs() {
 
 function loadHandler() {
   process.env.TABLE_NAME = 'TestTable';
+  process.env.STRIPE_PRICE_SOAR = 'price_soar';
+  process.env.STRIPE_PRICE_TEAM = 'price_team';
   const source = readFileSync(handlerPath, 'utf8');
   const stubs = sdkStubs();
   const realRequire = createRequire(handlerPath);
@@ -132,9 +135,20 @@ function apiEvent(method: string, path: string, origin?: string) {
   };
 }
 
+function checkoutEvent(tier: string) {
+  return {
+    requestContext: { http: { method: 'POST', path: '/subscription/checkout' }, authorizer: { jwt: { claims: { sub: 'user-123' } } } },
+    headers: { origin: 'https://app.hawkeyecue.com' },
+    body: JSON.stringify({ tier }),
+  };
+}
+// The subscription_data Stripe receives for the checkout session.
+function subData() { return checkoutSessionArgs?.subscription_data || {}; }
+
 beforeEach(() => {
   stripeCalls = [];
   portalSessionArgs = null;
+  checkoutSessionArgs = null;
   updateArgs = null;
   provisioned = null;
   upgraded = null;
@@ -226,6 +240,105 @@ describe('subscription-handler — GET /subscription trial self-heal', () => {
     // Single trial — both observe the SAME end date; never restarted.
     expect(JSON.parse(r1.body).trialEndsAt).toBe(userItem.trialEndsAt);
     expect(JSON.parse(r2.body).trialEndsAt).toBe(userItem.trialEndsAt);
+  });
+});
+
+describe('subscription-handler — ONE 7-day trial per account at checkout', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  it('new eligible account (never trialed, no Stripe) gets exactly one 7-day trial', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'free', subscriptionStatus: 'none' };
+    const handler = loadHandler();
+    const res = await handler(checkoutEvent('soar'));
+    expect(res.statusCode).toBe(200);
+    expect(subData().trial_period_days).toBe(7);
+    expect(subData().trial_end).toBeUndefined();
+    const b = JSON.parse(res.body);
+    expect(b.firstChargeAmount).toBe(24.99);
+    expect(b.trialPreserved).toBe(false);
+  });
+
+  it('active Soar trial upgrading to Summit preserves ORIGINAL expiration (no fresh 7 days)', async () => {
+    const originalEnd = new Date(Date.now() + 5 * DAY).toISOString();
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: originalEnd };
+    const handler = loadHandler();
+    const res = await handler(checkoutEvent('team'));
+    expect(res.statusCode).toBe(200);
+    // No new trial window; trial_end pinned to the original expiration.
+    expect(subData().trial_period_days).toBeUndefined();
+    expect(subData().trial_end).toBe(Math.floor(new Date(originalEnd).getTime() / 1000));
+    const b = JSON.parse(res.body);
+    expect(b.trialPreserved).toBe(true);
+    expect(b.firstChargeAt).toBe(new Date(Math.floor(new Date(originalEnd).getTime() / 1000) * 1000).toISOString());
+  });
+
+  it('trial with ONE day remaining retains only one day when upgrading', async () => {
+    const oneDayLeft = new Date(Date.now() + 1 * DAY).toISOString();
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: oneDayLeft };
+    const handler = loadHandler();
+    const res = await handler(checkoutEvent('team'));
+    expect(res.statusCode).toBe(200);
+    expect(subData().trial_period_days).toBeUndefined();
+    expect(subData().trial_end).toBe(Math.floor(new Date(oneDayLeft).getTime() / 1000));
+  });
+
+  it('EXPIRED trial upgrading to Summit gets NO second trial (charge now)', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'free', subscriptionStatus: 'expired', trialEndsAt: new Date(Date.now() - DAY).toISOString() };
+    const handler = loadHandler();
+    const res = await handler(checkoutEvent('team'));
+    expect(res.statusCode).toBe(200);
+    expect(subData().trial_period_days).toBeUndefined();
+    expect(subData().trial_end).toBeUndefined();
+  });
+
+  it('previously CANCELED trial gets no second trial', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'free', subscriptionStatus: 'canceled', trialEndsAt: new Date(Date.now() - 10 * DAY).toISOString(), stripeCustomerId: 'cus_old' };
+    const handler = loadHandler();
+    const res = await handler(checkoutEvent('soar'));
+    expect(res.statusCode).toBe(200);
+    expect(subData().trial_period_days).toBeUndefined();
+    expect(subData().trial_end).toBeUndefined();
+  });
+
+  it('existing ACTIVE paid subscriber is routed to plan change, not a 2nd subscription', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'soar', subscriptionStatus: 'active', stripeCustomerId: 'cus_x', stripeSubscriptionId: 'sub_x' };
+    const handler = loadHandler();
+    const res = await handler(checkoutEvent('team'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).planChangeRequired).toBe(true);
+    // No checkout session created (no duplicate subscription).
+    expect(stripeCalls.find((c) => c.method === 'checkout.sessions.create')).toBeUndefined();
+  });
+
+  it('repeated checkout sessions for the same mid-trial account never restart the trial', async () => {
+    const originalEnd = new Date(Date.now() + 4 * DAY).toISOString();
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: originalEnd };
+    const handler = loadHandler();
+    const r1 = await handler(checkoutEvent('team'));
+    const firstTrialEnd = subData().trial_end;
+    const r2 = await handler(checkoutEvent('soar'));
+    const secondTrialEnd = subData().trial_end;
+    expect(r1.statusCode).toBe(200);
+    expect(r2.statusCode).toBe(200);
+    // Both sessions pin to the SAME original expiration — never a fresh 7 days.
+    expect(firstTrialEnd).toBe(Math.floor(new Date(originalEnd).getTime() / 1000));
+    expect(secondTrialEnd).toBe(firstTrialEnd);
+  });
+
+  it('derives identity from the JWT sub, not client-supplied body fields', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'free', subscriptionStatus: 'none' };
+    const handler = loadHandler();
+    // Attempt to spoof a different userId / tier eligibility in the body.
+    const ev = {
+      requestContext: { http: { method: 'POST', path: '/subscription/checkout' }, authorizer: { jwt: { claims: { sub: 'user-123' } } } },
+      headers: { origin: 'https://app.hawkeyecue.com' },
+      body: JSON.stringify({ tier: 'soar', userId: 'attacker', trialEndsAt: null }),
+    };
+    const res = await handler(ev);
+    expect(res.statusCode).toBe(200);
+    // client_reference_id / metadata.userId come from the authenticated sub.
+    expect(checkoutSessionArgs.client_reference_id).toBe('user-123');
+    expect(checkoutSessionArgs.metadata.userId).toBe('user-123');
   });
 });
 

@@ -30,6 +30,7 @@ type Call = { method: string; args: any[] };
 let stripeCalls: Call[];
 let userItem: any;
 let provisioned: any = null;
+let upgraded: any = null;
 let retrievedSubscription: any;
 let portalSessionArgs: any;
 let updateArgs: any;
@@ -136,6 +137,7 @@ beforeEach(() => {
   portalSessionArgs = null;
   updateArgs = null;
   provisioned = null;
+  upgraded = null;
   userItem = { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', stripeCustomerId: 'cus_live', stripeSubscriptionId: 'sub_live' };
   retrievedSubscription = { id: 'sub_live', status: 'active', current_period_end: 1_900_000_000 };
 });
@@ -143,8 +145,8 @@ beforeEach(() => {
 describe('subscription-handler — GET /subscription trial self-heal', () => {
   const DAY = 24 * 60 * 60 * 1000;
 
-  it('provisions a one-time 7-day Soar trial when no profile exists', async () => {
-    userItem = null; // brand-new account, post-confirmation trigger never ran
+  it('brand-new account (no profile) receives its first 7-day Soar trial (CREATE path)', async () => {
+    userItem = null; // post-confirmation trigger never ran
     const handler = loadHandler();
     const res = await handler(apiEvent('GET', '/subscription'));
     expect(res.statusCode).toBe(200);
@@ -152,27 +154,78 @@ describe('subscription-handler — GET /subscription trial self-heal', () => {
     expect(b.tier).toBe('soar');
     expect(b.status).toBe('trial');
     expect(b.trialEndsAt).toBeTruthy();
-    // Exactly one provisioning write happened, single-grant via attribute_not_exists.
-    expect(provisioned).toBeTruthy();
+    expect(provisioned).toBeTruthy();      // CREATE path (single-grant attribute_not_exists)
     expect(provisioned.subscriptionTier).toBe('soar');
+    expect(upgraded).toBeNull();
   });
 
-  it('does NOT re-grant or overwrite an existing paid profile', async () => {
-    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'team', subscriptionStatus: 'active' };
+  it('eligible legacy bare-Nest account receives its first trial (UPGRADE path)', async () => {
+    // From the OLD social-accounts path: free, NO trialEndsAt, NO Stripe history.
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'free', subscriptionStatus: 'none' };
     const handler = loadHandler();
     const res = await handler(apiEvent('GET', '/subscription'));
     expect(res.statusCode).toBe(200);
-    expect(JSON.parse(res.body).tier).toBe('team');
-    expect(provisioned).toBeNull(); // no provisioning write for an existing account
+    const b = JSON.parse(res.body);
+    expect(b.tier).toBe('soar');
+    expect(b.status).toBe('trial');
+    expect(b.trialEndsAt).toBeTruthy();
+    expect(upgraded).toBeTruthy();   // UPGRADE path (conditional update)
+    expect(provisioned).toBeNull();
   });
 
-  it('expired trial still reverts to free (not re-provisioned)', async () => {
-    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: new Date(Date.now() - DAY).toISOString() };
+  it('expired-trial Nest account is NOT re-granted and stays free (security assertion preserved)', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'free', subscriptionStatus: 'expired', trialEndsAt: new Date(Date.now() - DAY).toISOString() };
     const handler = loadHandler();
     const res = await handler(apiEvent('GET', '/subscription'));
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).tier).toBe('free');
     expect(provisioned).toBeNull();
+    expect(upgraded).toBeNull();
+  });
+
+  it('in-flight-expired trial reverts to free and is not re-granted', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: new Date(Date.now() - DAY).toISOString() };
+    const handler = loadHandler();
+    const res = await handler(apiEvent('GET', '/subscription'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).tier).toBe('free');
+    expect(upgraded).toBeNull();
+  });
+
+  it('existing PAID account retains its subscription (never touched)', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'team', subscriptionStatus: 'active', stripeCustomerId: 'cus_x', stripeSubscriptionId: 'sub_x' };
+    const handler = loadHandler();
+    const res = await handler(apiEvent('GET', '/subscription'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).tier).toBe('team');
+    expect(provisioned).toBeNull();
+    expect(upgraded).toBeNull();
+  });
+
+  it('canceled/paid-history account (free tier but Stripe fields) is NOT given a trial', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', subscriptionTier: 'free', subscriptionStatus: 'canceled', stripeCustomerId: 'cus_x' };
+    const handler = loadHandler();
+    const res = await handler(apiEvent('GET', '/subscription'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).tier).toBe('free');
+    expect(provisioned).toBeNull();
+    expect(upgraded).toBeNull();
+  });
+
+  it('concurrent self-heal does not grant or restart multiple trials', async () => {
+    userItem = { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'free', subscriptionStatus: 'none' };
+    const handler = loadHandler();
+    const [r1, r2] = await Promise.all([
+      handler(apiEvent('GET', '/subscription')),
+      handler(apiEvent('GET', '/subscription')),
+    ]);
+    expect(r1.statusCode).toBe(200);
+    expect(r2.statusCode).toBe(200);
+    expect(JSON.parse(r1.body).tier).toBe('soar');
+    expect(JSON.parse(r2.body).tier).toBe('soar');
+    // Single trial — both observe the SAME end date; never restarted.
+    expect(JSON.parse(r1.body).trialEndsAt).toBe(userItem.trialEndsAt);
+    expect(JSON.parse(r2.body).trialEndsAt).toBe(userItem.trialEndsAt);
   });
 });
 

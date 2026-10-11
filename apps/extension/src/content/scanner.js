@@ -1,5 +1,5 @@
 /**
- * HawkEye-Cue Content Script v1.9.0
+ * HawkEye-Cue Content Script v1.10.0
  * Scans social media feeds for keyword matches, shows hawk icon overlay,
  * and scores each match in real time with HawkEye Radar (opportunity score,
  * urgency, suggested reply).
@@ -8,6 +8,17 @@
 
 (function () {
   'use strict';
+
+  // Pure post-text + dedupe helpers (loaded by post-text.js BEFORE this script).
+  // Guard with a tiny inline fallback so the scanner never throws if the helper
+  // file failed to load for any reason (defensive; manifest guarantees order).
+  var PT = (typeof globalThis !== 'undefined' && globalThis.HawkEyePostText) || {
+    extractPostMessage: function (c) { return ''; },
+    cleanPostText: function (s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); },
+    isMeaningfulPost: function (t) { return !!t && t.length >= 15 && /[a-z]{3,}/i.test(t); },
+    pickOutermostArticle: function (el) { return el && el.closest ? (el.closest('div[role="article"], article, [data-pagelet^="FeedUnit"]') || el) : el; },
+    postAlreadyBadged: function (c) { return !!(c && c.querySelector && c.querySelector('.hawkeye-overlay, .wingman-overlay, [data-hawkeye-seen="1"]')); },
+  };
 
   let keywords = [];
   let wingmanKeywords = [];
@@ -342,9 +353,12 @@
   // nearest reasonably-large ancestor). Matching the whole container's text — not a
   // single fragment — is what makes phrase keywords and Facebook's split text work.
   function findPostContainer(el) {
-    // Prefer a semantic article/feed unit if present.
+    // Prefer a semantic article/feed unit if present. Use the OUTERMOST article so
+    // Facebook's nested role="article" layouts (header vs. embedded media) collapse
+    // to ONE logical post — otherwise two text nodes resolve to two containers and
+    // the post gets two badges. (Fix 2)
     var article = el.closest('div[role="article"], article, [data-pagelet^="FeedUnit"]');
-    if (article) return article;
+    if (article) return PT.pickOutermostArticle(article);
     // Otherwise climb until the element's text looks like a full post (or we hit a cap).
     var c = el;
     for (var i = 0; i < 12; i++) {
@@ -453,35 +467,52 @@
         if (seenContainers.has(container)) return;
         seenContainers.add(container);
 
-        // Skip if we already badged this container.
-        if (container.querySelector && container.querySelector('.hawkeye-overlay, .wingman-overlay')) return;
+        // Dedupe at the LOGICAL-post level: a post may contain nested role="article"
+        // nodes (header vs. embedded image), and different text nodes can resolve to
+        // different containers. If this post already carries a badge/marker anywhere
+        // in its subtree OR on an ancestor, skip — prevents a second badge. (Fix 2)
+        if (PT.postAlreadyBadged(container)) return;
 
-        var text = container.innerText ? container.innerText.trim() : (container.textContent ? container.textContent.trim() : '');
-        if (!text || text.length < 15) return;
-        if (text.startsWith('Create a post') || text.startsWith("What's on your mind") || text.indexOf('Write a comment') === 0) return;
+        // Expand "See more" BEFORE extracting so the full message (and competitor
+        // signals) are present in the message node.
+        expandSeeMore(container);
 
-        // Dedupe by container identity via a marker attribute (avoids text-prefix collisions).
-        if (container.getAttribute && container.getAttribute('data-hawkeye-seen') === '1') return;
+        // Extract the ACTUAL post message, stripping Facebook interface chrome and
+        // repeated "Facebook" tokens. Fail-safe: returns '' if no reliable message
+        // can be isolated — we NEVER fall back to the whole container's chrome. (Fix 1)
+        var postText = PT.extractPostMessage(container);
+
+        // Keyword matching uses a broader cleaned text so a match is not missed when
+        // the message node is split, but we still require meaningful content. If the
+        // message couldn't be extracted, fall back to a CLEANED container text for
+        // MATCHING ONLY — never for display/scoring/saving.
+        var matchText = postText || PT.cleanPostText(container.innerText || container.textContent || '');
+        if (!matchText || matchText.length < 15) return;
+        if (matchText.startsWith('Create a post') || matchText.startsWith("What's on your mind") || matchText.indexOf('Write a comment') === 0) return;
 
         // Lead keywords first.
         if (keywords.length > 0) {
-          var matched = matchesKeywords(text);
+          var matched = matchesKeywords(matchText);
           if (matched.length > 0) {
+            // Only badge/score/save when we have a RELIABLE extracted message.
+            // If extraction failed (postText === ''), fail safe: do not badge with
+            // corrupted content. (Honors "fail safely rather than saving corrupted".)
+            if (!postText || !PT.isMeaningfulPost(postText)) return;
             if (container.setAttribute) container.setAttribute('data-hawkeye-seen', '1');
-            expandSeeMore(container); // grab full text so competitor signals aren't hidden
-            createHawkOverlay(container, matched, text);
+            createHawkOverlay(container, matched, postText);
             // During Take Flight, auto-score and auto-save real leads hands-free.
-            if (flightMode) autoSaveLead(container, container.innerText ? container.innerText.trim() : text);
+            if (flightMode) autoSaveLead(container, postText);
             return;
           }
         }
         // Wingman keywords.
         if (wingmanKeywords.length > 0) {
-          var lower = text.toLowerCase();
+          var lower = matchText.toLowerCase();
           var wmMatched = wingmanKeywords.filter(function(kw) { return lower.includes(kw.toLowerCase()); });
           if (wmMatched.length > 0) {
+            if (!postText || !PT.isMeaningfulPost(postText)) return;
             if (container.setAttribute) container.setAttribute('data-hawkeye-seen', '1');
-            createWingmanOverlay(container, wmMatched, text);
+            createWingmanOverlay(container, wmMatched, postText);
           }
         }
       });

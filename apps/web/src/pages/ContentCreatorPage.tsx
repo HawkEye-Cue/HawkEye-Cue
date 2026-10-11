@@ -6,7 +6,7 @@ import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
-import { SOCIAL_PLATFORMS, ApiClient } from '@social-lead-gen/shared';
+import { SOCIAL_PLATFORMS, ApiClient, isFlockEvent } from '@social-lead-gen/shared';
 import type { SocialPlatform, ScheduledPost, Trade } from '@social-lead-gen/shared';
 import FlockGroupManager from '../components/FlockGroupManager';
 import SmartFlockImport from '../components/SmartFlockImport';
@@ -407,12 +407,12 @@ export default function ContentCreatorPage() {
       )}
 
       {/* Flocks Done Banner */}
-      {todayCalendarEvents.filter((e) => e.type === 'post').length > 0 && todayCalendarEvents.filter((e) => e.type === 'post').every((e) => e.completed) && (
+      {todayCalendarEvents.filter((e) => isFlockEvent(e)).length > 0 && todayCalendarEvents.filter((e) => isFlockEvent(e)).every((e) => e.completed) && (
         <div className="p-3 rounded-xl bg-gradient-to-r from-green-500/15 to-emerald-500/15 border border-green-500/30 flex items-center gap-3">
           <span className="text-2xl">✅</span>
           <div>
             <p className="text-sm font-bold text-green-300">All flocks posted today!</p>
-            <p className="text-xs text-slate-400">{todayCalendarEvents.filter((e) => e.type === 'post').length} groups done — scroll down to engage or create more content</p>
+            <p className="text-xs text-slate-400">{todayCalendarEvents.filter((e) => isFlockEvent(e)).length} groups done — scroll down to engage or create more content</p>
           </div>
         </div>
       )}
@@ -1140,7 +1140,7 @@ export default function ContentCreatorPage() {
             onClick={() => setFlocksTab('missed')}
             className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-all ${flocksTab === 'missed' ? 'bg-red-500 text-white' : 'text-slate-400 hover:text-white'}`}
           >
-            ⚠️ Missed {(() => { const now = new Date(); const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; const missed = events.filter((e) => e.type === 'post' && e.date < todayLocal && !e.completed); return missed.length > 0 ? `(${missed.length})` : ''; })()}
+            ⚠️ Missed {(() => { const now = new Date(); const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; const missed = events.filter((e) => isFlockEvent(e) && e.date < todayLocal && !e.completed); return missed.length > 0 ? `(${missed.length})` : ''; })()}
           </button>
         </div>
 
@@ -1186,14 +1186,14 @@ export default function ContentCreatorPage() {
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-white">Today's Flocks</span>
           <span className="text-xs text-slate-400">
-            {todayCalendarEvents.filter((e) => e.type === 'post' && e.completed).length}/{todayCalendarEvents.filter((e) => e.type === 'post').length} done
+            {todayCalendarEvents.filter((e) => isFlockEvent(e) && e.completed).length}/{todayCalendarEvents.filter((e) => isFlockEvent(e)).length} done
           </span>
         </div>
         {/* Copy & Open Next Flock button */}
-        {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && platformContent && (
+        {todayCalendarEvents.filter((e) => isFlockEvent(e) && !e.completed).length > 0 && platformContent && (
           <div className="space-y-2">
             {(() => {
-              const remaining = todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed);
+              const remaining = todayCalendarEvents.filter((e) => isFlockEvent(e) && !e.completed);
               const next = remaining[0];
               const isNestTier = ['free', 'nest'].includes(userTier);
               const nestLimit = 3;
@@ -1261,13 +1261,13 @@ export default function ContentCreatorPage() {
             })()}
           </div>
         )}
-        {todayCalendarEvents.filter((e) => e.type === 'post' && e.link && !e.completed).length > 0 && !platformContent && (
+        {todayCalendarEvents.filter((e) => isFlockEvent(e) && !e.completed).length > 0 && !platformContent && (
           <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
             <p className="text-xs text-amber-300">✨ Generate or write a post above, then use <strong>"Copy & Open Next Flock"</strong> to fly through your groups</p>
           </div>
         )}
         <div className="mt-3 max-h-[400px] overflow-y-auto space-y-2" id="todays-cues-list">
-          {[...todayCalendarEvents].filter((e) => e.type === 'post').sort((a, b) => {
+          {[...todayCalendarEvents].filter((e) => isFlockEvent(e)).sort((a, b) => {
             const aPersonal = personalOnlyCues.has(a.id) ? 1 : 0;
             const bPersonal = personalOnlyCues.has(b.id) ? 1 : 0;
             return aPersonal - bPersonal;
@@ -1393,10 +1393,10 @@ export default function ContentCreatorPage() {
               <span className={`text-xs px-2 py-0.5 rounded ${p.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{p.status}</span>
             </div>
           ))}
-          {todayCalendarEvents.filter((e) => e.type === 'post').length === 0 && todayPosts.length === 0 && (
+          {todayCalendarEvents.filter((e) => isFlockEvent(e)).length === 0 && todayPosts.length === 0 && (
             <p className="text-sm text-slate-500">No flocks scheduled for today</p>
           )}
-          {todayCalendarEvents.filter((e) => e.type === 'post').length > 0 && todayCalendarEvents.filter((e) => e.type === 'post').every((e) => e.completed) && (
+          {todayCalendarEvents.filter((e) => isFlockEvent(e)).length > 0 && todayCalendarEvents.filter((e) => isFlockEvent(e)).every((e) => e.completed) && (
             <div className="mt-4 space-y-3">
               <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-green-500/20 border border-amber-500/30 text-center relative overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none">
@@ -1408,7 +1408,7 @@ export default function ContentCreatorPage() {
               </div>
               {/* Engage Flocks Flow */}
               {(() => {
-                const groupsWithLinks = todayCalendarEvents.filter((e) => e.type === 'post' && e.link);
+                const groupsWithLinks = todayCalendarEvents.filter((e) => isFlockEvent(e));
                 if (groupsWithLinks.length === 0) return null;
                 const currentEngageGroup = groupsWithLinks[engageIndex];
                 const allEngaged = engageIndex >= groupsWithLinks.length;
@@ -1457,7 +1457,7 @@ export default function ContentCreatorPage() {
           {(() => {
             const now = new Date();
             const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            const missedPosts = events.filter((e) => e.type === 'post' && e.date < todayLocal && !e.completed);
+            const missedPosts = events.filter((e) => isFlockEvent(e) && e.date < todayLocal && !e.completed);
             
             if (missedPosts.length === 0) {
               return (

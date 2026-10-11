@@ -140,8 +140,8 @@ export default function LandingPage() {
         <h3 className="text-2xl font-bold text-center mb-3 reveal">Pricing</h3>
         <div className="text-center mb-8 reveal">
           <div className="inline-block bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 rounded-xl px-6 py-3">
-            <p className="text-base font-bold text-amber-300">🎁 7-Day Free Trial on Soar & Summit</p>
-            <p className="text-xs text-slate-400">No charge unless you upgrade. Returns to Nest (free) automatically.</p>
+            <p className="text-base font-bold text-amber-300">🎁 Every signup starts with a free 7-day Soar trial</p>
+            <p className="text-xs text-slate-400">No payment method required. After your trial, you'll automatically move to Nest (Free) unless you choose to subscribe — you won't be charged unless you subscribe.</p>
           </div>
         </div>
 
@@ -209,6 +209,10 @@ export default function LandingPage() {
           <details className="glass-card group cursor-pointer p-3">
             <summary className="font-medium text-white text-sm flex items-center justify-between">How does keyword tracking work?<span className="text-slate-500 group-open:rotate-45 transition-transform text-lg">+</span></summary>
             <p className="text-xs text-slate-400 mt-2">Our Chrome extension scans Facebook, Instagram, LinkedIn, and TikTok while you scroll. A hawk icon appears when someone needs your services — save them as a lead with one click.</p>
+          </details>
+          <details className="glass-card group cursor-pointer p-3">
+            <summary className="font-medium text-white text-sm flex items-center justify-between">Do I need a credit card to start?<span className="text-slate-500 group-open:rotate-45 transition-transform text-lg">+</span></summary>
+            <p className="text-xs text-slate-400 mt-2">No. Every signup starts with a free 7-day Soar trial — no payment method required. After your trial, you'll automatically move to Nest (Free) unless you choose to subscribe. You won't be charged unless you subscribe.</p>
           </details>
           <details className="glass-card group cursor-pointer p-3">
             <summary className="font-medium text-white text-sm flex items-center justify-between">Can I cancel anytime?<span className="text-slate-500 group-open:rotate-45 transition-transform text-lg">+</span></summary>

@@ -74,12 +74,13 @@ const STEPS = [
   {
     icon: '🚀',
     title: 'You\'re Ready',
-    description: 'You\'re on the Soar plan with a 7-day free trial. Want to try Summit for your team instead?',
+    description: 'Your 7-day Soar trial is free — no payment method required. After your trial, you\'ll automatically move to Nest (Free) unless you choose to subscribe. Want to try Summit for your team during your trial instead?',
     bullets: [
       '🚀 Soar (current) — leads, sales, insights, flocks, wingman',
       '🏔️ Summit — everything in Soar + team calendar, leaderboard, shared leads, 5 members',
+      '🪺 Nest (Free) — where you\'ll land after the trial if you don\'t subscribe',
     ],
-    tip: 'Both have a 7-day free trial. You can always change later in Settings.',
+    tip: 'No card needed for the trial. You won\'t be charged unless you choose to subscribe — change plans anytime in Settings.',
   },
 ];
 

@@ -8,6 +8,7 @@ import type { CalendarEvent } from '../contexts/CalendarContext';
 import { useTeamData } from '../hooks/useTeamData';
 import HourlyTimeline from '../components/HourlyTimeline';
 import type { TimelineEvent } from '../components/HourlyTimeline';
+import { scheduledPostsForLocalDate, isScheduledPostEntry } from '../lib/scheduledPostDisplay';
 
 type ViewMode = 'month' | 'week' | 'day';
 
@@ -122,16 +123,12 @@ export default function CalendarPage() {
   const getEventsForDay = (day: number) => {
     const dateStr = getDateStr(day);
     const localEvents = events.filter((e) => e.date === dateStr);
-    // Add scheduled posts for this day
-    const postEvents = scheduledPosts
-      .filter((p) => p.scheduledAt && p.scheduledAt.startsWith(dateStr))
-      .map((p) => ({
-        id: p.id,
-        date: dateStr,
-        title: `📤 ${(p.content || 'Scheduled post').slice(0, 40)}`,
-        type: 'post' as const,
-        completed: p.status === 'published',
-      }));
+    // Add scheduled posts for this day, mapped to the calendar's "[HH:MM] …" convention
+    // (local time) so they land in the correct hour slot and show their time in views.
+    // Bucketed by LOCAL date derived from scheduledAt (handles timezone/midnight). These
+    // entries are flagged isScheduledPost so the UI does not offer an in-calendar Edit
+    // that would save to the wrong store (/calendar/events instead of /posts).
+    const postEvents = scheduledPostsForLocalDate(scheduledPosts, dateStr);
     return [...localEvents, ...postEvents];
   };
 
@@ -432,19 +429,26 @@ export default function CalendarPage() {
         {/* DAY VIEW */}
         {viewMode === 'day' && (() => {
           const now = new Date();
-          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-          const dayEvents = events.filter((e) => e.date === todayStr);
+          const today = now.getDate();
+          // Use getEventsForDay so scheduled posts (now carrying a "[HH:MM]" prefix from
+          // their scheduledAt) appear in the correct hour slot alongside calendar events.
+          const dayEvents = (currentMonth === now.getMonth() && currentYear === now.getFullYear())
+            ? getEventsForDay(today)
+            : events.filter((e) => e.date === `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
+          // Track which entries are scheduled posts so their completion toggle (which
+          // would otherwise write to /calendar/events for a /posts id) is suppressed.
+          const scheduledPostIds = new Set(dayEvents.filter(isScheduledPostEntry).map((e) => e.id));
           const timelineEvents: TimelineEvent[] = dayEvents.map((evt) => ({
             id: evt.id,
             title: evt.title,
             type: evt.type as TimelineEvent['type'],
             completed: evt.completed,
-            link: evt.link,
+            link: (evt as { link?: string }).link,
           }));
           return (
             <HourlyTimeline
               events={timelineEvents}
-              onToggleComplete={toggleComplete}
+              onToggleComplete={(id) => { if (!scheduledPostIds.has(id)) toggleComplete(id); }}
               showActions={true}
             />
           );
@@ -515,10 +519,20 @@ export default function CalendarPage() {
                                           ) : (
                                             <span className={`text-xs block ${evt.completed ? 'line-through text-slate-600' : 'text-slate-200'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
                                           )}
-                                          <div className="flex justify-between mt-2">
-                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-white/10 text-slate-300 text-[10px] font-medium hover:bg-white/20 min-w-[40px] text-center">✏️ Edit</button>
-                                            <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
-                                          </div>
+                                          {isScheduledPostEntry(evt) ? (
+                                            // Scheduled posts live in the /posts store, not /calendar/events.
+                                            // The in-calendar Edit/Delete only operate on calendar events, so
+                                            // offering them here would save to the wrong store. Show a read-only
+                                            // hint instead; manage these from the Create tab's scheduled posts.
+                                            <div className="mt-2">
+                                              <span className="text-[10px] text-slate-500">Scheduled from Create · manage it there</span>
+                                            </div>
+                                          ) : (
+                                            <div className="flex justify-between mt-2">
+                                              <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-white/10 text-slate-300 text-[10px] font-medium hover:bg-white/20 min-w-[40px] text-center">✏️ Edit</button>
+                                              <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
+                                            </div>
+                                          )}
                                         </div>
                                       ))}
                                     </div>

@@ -834,7 +834,7 @@ export default function OpportunitiesPage() {
           <div style={{ padding: '4.5rem 1rem 6rem 1rem' }}>
             <div className="glass-card-strong w-full max-w-sm mx-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-white">+ Add Lead</h3>
+                <h3 className="font-bold text-white">+ Add Cue</h3>
                 <button onClick={() => setShowAddLead(false)} className="text-slate-400 hover:text-white text-lg">✕</button>
               </div>
               <div className="space-y-3">

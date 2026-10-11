@@ -7,7 +7,7 @@ import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
 import { SOCIAL_PLATFORMS, ApiClient, isFlockEvent } from '@social-lead-gen/shared';
-import type { SocialPlatform, ScheduledPost, Trade } from '@social-lead-gen/shared';
+import type { SocialPlatform, Trade } from '@social-lead-gen/shared';
 import FlockGroupManager from '../components/FlockGroupManager';
 import SmartFlockImport from '../components/SmartFlockImport';
 import OneScreenComposer from '../components/OneScreenComposer';
@@ -30,7 +30,6 @@ export default function ContentCreatorPage() {
   const { showToast } = useToast();
   const { isPro } = useMode();
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
-  const [todayPosts, setTodayPosts] = useState<ScheduledPost[]>([]);
   const [showHawkSwoop, setShowHawkSwoop] = useState(false);
   const [personalOnlyCues, setPersonalOnlyCues] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem('hawkeye_personal_cues') || '[]')); } catch { return new Set(); }
@@ -328,23 +327,19 @@ export default function ContentCreatorPage() {
 
   // Fetch today's posts from API
   useEffect(() => {
-    async function fetchTodayPosts() {
+    // Fetch the subscription tier (used to gate the Nest Copy & Open daily limit).
+    // NOTE: we intentionally no longer fetch /posts here. Regular business-page
+    // scheduled posts are NOT Flocks and are not shown in the Today's Flocks list;
+    // they live in the Calendar and the normal scheduled-post workflow.
+    async function fetchTier() {
       try {
         const token = await getToken();
         const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const result = await client.getPosts({ startDate: today, endDate: today });
-        const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
-        setTodayPosts(posts);
-        // Fetch tier
-        try {
-          const sub = await client.request<{ tier: string }>('GET', '/subscription');
-          setUserTier(sub.tier || 'free');
-        } catch { /* default free */ }
-      } catch { /* ignore */ }
+        const sub = await client.request<{ tier: string }>('GET', '/subscription');
+        setUserTier(sub.tier || 'free');
+      } catch { /* default free */ }
     }
-    fetchTodayPosts();
+    fetchTier();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const todayStr = (() => {
@@ -1385,15 +1380,12 @@ export default function ContentCreatorPage() {
             </details>
           );
           })}
-          {todayPosts.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-              <div className="min-w-0">
-                <p className="text-sm text-slate-300 truncate">📤 {(p.content || 'Scheduled post').slice(0, 40)}</p>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded ${p.status === 'published' ? 'bg-green-900/40 text-green-400' : 'bg-blue-900/40 text-blue-400'}`}>{p.status}</span>
-            </div>
-          ))}
-          {todayCalendarEvents.filter((e) => isFlockEvent(e)).length === 0 && todayPosts.length === 0 && (
+          {/* NOTE: Regular business-page scheduled/published posts (todayPosts, from the
+              /posts API) are intentionally NOT rendered here. They are not Flocks
+              (Facebook group-posting workflow items) and must not appear in Today's
+              Flocks. They remain fully available in the Calendar and the normal
+              scheduled-post workflow — this only removes them from the Flocks list. */}
+          {todayCalendarEvents.filter((e) => isFlockEvent(e)).length === 0 && (
             <p className="text-sm text-slate-500">No flocks scheduled for today</p>
           )}
           {todayCalendarEvents.filter((e) => isFlockEvent(e)).length > 0 && todayCalendarEvents.filter((e) => isFlockEvent(e)).every((e) => e.completed) && (

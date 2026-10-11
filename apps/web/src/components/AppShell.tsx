@@ -6,7 +6,7 @@ import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
 import { useEdition } from '../contexts/EditionContext';
-import { ApiClient } from '@social-lead-gen/shared';
+import { ApiClient, isFlockEvent } from '@social-lead-gen/shared';
 import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
 import SetupWizard from './SetupWizard';
@@ -114,7 +114,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const todayEvents = events.filter((e) => e.date === todayStr && !e.completed);
   const meetings = todayEvents.filter((e) => e.type === 'meeting');
   const reminders = todayEvents.filter((e) => e.type === 'reminder' || e.type === 'task');
-  const posts = todayEvents.filter((e) => e.type === 'post');
+  // Only actual group-linked Flocks count toward the "flocks to post" notification.
+  // Regular business-page scheduled posts (type:'post' with no group link) are excluded.
+  const posts = todayEvents.filter(isFlockEvent);
 
   const notifications: { id: string; icon: string; text: string; type: string; path: string }[] = [];
   if (meetings.length > 0) notifications.push({ id: 'meetings', icon: '🤝', text: `${meetings.length} meeting${meetings.length !== 1 ? 's' : ''} today`, type: 'info', path: '/' });

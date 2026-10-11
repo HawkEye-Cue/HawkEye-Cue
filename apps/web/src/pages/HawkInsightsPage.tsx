@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
-import { ApiClient } from '@social-lead-gen/shared';
+import { ApiClient, isFlockEvent } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS } from '../hooks/useTeamData';
 import { useMode } from '../contexts/ModeContext';
 
@@ -360,7 +360,7 @@ export default function HawkInsightsPage() {
         {(() => {
           const now = new Date();
           const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-          const postEvents = events.filter((e) => e.type === 'post');
+          const postEvents = events.filter(isFlockEvent);
           const pastPosts = postEvents.filter((e) => e.date < todayLocal);
           const completedPosts = pastPosts.filter((e) => e.completed);
           const missedPosts = pastPosts.filter((e) => !e.completed);

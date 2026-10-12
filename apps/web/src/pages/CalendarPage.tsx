@@ -435,8 +435,10 @@ export default function CalendarPage() {
           const dayEvents = (currentMonth === now.getMonth() && currentYear === now.getFullYear())
             ? getEventsForDay(today)
             : events.filter((e) => e.date === `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
-          // Track which entries are scheduled posts so their completion toggle (which
-          // would otherwise write to /calendar/events for a /posts id) is suppressed.
+          // Mark scheduled posts read-only: they live in the /posts store, so the
+          // timeline must not offer Edit/Delete/Done (which target /calendar/events).
+          // The readOnly flag makes HourlyTimeline suppress ALL mutating controls for
+          // these entries, in every view.
           const scheduledPostIds = new Set(dayEvents.filter(isScheduledPostEntry).map((e) => e.id));
           const timelineEvents: TimelineEvent[] = dayEvents.map((evt) => ({
             id: evt.id,
@@ -444,6 +446,7 @@ export default function CalendarPage() {
             type: evt.type as TimelineEvent['type'],
             completed: evt.completed,
             link: (evt as { link?: string }).link,
+            readOnly: isScheduledPostEntry(evt),
           }));
           return (
             <HourlyTimeline

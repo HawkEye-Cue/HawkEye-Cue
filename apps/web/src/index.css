@@ -227,6 +227,25 @@ body::after {
   display: none;
 }
 
+/* ─── Native dropdown (select/option) dark-mode readability ──────────────
+   Selects are dark with light text, but the native <option> popup is rendered by the
+   OS/browser and does NOT inherit those utilities. On Chrome/Windows the popup defaults
+   to a white background while option text inherits white → invisible until hovered.
+   Give options an explicit dark surface + light text and hint dark mode so every
+   dropdown (Pipeline, Add Cue, edit modals, etc.) is readable immediately on open. */
+select {
+  color-scheme: dark;
+}
+select option {
+  background-color: #1e293b; /* --surface */
+  color: #f1f5f9;            /* --text */
+}
+select option:checked,
+select option:hover {
+  background-color: #f59e0b; /* --warning (brand amber) */
+  color: #0f172a;            /* --bg (dark) for contrast on amber */
+}
+
 /* ─── Ensure inputs don't zoom on iOS (16px minimum) ─────────────────── */
 input, select, textarea {
   font-size: 16px;

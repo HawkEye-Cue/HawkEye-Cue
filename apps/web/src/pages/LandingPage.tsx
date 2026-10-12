@@ -140,8 +140,8 @@ export default function LandingPage() {
         <h3 className="text-2xl font-bold text-center mb-3 reveal">Pricing</h3>
         <div className="text-center mb-8 reveal">
           <div className="inline-block bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 rounded-xl px-6 py-3">
-            <p className="text-base font-bold text-amber-300">🎁 7-Day Free Trial on Soar & Summit</p>
-            <p className="text-xs text-slate-400">No charge unless you upgrade. Returns to Nest (free) automatically.</p>
+            <p className="text-base font-bold text-amber-300">🎁 Every signup starts with a free 7-day Soar trial</p>
+            <p className="text-xs text-slate-400">No payment method required. After your trial, you'll automatically move to Nest (Free) unless you choose to subscribe — you won't be charged unless you subscribe.</p>
           </div>
         </div>
 

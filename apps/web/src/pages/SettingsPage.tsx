@@ -416,6 +416,16 @@ export default function SettingsPage() {
               </span>
             </div>
           )}
+          {/* Trial clarity — shown only on an active (unpaid) trial. No card is on file
+              and nothing auto-charges; at expiry the account moves to Nest (Free). */}
+          {subscription?.status === 'trial' && trialDaysRemaining > 0 && !subscription?.stripeCustomerId && (
+            <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <p className="text-xs text-amber-300 font-medium">🎁 Your 7-day Soar trial is free — no payment method required.</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''} left. After your trial, you'll automatically move to <strong className="text-white">Nest (Free)</strong> unless you choose to subscribe. You won't be charged unless you subscribe.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

@@ -10,6 +10,7 @@ import { SOCIAL_PLATFORMS, ApiClient, isFlockEvent } from '@social-lead-gen/shar
 import type { SocialPlatform, Trade } from '@social-lead-gen/shared';
 import FlockGroupManager from '../components/FlockGroupManager';
 import SmartFlockImport from '../components/SmartFlockImport';
+import MassFlockPosting from '../components/MassFlockPosting';
 import OneScreenComposer from '../components/OneScreenComposer';
 
 const TONES = ['professional', 'casual', 'educational', 'urgent'] as const;
@@ -71,6 +72,7 @@ export default function ContentCreatorPage() {
   const [flocksTab, setFlocksTab] = useState<'today' | 'missed'>('today');
   const [showFlockManager, setShowFlockManager] = useState(false);
   const [showSmartImport, setShowSmartImport] = useState(false);
+  const [showMassFlock, setShowMassFlock] = useState(false);
   // The whole "create a post" toolset (ideas + AI photo + composer) is collapsed by
   // default so the page opens on Today's Flocks (the daily job). Auto-expands once
   // a post is generated so the Copy & Open flow is visible.
@@ -1176,6 +1178,22 @@ export default function ContentCreatorPage() {
           </div>
         </button>
 
+        {/* Mass Flock Posting — post the same prepared post across ALL saved groups
+            tonight, independent of the weekly schedule. Manual, user-controlled. */}
+        <button
+          onClick={() => setShowMassFlock(true)}
+          className="w-full mb-4 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-2 border-amber-500/40 rounded-xl hover:border-amber-500/60 hover:bg-amber-500/15 transition-all active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🦅</span>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-white">Mass Flock Posting</p>
+              <p className="text-xs text-slate-400 mt-0.5">Post across ALL your groups tonight · one post, copy &amp; open each · your weekly schedule stays the same</p>
+            </div>
+            <span className="text-slate-500 text-lg">→</span>
+          </div>
+        </button>
+
         {flocksTab === 'today' && (
         <>
         <div className="flex items-center justify-between mb-2">
@@ -1650,6 +1668,16 @@ export default function ContentCreatorPage() {
 
       {/* Smart Flock Import Modal */}
       {showSmartImport && <SmartFlockImport onClose={() => setShowSmartImport(false)} />}
+
+      {/* Mass Flock Posting Modal — reuses the composer's prepared post + image. */}
+      {showMassFlock && (
+        <MassFlockPosting
+          onClose={() => setShowMassFlock(false)}
+          getPreparedContent={() => (platformContent ? (Object.values(platformContent)[0] || '') : (ownContent || baseText || ''))}
+          readyImageSrc={readyImageSrc}
+          onDownloadImage={downloadReadyImage}
+        />
+      )}
     </div>
   );
 }

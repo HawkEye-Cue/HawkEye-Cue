@@ -9,6 +9,11 @@ export interface TimelineEvent {
   color?: string;       // Tailwind bg color class override (for member coloring)
   borderColor?: string; // Tailwind border color class override
   memberName?: string;  // Display name for color-coded events
+  // Read-only entries (e.g. scheduled posts that live in the /posts store, not
+  // /calendar/events) must NOT show Edit/Delete/Done — those actions target the
+  // calendar store and would not update the real record. The timeline suppresses
+  // all mutating controls for these regardless of the handlers a consumer passes.
+  readOnly?: boolean;
 }
 
 export interface HourlyTimelineProps {
@@ -107,7 +112,7 @@ export default function HourlyTimeline({
                   </span>
                   {evt.memberName && <span className="text-[9px] text-amber-300">{evt.memberName}</span>}
                 </div>
-                {showActions && (
+                {showActions && !evt.readOnly && (
                   <div className="flex items-center gap-1 shrink-0">
                     {onToggleComplete && (
                       <button
@@ -124,6 +129,9 @@ export default function HourlyTimeline({
                       <button onClick={() => onDelete(evt.id)} className="text-[10px] text-red-400 hover:text-red-300 px-1">🗑️</button>
                     )}
                   </div>
+                )}
+                {showActions && evt.readOnly && (
+                  <span className="text-[9px] text-slate-500 shrink-0">Scheduled · manage in Create</span>
                 )}
               </div>
             );
@@ -154,7 +162,7 @@ export default function HourlyTimeline({
                         </span>
                         {evt.memberName && <span className="text-[9px] text-amber-300">{evt.memberName}</span>}
                       </div>
-                      {showActions && (
+                      {showActions && !evt.readOnly && (
                         <div className="flex items-center gap-1 shrink-0">
                           {onToggleComplete && (
                             <button
@@ -171,6 +179,9 @@ export default function HourlyTimeline({
                             <button onClick={() => onDelete(evt.id)} className="text-[10px] text-red-400 hover:text-red-300 px-1">🗑️</button>
                           )}
                         </div>
+                      )}
+                      {showActions && evt.readOnly && (
+                        <span className="text-[9px] text-slate-500 shrink-0">Scheduled · manage in Create</span>
                       )}
                     </div>
                   );

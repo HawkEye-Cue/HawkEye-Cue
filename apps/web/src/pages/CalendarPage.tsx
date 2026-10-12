@@ -528,7 +528,7 @@ export default function CalendarPage() {
                                             // offering them here would save to the wrong store. Show a read-only
                                             // hint instead; manage these from the Create tab's scheduled posts.
                                             <div className="mt-2">
-                                              <span className="text-[10px] text-slate-500">Scheduled from Create · manage it there</span>
+                                              <span className="text-[10px] text-slate-500">Scheduled · manage in Create</span>
                                             </div>
                                           ) : (
                                             <div className="flex justify-between mt-2">
@@ -610,11 +610,21 @@ export default function CalendarPage() {
                                           <span className="text-sm shrink-0">{evt.type === 'post' ? '📤' : (evt.type === 'meeting' || evt.type === 'task') ? '🤝' : '🔔'}</span>
                                           <span className={`text-xs flex-1 ${evt.completed ? 'line-through text-slate-500' : 'text-white'}`}>{evt.title.replace(/^\[\d{1,2}:\d{2}\]\s*/, '')}</span>
                                         </div>
-                                        <div className="flex justify-between mt-2 ml-6">
-                                          {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-amber-500/10 text-amber-300 text-[10px] font-medium hover:bg-amber-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
-                                          <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-white/10 text-slate-300 text-[10px] font-medium hover:bg-white/20 min-w-[40px] text-center">✏️ Edit</button>
-                                          <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
-                                        </div>
+                                        {isScheduledPostEntry(evt) ? (
+                                          // Scheduled posts live in the /posts store, not /calendar/events.
+                                          // In-calendar Edit/Delete only operate on calendar events, so they
+                                          // would target the wrong store. Show a read-only hint instead;
+                                          // manage these from the Create tab's scheduled posts.
+                                          <div className="mt-2 ml-6">
+                                            <span className="text-[10px] text-slate-500">Scheduled · manage in Create</span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex justify-between mt-2 ml-6">
+                                            {(evt as any).link ? <a href={(evt as any).link} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1.5 rounded bg-amber-500/10 text-amber-300 text-[10px] font-medium hover:bg-amber-500/20 min-w-[40px] text-center">🔗 Link</a> : <span />}
+                                            <button onClick={(e) => { e.stopPropagation(); const timeMatch = evt.title.match(/^\[(\d{1,2}:\d{2})\]\s*/); const locationMatch = evt.title.match(/\s*—\s*📍\s*(.+?)(?:\s*\||$)/); let cleanTitle = evt.title; if (timeMatch) cleanTitle = cleanTitle.replace(timeMatch[0], ''); if (locationMatch) cleanTitle = cleanTitle.replace(/\s*—\s*📍.*$/, ''); const notesMatch = cleanTitle.match(/\s*\|\s*(.+)$/); if (notesMatch) cleanTitle = cleanTitle.replace(notesMatch[0], ''); setEditingCalEvent(evt as CalendarEvent); setEditCalTitle(cleanTitle.trim()); setEditCalTime(timeMatch ? timeMatch[1] : ''); setEditCalLocation(locationMatch ? locationMatch[1].trim() : ''); setEditCalLink((evt as any).link || ''); setEditCalDate(evt.date); }} className="px-2.5 py-1.5 rounded bg-white/10 text-slate-300 text-[10px] font-medium hover:bg-white/20 min-w-[40px] text-center">✏️ Edit</button>
+                                            <button onClick={(e) => { e.stopPropagation(); removeEvent(evt.id); }} className="px-2.5 py-1.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium hover:bg-red-500/20 min-w-[40px] text-center">🗑️</button>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   }) : (

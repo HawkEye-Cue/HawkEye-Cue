@@ -26,6 +26,11 @@ export {
 } from './validators/index.js';
 export * from './constants/index.js';
 export * from './utils/index.js';
+export {
+  computePostingConsistency,
+  type PostingConsistency,
+  type ConsistencyEvent,
+} from './utils/postingConsistency.js';
 export * from './api-client/index.js';
 export * from './crm/index.js';
 export { isFlockEvent, type FlockClassifiable } from './flocks.js';

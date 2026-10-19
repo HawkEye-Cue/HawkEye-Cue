@@ -18,8 +18,13 @@ interface FlockGroup {
 // A reviewable row: the AI suggestion plus the user's editable corrections.
 interface ReviewRow extends ImportedFlockGroup {
   _rowId: string;
-  link: string;      // user can add the group link during review
-  approved: boolean; // included in the batch save
+  link: string;        // user can add the group link during review
+  approved: boolean;   // included in the batch save
+  // The user must explicitly confirm the posting days (AI days are only a suggestion).
+  // Starts false; set true when the user clicks "Confirm days"; RESET to false whenever
+  // the day selection changes, so a confident-but-wrong AI day can never be saved
+  // without a deliberate human confirmation of the final selection.
+  daysConfirmed: boolean;
 }
 
 const DAY_LABELS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -168,6 +173,8 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
           // (specific days or any-day). Rows with no rules start UNapproved so the user
           // must consciously set days before saving — promotion is never assumed.
           approved: g.rulesFound && (g.anyday || g.postingDays.length > 0) && g.name.trim().length > 0,
+          // AI days are a SUGGESTION — always require explicit confirmation before save.
+          daysConfirmed: false,
         };
       }));
     } catch (e: unknown) {
@@ -188,8 +195,14 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
       const postingDays = r.postingDays.includes(day)
         ? r.postingDays.filter((d) => d !== day)
         : [...r.postingDays, day].sort((a, b) => a - b);
-      return { ...r, postingDays };
+      // Any change to the day selection invalidates a prior confirmation.
+      return { ...r, postingDays, daysConfirmed: false };
     }));
+  }
+
+  // Explicit per-row confirmation of the final posting-day selection.
+  function confirmDays(rowId: string) {
+    setRows((prev) => prev.map((r) => (r._rowId === rowId ? { ...r, daysConfirmed: true } : r)));
   }
 
   // Save approved rows into the existing group store (preserve existing, dedupe by
@@ -203,6 +216,15 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
     const missingTiming = approved.filter((r) => !r.anyday && r.postingDays.length === 0);
     if (missingTiming.length > 0) {
       setError(`Set allowed days (or "Any Day") for: ${missingTiming.map((r) => r.name).join(', ')}`);
+      return;
+    }
+
+    // Guard: posting days must be EXPLICITLY CONFIRMED by the user. AI-extracted days
+    // are only a suggestion; a confident-but-wrong day cannot be saved until the user
+    // confirms the final selection (and re-confirms after any change).
+    const unconfirmed = approved.filter((r) => !r.daysConfirmed);
+    if (unconfirmed.length > 0) {
+      setError(`Confirm the posting days for: ${unconfirmed.map((r) => r.name.trim() || 'Unnamed group').join(', ')}`);
       return;
     }
 
@@ -293,7 +315,10 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
     return 1;
   }
 
-  const approvedCount = rows.filter((r) => r.approved && r.name.trim()).length;
+  const approvedRows = rows.filter((r) => r.approved && r.name.trim());
+  const approvedCount = approvedRows.length;
+  // All approved groups must have their posting days explicitly confirmed before save.
+  const allDaysConfirmed = approvedRows.every((r) => r.daysConfirmed);
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] px-3 pt-3 pb-20 overflow-y-auto" onClick={onClose}>
@@ -402,14 +427,20 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
                   {r.warning && (
                     <p className="text-[10px] text-amber-400">⚠️ {r.warning}</p>
                   )}
-                  {r.frequencyLimit && (
-                    <p className="text-[10px] text-slate-400">Frequency: {r.frequencyLimit}</p>
-                  )}
-                  {r.restrictions && (
-                    <p className="text-[10px] text-slate-400">Rules: {r.restrictions}</p>
-                  )}
+
+                  {/* Prominent extracted-rules panel shown next to the day picker so the
+                      user can verify the selected days match what the group actually
+                      allows (addresses confident-but-wrong AI day selection). */}
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 space-y-0.5">
+                    <p className="text-[10px] font-bold text-amber-300">📋 Extracted rules — check these before confirming days</p>
+                    {r.restrictions
+                      ? <p className="text-[11px] text-slate-200 leading-snug">{r.restrictions}</p>
+                      : <p className="text-[11px] text-slate-400 italic">No specific rules text was read — set the days from the group’s own rules.</p>}
+                    {r.frequencyLimit && <p className="text-[10px] text-slate-300">Frequency: {r.frequencyLimit}</p>}
+                  </div>
 
                   {/* Day picker */}
+                  <p className="text-[10px] text-slate-400">Allowed posting days (AI suggestion — confirm below):</p>
                   <div className="flex gap-1">
                     {DAY_LABELS.map((_, i) => (
                       <button
@@ -430,10 +461,35 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
                     <input
                       type="checkbox"
                       checked={r.anyday}
-                      onChange={(e) => updateRow(r._rowId, { anyday: e.target.checked, postingDays: e.target.checked ? [] : r.postingDays })}
+                      onChange={(e) => updateRow(r._rowId, { anyday: e.target.checked, postingDays: e.target.checked ? [] : r.postingDays, daysConfirmed: false })}
                       className="w-4 h-4 rounded accent-amber-500"
                     />
                   </label>
+
+                  {/* Explicit per-row day confirmation. Required before saving; resets
+                      whenever the day selection or Any-Day changes. */}
+                  {r.approved && (
+                    r.daysConfirmed ? (
+                      <div className="flex items-center justify-between rounded-lg border border-green-500/40 bg-green-500/10 px-2 py-1.5">
+                        <span className="text-[11px] font-medium text-green-300">✓ Days confirmed</span>
+                        <button
+                          onClick={() => updateRow(r._rowId, { daysConfirmed: false })}
+                          className="text-[10px] text-slate-400 hover:text-white underline"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => confirmDays(r._rowId)}
+                        disabled={!r.anyday && r.postingDays.length === 0}
+                        aria-label={`Confirm posting days for ${r.name.trim() || 'group'}`}
+                        className="w-full py-1.5 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-200 text-[11px] font-bold hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Confirm posting days
+                      </button>
+                    )
+                  )}
                 </div>
               ))}
             </div>
@@ -444,7 +500,7 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
         <div className="px-4 py-3 border-t border-white/10 space-y-2 shrink-0">
           <button
             onClick={saveApproved}
-            disabled={rows.length === 0 || approvedCount === 0 || saving}
+            disabled={rows.length === 0 || approvedCount === 0 || !allDaysConfirmed || saving}
             className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg disabled:opacity-50 transition-all"
           >
             {saving ? 'Saving…' : `✓ Save ${approvedCount} group${approvedCount !== 1 ? 's' : ''} & schedule`}

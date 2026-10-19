@@ -87,8 +87,8 @@ describe('SmartFlockImport — paste/validation logic (source)', () => {
     expect(source).toContain('onClick={analyze}');
   });
 
-  it('disables save when no groups are validated/approved', () => {
-    expect(source).toContain('disabled={rows.length === 0 || approvedCount === 0 || saving}');
+  it('disables save when no groups are validated/approved or days not confirmed', () => {
+    expect(source).toContain('disabled={rows.length === 0 || approvedCount === 0 || !allDaysConfirmed || saving}');
   });
 
   it('reuses the existing import pipeline (no new endpoint)', () => {

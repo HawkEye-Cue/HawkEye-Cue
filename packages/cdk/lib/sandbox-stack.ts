@@ -230,6 +230,18 @@ export class SandboxStack extends cdk.Stack {
         resources: [`arn:aws:bedrock:${this.region}::foundation-model/amazon.nova-lite-v1:0`],
       }),
     );
+    // Strictly-minimal DynamoDB grant for the entitlement check. The handler's
+    // requirePaid() does GetItem(PROFILE); grantTrial() does PutItem (new profile) or
+    // UpdateItem (bare-Nest upgrade). It only touches the base table by primary key —
+    // no Query/Scan and no GSI access — so we grant exactly those three actions on the
+    // ISOLATED sandbox table ARN only (no /index/*, no other table).
+    flockImportFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem'],
+        resources: [table.tableArn],
+      }),
+    );
 
     // ─── NEW: Content handler (AI text draft + ideas) ─────────────────────
     // Reuses the SAME compiled asset as prod. For the sandbox we ONLY expose the

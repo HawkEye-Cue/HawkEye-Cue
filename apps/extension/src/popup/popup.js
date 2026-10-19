@@ -154,9 +154,23 @@ logoutBtn.addEventListener('click', async () => {
 });
 
 // ─── Take Flight: auto-scroll + auto-save leads ────────────────────────────
+// Launch-safe gate: the Take Flight AUTOMATION is disabled by default (see src/flags.js).
+// When OFF we hide the entry point entirely and never wire the click handler, so the
+// automation has no UI path. Manual scanning / lead saving are unaffected.
+const TAKE_FLIGHT_ENABLED = !!(globalThis.HawkEyeFlags && globalThis.HawkEyeFlags.TAKE_FLIGHT_ENABLED);
 const flightBtn = document.getElementById('take-flight-btn');
 
+if (!TAKE_FLIGHT_ENABLED) {
+  // Remove the button + hint from the popup so there is no entry point.
+  if (flightBtn) flightBtn.remove();
+  const flightHintEl = document.getElementById('flight-hint');
+  if (flightHintEl) flightHintEl.remove();
+  // Safety: clear any lingering flightMode so a previously-set value can't imply "in flight".
+  try { chrome.storage.local.set({ flightMode: false }); } catch { /* ignore */ }
+}
+
 async function refreshFlightButton() {
+  if (!TAKE_FLIGHT_ENABLED) return;
   if (!flightBtn) return;
   const { flightMode, flightLeadCount } = await chrome.storage.local.get(['flightMode', 'flightLeadCount']);
   const hint = document.getElementById('flight-hint');
@@ -195,7 +209,7 @@ chrome.storage.onChanged.addListener(function(changes, area) {
   if (changes.flightLeadCount || changes.flightMode) { refreshFlightButton(); refreshLeadsCount(); }
 });
 
-if (flightBtn) {
+if (TAKE_FLIGHT_ENABLED && flightBtn) {
   refreshFlightButton();
   flightBtn.addEventListener('click', async () => {
     const { flightMode } = await chrome.storage.local.get(['flightMode']);

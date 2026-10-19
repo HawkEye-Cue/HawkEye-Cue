@@ -36,6 +36,32 @@ export {
   isValidFacebookGroupUrl,
   type FacebookGroupUrlResult,
 } from './utils/facebookGroupUrl.js';
+export {
+  activityKey,
+  recordPost,
+  postsToday,
+  postsInWindow,
+  shouldRemind,
+  setPaused as setFlockPaused,
+  pauseKey,
+  evaluateGroupRules,
+  loadActivity,
+  saveActivity,
+  clearActivity,
+  loadPause,
+  savePause,
+  clearPause,
+  pacingKey,
+  loadPacing,
+  savePacing,
+  type PostingWorkflow,
+  type PostingActivityEvent,
+  type PacingState,
+  type PacingOpts,
+  type PauseState,
+  type RuleEvalInput,
+  type RuleEvalResult,
+} from './utils/flockSafety.js';
 export * from './api-client/index.js';
 export * from './crm/index.js';
 export { isFlockEvent, type FlockClassifiable } from './flocks.js';

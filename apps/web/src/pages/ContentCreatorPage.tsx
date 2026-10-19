@@ -6,13 +6,15 @@ import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
-import { SOCIAL_PLATFORMS, ApiClient, isFlockEvent } from '@social-lead-gen/shared';
+import { SOCIAL_PLATFORMS, ApiClient, isFlockEvent, evaluateGroupRules } from '@social-lead-gen/shared';
 import type { SocialPlatform, Trade } from '@social-lead-gen/shared';
 import FlockGroupManager from '../components/FlockGroupManager';
 import SmartFlockImport from '../components/SmartFlockImport';
 import MassFlockPosting from '../components/MassFlockPosting';
 import OneScreenComposer from '../components/OneScreenComposer';
 import CreateLauncher, { type CreateLaunchChoice } from '../components/CreateLauncher';
+import FlockSafetyBar from '../components/FlockSafetyBar';
+import { useFlockSafety } from '../hooks/useFlockSafety';
 
 // Which Create workflow is in view. 'home' shows the welcoming three-choice launcher
 // (default); the others reveal existing sections. Smallest-safe restructuring: this
@@ -40,6 +42,9 @@ export default function ContentCreatorPage() {
   const { events, toggleComplete, updateNotes, refreshEvents } = useCalendar();
   const { showToast } = useToast();
   const { isPro } = useMode();
+  // Flock Safety Guard — advisory cross-workflow activity log, pacing reminder, and
+  // shared pause state. Never auto-posts; pausing is manual-resume only.
+  const flockSafety = useFlockSafety();
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [showHawkSwoop, setShowHawkSwoop] = useState(false);
   const [personalOnlyCues, setPersonalOnlyCues] = useState<Set<string>>(() => {
@@ -105,6 +110,25 @@ export default function ContentCreatorPage() {
   const [postHistory, setPostHistory] = useState<PostRecord[]>(() => {
     try { return JSON.parse(localStorage.getItem(postHistoryKey) || '[]'); } catch { return []; }
   });
+
+  // Saved Flock groups (same store as FlockGroupManager). Used to surface a group's
+  // permitted days / frequency / recent-posting near the Copy & Open control via the
+  // shared evaluateGroupRules helper. frequencyLimit is NOT persisted on saved groups
+  // today, so it is treated as "unknown" (never "safe").
+  interface SavedFlockGroup { id: string; name: string; link: string; postingDays?: number[]; anyday?: boolean; frequencyLimit?: string }
+  const savedFlockGroups: SavedFlockGroup[] = (() => {
+    try { return JSON.parse(localStorage.getItem(`hawkeye_flock_groups_${user?.sub}`) || '[]'); } catch { return []; }
+  })();
+
+  // Find the saved group that backs a calendar flock event (match by title/name, then
+  // link). Returns undefined when there's no matching saved group.
+  function findSavedGroupForEvent(ev: { title?: string; link?: string }): SavedFlockGroup | undefined {
+    const titleLower = (ev.title || '').trim().toLowerCase();
+    const linkLower = (ev.link || '').trim().toLowerCase();
+    return savedFlockGroups.find((g) =>
+      (titleLower && g.name?.trim().toLowerCase() === titleLower) ||
+      (linkLower && g.link?.trim().toLowerCase() === linkLower));
+  }
 
   function savePostRecord(content: string, groupTitle: string, groupLink: string) {
     const now = new Date();
@@ -1214,6 +1238,10 @@ export default function ContentCreatorPage() {
       {/* ── Post to Groups workspace — shown in the 'groups' view ───────────── */}
       {view === 'groups' && (
       <div className="glass-card">
+        {/* Flock Safety Guard bar — consistent across all three posting workflows. */}
+        <div className="mb-3">
+          <FlockSafetyBar safety={flockSafety} />
+        </div>
         <div className="mb-3">
           <p className="text-sm font-bold text-white">🦅 Post to Groups</p>
           <p className="text-[11px] text-slate-400 mt-0.5">
@@ -1286,6 +1314,35 @@ export default function ContentCreatorPage() {
             {(() => {
               const remaining = todayCalendarEvents.filter((e) => isFlockEvent(e) && !e.completed);
               const next = remaining[0];
+
+              // Flock Safety Guard: when posting is paused, replace the Copy & Open
+              // action with a clear paused notice (no auto-posting). Resume lives in
+              // the FlockSafetyBar at the top of this area.
+              if (flockSafety.paused) {
+                return (
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
+                    <p className="text-sm font-bold text-amber-300 mb-1">⏸️ Posting paused</p>
+                    <p className="text-xs text-slate-400">Copy &amp; Open is on hold. Use “Resume posting” in the Safety bar above when you’re ready — nothing posts automatically.</p>
+                  </div>
+                );
+              }
+
+              // Surface the next group's permitted days / frequency / recent-posting so
+              // the user can review before posting. Advisory only.
+              const nextSaved = next ? findSavedGroupForEvent(next) : undefined;
+              const nextRules = next ? evaluateGroupRules({
+                group: {
+                  postingDays: nextSaved?.postingDays,
+                  anyday: nextSaved?.anyday,
+                  frequencyLimit: nextSaved?.frequencyLimit,
+                  name: next.title,
+                  link: next.link,
+                },
+                today: new Date().getDay(),
+                history: postHistory,
+                now: Date.now(),
+              }) : null;
+
               const isNestTier = ['free', 'nest'].includes(userTier);
               const nestLimit = 3;
               const nestUsedKey = `hawkeye_copyopen_used_${new Date().toISOString().split('T')[0]}`;
@@ -1318,6 +1375,9 @@ export default function ContentCreatorPage() {
                         }
                         // Save post record for analytics
                         savePostRecord(content, next.title, next.link!);
+                        // Flock Safety Guard: record the confirmed post (deduped across
+                        // workflows by group id/link so we never double-count).
+                        flockSafety.recordConfirmedPost('copyopen', { id: next.id, name: next.title, link: next.link });
                         setShowHawkSwoop(true);
                         setTimeout(() => setShowHawkSwoop(false), 1400);
                         window.open(next.link!, '_blank');
@@ -1341,6 +1401,15 @@ export default function ContentCreatorPage() {
                     <div className="flex items-center gap-2 justify-center">
                       <img src={readyImageSrc} alt="" className="w-8 h-8 rounded object-cover border border-white/10" />
                       <span className="text-[11px] text-slate-400">Photo attached to this flock</span>
+                    </div>
+                  )}
+                  {/* Flock Safety Guard: advisory rule surfacing for the next group. */}
+                  {nextRules && nextRules.messages.length > 0 && (
+                    <div className={`rounded-lg border p-2 space-y-0.5 ${nextRules.needsReview ? 'border-amber-500/50 bg-amber-500/10' : 'border-white/10 bg-white/5'}`}>
+                      <p className="text-[10px] font-bold text-amber-300">{nextRules.needsReview ? '⚠️ Review this group before posting' : 'ℹ️ Check this group\u2019s rules'}</p>
+                      {nextRules.messages.map((m, i) => (
+                        <p key={i} className="text-[11px] text-slate-300 leading-snug">{m}</p>
+                      ))}
                     </div>
                   )}
                   <p className="text-xs text-slate-400 text-center">{remaining.length} flock{remaining.length !== 1 ? 's' : ''} remaining{isNestTier ? ` • ${nestLimit - nestUsedToday} free uses left today` : ''}</p>
@@ -1407,6 +1476,9 @@ export default function ContentCreatorPage() {
                       ev.preventDefault();
                       ev.stopPropagation();
                       toggleComplete(e.id);
+                      // Flock Safety Guard: marking a flock complete is a confirmed
+                      // post. Record it (deduped across workflows by group id/link).
+                      flockSafety.recordConfirmedPost('today', { id: e.id, name: e.title, link: e.link });
                       setShowHawkSwoop(true);
                       setTimeout(() => setShowHawkSwoop(false), 1400);
                       setTimeout(() => {
@@ -1674,6 +1746,7 @@ export default function ContentCreatorPage() {
           getPreparedContent={() => (platformContent ? (Object.values(platformContent)[0] || '') : (ownContent || baseText || ''))}
           readyImageSrc={readyImageSrc}
           onDownloadImage={downloadReadyImage}
+          safety={flockSafety}
         />
       )}
     </div>

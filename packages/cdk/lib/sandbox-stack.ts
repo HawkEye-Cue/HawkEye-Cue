@@ -7,6 +7,7 @@ import * as apigatewayv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrat
 import * as apigatewayv2Authorizers from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 
 /**
  * SandboxStack — an ISOLATED, minimal billing/Summit/AI test environment.
@@ -50,6 +51,43 @@ export class SandboxStack extends cdk.Stack {
 
     const stripeSecretArn = `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${STRIPE_SECRET_ID}*`;
     const resendSecretArn = `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${RESEND_SECRET_ID}*`;
+
+    // ─── Preserve existing deployed Lambda code (opt-in) ──────────────────
+    // When deploying the NEW AI routes, we do NOT want to also re-publish the code of
+    // the 5 EXISTING sandbox Lambdas (post-confirmation, subscription, webhook, team,
+    // folio-recap). Their local `dist` bundles differ from what's live, so a plain
+    // `fromAsset` would re-upload them and CloudFormation would update their code.
+    //
+    // With `-c pinExistingAssets=true`, each existing function is pinned to the EXACT
+    // S3 asset object currently deployed (read from the live stack on 2026-10-19), so
+    // CloudFormation sees NO change to those functions. New AI functions always use
+    // fresh `fromAsset`. Normal sandbox deploys (flag absent) keep bundling from dist.
+    const pinExistingAssets =
+      this.node.tryGetContext('pinExistingAssets') === 'true' ||
+      this.node.tryGetContext('pinExistingAssets') === true;
+
+    // CDK bootstrap assets bucket for this account/region (where the deployed zips live).
+    const assetsBucket = pinExistingAssets
+      ? s3.Bucket.fromBucketName(this, 'CdkAssetsBucket', `cdk-hnb659fds-assets-${this.account}-${this.region}`)
+      : undefined;
+
+    // Deployed asset keys for the 5 existing functions (live stack, 2026-10-19).
+    const DEPLOYED_ASSET_KEYS: Record<string, string> = {
+      'auth-post-confirmation': 'd0e55ff753fd1d14786cd35b36b5678d1309f5146922108b04cdcb00299bfa96.zip',
+      'subscription-handler': '3b5ab1457aafc396d0c58562c53c6264b92595ccb21ff0d82301b4e7f7e5408a.zip',
+      'stripe-webhook': '513a1ede5846aed7b59e6829dd850c38c4f2a6a3397a263f5ac617de93e4c51c.zip',
+      'team-handler': 'a3ea86890b4e085364afaaee1ac8d6572d8f1293f0f447177557f49b3945ce29.zip',
+      'folio-recap': 'c2209af1fc35182599adc08a32979f8900b13cb4c879486944d5d3eee748316f.zip',
+    };
+
+    // Code for an EXISTING function: pinned to the deployed object when the flag is on,
+    // otherwise the normal local bundle.
+    const existingCode = (assetName: keyof typeof DEPLOYED_ASSET_KEYS): lambda.Code => {
+      if (pinExistingAssets && assetsBucket) {
+        return lambda.Code.fromBucket(assetsBucket, DEPLOYED_ASSET_KEYS[assetName]);
+      }
+      return lambda.Code.fromAsset(`../../lambdas/dist/${assetName}`);
+    };
 
     // ─── Isolated table (same schema as prod; destroyed on teardown) ──────
     const table = new dynamodb.Table(this, 'SandboxTable', {
@@ -117,7 +155,7 @@ export class SandboxStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-Sandbox-AuthPostConfirmation',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/auth-post-confirmation'),
+      code: existingCode('auth-post-confirmation'),
       description: 'Sandbox: Cognito post-confirmation — creates user record in the sandbox table',
     });
     table.grantReadWriteData(postConfirmationFn);
@@ -129,7 +167,7 @@ export class SandboxStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-Sandbox-SubscriptionHandler',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/subscription-handler'),
+      code: existingCode('subscription-handler'),
       description: 'Sandbox: subscription info, checkout, cancel (TEST Stripe)',
     });
     table.grantReadWriteData(subscriptionFn);
@@ -144,7 +182,7 @@ export class SandboxStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-Sandbox-StripeWebhook',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/stripe-webhook'),
+      code: existingCode('stripe-webhook'),
       description: 'Sandbox: Stripe webhook events (TEST mode)',
     });
     table.grantReadWriteData(webhookFn);
@@ -155,7 +193,7 @@ export class SandboxStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-Sandbox-TeamHandler',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/team-handler'),
+      code: existingCode('team-handler'),
       description: 'Sandbox: Summit team invites/permissions (TEST Resend)',
     });
     table.grantReadWriteData(teamFn);
@@ -166,7 +204,7 @@ export class SandboxStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-Sandbox-FolioRecap',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/folio-recap'),
+      code: existingCode('folio-recap'),
       description: 'Sandbox: folio recap + digests (TEST Resend; invoke manually)',
       timeout: cdk.Duration.minutes(2),
     });

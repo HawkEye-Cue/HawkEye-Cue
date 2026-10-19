@@ -1,0 +1,270 @@
+import * as cdk from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as apigatewayv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import * as apigatewayv2Authorizers from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+
+/**
+ * SandboxStack — an ISOLATED, minimal billing/Summit/AI test environment.
+ *
+ * Purpose: verify Stripe checkout, webhooks, subscription access, Summit emails, and
+ * (NEW) the two AI endpoints end-to-end with ZERO risk to production and ZERO real
+ * charges / real emails.
+ *
+ * Isolation guarantees (nothing here shares a name or resource with the 6 prod stacks):
+ *   • Its own DynamoDB table            SocialLeadGen-Sandbox      (DESTROY on teardown)
+ *   • Its own Cognito pool + client     SocialLeadGen-Sandbox-*    (DESTROY on teardown)
+ *   • Its own HTTP API                  SocialLeadGen-Sandbox-API
+ *   • Lambdas reuse the SAME compiled assets as prod, so we test the real code.
+ *   • Reads TEST-mode secrets by id:    SocialLeadGen/sandbox/Stripe, .../Resend
+ *   • Bedrock is scoped to the specific foundation models the handlers call.
+ *
+ * Only synthesized when `-c sandbox=true` is passed to cdk, so a normal prod deploy
+ * never includes it. See packages/cdk/bin/app.ts.
+ *
+ * NOTE: this file was reconstructed from the deployed sandbox template to add the two
+ * AI routes; the billing/Summit portion is unchanged from the live sandbox.
+ */
+export interface SandboxStackProps extends cdk.StackProps {
+  /** Owner-confirmed Stripe TEST price IDs. */
+  readonly soarTestPriceId: string;
+  readonly summitTestPriceId: string;
+}
+
+export class SandboxStack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props: SandboxStackProps) {
+    super(scope, id, props);
+
+    const STRIPE_SECRET_ID = 'SocialLeadGen/sandbox/Stripe';
+    const RESEND_SECRET_ID = 'SocialLeadGen/sandbox/Resend';
+
+    // Hard recipient allowlist (comma-separated) enforced inside the Lambdas before any
+    // Resend call. Override via `-c emailAllowlist="a@test.com,b@test.com"`.
+    const EMAIL_ALLOWLIST =
+      (this.node.tryGetContext('emailAllowlist') as string | undefined) ??
+      'briannafrashier@gmail.com,briquez10@gmail.com';
+
+    const stripeSecretArn = `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${STRIPE_SECRET_ID}*`;
+    const resendSecretArn = `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${RESEND_SECRET_ID}*`;
+
+    // ─── Isolated table (same schema as prod; destroyed on teardown) ──────
+    const table = new dynamodb.Table(this, 'SandboxTable', {
+      tableName: 'SocialLeadGen-Sandbox',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
+    });
+    table.addGlobalSecondaryIndex({
+      indexName: 'GSI1',
+      partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+    });
+    table.addGlobalSecondaryIndex({
+      indexName: 'GSI2',
+      partitionKey: { name: 'GSI2PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI2SK', type: dynamodb.AttributeType.STRING },
+    });
+
+    // ─── Isolated Cognito pool (plain Cognito email — no prod KMS/Resend sender) ──
+    const userPool = new cognito.UserPool(this, 'SandboxUserPool', {
+      userPoolName: 'SocialLeadGen-Sandbox-UserPool',
+      selfSignUpEnabled: true,
+      signInAliases: { email: true },
+      passwordPolicy: { minLength: 8, requireUppercase: true, requireDigits: true, requireSymbols: true },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      standardAttributes: { email: { required: true, mutable: true } },
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+    const webClient = userPool.addClient('SandboxWebClient', {
+      userPoolClientName: 'SocialLeadGen-Sandbox-Web',
+      generateSecret: false,
+      authFlows: { userSrp: true, userPassword: true },
+      preventUserExistenceErrors: true,
+    });
+
+    // ─── Shared Lambda config ─────────────────────────────────────────────
+    const lambdaDefaults = {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        TABLE_NAME: table.tableName,
+        STRIPE_SECRET_ID,
+        RESEND_SECRET_ID,
+        EMAIL_ALLOWLIST,
+      },
+    };
+
+    const stripeSecretPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: [stripeSecretArn],
+    });
+    const resendSecretPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: [resendSecretArn],
+    });
+
+    // ─── Post-confirmation trigger (creates the user profile on signup) ───
+    const postConfirmationFn = new lambda.Function(this, 'SandboxPostConfirmationFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-AuthPostConfirmation',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/auth-post-confirmation'),
+      description: 'Sandbox: Cognito post-confirmation — creates user record in the sandbox table',
+    });
+    table.grantReadWriteData(postConfirmationFn);
+    postConfirmationFn.addToRolePolicy(resendSecretPolicy);
+    userPool.addTrigger(cognito.UserPoolOperation.POST_CONFIRMATION, postConfirmationFn);
+
+    // ─── Subscription handler (checkout / cancel / portal / trial self-heal) ──
+    const subscriptionFn = new lambda.Function(this, 'SandboxSubscriptionFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-SubscriptionHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/subscription-handler'),
+      description: 'Sandbox: subscription info, checkout, cancel (TEST Stripe)',
+    });
+    table.grantReadWriteData(subscriptionFn);
+    subscriptionFn.addToRolePolicy(stripeSecretPolicy);
+    subscriptionFn.addEnvironment('STRIPE_PRICE_BASE', props.soarTestPriceId);
+    subscriptionFn.addEnvironment('STRIPE_PRICE_GROWTH', props.soarTestPriceId);
+    subscriptionFn.addEnvironment('STRIPE_PRICE_SOAR', props.soarTestPriceId);
+    subscriptionFn.addEnvironment('STRIPE_PRICE_TEAM', props.summitTestPriceId);
+
+    // ─── Stripe webhook (NO auth; verified by signature against the TEST whsec) ──
+    const webhookFn = new lambda.Function(this, 'SandboxStripeWebhookFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-StripeWebhook',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/stripe-webhook'),
+      description: 'Sandbox: Stripe webhook events (TEST mode)',
+    });
+    table.grantReadWriteData(webhookFn);
+    webhookFn.addToRolePolicy(stripeSecretPolicy);
+
+    // ─── Team handler (Summit invites/permissions/5-cap; emails via sandbox Resend) ──
+    const teamFn = new lambda.Function(this, 'SandboxTeamFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-TeamHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/team-handler'),
+      description: 'Sandbox: Summit team invites/permissions (TEST Resend)',
+    });
+    table.grantReadWriteData(teamFn);
+    teamFn.addToRolePolicy(resendSecretPolicy);
+
+    // ─── Folio recap (on-demand only; NO EventBridge schedule in the sandbox) ──
+    const folioRecapFn = new lambda.Function(this, 'SandboxFolioRecapFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-FolioRecap',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/folio-recap'),
+      description: 'Sandbox: folio recap + digests (TEST Resend; invoke manually)',
+      timeout: cdk.Duration.minutes(2),
+    });
+    table.grantReadWriteData(folioRecapFn);
+    folioRecapFn.addToRolePolicy(resendSecretPolicy);
+
+    // ─── NEW: Smart Flock Import (AI vision; stateless) ───────────────────
+    // Reuses the SAME compiled asset as prod. Stateless — no table/S3 access. Only
+    // Bedrock Nova Lite vision, scoped to the single model the handler calls.
+    const flockImportFn = new lambda.Function(this, 'SandboxFlockImportFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-FlockImport',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/flock-import'),
+      description: 'Sandbox: Smart Flock Import — screenshot → group suggestions (AI vision)',
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+    });
+    flockImportFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [`arn:aws:bedrock:${this.region}::foundation-model/amazon.nova-lite-v1:0`],
+      }),
+    );
+
+    // ─── NEW: Content handler (AI text draft + ideas) ─────────────────────
+    // Reuses the SAME compiled asset as prod. For the sandbox we ONLY expose the
+    // text endpoints (/content/generate, /content/ideas), which need Bedrock Nova
+    // Lite + the sandbox table. We deliberately do NOT grant S3 or the OpenAI secret
+    // (image generation is out of scope here), so no AI request can reach a prod
+    // bucket or key. Table access is the ISOLATED sandbox table only.
+    const contentFn = new lambda.Function(this, 'SandboxContentFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-ContentHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/content-handler'),
+      description: 'Sandbox: AI content generation (text draft + ideas; Nova Lite)',
+      timeout: cdk.Duration.seconds(30),
+    });
+    table.grantReadWriteData(contentFn); // sandbox table ONLY (grant is table-scoped)
+    contentFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [`arn:aws:bedrock:${this.region}::foundation-model/amazon.nova-lite-v1:0`],
+      }),
+    );
+
+    // ─── HTTP API with the sandbox Cognito authorizer ─────────────────────
+    const httpApi = new apigatewayv2.HttpApi(this, 'SandboxHttpApi', {
+      apiName: 'SocialLeadGen-Sandbox-API',
+      corsPreflight: {
+        allowOrigins: ['http://localhost:5173', 'http://localhost:8081', 'http://localhost:19006'],
+        allowHeaders: ['Authorization', 'Content-Type'],
+        allowMethods: [
+          apigatewayv2.CorsHttpMethod.GET,
+          apigatewayv2.CorsHttpMethod.POST,
+          apigatewayv2.CorsHttpMethod.PUT,
+          apigatewayv2.CorsHttpMethod.DELETE,
+        ],
+      },
+    });
+    const authorizer = new apigatewayv2Authorizers.HttpUserPoolAuthorizer('SandboxAuthorizer', userPool, {
+      identitySource: ['$request.header.Authorization'],
+      userPoolClients: [webClient],
+    });
+
+    const subInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxSubInt', subscriptionFn);
+    httpApi.addRoutes({ path: '/subscription', methods: [apigatewayv2.HttpMethod.GET], integration: subInt, authorizer });
+    httpApi.addRoutes({ path: '/subscription/checkout', methods: [apigatewayv2.HttpMethod.POST], integration: subInt, authorizer });
+    httpApi.addRoutes({ path: '/subscription/cancel', methods: [apigatewayv2.HttpMethod.POST], integration: subInt, authorizer });
+    httpApi.addRoutes({ path: '/subscription/portal', methods: [apigatewayv2.HttpMethod.POST], integration: subInt, authorizer });
+
+    // Webhook — NO auth (Stripe signature verifies it).
+    const webhookInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxWebhookInt', webhookFn);
+    httpApi.addRoutes({ path: '/subscription/webhook', methods: [apigatewayv2.HttpMethod.POST], integration: webhookInt });
+
+    // Summit team routes.
+    const teamInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxTeamInt', teamFn);
+    httpApi.addRoutes({ path: '/team', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/invite', methods: [apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/accept', methods: [apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/members/{memberId}', methods: [apigatewayv2.HttpMethod.DELETE], integration: teamInt, authorizer });
+
+    // ─── NEW: AI routes (authenticated, same Cognito authorizer) ──────────
+    const flockImportInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxFlockImportInt', flockImportFn);
+    httpApi.addRoutes({ path: '/flock/import', methods: [apigatewayv2.HttpMethod.POST], integration: flockImportInt, authorizer });
+
+    const contentInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxContentInt', contentFn);
+    httpApi.addRoutes({ path: '/content/generate', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
+    httpApi.addRoutes({ path: '/content/ideas', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
+
+    // ─── Outputs for the manual verification run ──────────────────────────
+    new cdk.CfnOutput(this, 'SandboxApiUrl', { value: httpApi.apiEndpoint, description: 'Point apps/web/.env.staging VITE_API_URL here' });
+    new cdk.CfnOutput(this, 'SandboxUserPoolId', { value: userPool.userPoolId });
+    new cdk.CfnOutput(this, 'SandboxWebClientId', { value: webClient.userPoolClientId });
+    new cdk.CfnOutput(this, 'SandboxWebhookUrl', { value: `${httpApi.apiEndpoint}/subscription/webhook`, description: 'Register this as the Stripe TEST webhook endpoint' });
+    new cdk.CfnOutput(this, 'SandboxFolioRecapFnName', { value: folioRecapFn.functionName, description: 'Invoke manually to test nightly emails' });
+  }
+}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
-import { ApiClient, isFlockEvent } from '@social-lead-gen/shared';
+import { ApiClient, isFlockEvent, computePostingConsistency } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS } from '../hooks/useTeamData';
 import { useMode } from '../contexts/ModeContext';
 
@@ -353,6 +353,76 @@ export default function HawkInsightsPage() {
 
       </div>
       <div className="min-w-0 space-y-4">
+
+      {/* Posting Consistency — moved here from the Create page's Missed Flocks backlog.
+          READ-ONLY: derives from calendar events; never deletes or auto-completes. The
+          catch-up action only OPENS a group (manual posting + explicit confirmation stays
+          on the Create page's Copy & Open / Mark Posted flow). (Create Tab Redesign Req 2, 3) */}
+      <div className="glass-card">
+        <h3 className="font-semibold text-white mb-3">📈 Posting Consistency</h3>
+        {(() => {
+          const now = new Date();
+          const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const c = computePostingConsistency(events, today, now);
+
+          if (c.pastFlockCount === 0) {
+            return <p className="text-xs text-slate-500">Post in your flocks for a few days to see your consistency here.</p>;
+          }
+
+          return (
+            <div className="space-y-4">
+              {/* Headline stats */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center p-3 rounded-lg bg-green-500/5 border border-green-500/10">
+                  <div className="text-xl font-bold text-green-400">{c.completionRate}%</div>
+                  <div className="text-xs text-slate-400">Completion</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <div className="text-xl font-bold text-amber-300">{c.currentStreakDays}</div>
+                  <div className="text-xs text-slate-400">Day streak</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-slate-500/5 border border-white/10">
+                  <div className="text-xl font-bold text-slate-200">{c.postedCount}/{c.pastFlockCount}</div>
+                  <div className="text-xs text-slate-400">Posted</div>
+                </div>
+              </div>
+
+              {/* Recently missed — read-only list with a NON-destructive "Open group" catch-up.
+                  No delete, no auto-complete, no auto-publish. */}
+              {c.recentMissed.length > 0 ? (
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold mb-2">Recently missed ({c.missedCount})</p>
+                  <p className="text-[10px] text-slate-500 mb-2">These past flocks weren't posted. Opening a group never posts for you — paste and post yourself, then mark it done from the Create tab.</p>
+                  <div className="space-y-1.5 max-h-[220px] overflow-y-auto">
+                    {c.recentMissed.slice(0, 25).map((m, i) => {
+                      const label = new Date(m.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                      return (
+                        <div key={`${m.date}-${i}`} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                          <span className="text-[10px] text-slate-500 shrink-0 w-16">{label}</span>
+                          <span className="text-xs text-slate-200 truncate flex-1">{m.title}</span>
+                          {m.link && (
+                            <button
+                              onClick={() => window.open(m.link!, '_blank', 'noopener,noreferrer')}
+                              className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-1 rounded font-medium hover:bg-amber-500/30 shrink-0"
+                            >
+                              🔗 Open group
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-3">
+                  <p className="text-2xl mb-1">✅</p>
+                  <p className="text-sm text-green-300 font-medium">All caught up — no missed flocks.</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
 
       {/* Flock Analytics */}
       <div className="glass-card">

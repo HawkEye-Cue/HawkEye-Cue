@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
-import { ApiClient } from '@social-lead-gen/shared';
+import { ApiClient, normalizeFacebookGroupUrl } from '@social-lead-gen/shared';
 import type { ImportedFlockGroup } from '@social-lead-gen/shared';
 
 // Mirrors the FlockGroup shape used by FlockGroupManager + localStorage so imported
@@ -153,15 +153,23 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
         setRows([]);
         return;
       }
-      setRows(groups.map((g, i) => ({
-        ...g,
-        _rowId: `row-${i}-${Math.random().toString(36).slice(2, 6)}`,
-        link: '',
-        // Default-approve only rows where the AI actually found rules AND a timing
-        // (specific days or any-day). Rows with no rules start UNapproved so the user
-        // must consciously set days before saving — promotion is never assumed.
-        approved: g.rulesFound && (g.anyday || g.postingDays.length > 0) && g.name.trim().length > 0,
-      })));
+      setRows(groups.map((g, i) => {
+        // Prefill the link ONLY if the AI returned one it actually read from the
+        // screenshot (backend may include `link`/`url`). We never invent a URL; if the
+        // extracted value isn't a valid group link we leave the field blank for the
+        // user to paste. A valid URL is required before saving (see saveApproved).
+        const extracted = (g as { link?: string; url?: string }).link ?? (g as { url?: string }).url ?? '';
+        const norm = extracted ? normalizeFacebookGroupUrl(extracted) : { ok: false, url: undefined };
+        return {
+          ...g,
+          _rowId: `row-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          link: norm.ok ? (norm.url as string) : '',
+          // Default-approve only rows where the AI actually found rules AND a timing
+          // (specific days or any-day). Rows with no rules start UNapproved so the user
+          // must consciously set days before saving — promotion is never assumed.
+          approved: g.rulesFound && (g.anyday || g.postingDays.length > 0) && g.name.trim().length > 0,
+        };
+      }));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not analyze the screenshots.');
     } finally {
@@ -198,6 +206,20 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
       return;
     }
 
+    // Guard: a VALID Facebook group URL is REQUIRED before saving — Copy & Open relies
+    // on it to open the correct group. Validate+normalize each approved row's link.
+    const normalizedByRow = new Map<string, string>();
+    const badUrl: string[] = [];
+    for (const r of approved) {
+      const res = normalizeFacebookGroupUrl(r.link);
+      if (res.ok && res.url) normalizedByRow.set(r._rowId, res.url);
+      else badUrl.push(r.name.trim() || 'Unnamed group');
+    }
+    if (badUrl.length > 0) {
+      setError(`Paste a valid Facebook group link (…/groups/…) for: ${badUrl.join(', ')}`);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -215,7 +237,7 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
         toAdd.push({
           id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           name: r.name.trim(),
-          link: r.link.trim(),
+          link: normalizedByRow.get(r._rowId) as string, // validated + normalized URL
           postingDays: r.anyday ? [] : [...r.postingDays].sort((a, b) => a - b),
           anyday: r.anyday,
         });
@@ -367,9 +389,15 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
                     type="url"
                     value={r.link}
                     onChange={(e) => updateRow(r._rowId, { link: e.target.value })}
-                    placeholder="Facebook group link (optional)"
-                    className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs placeholder-slate-500"
+                    placeholder="Facebook group link — required (…/groups/…)"
+                    aria-label="Facebook group link (required)"
+                    className={`w-full px-2 py-1.5 bg-white/5 border rounded text-white text-xs placeholder-slate-500 ${
+                      r.approved && !r.link.trim() ? 'border-red-500/60' : 'border-white/10'
+                    }`}
                   />
+                  {r.approved && !r.link.trim() && (
+                    <p className="text-[10px] text-red-400">Paste the group link so Copy &amp; Open can open it. We couldn't read it from the screenshot.</p>
+                  )}
 
                   {r.warning && (
                     <p className="text-[10px] text-amber-400">⚠️ {r.warning}</p>

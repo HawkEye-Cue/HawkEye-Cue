@@ -31,6 +31,11 @@ export {
   type PostingConsistency,
   type ConsistencyEvent,
 } from './utils/postingConsistency.js';
+export {
+  normalizeFacebookGroupUrl,
+  isValidFacebookGroupUrl,
+  type FacebookGroupUrlResult,
+} from './utils/facebookGroupUrl.js';
 export * from './api-client/index.js';
 export * from './crm/index.js';
 export { isFlockEvent, type FlockClassifiable } from './flocks.js';

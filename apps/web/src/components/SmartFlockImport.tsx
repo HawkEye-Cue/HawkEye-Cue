@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
@@ -25,6 +25,8 @@ interface ReviewRow extends ImportedFlockGroup {
 const DAY_LABELS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_IMAGES = 8;
+const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8MB per image (matches Send-to-HawkEye)
+const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 
 async function fileToPayload(file: File): Promise<{ data: string; format: string }> {
   const buf = await file.arrayBuffer();
@@ -50,17 +52,92 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
   const storageKey = `hawkeye_flock_groups_${user?.sub}`;
 
   const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]); // object URLs, index-aligned with files
   const [analyzing, setAnalyzing] = useState(false);
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(e.target.files || []);
-    const combined = [...files, ...picked].slice(0, MAX_IMAGES);
-    setFiles(combined);
+  // Shared intake for BOTH file-picker and clipboard paste. Validates type/size,
+  // dedupes (by name+size), and enforces the 8-image cap. Returns a summary message.
+  const addFiles = useCallback((incoming: File[]) => {
+    if (incoming.length === 0) return;
     setError(null);
+    setFiles((prev) => {
+      const next = [...prev];
+      const seen = new Set(prev.map((f) => `${f.name}:${f.size}`));
+      const rejected: string[] = [];
+      const tooBig: string[] = [];
+      let addedAny = false;
+      for (const f of incoming) {
+        if (next.length >= MAX_IMAGES) { rejected.push(`max ${MAX_IMAGES} images`); break; }
+        const type = (f.type || '').toLowerCase();
+        if (!ACCEPTED_TYPES.includes(type)) { rejected.push(f.name || 'unsupported file'); continue; }
+        if (f.size > MAX_FILE_BYTES) { tooBig.push(f.name || 'image'); continue; }
+        const key = `${f.name}:${f.size}`;
+        if (seen.has(key)) continue; // dedupe
+        seen.add(key);
+        next.push(f);
+        addedAny = true;
+      }
+      const msgs: string[] = [];
+      if (tooBig.length) msgs.push(`Too large (max 8MB): ${tooBig.join(', ')}`);
+      if (rejected.length) msgs.push(`Skipped: ${rejected.join(', ')}`);
+      if (msgs.length) setError(msgs.join(' · '));
+      else if (!addedAny && incoming.length) setError('Those images were already added.');
+      return next;
+    });
+  }, []);
+
+  // Keep object-URL previews in sync with files (and revoke on cleanup).
+  useEffect(() => {
+    const urls = files.map((f) => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => { urls.forEach((u) => URL.revokeObjectURL(u)); };
+  }, [files]);
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    addFiles(Array.from(e.target.files || []));
+    e.target.value = ''; // allow re-picking the same file
   }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // Clipboard paste — active only while this modal is mounted. Ignores pastes that
+  // target a text field (so pasting into name/link inputs still works normally).
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+      }
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imgs: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it.kind === 'file' && it.type.startsWith('image/')) {
+          const f = it.getAsFile();
+          if (f) {
+            // Clipboard images often have no name — give them a friendly, unique one.
+            const ext = (f.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+            const named = new File([f], f.name || `pasted-${Date.now()}-${i}.${ext}`, { type: f.type });
+            imgs.push(named);
+          }
+        }
+      }
+      if (imgs.length > 0) {
+        e.preventDefault();
+        addFiles(imgs);
+        showToast(`📋 Added ${imgs.length} pasted screenshot${imgs.length !== 1 ? 's' : ''}`);
+      }
+    }
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [addFiles, showToast]);
 
   async function analyze() {
     if (files.length === 0) { setError('Add at least one screenshot first.'); return; }
@@ -212,20 +289,44 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
           {/* Upload */}
           <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-3">
             <p className="text-xs text-slate-300">Add screenshots of your Facebook groups and their posting rules (up to {MAX_IMAGES}).</p>
-            <label className="block w-full text-center py-3 border-2 border-dashed border-amber-500/40 rounded-lg cursor-pointer hover:border-amber-500/70 text-amber-300 text-sm font-medium">
-              + Choose screenshots
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="hidden" onChange={onPick} />
-            </label>
+
+            {/* Paste target — Win+Shift+S then Ctrl+V, or choose files */}
+            <div className="w-full text-center py-4 border-2 border-dashed border-amber-500/40 rounded-lg bg-black/20">
+              <p className="text-sm font-medium text-amber-300">📋 Paste screenshots here (Ctrl + V)</p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Snap with <span className="text-slate-200">Windows + Shift + S</span>, come back, then press <span className="text-slate-200">Ctrl + V</span>
+              </p>
+              <label className="inline-block mt-2 px-3 py-1.5 bg-amber-500/15 border border-amber-500/40 rounded-lg cursor-pointer hover:bg-amber-500/25 text-amber-200 text-xs font-medium">
+                …or choose files
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="hidden" onChange={onPick} />
+              </label>
+            </div>
+
+            {/* Thumbnail previews (pasted + uploaded combined) with remove */}
             {files.length > 0 && (
-              <div className="space-y-1">
-                {files.map((f, i) => (
-                  <div key={i} className="flex items-center justify-between text-[11px] text-slate-400">
-                    <span className="truncate">{f.name}</span>
-                    <button onClick={() => setFiles(files.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 shrink-0 ml-2">✕</button>
-                  </div>
-                ))}
+              <div>
+                <p className="text-[11px] text-slate-400 mb-1.5">{files.length}/{MAX_IMAGES} image{files.length !== 1 ? 's' : ''} ready</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {files.map((f, i) => (
+                    <div key={`${f.name}-${f.size}-${i}`} className="relative group">
+                      <img
+                        src={previews[i]}
+                        alt={f.name || `screenshot ${i + 1}`}
+                        className="w-full h-16 object-cover rounded-lg border border-white/10"
+                      />
+                      <button
+                        onClick={() => removeFile(i)}
+                        aria-label={`Remove ${f.name || 'screenshot'}`}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold shadow hover:bg-red-400"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+
             <button
               onClick={analyze}
               disabled={files.length === 0 || analyzing}

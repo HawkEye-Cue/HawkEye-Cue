@@ -37,6 +37,10 @@ export {
   type FacebookGroupUrlResult,
 } from './utils/facebookGroupUrl.js';
 export {
+  computeFlockActivity,
+  type TodayFlockActivity,
+} from './utils/flockActivity.js';
+export {
   activityKey,
   recordPost,
   postsToday,

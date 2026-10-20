@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
-import { ApiClient, isFlockEvent, computePostingConsistency } from '@social-lead-gen/shared';
+import { ApiClient, isFlockEvent, computePostingConsistency, computeFlockActivity, loadActivity } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS } from '../hooks/useTeamData';
 import { useMode } from '../contexts/ModeContext';
 
@@ -353,6 +353,12 @@ export default function HawkInsightsPage() {
 
       </div>
       <div className="min-w-0 space-y-4">
+
+      {/* Today's Confirmed Posting Activity — DEVICE-LOCAL, from the Flock Safety Guard
+          activity log (confirmed posts only, already cross-workflow deduped). This is
+          intentionally SEPARATE from the historical, calendar-based Posting Consistency /
+          Flock Analytics below and is never mixed with them. */}
+      <TodayActivitySection sub={user?.sub} />
 
       {/* Posting Consistency — moved here from the Create page's Missed Flocks backlog.
           READ-ONLY: derives from calendar events; never deletes or auto-completes. The
@@ -755,6 +761,70 @@ export default function HawkInsightsPage() {
 
       </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Today's Confirmed Posting Activity (device-local) ──────────────────────────
+// Reads the Flock Safety Guard activity log (read-only) and shows today's confirmed
+// posts + a per-workflow breakdown. Updates live when a post is confirmed (same tab via
+// focus/visibility, other tabs via the `storage` event) — no manual reload needed. This
+// is DISTINCT from the historical calendar-based metrics and never mixed with them.
+function TodayActivitySection({ sub }: { sub: string | undefined }) {
+  const [events, setEvents] = useState(() => loadActivity(sub));
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    setEvents(loadActivity(sub));
+    setNow(Date.now());
+    const refresh = () => { setEvents(loadActivity(sub)); setNow(Date.now()); };
+    // Other tabs writing the activity log.
+    const onStorage = (e: StorageEvent) => { if (!e.key || e.key.includes('hawkeye_posting_activity')) refresh(); };
+    // Same tab returning focus after confirming posts on the Create page.
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [sub]);
+
+  const activity = computeFlockActivity(events, now);
+
+  return (
+    <div className="glass-card">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-semibold text-white">✅ Today's Confirmed Posting Activity</h3>
+        <span className="text-[10px] text-slate-500">Today on this device</span>
+      </div>
+      {!activity.hasActivity ? (
+        <p className="text-xs text-slate-500">No confirmed posts yet today. Marking a group posted in Mass Flock, Today's Flocks, or Copy &amp; Open will show here.</p>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-4 gap-2">
+            <div className="text-center p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+              <div className="text-xl font-bold text-green-400">{activity.total}</div>
+              <div className="text-[10px] text-slate-400">Confirmed</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-white/5 border border-white/10">
+              <div className="text-xl font-bold text-slate-200">{activity.byWorkflow.mass}</div>
+              <div className="text-[10px] text-slate-400">Mass Flock</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-white/5 border border-white/10">
+              <div className="text-xl font-bold text-slate-200">{activity.byWorkflow.today}</div>
+              <div className="text-[10px] text-slate-400">Today's Flocks</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-white/5 border border-white/10">
+              <div className="text-xl font-bold text-slate-200">{activity.byWorkflow.copyopen}</div>
+              <div className="text-[10px] text-slate-400">Copy &amp; Open</div>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-500">Counts confirmed posts only (not opens or skips), deduplicated across workflows. Historical trends below use your calendar flock history.</p>
+        </div>
+      )}
     </div>
   );
 }

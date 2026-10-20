@@ -89,13 +89,19 @@ function safeReturnBase(origin) {
   return DEFAULT_APP_ORIGIN;
 }
 
+// Which Secrets Manager secret holds the Stripe key. Defaults to the LIVE secret so
+// production behavior is unchanged when STRIPE_SECRET_ID is unset; the sandbox sets
+// STRIPE_SECRET_ID='SocialLeadGen/sandbox/Stripe' (TEST) and grants IAM only to it, so
+// the isolated sandbox exercises TEST Stripe instead of failing closed on the LIVE arn.
+const STRIPE_SECRET_ID = process.env.STRIPE_SECRET_ID || 'SocialLeadGen/Stripe';
+
 // Fetch Stripe secret key from Secrets Manager (cached per Lambda warm instance)
 let stripeInstance = null;
 async function getStripe() {
   if (stripeInstance) return stripeInstance;
 
   const result = await secretsClient.send(
-    new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Stripe' })
+    new GetSecretValueCommand({ SecretId: STRIPE_SECRET_ID })
   );
 
   const secret = JSON.parse(result.SecretString);

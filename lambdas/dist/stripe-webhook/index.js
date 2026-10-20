@@ -166,13 +166,18 @@ async function releaseClaim(eventId) {
   }
 }
 
+// Which Secrets Manager secret holds the Stripe keys. Defaults to the LIVE secret so
+// production is unchanged when STRIPE_SECRET_ID is unset; the sandbox sets it to the
+// TEST secret ('SocialLeadGen/sandbox/Stripe') and grants IAM only to that arn.
+const STRIPE_SECRET_ID = process.env.STRIPE_SECRET_ID || 'SocialLeadGen/Stripe';
+
 // Secrets cached per warm instance
 let cachedSecrets = null;
 async function getSecrets() {
   if (cachedSecrets) return cachedSecrets;
 
   const result = await secretsClient.send(
-    new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Stripe' })
+    new GetSecretValueCommand({ SecretId: STRIPE_SECRET_ID })
   );
 
   cachedSecrets = JSON.parse(result.SecretString);

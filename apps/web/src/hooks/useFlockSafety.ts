@@ -22,10 +22,23 @@ import {
   savePause,
   loadPacing,
   savePacing,
+  normalizeFacebookGroupUrl,
   type PostingActivityEvent,
   type PostingWorkflow,
   type PauseState,
 } from '@social-lead-gen/shared';
+
+// Cross-workflow dedupe identity. The SAME real group is confirmed via Mass Flock
+// (saved-group id) and Today's Flocks (calendar-event id) — those ids differ, so
+// id-based dedupe fails to catch the same group across workflows. The group's Facebook
+// URL is the one stable value both workflows carry, so we prefer the NORMALIZED URL as
+// the dedupe identity (handles www/m./trailing-slash/query variants). Fall back to the
+// raw id/name only when no valid group URL exists (e.g. legacy groups without a link).
+function dedupeIdentity(group: ConfirmedPostGroup): string {
+  const norm = group.link ? normalizeFacebookGroupUrl(group.link) : null;
+  if (norm && norm.ok && norm.url) return norm.url;
+  return (group.id || group.link || group.name || '').trim();
+}
 
 export interface ConfirmedPostGroup {
   id?: string;
@@ -66,7 +79,11 @@ export function useFlockSafety(): UseFlockSafety {
   const recordConfirmedPost = useCallback(
     (workflow: PostingWorkflow, group: ConfirmedPostGroup) => {
       const event: PostingActivityEvent = {
-        groupId: (group.id || group.link || group.name || '').trim(),
+        // Link-first identity so the same group deduplicates across workflows
+        // (Mass Flock vs Today's Flocks) whose raw ids differ. Falls back to id/name
+        // when there's no valid URL. recordPost still applies the 2-minute window, so
+        // legitimate repeat posts outside that window are counted.
+        groupId: dedupeIdentity(group),
         groupLink: group.link,
         groupName: group.name,
         ts: Date.now(),

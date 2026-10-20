@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Entrance-animation paint safety ──────────────────────────────────────
+ * The `scale-in`, `fade-up`, and `fade-in` animations start at opacity:0 with a
+ * `forwards` fill. In some browsers/timing (notably when an element mounts during
+ * the same frame as a route/state transition — e.g. the first-login CRM question
+ * overlay), the animation's first frame is not painted, leaving the element stuck
+ * at opacity:0 (invisible) until an unrelated repaint (like a click) kicks it off.
+ * That produced the "dark screen until you click" onboarding bug.
+ *
+ * Fix: give these entrance utilities an explicit opacity:1 RESTING state. The
+ * keyframes still animate from 0 → 1 for the entrance polish, but if the animation
+ * is deferred or never runs, the content is visible instead of invisible. We also
+ * disable the animation under prefers-reduced-motion (content simply shown). */
+.animate-scale-in,
+.animate-fade-in,
+.animate-fade-up {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-scale-in,
+  .animate-fade-in,
+  .animate-fade-up,
+  .animate-fade-up-delay-1,
+  .animate-fade-up-delay-2,
+  .animate-fade-up-delay-3 {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 /* Hawk swoop animation */
 @keyframes hawkSwoop {
   0% { transform: translate(0, 0) rotate(-10deg) scale(1); opacity: 1; }

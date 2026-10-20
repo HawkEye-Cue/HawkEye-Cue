@@ -44,13 +44,64 @@ function getUserId(event) { return event.requestContext?.authorizer?.jwt?.claims
 // the account's own profile so legacy labels (summit) and expired trials are handled
 // consistently — e.g. a profile stored as 'summit' is treated as 'team', and an
 // expired trial does not grant team access.
+// Canonical tier normalization — MUST match the copies in subscription-handler and
+// stripe-webhook (tier-normalization.test.ts asserts parity). Canonical: free|soar|team.
 function normalizeTier(raw) {
   const t = (raw || 'free').toString().toLowerCase();
-  if (t === 'nest' || t === 'none' || t === 'expired' || t === '') return 'free';
   if (t === 'summit') return 'team';
   if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
   if (t === 'free' || t === 'soar' || t === 'team') return t;
-  return 'free';
+  return 'free'; // nest/none/expired/'' and any unrecognized label
+}
+
+// Rank for comparing entitlements so team access is additive and never DOWNGRADES a
+// member's own paid plan.
+const TIER_RANK = { free: 0, soar: 1, team: 2 };
+function tierRank(t) { return TIER_RANK[normalizeTier(t)] ?? 0; }
+
+// Does this profile have a personal, independently-paid subscription (not team-granted)?
+// A real Stripe subscription id is the marker of self-paid access.
+function hasPersonalPaidSubscription(profile) {
+  if (!profile) return false;
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+  const paidStatus = status === 'active' || status === 'trial' || status === 'trialing' || status === 'past_due';
+  return Boolean(profile.stripeSubscriptionId) && paidStatus;
+}
+
+// Restore a member's PERSONAL subscription state when they leave / are removed from a
+// team. Team access is additive, so exiting a team must NEVER remove independently-paid
+// access:
+//   • If the member still has their own Stripe subscription, their personal fields were
+//     never clobbered — we only clear the team-grant flags.
+//   • Otherwise restore the snapshot captured at accept time (preTeam*). Falls back to
+//     free/none only when there was genuinely no prior paid state.
+// Idempotent and safe to call for any exiting member.
+async function restorePersonalSubscriptionAfterTeamExit(memberUserId) {
+  const prof = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `USER#${memberUserId}`, SK: 'PROFILE' },
+  }));
+  const p = prof.Item || {};
+
+  // Member kept their own Stripe subscription throughout → never downgrade it.
+  if (hasPersonalPaidSubscription(p)) {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${memberUserId}`, SK: 'PROFILE' },
+      UpdateExpression: 'REMOVE preTeamTier, preTeamStatus, teamGrantedAccess',
+    }));
+    return;
+  }
+
+  // No live personal subscription → restore the pre-team snapshot if we have one.
+  const restoreTier = p.preTeamTier != null ? p.preTeamTier : 'free';
+  const restoreStatus = p.preTeamStatus != null ? p.preTeamStatus : 'none';
+  await dynamo.send(new UpdateCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `USER#${memberUserId}`, SK: 'PROFILE' },
+    UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s REMOVE preTeamTier, preTeamStatus, teamGrantedAccess',
+    ExpressionAttributeValues: { ':t': restoreTier, ':s': restoreStatus },
+  }));
 }
 function effectiveTier(profile) {
   if (!profile) return 'free';
@@ -207,6 +258,23 @@ async function inviteMember(teamId, adminUserId, inviteEmail) {
     },
   }));
 
+  // Direct-lookup record so acceptInvite can resolve the invite by its code with a
+  // single GetItem (PK=INVITE#{inviteId}) instead of a full-table Scan — no new GSI or
+  // infra change required. Carries a TTL matching the invite expiry so it self-cleans.
+  await dynamo.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      PK: `INVITE#${inviteId}`,
+      SK: 'LOOKUP',
+      inviteId,
+      teamId,
+      email: inviteEmail,
+      createdAt: now,
+      expiresAt,
+      ttl: Math.floor(new Date(expiresAt).getTime() / 1000),
+    },
+  }));
+
   // Send invite email
   try {
     await sendEmail(inviteEmail, `🦅 You've been invited to join a team on HawkEye-Cue!`, `You've been invited to join "${teamInfo.Item.teamName}" on HawkEye-Cue!\n\nSign up or log in at https://hawkeyecue.com to accept the invite.\n\nYour invite code: ${inviteId}\n\n— HawkEye-Cue`);
@@ -232,27 +300,50 @@ async function acceptInvite(userId, inviteId) {
   }));
   const userEmail = profile.Item?.email || '';
 
-  // Find the invite by scanning teams (in production, use a GSI)
+  // Resolve the invite. FAST PATH: a direct GetItem on the INVITE#{inviteId} LOOKUP
+  // record (written at invite time) gives us the teamId in O(1) with no Scan. We then
+  // read the authoritative invite record (TEAM#{teamId} / INVITE#{inviteId}) to check
+  // status/expiry/email. LEGACY FALLBACK: invites created before the lookup record
+  // existed won't have one, so fall back to the previous table Scan for those only.
   let invite = null;
   let teamId = null;
-  let lastKey = undefined;
 
-  do {
-    const result = await dynamo.send(new ScanCommand({
+  const lookup = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `INVITE#${inviteId}`, SK: 'LOOKUP' },
+  }));
+  if (lookup.Item?.teamId) {
+    teamId = lookup.Item.teamId;
+    const inviteRec = await dynamo.send(new GetCommand({
       TableName: TABLE_NAME,
-      FilterExpression: 'inviteId = :iid AND #status = :s',
-      ExpressionAttributeNames: { '#status': 'status' },
-      ExpressionAttributeValues: { ':iid': inviteId, ':s': 'pending' },
-      ExclusiveStartKey: lastKey,
+      Key: { PK: `TEAM#${teamId}`, SK: `INVITE#${inviteId}` },
     }));
-    const found = (result.Items || [])[0];
-    if (found) {
-      invite = found;
-      teamId = found.PK.replace('TEAM#', '');
-      break;
+    // Only treat a still-pending invite as valid (an accepted/revoked one is not).
+    if (inviteRec.Item && inviteRec.Item.status === 'pending') {
+      invite = inviteRec.Item;
     }
-    lastKey = result.LastEvaluatedKey;
-  } while (lastKey);
+  }
+
+  if (!invite) {
+    // Legacy fallback: pre-lookup invites. Bounded by the usual pending-invite volume.
+    let lastKey = undefined;
+    do {
+      const result = await dynamo.send(new ScanCommand({
+        TableName: TABLE_NAME,
+        FilterExpression: 'inviteId = :iid AND #status = :s',
+        ExpressionAttributeNames: { '#status': 'status' },
+        ExpressionAttributeValues: { ':iid': inviteId, ':s': 'pending' },
+        ExclusiveStartKey: lastKey,
+      }));
+      const found = (result.Items || []).find((it) => String(it.SK).startsWith('INVITE#'));
+      if (found) {
+        invite = found;
+        teamId = found.PK.replace('TEAM#', '');
+        break;
+      }
+      lastKey = result.LastEvaluatedKey;
+    } while (lastKey);
+  }
 
   if (!invite) return err(404, 'INVITE_NOT_FOUND', 'Invite not found or already accepted');
 
@@ -308,13 +399,59 @@ async function acceptInvite(userId, inviteId) {
     ExpressionAttributeValues: { ':s': 'accepted', ':u': userId, ':t': now },
   }));
 
-  // Upgrade member's subscription tier to team
-  await dynamo.send(new UpdateCommand({
-    TableName: TABLE_NAME,
-    Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
-    UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s',
-    ExpressionAttributeValues: { ':t': 'team', ':s': 'active' },
-  }));
+  // Best-effort cleanup of the direct-lookup record (also self-expires via TTL).
+  try {
+    await dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { PK: `INVITE#${inviteId}`, SK: 'LOOKUP' } }));
+  } catch (e) {
+    console.error('Failed to delete invite lookup record (TTL will clean up):', e.message);
+  }
+
+  // ─── Entitlement: team access is ADDITIVE; never clobber a personal subscription ──
+  // A member may already have their OWN paid Soar/Summit subscription. Accepting a team
+  // invite must NOT overwrite or erase it. We therefore:
+  //   • snapshot the member's current personal subscription fields onto the PROFILE
+  //     (preTeam*) so leaving/removal can restore them exactly, and
+  //   • only ELEVATE the PROFILE's visible tier when team (rank 2) is higher than what
+  //     they already have — a self-paid Summit/Soar member keeps their own fields, and
+  //     a free member's PROFILE is elevated to team for the duration of membership.
+  // The authoritative "is this access personal or team-granted?" marker is
+  // stripeSubscriptionId (a real Stripe id ⇒ personal). The TEAM_MEMBER record is the
+  // source of truth for team membership itself.
+  const memberProfile = profile.Item || {};
+  const personalPaid = hasPersonalPaidSubscription(memberProfile);
+  const snapshot = {
+    preTeamTier: personalPaid ? (memberProfile.subscriptionTier ?? null) : (memberProfile.subscriptionTier ?? 'free'),
+    preTeamStatus: personalPaid ? (memberProfile.subscriptionStatus ?? null) : (memberProfile.subscriptionStatus ?? 'none'),
+    teamGrantedAccess: true,
+  };
+
+  if (personalPaid && tierRank(memberProfile.subscriptionTier) >= TIER_RANK.team) {
+    // Self-paid Summit already ≥ team: record the snapshot flags only; leave the paid
+    // subscription fields completely untouched.
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      UpdateExpression: 'SET preTeamTier = :pt, preTeamStatus = :ps, teamGrantedAccess = :g',
+      ExpressionAttributeValues: { ':pt': snapshot.preTeamTier, ':ps': snapshot.preTeamStatus, ':g': true },
+    }));
+  } else {
+    // Free member OR self-paid Soar: snapshot their prior state, then surface team
+    // access. For a self-paid Soar member we DO NOT touch stripe* fields, so their own
+    // subscription (and its billing) is intact; we only raise the visible tier/status
+    // to team for the membership. preTeam* lets us restore the exact prior tier on exit.
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s, preTeamTier = :pt, preTeamStatus = :ps, teamGrantedAccess = :g',
+      ExpressionAttributeValues: {
+        ':t': 'team',
+        ':s': personalPaid ? (memberProfile.subscriptionStatus ?? 'active') : 'active',
+        ':pt': snapshot.preTeamTier,
+        ':ps': snapshot.preTeamStatus,
+        ':g': true,
+      },
+    }));
+  }
 
   return ok({ teamId, teamName: teamInfo.Item?.teamName, role: 'member' });
 }
@@ -341,13 +478,8 @@ async function removeMember(teamId, adminUserId, memberUserId) {
     Key: { PK: `USER#${memberUserId}`, SK: 'TEAM_MEMBER' },
   }));
 
-  // Downgrade member back to free
-  await dynamo.send(new UpdateCommand({
-    TableName: TABLE_NAME,
-    Key: { PK: `USER#${memberUserId}`, SK: 'PROFILE' },
-    UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s',
-    ExpressionAttributeValues: { ':t': 'free', ':s': 'none' },
-  }));
+  // Restore the member's PERSONAL subscription (never strip independently-paid access).
+  await restorePersonalSubscriptionAfterTeamExit(memberUserId);
 
   return ok({ removed: memberUserId });
 }
@@ -687,13 +819,11 @@ exports.handler = async (event) => {
         Key: { PK: `USER#${userId}`, SK: skToDelete },
       }));
 
-      // Downgrade subscription
-      await dynamo.send(new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
-        UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s',
-        ExpressionAttributeValues: { ':t': 'free', ':s': 'none' },
-      }));
+      // Restore the user's PERSONAL subscription instead of a blanket free downgrade —
+      // a member or admin with their own paid Soar/Summit subscription keeps it when
+      // they leave. (The admin's own Stripe subscription, if any, is never touched here;
+      // cancelling the team's billing is a separate, explicit Stripe action.)
+      await restorePersonalSubscriptionAfterTeamExit(userId);
 
       // If admin left and others remain, transfer admin role
       if (teamRecord.role === 'admin' && members.length > 1) {

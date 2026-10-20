@@ -350,3 +350,120 @@ describe('stripe-webhook — signature + two-phase idempotency (billing P0)', ()
     expect(userRecord().subscriptionCancelAtPeriodEnd).toBe(true);
   });
 });
+
+// ─── Priority 1: tier resolution + never-silent-grant ──────────────────────────
+// A subscription.updated event with an explicit price (items.data[0].price.id) and
+// optional metadata.tier. When metadata is absent/garbled we must resolve from the
+// price; when NEITHER resolves we must NOT grant a paid tier.
+function subUpdatedWithPrice(
+  id: string,
+  created: number,
+  opts: { status?: string; metaTier?: string | null; priceId?: string | null } = {},
+) {
+  const metadata: any = { userId: 'user-123' };
+  if (opts.metaTier !== null && opts.metaTier !== undefined) metadata.tier = opts.metaTier;
+  const obj: any = {
+    id: 'sub_1', customer: 'cus_1', status: opts.status ?? 'active',
+    current_period_end: 1_800_000_000, cancel_at_period_end: false, metadata,
+  };
+  if (opts.priceId !== null && opts.priceId !== undefined) {
+    obj.items = { data: [{ price: { id: opts.priceId } }] };
+  }
+  return { id, type: 'customer.subscription.updated', created, data: { object: obj } };
+}
+
+describe('stripe-webhook — tier correctness (Priority 1)', () => {
+  beforeEach(() => {
+    process.env.STRIPE_PRICE_SOAR = 'price_soar';
+    process.env.STRIPE_PRICE_TEAM = 'price_team';
+    process.env.STRIPE_PRICE_BASE = 'price_base';
+    process.env.STRIPE_PRICE_GROWTH = 'price_growth';
+  });
+
+  it('Summit metadata resolves to the team tier (never free/soar)', async () => {
+    const handler = loadHandler();
+    constructedEvent = subUpdatedWithPrice('evt_sum', 1_700_000_100, { metaTier: 'summit' });
+    const res = await handler(webhookEvent({ id: 'evt_sum' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('team');
+  });
+
+  it('missing metadata tier resolves from the purchased Price id', async () => {
+    const handler = loadHandler();
+    constructedEvent = subUpdatedWithPrice('evt_price', 1_700_000_101, { metaTier: null, priceId: 'price_team' });
+    const res = await handler(webhookEvent({ id: 'evt_price' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('team');
+  });
+
+  it('UNRESOLVABLE tier (unknown metadata AND unknown price) never silently grants paid', async () => {
+    const handler = loadHandler();
+    // Seed a known prior tier so we can prove it is LEFT UNCHANGED (not bumped to paid).
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'free' });
+    constructedEvent = subUpdatedWithPrice('evt_unk', 1_700_000_102, { metaTier: 'enterprise', priceId: 'price_unknown' });
+    const res = await handler(webhookEvent({ id: 'evt_unk' }));
+    expect(res.statusCode).toBe(200);
+    // Tier must NOT have been set to soar/team off an unrecognized payload.
+    expect(userRecord().subscriptionTier).toBe('free');
+    // Status still advances (so we have a record of the event), but entitlement did not.
+    expect(userRecord().subscriptionStatus).toBe('active');
+  });
+
+  it('checkout.session.completed with unknown tier records identifiers but no paid tier', async () => {
+    const handler = loadHandler();
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'free' });
+    constructedEvent = {
+      id: 'evt_co_unk', type: 'checkout.session.completed', created: 1_700_000_103,
+      data: { object: { client_reference_id: 'user-123', customer: 'cus_1', subscription: 'sub_1', metadata: { userId: 'user-123', tier: 'mystery' } } },
+    };
+    const res = await handler(webhookEvent({ id: 'evt_co_unk' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().stripeSubscriptionId).toBe('sub_1'); // identifiers recorded
+    expect(userRecord().subscriptionTier).toBe('free');       // but NOT silently upgraded
+  });
+});
+
+// ─── Priority 3: failed-payment does not prematurely remove access ──────────────
+describe('stripe-webhook — failed-payment / lifecycle entitlement (Priority 3)', () => {
+  beforeEach(() => {
+    process.env.STRIPE_PRICE_SOAR = 'price_soar';
+    process.env.STRIPE_PRICE_TEAM = 'price_team';
+  });
+
+  it('past_due subscription.updated keeps the paid tier (no premature downgrade)', async () => {
+    const handler = loadHandler();
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_1' });
+    constructedEvent = subUpdatedWithPrice('evt_pd', 1_700_000_200, { status: 'past_due', metaTier: 'team' });
+    const res = await handler(webhookEvent({ id: 'evt_pd' }));
+    expect(res.statusCode).toBe(200);
+    // Access retained during Stripe's retry/grace window.
+    expect(userRecord().subscriptionTier).toBe('team');
+    expect(userRecord().subscriptionStatus).toBe('past_due');
+  });
+
+  it('invoice.payment_failed only flags past_due (does not touch tier)', async () => {
+    const handler = loadHandler();
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_1' });
+    constructedEvent = {
+      id: 'evt_if', type: 'invoice.payment_failed', created: 1_700_000_201,
+      data: { object: { id: 'in_1', subscription_details: { metadata: { userId: 'user-123' } } } },
+    };
+    const res = await handler(webhookEvent({ id: 'evt_if' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionStatus).toBe('past_due');
+    expect(userRecord().subscriptionTier).toBe('soar'); // tier untouched
+  });
+
+  it('subscription.deleted is the terminal event that removes access', async () => {
+    const handler = loadHandler();
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'team', subscriptionStatus: 'past_due', stripeSubscriptionId: 'sub_1' });
+    constructedEvent = {
+      id: 'evt_del', type: 'customer.subscription.deleted', created: 1_700_000_202,
+      data: { object: { id: 'sub_1', customer: 'cus_1', metadata: { userId: 'user-123' } } },
+    };
+    const res = await handler(webhookEvent({ id: 'evt_del' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('free');
+    expect(userRecord().subscriptionStatus).toBe('canceled');
+  });
+});

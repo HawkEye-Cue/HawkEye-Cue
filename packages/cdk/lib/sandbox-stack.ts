@@ -266,6 +266,65 @@ export class SandboxStack extends cdk.Stack {
       }),
     );
 
+    // ─── NEW: Scheduled Posts — persistence ONLY, NO real publishing ──────
+    // Goal: let QA save/retrieve/edit/delete/reschedule posts and see them on the
+    // calendar, WITHOUT ever publishing to Facebook or any social platform.
+    //
+    // The prod posts-handler, on POST /posts/schedule, creates an EventBridge Scheduler
+    // target. If that target/role were missing it would return a 500 ("scheduling
+    // failed"). So we give it a VALID target that is a deliberate NO-OP: a sandbox-only
+    // publisher Lambda with NO social code, NO secrets, NO table access, NO network. A
+    // fired schedule invokes the no-op and does nothing — publishing cannot happen.
+
+    // Sandbox-only no-op publisher (isolated stand-in for SocialLeadGen-PostPublisher).
+    const noopPublisherFn = new lambda.Function(this, 'SandboxNoopPublisherFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-NoopPublisher',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/sandbox-noop-publisher'),
+      description: 'Sandbox: NO-OP publisher — never posts to any platform (scheduling QA only)',
+    });
+    // Intentionally NO grants: no table, no secrets, no social credentials, no other
+    // Lambdas. It inherits only lambdaDefaults env (unused) + basic CloudWatch logs.
+
+    // EventBridge Scheduler role — assumable only by the scheduler service; may invoke
+    // ONLY the sandbox no-op publisher (never the prod publisher).
+    const schedulerRole = new iam.Role(this, 'SandboxSchedulerRole', {
+      roleName: 'SocialLeadGen-Sandbox-SchedulerRole',
+      assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
+      description: 'Sandbox: role assumed by EventBridge Scheduler to invoke the NO-OP publisher only',
+    });
+    noopPublisherFn.grantInvoke(schedulerRole); // can invoke ONLY the no-op
+
+    // Posts handler — reuses the SAME compiled asset as prod; CRUD on the ISOLATED
+    // sandbox table only. Scheduler env points at the sandbox role + no-op publisher.
+    const postsFn = new lambda.Function(this, 'SandboxPostsFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-PostsHandler',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../../lambdas/dist/posts-handler'),
+      description: 'Sandbox: scheduled-posts CRUD (persistence only; no real publishing)',
+    });
+    table.grantReadWriteData(postsFn); // sandbox table ONLY
+    postsFn.addEnvironment('SCHEDULER_ROLE_ARN', schedulerRole.roleArn);
+    postsFn.addEnvironment('PUBLISHER_FUNCTION_ARN', noopPublisherFn.functionArn);
+    // Manage EventBridge schedules (scoped to this account's default schedule group).
+    postsFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['scheduler:CreateSchedule', 'scheduler:UpdateSchedule', 'scheduler:DeleteSchedule', 'scheduler:GetSchedule'],
+        resources: [`arn:aws:scheduler:${this.region}:${this.account}:schedule/default/*`],
+      }),
+    );
+    // Pass ONLY the sandbox scheduler role (which can invoke ONLY the no-op publisher).
+    postsFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['iam:PassRole'],
+        resources: [schedulerRole.roleArn],
+      }),
+    );
+
     // ─── HTTP API with the sandbox Cognito authorizer ─────────────────────
     const httpApi = new apigatewayv2.HttpApi(this, 'SandboxHttpApi', {
       apiName: 'SocialLeadGen-Sandbox-API',
@@ -309,6 +368,14 @@ export class SandboxStack extends cdk.Stack {
     const contentInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxContentInt', contentFn);
     httpApi.addRoutes({ path: '/content/generate', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
     httpApi.addRoutes({ path: '/content/ideas', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
+
+    // NEW: Scheduled-posts CRUD routes (authenticated). /posts/{id}/publish returns
+    // 501 in the handler (no immediate publish), so it is harmless to expose.
+    const postsInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxPostsInt', postsFn);
+    httpApi.addRoutes({ path: '/posts/schedule', methods: [apigatewayv2.HttpMethod.POST], integration: postsInt, authorizer });
+    httpApi.addRoutes({ path: '/posts', methods: [apigatewayv2.HttpMethod.GET], integration: postsInt, authorizer });
+    httpApi.addRoutes({ path: '/posts/{id}', methods: [apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE], integration: postsInt, authorizer });
+    httpApi.addRoutes({ path: '/posts/{id}/publish', methods: [apigatewayv2.HttpMethod.POST], integration: postsInt, authorizer });
 
     // ─── Outputs for the manual verification run ──────────────────────────
     new cdk.CfnOutput(this, 'SandboxApiUrl', { value: httpApi.apiEndpoint, description: 'Point apps/web/.env.staging VITE_API_URL here' });

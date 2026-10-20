@@ -30,6 +30,36 @@ export class ApiStack extends cdk.Stack {
 
     const { userPool, userPoolClients, table, mediaBucket } = props;
 
+    // ─── Pin drifted assets (opt-in, for the scoped launch release) ───────
+    // Two functions (email-oauth-handler, cadence-email-sender) have local `dist`
+    // bundles that differ from what is currently deployed in production (their live
+    // code was last published out-of-band / from an earlier build). A normal `cdk
+    // deploy` would therefore ALSO update their code — out of scope for the billing/
+    // team launch. With `-c pinDriftedAssets=true` we pin ONLY those two functions to
+    // the EXACT S3 asset objects CloudFormation currently records (read from the live
+    // SocialLeadGen-Api template on 2026-10-20), so the launch deploy leaves them
+    // byte-identical while still shipping the intended subscription/webhook/
+    // appreciations/team/posts handler changes (which continue to bundle from dist).
+    const pinDriftedAssets =
+      this.node.tryGetContext('pinDriftedAssets') === 'true' ||
+      this.node.tryGetContext('pinDriftedAssets') === true;
+    const cdkAssetsBucket = pinDriftedAssets
+      ? s3.Bucket.fromBucketName(this, 'CdkAssetsBucketPin', `cdk-hnb659fds-assets-${this.account}-${this.region}`)
+      : undefined;
+    // Deployed asset keys (live SocialLeadGen-Api CloudFormation template, 2026-10-20).
+    const DEPLOYED_DRIFT_KEYS: Record<string, string> = {
+      'email-oauth-handler': 'e7f188a0ac3d5d40b0b1f7ed66ab6a46dbaf7222638ef8b15cddb910b37bf96f.zip',
+      'cadence-email-sender': 'd6ba25a7f91b4ce0d0458d7a02fb33b9cbb457f25af375eb9a3d948288b15d4c.zip',
+    };
+    // Code for a drift-pinned function: the live S3 object when the flag is on, else
+    // the normal local bundle (default behavior unchanged when the flag is absent).
+    const pinnedOrAsset = (assetName: keyof typeof DEPLOYED_DRIFT_KEYS): lambda.Code => {
+      if (pinDriftedAssets && cdkAssetsBucket) {
+        return lambda.Code.fromBucket(cdkAssetsBucket, DEPLOYED_DRIFT_KEYS[assetName]);
+      }
+      return lambda.Code.fromAsset(`../../lambdas/dist/${assetName}`);
+    };
+
     // ─── HTTP API with CORS ───────────────────────────────────────────────
     this.httpApi = new apigatewayv2.HttpApi(this, 'HttpApi', {
       apiName: 'SocialLeadGen-API',
@@ -497,7 +527,7 @@ export class ApiStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-EmailOAuth',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/email-oauth-handler'),
+      code: pinnedOrAsset('email-oauth-handler'),
       description: 'Handles Gmail/Outlook OAuth flows and sends emails via connected accounts',
       timeout: cdk.Duration.seconds(30),
       environment: {
@@ -597,7 +627,7 @@ export class ApiStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-CadenceEmailSender',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/cadence-email-sender'),
+      code: pinnedOrAsset('cadence-email-sender'),
       description: 'Daily scheduled Lambda — sends cadence emails to leads via connected Gmail/Outlook',
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,

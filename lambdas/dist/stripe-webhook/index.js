@@ -310,6 +310,24 @@ async function applySubscriptionState(userId, fields, eventTs) {
   }
 }
 
+// Resolve a subscription's current-period-end to an ISO string, resilient to Stripe
+// API-version differences and missing values. Newer Stripe API versions moved
+// current_period_end OFF the subscription object and ONTO each subscription item, so we
+// check the top-level field first, then fall back to the first item's value. Returns
+// null (NOT a thrown RangeError) when the value is genuinely absent/invalid, so a
+// legitimate event — e.g. a cancel_at_period_end update whose payload omits the field —
+// records cleanly instead of crashing the whole webhook.
+function resolvePeriodEndIso(subscription) {
+  const epoch =
+    subscription?.current_period_end ??
+    subscription?.items?.data?.[0]?.current_period_end ??
+    null;
+  if (typeof epoch !== 'number' || !Number.isFinite(epoch)) return null;
+  const ms = epoch * 1000;
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 // customer.subscription.updated — handles upgrades, downgrades, renewals, cancel_at_period_end
 async function handleSubscriptionUpdated(subscription, eventTs) {
   const userId = subscription.metadata?.userId;
@@ -320,7 +338,8 @@ async function handleSubscriptionUpdated(subscription, eventTs) {
 
   const { tier, resolved } = resolveTier(subscription);
   const status = subscription.status; // active, past_due, canceled, etc.
-  const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+  // Safe period-end resolution (top-level OR item-nested OR null) — never throws.
+  const currentPeriodEnd = resolvePeriodEndIso(subscription);
   const cancelAtPeriodEnd = subscription.cancel_at_period_end;
 
   console.log(`Subscription updated for user ${userId}: tier=${tier} (resolved=${resolved}), status=${status}, cancelAtPeriodEnd=${cancelAtPeriodEnd}`);

@@ -467,3 +467,109 @@ describe('stripe-webhook — failed-payment / lifecycle entitlement (Priority 3)
     expect(userRecord().subscriptionStatus).toBe('canceled');
   });
 });
+
+// ─── Priority: current_period_end resilience (billing sync bug fix) ─────────────
+// A portal-initiated cancellation sends customer.subscription.updated with
+// cancel_at_period_end=true. Newer Stripe API versions omit the top-level
+// current_period_end (it moved onto subscription items), which previously made the
+// handler throw RangeError('Invalid time value') and return 500 — so the cancellation
+// never recorded. These tests pin that the handler now records cancelAtPeriodEnd and a
+// safe period-end (top-level, item-nested, or null) WITHOUT crashing.
+function subUpdatedPeriodShape(
+  id: string,
+  created: number,
+  opts: {
+    status?: string;
+    cancelAtPeriodEnd?: boolean;
+    topLevelPeriodEnd?: number | undefined; // omit → undefined (newer API)
+    itemPeriodEnd?: number | undefined;     // nested on items.data[0]
+    metaTier?: string;
+  } = {},
+) {
+  const obj: any = {
+    id: 'sub_1',
+    customer: 'cus_1',
+    status: opts.status ?? 'active',
+    cancel_at_period_end: opts.cancelAtPeriodEnd ?? false,
+    metadata: { userId: 'user-123', tier: opts.metaTier ?? 'team' },
+  };
+  if (opts.topLevelPeriodEnd !== undefined) obj.current_period_end = opts.topLevelPeriodEnd;
+  if (opts.itemPeriodEnd !== undefined) {
+    obj.items = { data: [{ price: { id: 'price_team' }, current_period_end: opts.itemPeriodEnd }] };
+  }
+  return { id, type: 'customer.subscription.updated', created, data: { object: obj } };
+}
+
+describe('stripe-webhook — current_period_end resilience', () => {
+  beforeEach(() => {
+    process.env.STRIPE_PRICE_TEAM = 'price_team';
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_1' });
+  });
+
+  it('normal top-level current_period_end is recorded as ISO', async () => {
+    const handler = loadHandler();
+    constructedEvent = subUpdatedPeriodShape('evt_pe_top', 1_700_001_000, { topLevelPeriodEnd: 1_800_000_000, cancelAtPeriodEnd: true });
+    const res = await handler(webhookEvent({ id: 'evt_pe_top' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionCancelAtPeriodEnd).toBe(true);
+    expect(userRecord().subscriptionCurrentPeriodEnd).toBe(new Date(1_800_000_000 * 1000).toISOString());
+  });
+
+  it('MISSING top-level current_period_end no longer crashes; cancelAtPeriodEnd still recorded', async () => {
+    const handler = loadHandler();
+    // Newer-API shape: no top-level field, no item field → period end null, but the
+    // cancellation MUST still persist (this is the exact production bug).
+    constructedEvent = subUpdatedPeriodShape('evt_pe_missing', 1_700_001_001, { topLevelPeriodEnd: undefined, cancelAtPeriodEnd: true });
+    const res = await handler(webhookEvent({ id: 'evt_pe_missing' }));
+    expect(res.statusCode).toBe(200); // was 500 (RangeError) before the fix
+    expect(userRecord().subscriptionCancelAtPeriodEnd).toBe(true);
+    expect(userRecord().subscriptionCurrentPeriodEnd).toBeNull();
+    expect(userRecord().subscriptionStatus).toBe('active'); // access retained until period end
+  });
+
+  it('period end available via subscription items is used when top-level is absent', async () => {
+    const handler = loadHandler();
+    constructedEvent = subUpdatedPeriodShape('evt_pe_item', 1_700_001_002, { topLevelPeriodEnd: undefined, itemPeriodEnd: 1_806_000_000, cancelAtPeriodEnd: true });
+    const res = await handler(webhookEvent({ id: 'evt_pe_item' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionCancelAtPeriodEnd).toBe(true);
+    expect(userRecord().subscriptionCurrentPeriodEnd).toBe(new Date(1_806_000_000 * 1000).toISOString());
+  });
+
+  it('scheduled cancellation keeps the paid tier and active status until period end', async () => {
+    const handler = loadHandler();
+    constructedEvent = subUpdatedPeriodShape('evt_pe_sched', 1_700_001_003, { status: 'active', topLevelPeriodEnd: 1_806_000_000, cancelAtPeriodEnd: true, metaTier: 'team' });
+    const res = await handler(webhookEvent({ id: 'evt_pe_sched' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('team');
+    expect(userRecord().subscriptionStatus).toBe('active');
+    expect(userRecord().subscriptionCancelAtPeriodEnd).toBe(true);
+  });
+
+  it('duplicate delivery of the cancellation event stays idempotent (no double-processing)', async () => {
+    const handler = loadHandler();
+    constructedEvent = subUpdatedPeriodShape('evt_pe_dup', 1_700_001_004, { topLevelPeriodEnd: undefined, cancelAtPeriodEnd: true });
+    const r1 = await handler(webhookEvent({ id: 'evt_pe_dup' }));
+    const updatesAfterFirst = userUpdateCount();
+    const r2 = await handler(webhookEvent({ id: 'evt_pe_dup' }));
+    expect(r1.statusCode).toBe(200);
+    expect(r2.statusCode).toBe(200);
+    expect(JSON.parse(r2.body).duplicate).toBe(true);
+    // Second delivery must NOT re-run provisioning.
+    expect(userUpdateCount()).toBe(updatesAfterFirst);
+    expect(userRecord().subscriptionCancelAtPeriodEnd).toBe(true);
+  });
+
+  it('subscription.deleted still records null period end and removes access (no regression)', async () => {
+    const handler = loadHandler();
+    constructedEvent = {
+      id: 'evt_pe_del', type: 'customer.subscription.deleted', created: 1_700_001_005,
+      data: { object: { id: 'sub_1', customer: 'cus_1', metadata: { userId: 'user-123' } } },
+    };
+    const res = await handler(webhookEvent({ id: 'evt_pe_del' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('free');
+    expect(userRecord().subscriptionStatus).toBe('canceled');
+    expect(userRecord().subscriptionCurrentPeriodEnd).toBeNull();
+  });
+});

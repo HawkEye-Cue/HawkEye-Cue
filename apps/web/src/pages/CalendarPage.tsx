@@ -9,6 +9,7 @@ import { useTeamData } from '../hooks/useTeamData';
 import HourlyTimeline from '../components/HourlyTimeline';
 import type { TimelineEvent } from '../components/HourlyTimeline';
 import { scheduledPostsForLocalDate, isScheduledPostEntry } from '../lib/scheduledPostDisplay';
+import { registerScheduledPostsRefresh } from '../lib/scheduledPostsRefresh';
 
 type ViewMode = 'month' | 'week' | 'day';
 
@@ -77,8 +78,18 @@ export default function CalendarPage() {
   const folioStart = localStorage.getItem('hawkeye_folio_start') || '';
   const folioEnd = localStorage.getItem('hawkeye_folio_end') || '';
 
-  // Fetch real scheduled posts from API
+  // Fetch real scheduled posts from API.
+  //
+  // Calendar is rendered as a SIBLING of the content creator on the Create tab
+  // (CreatePage mounts both), so when a user schedules a post the Calendar component
+  // is already mounted and a mount-only effect would never re-run — leaving the new
+  // post invisible until a full browser refresh. To fix that reliably without changing
+  // the page architecture, we (a) fetch on mount, (b) re-fetch when the tab/window
+  // regains focus or becomes visible (covers navigating back to Calendar), and
+  // (c) re-fetch immediately when the content creator dispatches 'hawkeye-post-scheduled'
+  // on a successful schedule. This mirrors the existing 'hawkeye-post-preview' event idiom.
   useEffect(() => {
+    let cancelled = false;
     async function fetchPosts() {
       try {
         const token = await getToken();
@@ -89,12 +100,20 @@ export default function CalendarPage() {
         const result = await client.getPosts();
         // API returns { posts: [...] } or a flat array
         const posts = Array.isArray(result) ? result : (result as any)?.posts || [];
-        setScheduledPosts(posts);
+        if (!cancelled) setScheduledPosts(posts);
       } catch {
         // ignore
       }
     }
     fetchPosts();
+
+    // Re-fetch on schedule-success, window focus, and tab visibility (see
+    // scheduledPostsRefresh for rationale). Cleanup removes all listeners.
+    const unregister = registerScheduledPostsRefresh(() => { fetchPosts(); });
+    return () => {
+      cancelled = true;
+      unregister();
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const monthName = new Date(currentYear, currentMonth, 1).toLocaleString('default', {

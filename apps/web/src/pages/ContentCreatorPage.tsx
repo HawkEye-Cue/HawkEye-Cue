@@ -13,6 +13,7 @@ import SmartFlockImport from '../components/SmartFlockImport';
 import MassFlockPosting from '../components/MassFlockPosting';
 import OneScreenComposer from '../components/OneScreenComposer';
 import CreateLauncher, { type CreateLaunchChoice } from '../components/CreateLauncher';
+import { notifyPostScheduled } from '../lib/scheduledPostsRefresh';
 import FlockSafetyBar from '../components/FlockSafetyBar';
 import { useFlockSafety } from '../hooks/useFlockSafety';
 
@@ -1128,6 +1129,9 @@ export default function ContentCreatorPage() {
                       scheduledAt,
                       mediaUrls,
                     });
+                    // Tell the sibling Calendar to re-fetch so the new post appears
+                    // immediately (no manual browser refresh needed).
+                    notifyPostScheduled();
                     setSuccess('✓ Posted! It will go live in about 2 minutes.');
                     setShowHawkSwoop(true);
                     setTimeout(() => setShowHawkSwoop(false), 1400);
@@ -1203,6 +1207,9 @@ export default function ContentCreatorPage() {
                       scheduledAt,
                       mediaUrls: schedMediaUrls,
                     });
+                    // Tell the sibling Calendar to re-fetch so the scheduled post
+                    // appears immediately (no manual browser refresh needed).
+                    notifyPostScheduled();
                     setSuccess('✓ Scheduled! Check the Calendar tab.');
                     setShowHawkSwoop(true);
                     setTimeout(() => setShowHawkSwoop(false), 1400);

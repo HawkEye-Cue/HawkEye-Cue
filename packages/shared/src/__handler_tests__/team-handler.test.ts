@@ -203,6 +203,29 @@ describe('team-handler — accept invite preserves personal subscription (Priori
     expect(after.teamGrantedAccess).toBeUndefined();
   });
 
+  it('uses CURRENT billing state, not a stale snapshot, when a personal sub changed during membership', async () => {
+    const handler = loadHandler();
+    seedTeamWithInvite();
+    // Joins with a personal SOAR sub → snapshot captures preTeamTier='soar'.
+    profile('member-1', { email: 'member@test.com', subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_personal', stripeCustomerId: 'cus_p' });
+    await handler(ev('POST', '/team/accept', { inviteId: 'inv-1' }));
+    expect(getProfile('member-1').preTeamTier).toBe('soar');
+
+    // While in the team, the member UPGRADES their own subscription to Summit via Stripe.
+    // The webhook writes the live state onto the PROFILE (tier=team, same personal sub id).
+    const p = getProfile('member-1');
+    store.set('USER#member-1|PROFILE', { ...p, subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_personal_upgraded' });
+
+    // On leave, the restore path must honor the CURRENT live subscription (a real Stripe
+    // sub id) and NOT clobber it back to the stale 'soar' snapshot.
+    const leave = await handler(ev('POST', '/team/leave'));
+    expect(leave.statusCode).toBe(200);
+    const after = getProfile('member-1');
+    expect(after.stripeSubscriptionId).toBe('sub_personal_upgraded'); // current billing kept
+    expect(after.subscriptionTier).toBe('team');                      // not downgraded to soar snapshot
+    expect(after.preTeamTier).toBeUndefined();                        // snapshot cleared
+  });
+
   it('removal of a FREE member returns them to free/none', async () => {
     const handler = loadHandler();
     seedTeamWithInvite();
@@ -240,6 +263,30 @@ describe('team-handler — invite lookup (Priority 5)', () => {
     // Fast path missed (no lookup record) → Scan fallback engaged.
     expect(sent.find((c) => c.name === 'ScanCommand')).toBeTruthy();
     expect(getProfile('member-1').subscriptionTier).toBe('team');
+  });
+
+  it('expired invite is rejected (410) via the fast lookup path — TTL/expiry enforced', async () => {
+    const handler = loadHandler();
+    // Seed an expired invite + matching lookup record.
+    const past = new Date(Date.now() - 86400000).toISOString();
+    store.set('TEAM#team-1|INFO', { PK: 'TEAM#team-1', SK: 'INFO', teamId: 'team-1', teamName: 'Blue Team', adminUserId: 'admin-1', maxMembers: 5 });
+    store.set('TEAM#team-1|INVITE#inv-exp', { PK: 'TEAM#team-1', SK: 'INVITE#inv-exp', inviteId: 'inv-exp', email: 'member@test.com', status: 'pending', expiresAt: past });
+    store.set('INVITE#inv-exp|LOOKUP', { PK: 'INVITE#inv-exp', SK: 'LOOKUP', inviteId: 'inv-exp', teamId: 'team-1', email: 'member@test.com', expiresAt: past });
+    profile('member-1', { email: 'member@test.com', subscriptionTier: 'free', subscriptionStatus: 'none' });
+
+    const res = await handler(ev('POST', '/team/accept', { inviteId: 'inv-exp' }));
+    expect(res.statusCode).toBe(410);
+    expect(getProfile('member-1').subscriptionTier).toBe('free'); // not granted
+  });
+
+  it('invite accepted by the WRONG email is rejected (403) even via the fast path', async () => {
+    const handler = loadHandler();
+    seedTeamWithInvite('inv-1', { withLookup: true });
+    profile('intruder', { email: 'intruder@test.com', subscriptionTier: 'free', subscriptionStatus: 'none' });
+
+    const res = await handler(ev('POST', '/team/accept', { inviteId: 'inv-1' }, 'intruder', 'intruder@test.com'));
+    expect(res.statusCode).toBe(403);
+    expect(getProfile('intruder').subscriptionTier).toBe('free'); // not granted
   });
 
   it('inviteMember writes a direct-lookup record for O(1) future accepts', async () => {

@@ -208,7 +208,21 @@
       btn.textContent = 'Saving...';
       btn.style.opacity = '0.6';
 
-      const authorName = extractAuthorName(postElement) || 'Unknown';
+      // Appreciation privacy: an appreciation is meaningful only if we can attribute it
+      // to a real person. If no identifiable tagger name was captured, do NOT save a
+      // record with a fabricated 'Unknown' tagger — explain why and let the user retry
+      // after scrolling the author name into view. (Leads use null here; appreciations
+      // are about WHO recommended you, so a nameless appreciation has no value.)
+      const extractedName = extractAuthorName(postElement);
+      if (!extractedName || extractedName === 'Unknown') {
+        status.textContent = "Couldn't read who recommended you — scroll their name into view and try again. (Not saved.)";
+        status.style.display = 'block';
+        status.style.color = '#f87171';
+        btn.textContent = '🙏 Appreciation';
+        btn.style.opacity = '1';
+        return;
+      }
+      const authorName = extractedName;
       const { authToken } = await chrome.storage.local.get(['authToken']);
       if (!authToken) {
         status.textContent = 'Not signed in — open extension popup';

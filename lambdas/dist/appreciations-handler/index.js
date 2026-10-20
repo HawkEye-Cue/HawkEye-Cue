@@ -254,6 +254,21 @@ async function handleGetAppreciations(userId, event) {
  * Manually adds an appreciation (e.g., from browser extension).
  */
 async function handleCreateAppreciation(userId, body) {
+  // Privacy / data-quality: an appreciation records WHO recommended you, so it is only
+  // meaningful with an identifiable tagger. Reject a missing / blank / sentinel
+  // 'Unknown' tagger with a clear error instead of persisting a fabricated record.
+  // (Defense-in-depth — the extension already blocks this client-side with an
+  // explanation; this guards against stale/legacy clients.) Existing records are
+  // unaffected; this only gates NEW creates.
+  const taggerName = (body.taggerName || '').toString().trim();
+  if (!taggerName || taggerName.toLowerCase() === 'unknown') {
+    return err(
+      400,
+      'TAGGER_REQUIRED',
+      "We couldn't tell who recommended you, so this wasn't saved. Open the post where your name is tagged and try again.",
+    );
+  }
+
   const id = randomUUID();
   const now = new Date().toISOString();
 
@@ -263,7 +278,7 @@ async function handleCreateAppreciation(userId, body) {
       PK: `USER#${userId}`,
       SK: `APPRECIATION#${now}#${id}`,
       appreciationId: id,
-      taggerName: body.taggerName || 'Unknown',
+      taggerName,
       taggerTrade: body.taggerTrade || null,
       platform: body.platform || 'unknown',
       postContent: body.postContent || '',

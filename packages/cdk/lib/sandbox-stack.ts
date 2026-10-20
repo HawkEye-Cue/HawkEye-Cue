@@ -72,20 +72,30 @@ export class SandboxStack extends cdk.Stack {
       ? s3.Bucket.fromBucketName(this, 'CdkAssetsBucket', `cdk-hnb659fds-assets-${this.account}-${this.region}`)
       : undefined;
 
-    // Deployed asset keys for the 5 existing functions (live stack, 2026-10-19).
+    // Deployed asset keys for functions whose code is UNCHANGED since 2026-10-19 and
+    // should NOT be re-uploaded on a pinned deploy.
+    //
+    // NOTE (2026-10-20): subscription-handler, stripe-webhook, and team-handler were
+    // DELIBERATELY REMOVED from this pin map because the launch-integration billing /
+    // entitlement corrections changed their code. With them absent here, existingCode()
+    // falls through to a fresh `fromAsset('../../lambdas/dist/<name>')`, so a pinned
+    // sandbox deploy (`-c pinExistingAssets=true`) now ships the UPDATED handlers while
+    // still leaving the two genuinely-unchanged functions (auth-post-confirmation,
+    // folio-recap) pinned to their live objects (no diff). To revert to fully-pinned
+    // behavior, re-add their keys here.
     const DEPLOYED_ASSET_KEYS: Record<string, string> = {
       'auth-post-confirmation': 'd0e55ff753fd1d14786cd35b36b5678d1309f5146922108b04cdcb00299bfa96.zip',
-      'subscription-handler': '3b5ab1457aafc396d0c58562c53c6264b92595ccb21ff0d82301b4e7f7e5408a.zip',
-      'stripe-webhook': '513a1ede5846aed7b59e6829dd850c38c4f2a6a3397a263f5ac617de93e4c51c.zip',
-      'team-handler': 'a3ea86890b4e085364afaaee1ac8d6572d8f1293f0f447177557f49b3945ce29.zip',
       'folio-recap': 'c2209af1fc35182599adc08a32979f8900b13cb4c879486944d5d3eee748316f.zip',
     };
 
-    // Code for an EXISTING function: pinned to the deployed object when the flag is on,
-    // otherwise the normal local bundle.
-    const existingCode = (assetName: keyof typeof DEPLOYED_ASSET_KEYS): lambda.Code => {
-      if (pinExistingAssets && assetsBucket) {
-        return lambda.Code.fromBucket(assetsBucket, DEPLOYED_ASSET_KEYS[assetName]);
+    // Code for an existing function. If the flag is on AND this asset is in the pin map
+    // (i.e. genuinely unchanged), pin it to the live S3 object so CloudFormation sees no
+    // change. Otherwise (flag off, OR the asset was removed from the pin map because its
+    // code changed) bundle fresh from the local `dist` so the update is deployed.
+    const existingCode = (assetName: string): lambda.Code => {
+      const pinnedKey = DEPLOYED_ASSET_KEYS[assetName];
+      if (pinExistingAssets && assetsBucket && pinnedKey) {
+        return lambda.Code.fromBucket(assetsBucket, pinnedKey);
       }
       return lambda.Code.fromAsset(`../../lambdas/dist/${assetName}`);
     };

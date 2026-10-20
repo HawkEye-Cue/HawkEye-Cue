@@ -31,6 +31,7 @@ const handlerPath = resolve(here, '../../../../lambdas/dist/posts-handler/index.
 // Sandbox-style env: these mirror what the SandboxStack wires in.
 const SANDBOX_PUBLISHER_ARN = 'arn:aws:lambda:us-east-1:971598352824:function:SocialLeadGen-Sandbox-NoopPublisher';
 const SANDBOX_SCHEDULER_ROLE = 'arn:aws:iam::971598352824:role/SocialLeadGen-Sandbox-SchedulerRole';
+const SANDBOX_SCHEDULE_GROUP = 'SocialLeadGen-Sandbox';
 
 type Call = { name: string; input: any };
 let dynamoCalls: Call[];
@@ -109,10 +110,19 @@ function sdkStubs() {
   } as Record<string, any>;
 }
 
-function loadHandler() {
+// By default the handler is loaded with the sandbox schedule group configured (matching
+// the SandboxStack wiring). Pass { group: null } to simulate the PRODUCTION config,
+// where SCHEDULE_GROUP_NAME is unset and schedules must land in the default group.
+function loadHandler(opts: { group?: string | null } = {}) {
   process.env.TABLE_NAME = 'SocialLeadGen-Sandbox';
   process.env.SCHEDULER_ROLE_ARN = SANDBOX_SCHEDULER_ROLE;
   process.env.PUBLISHER_FUNCTION_ARN = SANDBOX_PUBLISHER_ARN;
+  const group = opts.group === undefined ? SANDBOX_SCHEDULE_GROUP : opts.group;
+  if (group === null) {
+    delete process.env.SCHEDULE_GROUP_NAME;
+  } else {
+    process.env.SCHEDULE_GROUP_NAME = group;
+  }
   const source = readFileSync(handlerPath, 'utf8');
   const stubs = sdkStubs();
   const realRequire = createRequire(handlerPath);
@@ -180,12 +190,14 @@ describe('posts-handler — POST /posts/schedule (persistence + isolated schedul
     expect(put!.input.Item.status).toBe('scheduled');
     expect(tableItems).toHaveLength(1);
 
-    // Exactly one schedule created, pointed at the configured target + role.
+    // Exactly one schedule created, pointed at the configured target + role, and
+    // confined to the sandbox schedule group.
     const creates = schedulerCalls.filter((c) => c.name === 'CreateScheduleCommand');
     expect(creates).toHaveLength(1);
     const target = creates[0].input.Target;
     expect(target.Arn).toBe(SANDBOX_PUBLISHER_ARN);
     expect(target.RoleArn).toBe(SANDBOX_SCHEDULER_ROLE);
+    expect(creates[0].input.GroupName).toBe(SANDBOX_SCHEDULE_GROUP);
   });
 
   it('ISOLATION: the schedule target is the no-op publisher, NEVER the prod publisher', async () => {
@@ -271,10 +283,11 @@ describe('posts-handler — DELETE /posts/{id}', () => {
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).deleted).toBe(true);
     expect(tableItems).toHaveLength(0);
-    // Schedule deletion attempted for the same post.
+    // Schedule deletion attempted for the same post, in the sandbox group.
     const del = schedulerCalls.find((c) => c.name === 'DeleteScheduleCommand');
     expect(del).toBeTruthy();
     expect(del!.input.Name).toBe(`post-${created.id}`);
+    expect(del!.input.GroupName).toBe(SANDBOX_SCHEDULE_GROUP);
   });
 
   it('returns 404 when deleting an unknown id', async () => {
@@ -294,5 +307,81 @@ describe('posts-handler — POST /posts/{id}/publish (no immediate publish path)
     // No scheduler create beyond the original schedule; no publish side effect.
     const creates = schedulerCalls.filter((c) => c.name === 'CreateScheduleCommand');
     expect(creates).toHaveLength(1);
+  });
+});
+
+describe('posts-handler — EventBridge schedule-group isolation', () => {
+  it('SANDBOX: create confines the schedule to the SocialLeadGen-Sandbox group', async () => {
+    const handler = loadHandler(); // group configured by default
+    await handler(event('POST', '/posts/schedule', validSchedulePayload()));
+    const create = schedulerCalls.find((c) => c.name === 'CreateScheduleCommand')!;
+    expect(create.input.GroupName).toBe(SANDBOX_SCHEDULE_GROUP);
+  });
+
+  it('SANDBOX: delete targets the schedule in the SocialLeadGen-Sandbox group', async () => {
+    const handler = loadHandler();
+    const created = JSON.parse((await handler(event('POST', '/posts/schedule', validSchedulePayload()))).body);
+    await handler(event('DELETE', `/posts/${created.id}`));
+    const del = schedulerCalls.find((c) => c.name === 'DeleteScheduleCommand')!;
+    expect(del.input.Name).toBe(`post-${created.id}`);
+    expect(del.input.GroupName).toBe(SANDBOX_SCHEDULE_GROUP);
+  });
+
+  it('PRODUCTION compat: with SCHEDULE_GROUP_NAME unset, NO GroupName is sent (default group)', async () => {
+    const handler = loadHandler({ group: null }); // simulate prod env (no group var)
+    const created = JSON.parse((await handler(event('POST', '/posts/schedule', validSchedulePayload()))).body);
+    const create = schedulerCalls.find((c) => c.name === 'CreateScheduleCommand')!;
+    // GroupName must be ABSENT (not undefined-as-key) so prod behavior is unchanged.
+    expect('GroupName' in create.input).toBe(false);
+
+    await handler(event('DELETE', `/posts/${created.id}`));
+    const del = schedulerCalls.find((c) => c.name === 'DeleteScheduleCommand')!;
+    expect('GroupName' in del.input).toBe(false);
+  });
+
+  it('ISOLATION: every scheduler call stays within the configured sandbox group', async () => {
+    const handler = loadHandler();
+    const created = JSON.parse((await handler(event('POST', '/posts/schedule', validSchedulePayload()))).body);
+    await handler(event('DELETE', `/posts/${created.id}`));
+    // No scheduler call may reference any other group (e.g. default).
+    for (const c of schedulerCalls) {
+      expect(c.input.GroupName).toBe(SANDBOX_SCHEDULE_GROUP);
+    }
+  });
+});
+
+describe('posts-handler — reschedule (date/time change) behavior', () => {
+  // The current handler's PUT only accepts `content` and `platforms`; it does NOT
+  // accept `scheduledAt`. So a user cannot change the date/time of an existing post
+  // through the edit workflow, and the EventBridge schedule therefore cannot drift
+  // from the saved post. These tests PIN that contract so a future change that adds
+  // rescheduling must also update the schedule (and these tests).
+  it('PUT does not change scheduledAt and makes NO scheduler calls', async () => {
+    const handler = loadHandler();
+    const created = JSON.parse((await handler(event('POST', '/posts/schedule', validSchedulePayload()))).body);
+    const originalScheduledAt = tableItems[0].scheduledAt;
+    const schedulerCallsBefore = schedulerCalls.length;
+
+    const res = await handler(
+      event('PUT', `/posts/${created.id}`, { scheduledAt: futureIso(10), content: 'edited' }),
+    );
+    expect(res.statusCode).toBe(200);
+    // scheduledAt is ignored — the stored value is unchanged.
+    expect(tableItems[0].scheduledAt).toBe(originalScheduledAt);
+    // content WAS applied (the supported edit field).
+    expect(tableItems[0].content).toBe('edited');
+    // No new/updated/deleted schedule as a result of the edit.
+    expect(schedulerCalls.length).toBe(schedulerCallsBefore);
+  });
+
+  it('PUT with ONLY scheduledAt is a no-op update (422/400 NO_UPDATES), schedule untouched', async () => {
+    const handler = loadHandler();
+    const created = JSON.parse((await handler(event('POST', '/posts/schedule', validSchedulePayload()))).body);
+    const schedulerCallsBefore = schedulerCalls.length;
+    const res = await handler(event('PUT', `/posts/${created.id}`, { scheduledAt: futureIso(10) }));
+    // scheduledAt is not a recognized editable field → no valid updates.
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error.code).toBe('NO_UPDATES');
+    expect(schedulerCalls.length).toBe(schedulerCallsBefore);
   });
 });

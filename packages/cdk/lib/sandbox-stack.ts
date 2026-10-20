@@ -8,6 +8,7 @@ import * as apigatewayv2Authorizers from 'aws-cdk-lib/aws-apigatewayv2-authorize
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 
 /**
  * SandboxStack — an ISOLATED, minimal billing/Summit/AI test environment.
@@ -296,8 +297,19 @@ export class SandboxStack extends cdk.Stack {
     });
     noopPublisherFn.grantInvoke(schedulerRole); // can invoke ONLY the no-op
 
+    // Dedicated EventBridge Scheduler GROUP for the sandbox. Every schedule the posts
+    // handler creates is confined to this group (via SCHEDULE_GROUP_NAME below), and the
+    // handler's scheduler IAM permission is scoped to this group ONLY — so it can never
+    // touch schedules in the account's default group or any unrelated group.
+    const scheduleGroupName = 'SocialLeadGen-Sandbox';
+    const scheduleGroup = new scheduler.CfnScheduleGroup(this, 'SandboxScheduleGroup', {
+      name: scheduleGroupName,
+    });
+    scheduleGroup.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
+
     // Posts handler — reuses the SAME compiled asset as prod; CRUD on the ISOLATED
-    // sandbox table only. Scheduler env points at the sandbox role + no-op publisher.
+    // sandbox table only. Scheduler env points at the sandbox role + no-op publisher,
+    // and confines all schedules to the sandbox group.
     const postsFn = new lambda.Function(this, 'SandboxPostsFn', {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-Sandbox-PostsHandler',
@@ -308,12 +320,14 @@ export class SandboxStack extends cdk.Stack {
     table.grantReadWriteData(postsFn); // sandbox table ONLY
     postsFn.addEnvironment('SCHEDULER_ROLE_ARN', schedulerRole.roleArn);
     postsFn.addEnvironment('PUBLISHER_FUNCTION_ARN', noopPublisherFn.functionArn);
-    // Manage EventBridge schedules (scoped to this account's default schedule group).
+    // Confine every schedule this handler creates/reads/deletes to the sandbox group.
+    postsFn.addEnvironment('SCHEDULE_GROUP_NAME', scheduleGroupName);
+    // Manage EventBridge schedules — scoped to the SANDBOX GROUP ONLY (not default/*).
     postsFn.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['scheduler:CreateSchedule', 'scheduler:UpdateSchedule', 'scheduler:DeleteSchedule', 'scheduler:GetSchedule'],
-        resources: [`arn:aws:scheduler:${this.region}:${this.account}:schedule/default/*`],
+        resources: [`arn:aws:scheduler:${this.region}:${this.account}:schedule/${scheduleGroupName}/*`],
       }),
     );
     // Pass ONLY the sandbox scheduler role (which can invoke ONLY the no-op publisher).

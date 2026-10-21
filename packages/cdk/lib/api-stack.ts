@@ -1325,6 +1325,18 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
     this.httpApi.addRoutes({
+      path: '/team/invite/resend',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/invites/{inviteId}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
       path: '/team/accept',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: teamIntegration,

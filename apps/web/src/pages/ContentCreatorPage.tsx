@@ -274,10 +274,24 @@ export default function ContentCreatorPage() {
     } finally { setAiPhotoLoading(false); }
   }
 
-  const handleGenerate = async () => {
+  // Accepts optional overrides so callers (Improve with AI, AI draft) can pass a
+  // resolved postType/baseText SYNCHRONOUSLY. Previously these callers did
+  // `setPostType('Educational')` then immediately called handleGenerate(), but React
+  // state updates are async so handleGenerate still read the OLD empty postType and the
+  // backend rejected it with "postType is required". Passing explicit overrides removes
+  // that race. A sensible default postType is resolved here so a manually written post
+  // never needs the user to pick a type to use Improve with AI.
+  const handleGenerate = async (overrides?: { postType?: string; baseText?: string }) => {
     setLoading(true);
     setError('');
     setPlatformContent(null);
+
+    // Resolve postType: explicit override → current selection → safe default. Each
+    // candidate is trimmed so a whitespace-only value never counts as "present" and we
+    // never send an effectively-empty postType.
+    const effectivePostType =
+      (overrides?.postType?.trim() || postType?.trim() || 'Educational');
+    const effectiveBaseText = overrides?.baseText !== undefined ? overrides.baseText : baseText;
 
     try {
       const token = await getToken();
@@ -288,10 +302,10 @@ export default function ContentCreatorPage() {
 
       const result = await client.generateContent({
         tone,
-        postType,
+        postType: effectivePostType,
         postLength,
         platforms,
-        baseText: baseText || undefined,
+        baseText: effectiveBaseText || undefined,
         tradeName: currentTrade?.name,
       });
 
@@ -353,17 +367,24 @@ export default function ContentCreatorPage() {
       showToast('✓ Ready to preview');
       return;
     }
-    // ai_draft: default a post type so generation isn't blocked, then generate.
-    if (!postType) setPostType('Educational');
-    await handleGenerate();
+    // ai_draft: resolve a default post type and pass it synchronously (no setState race).
+    const draftType = postType || 'Educational';
+    if (!postType) setPostType(draftType); // reflect in the UI for subsequent actions
+    await handleGenerate({ postType: draftType });
   }
 
   // "Improve with AI": run the user's written text through generation as base text.
+  // Uses the user's existing text + selected trade + platform as context. No post type
+  // is required from the user — we resolve a sensible default and pass everything
+  // synchronously so the request never omits postType. The user's original text is
+  // preserved in `ownContent` until they accept the AI improvement.
   async function handleImproveWithAI() {
-    if (!ownContent.trim()) return;
-    setBaseText(ownContent.trim());
-    if (!postType) setPostType('Educational');
-    await handleGenerate();
+    const text = ownContent.trim();
+    if (!text) return;
+    const improveType = postType || 'Educational';
+    if (!postType) setPostType(improveType); // reflect in the UI
+    setBaseText(text); // keep state in sync for later
+    await handleGenerate({ postType: improveType, baseText: text });
   }
 
   // Create AI Image from the composer — seeds the AI photo prompt with the intent.
@@ -880,7 +901,7 @@ export default function ContentCreatorPage() {
       )}
 
       <button
-        onClick={handleGenerate}
+        onClick={() => handleGenerate()}
         disabled={loading || !postType || platforms.length === 0}
         className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none btn-shimmer"
       >

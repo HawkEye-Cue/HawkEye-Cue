@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useCalendar } from '../contexts/CalendarContext';
@@ -18,6 +19,8 @@ interface TeamInvite {
   inviteId: string;
   email: string;
   createdAt: string;
+  expiresAt?: string;
+  acceptUrl?: string;
 }
 
 interface Team {
@@ -129,6 +132,12 @@ export default function TeamPage() {
   const [inviteCode, setInviteCode] = useState('');
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState('');
+  // Summit entitlement recovery state — set when a paid /team/* route returns 402
+  // SUMMIT_INACTIVE (owner's subscription lapsed). We show a reactivation prompt instead
+  // of a generic error, and the team records remain intact for when access is restored.
+  const [summitInactive, setSummitInactive] = useState(false);
+  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
+  const [revokingInvite, setRevokingInvite] = useState<string | null>(null);
 
   // Shared data states
   const [teamCalendar, setTeamCalendar] = useState<TeamCalendarEvent[]>([]);
@@ -221,6 +230,15 @@ export default function TeamPage() {
     return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
   }
 
+  // Detect the 402 SUMMIT_INACTIVE response (owner's Summit subscription lapsed). We flip
+  // a recovery flag so the UI shows a "Reactivate Summit" prompt rather than a blank/error
+  // screen. Team data is preserved server-side; reactivating restores access.
+  function is402(e: unknown): boolean {
+    const status = (e as { status?: number } | null)?.status;
+    const code = (e as { code?: string } | null)?.code;
+    return status === 402 || code === 'SUMMIT_INACTIVE';
+  }
+
   // Fetch team info on mount
   useEffect(() => {
     async function fetchTeam() {
@@ -285,6 +303,21 @@ export default function TeamPage() {
     fetchTeam();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Deep-link: an invite email links to /team?invite=<code>. Prefill the Join field so
+  // the invitee just clicks "Join" (no copy/paste). We do NOT auto-submit — the user must
+  // be logged in with the invited email, and acceptInvite enforces the email match.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('invite');
+      if (code) {
+        setInviteCode(code);
+        // Clean the URL so a refresh doesn't re-trigger.
+        window.history.replaceState({}, '', '/team');
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   // Load display names from server on mount (cross-device sync)
   useEffect(() => {
     async function loadDisplayNames() {
@@ -337,7 +370,8 @@ export default function TeamPage() {
       const client = await buildClient();
       const result = await client.request<{ leads: TeamLead[] }>('GET', '/team/leads');
       setTeamLeads(result.leads || []);
-    } catch { setTeamLeads([]); }
+      setSummitInactive(false);
+    } catch (e) { setTeamLeads([]); if (is402(e)) setSummitInactive(true); }
     finally { setLeadsLoading(false); }
   }
 
@@ -429,6 +463,37 @@ export default function TeamPage() {
       setError(e instanceof Error ? e.message : 'Failed to send invite');
     }
     finally { setInviting(false); }
+  }
+
+  // Resend a pending invite: revokes the old code and issues a fresh one + email.
+  async function handleResendInvite(email: string, inviteId: string) {
+    setResendingInvite(inviteId);
+    setError('');
+    try {
+      const client = await buildClient();
+      await client.request('POST', '/team/invite/resend', { email });
+      const result = await client.request<{ team: Team | null }>('GET', '/team');
+      setTeam(result.team);
+      showToast('✓ Invite resent — a new code & email were sent');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to resend invite');
+    } finally { setResendingInvite(null); }
+  }
+
+  // Revoke a pending invite: deletes it so the admin can re-invite cleanly.
+  async function handleRevokeInvite(inviteId: string) {
+    if (!confirm('Revoke this pending invite? The current code/link will stop working.')) return;
+    setRevokingInvite(inviteId);
+    setError('');
+    try {
+      const client = await buildClient();
+      await client.request('DELETE', `/team/invites/${encodeURIComponent(inviteId)}`);
+      const result = await client.request<{ team: Team | null }>('GET', '/team');
+      setTeam(result.team);
+      showToast('✓ Invite revoked');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to revoke invite');
+    } finally { setRevokingInvite(null); }
   }
 
   async function handleRemoveMember(memberId: string) {
@@ -564,6 +629,19 @@ export default function TeamPage() {
         <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">{error}</div>
       )}
 
+      {summitInactive && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/40">
+          <p className="text-sm font-bold text-amber-300">🏔️ Summit is inactive</p>
+          <p className="text-xs text-slate-300 mt-1">
+            Your team's Summit subscription isn't active right now, so shared team features are paused.
+            Your team, members, leads, calendar and sales history are all safe — reactivate Summit to restore access.
+          </p>
+          <Link to="/settings" className="inline-block mt-3 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black rounded-lg text-xs font-bold hover:brightness-105">
+            Reactivate Summit →
+          </Link>
+        </div>
+      )}
+
       {/* 👥 Team Members */}
       <div className="glass-card space-y-3">
         <h3 className="font-semibold text-white">👥 Team Members</h3>
@@ -637,11 +715,37 @@ export default function TeamPage() {
           </div>
         )}
         {team.invites.length > 0 && (
-          <div className="space-y-1 pt-2 border-t border-white/10">
+          <div className="space-y-1.5 pt-2 border-t border-white/10">
             {team.invites.map((invite) => (
-              <div key={invite.inviteId} className="flex items-center justify-between bg-amber-500/10 px-3 py-1.5 rounded-lg">
-                <p className="text-xs text-amber-300">{invite.email}</p>
-                <p className="text-[10px] text-slate-500">Pending</p>
+              <div key={invite.inviteId} className="bg-amber-500/10 px-3 py-2 rounded-lg">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-amber-300 truncate">{invite.email}</p>
+                  <p className="text-[10px] text-slate-500 shrink-0">Pending</p>
+                </div>
+                {team.role === 'admin' && (
+                  <div className="flex items-center gap-3 mt-1.5">
+                    {invite.acceptUrl && (
+                      <button
+                        onClick={() => { navigator.clipboard?.writeText(invite.acceptUrl!); showToast('✓ Invite link copied'); }}
+                        className="text-[11px] text-blue-400 hover:text-blue-300"
+                      >Copy link</button>
+                    )}
+                    <button
+                      onClick={() => { navigator.clipboard?.writeText(invite.inviteId); showToast('✓ Invite code copied'); }}
+                      className="text-[11px] text-slate-400 hover:text-white"
+                    >Copy code</button>
+                    <button
+                      onClick={() => handleResendInvite(invite.email, invite.inviteId)}
+                      disabled={resendingInvite === invite.inviteId}
+                      className="text-[11px] text-amber-400 hover:text-amber-300 disabled:opacity-50"
+                    >{resendingInvite === invite.inviteId ? 'Resending…' : 'Resend'}</button>
+                    <button
+                      onClick={() => handleRevokeInvite(invite.inviteId)}
+                      disabled={revokingInvite === invite.inviteId}
+                      className="text-[11px] text-red-400 hover:text-red-300 disabled:opacity-50"
+                    >{revokingInvite === invite.inviteId ? 'Revoking…' : 'Revoke'}</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

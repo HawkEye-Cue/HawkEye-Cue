@@ -10,6 +10,14 @@ const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const secretsClient = new SecretsManagerClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
 const FROM_EMAIL = 'HawkEye-Cue <notifications@hawkeyecue.com>';
+// Environment-aware app base URL for invite links. Production defaults to the live
+// domain; sandbox/staging set APP_BASE_URL (e.g. http://localhost:5173) so test invites
+// deep-link to the right environment instead of always pointing at production.
+const APP_BASE_URL = (process.env.APP_BASE_URL || 'https://hawkeyecue.com').replace(/\/$/, '');
+// Build the deep-link that pre-fills the invite code on the Team "Join a Team" screen.
+function buildInviteAcceptUrl(inviteId) {
+  return `${APP_BASE_URL}/team?invite=${encodeURIComponent(inviteId)}`;
+}
 
 // ─── Resend Email Helper ──────────────────────────────────────────────────────
 let resendApiKey = null;
@@ -350,14 +358,49 @@ async function inviteMember(teamId, adminUserId, inviteEmail) {
     },
   }));
 
-  // Send invite email
+  // Send invite email with an ENVIRONMENT-AWARE accept link (not hardcoded to prod).
+  const acceptUrl = buildInviteAcceptUrl(inviteId);
   try {
-    await sendEmail(inviteEmail, `🦅 You've been invited to join a team on HawkEye-Cue!`, `You've been invited to join "${teamInfo.Item.teamName}" on HawkEye-Cue!\n\nSign up or log in at https://hawkeyecue.com to accept the invite.\n\nYour invite code: ${inviteId}\n\n— HawkEye-Cue`);
+    await sendEmail(
+      inviteEmail,
+      `🦅 You've been invited to join a team on HawkEye-Cue!`,
+      `You've been invited to join "${teamInfo.Item.teamName}" on HawkEye-Cue!\n\n` +
+      `Accept your invite: ${acceptUrl}\n\n` +
+      `Sign up or log in with THIS email address (${inviteEmail}) first, then the invite applies automatically.\n\n` +
+      `If the link doesn't work, go to Summit (Team) → Join a Team and paste this code:\n${inviteId}\n\n` +
+      `This invite expires in 7 days.\n\n— HawkEye-Cue`,
+    );
   } catch (e) {
     console.error('Failed to send invite email:', e.message);
   }
 
-  return ok({ inviteId, email: inviteEmail, status: 'pending' });
+  return ok({ inviteId, email: inviteEmail, status: 'pending', acceptUrl });
+}
+
+// ─── Revoke a pending invite (admin only) ───────────────────────────────────────
+// Deletes the pending INVITE# record and its LOOKUP so the admin can re-invite the same
+// email (duplicate guard no longer blocks) and the old code stops working. Never touches
+// members or team data. Accepted/expired invites are left as-is.
+async function revokeInvite(teamId, inviteId) {
+  const inviteRec = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `TEAM#${teamId}`, SK: `INVITE#${inviteId}` },
+  }));
+  if (!inviteRec.Item) return err(404, 'INVITE_NOT_FOUND', 'Invite not found');
+  if (inviteRec.Item.status !== 'pending') {
+    return err(400, 'INVITE_NOT_PENDING', 'Only a pending invite can be revoked');
+  }
+  await dynamo.send(new DeleteCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `TEAM#${teamId}`, SK: `INVITE#${inviteId}` },
+  }));
+  // Best-effort lookup cleanup (also self-expires via TTL).
+  try {
+    await dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { PK: `INVITE#${inviteId}`, SK: 'LOOKUP' } }));
+  } catch (e) {
+    console.error('Failed to delete invite lookup on revoke (TTL will clean up):', e.message);
+  }
+  return ok({ revoked: true, inviteId });
 }
 
 // ─── Accept invite ────────────────────────────────────────────────────────────
@@ -753,7 +796,7 @@ exports.handler = async (event) => {
           role: teamRecord.role,
           maxMembers: teamInfo.Item?.maxMembers || 5,
           members: members.map((m) => ({ userId: m.userId, email: m.email, role: m.role, joinedAt: m.joinedAt })),
-          invites: invites.filter((i) => i.status === 'pending').map((i) => ({ inviteId: i.inviteId, email: i.email, createdAt: i.createdAt })),
+          invites: invites.filter((i) => i.status === 'pending').map((i) => ({ inviteId: i.inviteId, email: i.email, createdAt: i.createdAt, expiresAt: i.expiresAt, acceptUrl: buildInviteAcceptUrl(i.inviteId) })),
         },
       });
     }
@@ -793,6 +836,38 @@ exports.handler = async (event) => {
       if (!body.email) return err(400, 'INVALID_INPUT', 'Email is required');
 
       return inviteMember(teamRecord.teamId, userId, body.email.trim().toLowerCase());
+    }
+
+    // POST /team/invite/resend — revoke the current pending invite for an email and send
+    // a fresh one (admin only + entitlement). Avoids the ALREADY_INVITED duplicate guard
+    // and issues a new code + 7-day expiry. Idempotent-ish: safe to call repeatedly.
+    if (method === 'POST' && path === '/team/invite/resend') {
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can resend invites');
+
+      const body = event.body ? JSON.parse(event.body) : {};
+      if (!body.email) return err(400, 'INVALID_INPUT', 'Email is required');
+      const email = body.email.trim().toLowerCase();
+
+      // Revoke any existing pending invite for this email so the re-invite isn't blocked.
+      const existing = (await getTeamInvites(teamRecord.teamId)).filter((i) => i.email === email && i.status === 'pending');
+      for (const inv of existing) {
+        await revokeInvite(teamRecord.teamId, inv.inviteId);
+      }
+      return inviteMember(teamRecord.teamId, userId, email);
+    }
+
+    // DELETE /team/invites/{inviteId} — revoke a pending invite (admin only + entitlement)
+    const inviteMatch = path.match(/^\/team\/invites\/([^/]+)$/);
+    if (method === 'DELETE' && inviteMatch) {
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can revoke invites');
+
+      return revokeInvite(teamRecord.teamId, decodeURIComponent(inviteMatch[1]));
     }
 
     // POST /team/accept — accept an invite

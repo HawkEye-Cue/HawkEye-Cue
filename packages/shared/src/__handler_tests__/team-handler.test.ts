@@ -482,3 +482,95 @@ describe('team-handler — PUT /team/colors is admin-only (Priority 2)', () => {
     expect((await handler(memberEv('GET', '/team/colors'))).statusCode).toBe(200);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Team invitation usability: environment-aware links, resend, revoke, duplicate
+// guard, expiry/email-match preserved. Isolated fixtures only.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('team-handler — invitation usability (links / resend / revoke)', () => {
+  function seedOwner(adminSub: any = { subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_a' }) {
+    store.set('TEAM#team-1|INFO', { PK: 'TEAM#team-1', SK: 'INFO', teamId: 'team-1', teamName: 'Blue Team', adminUserId: 'admin-1', maxMembers: 5 });
+    store.set('TEAM#team-1|MEMBER#admin-1', { PK: 'TEAM#team-1', SK: 'MEMBER#admin-1', userId: 'admin-1', email: 'admin@test.com', role: 'admin' });
+    store.set('USER#admin-1|TEAM_ADMIN', { PK: 'USER#admin-1', SK: 'TEAM_ADMIN', teamId: 'team-1', role: 'admin' });
+    store.set('USER#admin-1|PROFILE', { PK: 'USER#admin-1', SK: 'PROFILE', email: 'admin@test.com', ...adminSub });
+  }
+  const adminEv2 = (m: string, p: string, b?: any) => ev(m, p, b, 'admin-1', 'admin@test.com');
+
+  it('invite returns an environment-aware acceptUrl (defaults to prod when APP_BASE_URL unset)', async () => {
+    delete process.env.APP_BASE_URL;
+    const handler = loadHandler();
+    seedOwner();
+    const res = await handler(adminEv2('POST', '/team/invite', { email: 'newbie@test.com' }));
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.acceptUrl).toMatch(/^https:\/\/hawkeyecue\.com\/team\?invite=/);
+    expect(body.acceptUrl).toContain(body.inviteId);
+  });
+
+  it('invite link honors APP_BASE_URL for sandbox/staging environments', async () => {
+    process.env.APP_BASE_URL = 'http://localhost:5173';
+    try {
+      const handler = loadHandler();
+      seedOwner();
+      const res = await handler(adminEv2('POST', '/team/invite', { email: 'newbie@test.com' }));
+      const body = JSON.parse(res.body);
+      expect(body.acceptUrl).toMatch(/^http:\/\/localhost:5173\/team\?invite=/);
+    } finally {
+      delete process.env.APP_BASE_URL;
+    }
+  });
+
+  it('duplicate invite to the same pending email is blocked (ALREADY_INVITED)', async () => {
+    const handler = loadHandler();
+    seedOwner();
+    expect((await handler(adminEv2('POST', '/team/invite', { email: 'dup@test.com' }))).statusCode).toBe(200);
+    const res2 = await handler(adminEv2('POST', '/team/invite', { email: 'dup@test.com' }));
+    expect(res2.statusCode).toBe(400);
+    expect(JSON.parse(res2.body).error.code).toBe('ALREADY_INVITED');
+  });
+
+  it('revoke removes the pending invite and its lookup, allowing a clean re-invite', async () => {
+    const handler = loadHandler();
+    seedOwner();
+    const inv = JSON.parse((await handler(adminEv2('POST', '/team/invite', { email: 'rev@test.com' }))).body);
+    // Revoke it.
+    const rev = await handler(adminEv2('DELETE', `/team/invites/${inv.inviteId}`));
+    expect(rev.statusCode).toBe(200);
+    expect(store.get(`TEAM#team-1|INVITE#${inv.inviteId}`)).toBeUndefined();
+    expect(store.get(`INVITE#${inv.inviteId}|LOOKUP`)).toBeUndefined();
+    // Re-invite now succeeds (no duplicate block).
+    expect((await handler(adminEv2('POST', '/team/invite', { email: 'rev@test.com' }))).statusCode).toBe(200);
+  });
+
+  it('resend revokes the old pending invite and issues a fresh code (no duplicate error)', async () => {
+    const handler = loadHandler();
+    seedOwner();
+    const first = JSON.parse((await handler(adminEv2('POST', '/team/invite', { email: 're@test.com' }))).body);
+    const resend = await handler(adminEv2('POST', '/team/invite/resend', { email: 're@test.com' }));
+    expect(resend.statusCode).toBe(200);
+    const second = JSON.parse(resend.body);
+    expect(second.inviteId).not.toBe(first.inviteId);          // fresh code
+    expect(store.get(`TEAM#team-1|INVITE#${first.inviteId}`)).toBeUndefined(); // old revoked
+    expect(store.get(`TEAM#team-1|INVITE#${second.inviteId}`)).toBeTruthy();   // new pending
+  });
+
+  it('a MEMBER cannot revoke or resend invites (403 NOT_ADMIN)', async () => {
+    const handler = loadHandler();
+    seedOwner();
+    store.set('TEAM#team-1|MEMBER#member-1', { PK: 'TEAM#team-1', SK: 'MEMBER#member-1', userId: 'member-1', email: 'member@test.com', role: 'member' });
+    store.set('USER#member-1|TEAM_MEMBER', { PK: 'USER#member-1', SK: 'TEAM_MEMBER', teamId: 'team-1', role: 'member' });
+    const inv = JSON.parse((await handler(adminEv2('POST', '/team/invite', { email: 'x@test.com' }))).body);
+    expect((await handler(ev('DELETE', `/team/invites/${inv.inviteId}`, undefined, 'member-1', 'member@test.com'))).statusCode).toBe(403);
+    expect((await handler(ev('POST', '/team/invite/resend', { email: 'x@test.com' }, 'member-1', 'member@test.com'))).statusCode).toBe(403);
+  });
+
+  it('revoke/resend are blocked when the owner Summit subscription is inactive (402)', async () => {
+    const handler = loadHandler();
+    seedOwner({ subscriptionTier: 'team', subscriptionStatus: 'canceled' });
+    // Seed a pending invite directly (created while active).
+    store.set('TEAM#team-1|INVITE#inv-z', { PK: 'TEAM#team-1', SK: 'INVITE#inv-z', inviteId: 'inv-z', email: 'z@test.com', status: 'pending', expiresAt: new Date(Date.now() + 86400000).toISOString() });
+    expect((await handler(adminEv2('DELETE', '/team/invites/inv-z'))).statusCode).toBe(402);
+    expect((await handler(adminEv2('POST', '/team/invite/resend', { email: 'z@test.com' }))).statusCode).toBe(402);
+  });
+});

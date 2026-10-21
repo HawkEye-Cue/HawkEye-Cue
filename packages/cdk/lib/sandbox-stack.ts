@@ -206,6 +206,11 @@ export class SandboxStack extends cdk.Stack {
       handler: 'index.handler',
       code: existingCode('team-handler'),
       description: 'Sandbox: Summit team invites/permissions (TEST Resend)',
+      environment: {
+        ...lambdaDefaults.environment,
+        // Sandbox invite links deep-link to local staging instead of production.
+        APP_BASE_URL: 'http://localhost:5173',
+      },
     });
     table.grantReadWriteData(teamFn);
     teamFn.addToRolePolicy(resendSecretPolicy);
@@ -382,8 +387,24 @@ export class SandboxStack extends cdk.Stack {
     const teamInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxTeamInt', teamFn);
     httpApi.addRoutes({ path: '/team', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
     httpApi.addRoutes({ path: '/team/invite', methods: [apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/invite/resend', methods: [apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/invites/{inviteId}', methods: [apigatewayv2.HttpMethod.DELETE], integration: teamInt, authorizer });
     httpApi.addRoutes({ path: '/team/accept', methods: [apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
     httpApi.addRoutes({ path: '/team/members/{memberId}', methods: [apigatewayv2.HttpMethod.DELETE], integration: teamInt, authorizer });
+    // Paid team data/management routes (gated server-side by owner Summit entitlement).
+    httpApi.addRoutes({ path: '/team/name', methods: [apigatewayv2.HttpMethod.PUT], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/colors', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/stats', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/history', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/leave', methods: [apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/calendar', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/leads', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/leads/{leadId}/claim', methods: [apigatewayv2.HttpMethod.POST, apigatewayv2.HttpMethod.DELETE], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/analytics', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/notifications', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/notifications/{id}/dismiss', methods: [apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/folios', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
+    httpApi.addRoutes({ path: '/team/member/{memberUserId}/pipeline', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
 
     // ─── NEW: AI routes (authenticated, same Cognito authorizer) ──────────
     const flockImportInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxFlockImportInt', flockImportFn);

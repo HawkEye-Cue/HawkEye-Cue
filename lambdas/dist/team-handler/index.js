@@ -113,6 +113,81 @@ function effectiveTier(profile) {
 }
 function isTeamTier(profile) { return effectiveTier(profile) === 'team'; }
 
+// ─── Summit entitlement gate (ongoing paid access, not just tier) ───────────────
+// Whether a profile currently has LIVE Summit entitlement. Unlike isTeamTier (which
+// only asks "is the stored tier team?"), this additionally requires the subscription
+// to be in a state that still grants paid access RIGHT NOW:
+//   • active / trialing (trial not yet expired)                    → entitled
+//   • past_due                                                     → entitled (billing
+//       retry grace — matches the billing handlers, which keep tier on past_due)
+//   • scheduled cancellation (cancelAtPeriodEnd=true) is STILL entitled until the paid
+//       period actually ends (subscriptionCurrentPeriodEnd in the future / unknown).
+//   • expired trial, canceled (terminal), or non-team tier         → NOT entitled
+// Never mutates records — a lapse hides paid features but leaves the team intact so
+// reactivation restores access to the SAME team.
+function isSummitEntitled(profile) {
+  if (!profile) return false;
+  if (effectiveTier(profile) !== 'team') return false; // expired trial already drops to free here
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+
+  // Terminal states never grant access.
+  if (status === 'canceled' || status === 'cancelled' || status === 'expired' || status === 'incomplete_expired' || status === 'unpaid') {
+    return false;
+  }
+
+  // Live/grace states grant access. (Empty status tolerated for legacy/seed records
+  // that are still stored at the team tier — effectiveTier already gated the tier.)
+  const liveStatuses = ['active', 'trial', 'trialing', 'past_due', ''];
+  if (!liveStatuses.includes(status)) return false;
+
+  // Scheduled cancellation: access continues until the paid period actually ends.
+  // If we have a period-end and it is in the past, access has lapsed.
+  if (profile.subscriptionCancelAtPeriodEnd && profile.subscriptionCurrentPeriodEnd) {
+    if (new Date(profile.subscriptionCurrentPeriodEnd).getTime() < Date.now()) return false;
+  }
+  return true;
+}
+
+// Authoritative gate for paid /team/* operations: team access flows from the team
+// OWNER's (admin's) Summit entitlement. Resolves the team's admin profile and checks
+// isSummitEntitled. Returns { entitled: boolean }. Used for BOTH admins and members —
+// an employee's access is only as valid as the owner's live subscription.
+async function isTeamEntitled(teamId) {
+  // The team INFO record carries adminUserId (the owner). Fall back to scanning the
+  // TEAM_ADMIN member if INFO is missing adminUserId (legacy teams).
+  const info = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `TEAM#${teamId}`, SK: 'INFO' },
+  }));
+  let adminUserId = info.Item?.adminUserId || null;
+  if (!adminUserId) {
+    const members = await getTeamMembers(teamId);
+    const admin = (members || []).find((m) => m.role === 'admin');
+    adminUserId = admin?.userId || null;
+  }
+  if (!adminUserId) return { entitled: false, adminUserId: null };
+
+  const adminProfile = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `USER#${adminUserId}`, SK: 'PROFILE' },
+  }));
+  return { entitled: isSummitEntitled(adminProfile.Item), adminUserId };
+}
+
+// Convenience: resolve the caller's team AND verify the owner's entitlement in one step.
+// Returns { error } (a ready-to-return response) OR { teamRecord }.
+async function requireEntitledTeam(userId) {
+  const teamRecord = await getUserTeam(userId);
+  if (!teamRecord) return { error: err(403, 'NO_TEAM', 'You are not in a team') };
+  const { entitled } = await isTeamEntitled(teamRecord.teamId);
+  if (!entitled) {
+    // 402 Payment Required — distinct from 403 so the client can show a reactivation
+    // prompt. Team records are untouched; resubscribing restores access.
+    return { error: err(402, 'SUMMIT_INACTIVE', 'This team\'s Summit subscription is not active. Reactivate Summit to restore team access.') };
+  }
+  return { teamRecord };
+}
+
 // ─── Get user's team info ─────────────────────────────────────────────────────
 async function getUserTeam(userId) {
   // Check if user is a team admin (owns a team)
@@ -707,10 +782,12 @@ exports.handler = async (event) => {
       return ok({ team: result });
     }
 
-    // POST /team/invite — invite a member (admin only)
+    // POST /team/invite — invite a member (admin only + live Summit entitlement)
     if (method === 'POST' && path === '/team/invite') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can invite');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can invite');
 
       const body = event.body ? JSON.parse(event.body) : {};
       if (!body.email) return err(400, 'INVALID_INPUT', 'Email is required');
@@ -729,16 +806,20 @@ exports.handler = async (event) => {
     // DELETE /team/members/{memberId} — remove a member (admin only)
     const memberMatch = path.match(/^\/team\/members\/([^/]+)$/);
     if (method === 'DELETE' && memberMatch) {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can remove members');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can remove members');
 
       return removeMember(teamRecord.teamId, userId, memberMatch[1]);
     }
 
-    // PUT /team/name — rename the team
+    // PUT /team/name — rename the team (admin only + live Summit entitlement)
     if (method === 'PUT' && path === '/team/name') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can rename');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can rename');
 
       const body = event.body ? JSON.parse(event.body) : {};
       const trimmedName = (body.teamName || '').trim();
@@ -749,10 +830,14 @@ exports.handler = async (event) => {
       return updateTeamName(teamRecord.teamId, userId, trimmedName);
     }
 
-    // PUT /team/colors — save member color assignments (any team member can update)
+    // PUT /team/colors — save member color assignments (ADMIN ONLY + live entitlement).
+    // Colors are a team-wide setting; restrict writes to the admin to match the UI, which
+    // only renders the color controls as clickable for admins.
     if (method === 'PUT' && path === '/team/colors') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only the team admin can change team colors');
 
       const body = event.body ? JSON.parse(event.body) : {};
       const colors = body.memberColors || {};
@@ -768,10 +853,11 @@ exports.handler = async (event) => {
       return ok({ saved: true, memberColors: colors });
     }
 
-    // GET /team/colors — get team member color assignments
+    // GET /team/colors — get team member color assignments (any member + live entitlement)
     if (method === 'GET' && path === '/team/colors') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const teamInfo = await dynamo.send(new GetCommand({
         TableName: TABLE_NAME,
@@ -784,8 +870,10 @@ exports.handler = async (event) => {
     // GET /team/stats — team performance dashboard (admin only)
     // Optional query: folioStart, folioEnd to filter to a specific folio period
     if (method === 'GET' && path === '/team/stats') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
 
       const qs = event.queryStringParameters || {};
       return getTeamStats(teamRecord.teamId, userId, qs.folioStart, qs.folioEnd);
@@ -793,8 +881,10 @@ exports.handler = async (event) => {
 
     // GET /team/history — rolling 13-month production history (admin only)
     if (method === 'GET' && path === '/team/history') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
 
       return getTeamMonthlyHistory(teamRecord.teamId, userId);
     }
@@ -879,10 +969,11 @@ exports.handler = async (event) => {
       return ok({ left: true });
     }
 
-    // GET /team/calendar — shared team calendar events
+    // GET /team/calendar — shared team calendar events (any member + live entitlement)
     if (method === 'GET' && path === '/team/calendar') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const members = await getTeamMembers(teamRecord.teamId);
       const params = event.queryStringParameters || {};
@@ -917,10 +1008,11 @@ exports.handler = async (event) => {
       return ok({ events: allEvents });
     }
 
-    // GET /team/leads — combined lead pool from all team members
+    // GET /team/leads — combined lead pool from all team members (any member + entitlement)
     if (method === 'GET' && path === '/team/leads') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const members = await getTeamMembers(teamRecord.teamId);
       const params = event.queryStringParameters || {};
@@ -1000,8 +1092,9 @@ exports.handler = async (event) => {
 
       try {
         // Get target user's profile to check notification preferences
-        const teamRecord = await getUserTeam(userId);
-        if (!teamRecord) return ok({ sent: false });
+        const gate = await requireEntitledTeam(userId);
+        if (gate.error) return ok({ sent: false, reason: 'not-entitled' });
+        const teamRecord = gate.teamRecord;
         const members = await getTeamMembers(teamRecord.teamId);
         const targetMember = members.find((m) => m.email === targetEmail);
         if (!targetMember) return ok({ sent: false });
@@ -1040,8 +1133,9 @@ exports.handler = async (event) => {
     const pipelineMatch = path.match(/^\/team\/member\/([^/]+)\/pipeline$/);
     if (method === 'GET' && pipelineMatch) {
       const memberUserId = decodeURIComponent(pipelineMatch[1]);
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       // Authorization: the requested member must be on the SAME team as the requester.
       const members = await getTeamMembers(teamRecord.teamId);
@@ -1102,8 +1196,9 @@ exports.handler = async (event) => {
 
     // GET /team/folios — distinct folio periods across ALL team members' deals
     if (method === 'GET' && path === '/team/folios') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const members = await getTeamMembers(teamRecord.teamId);
       const folioSet = new Set();
@@ -1127,10 +1222,11 @@ exports.handler = async (event) => {
       return ok({ folios });
     }
 
-    // GET /team/analytics — merged team analytics (filtered to current folio)
+    // GET /team/analytics — merged team analytics (any member + live entitlement)
     if (method === 'GET' && path === '/team/analytics') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       // Determine folio window — from query params, or the requesting user's folio config
       const qs = event.queryStringParameters || {};
@@ -1238,10 +1334,11 @@ exports.handler = async (event) => {
       });
     }
 
-    // GET /team/notifications — deal close notifications from teammates
+    // GET /team/notifications — deal close notifications from teammates (member + entitlement)
     if (method === 'GET' && path === '/team/notifications') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       // Get notifications for this user
       const result = await dynamo.send(new QueryCommand({
@@ -1284,8 +1381,9 @@ exports.handler = async (event) => {
     const claimMatch = path.match(/^\/team\/leads\/([^/]+)\/claim$/);
     if (method === 'POST' && claimMatch) {
       const leadId = claimMatch[1];
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const body = event.body ? JSON.parse(event.body) : {};
       const now = new Date().toISOString();
@@ -1331,8 +1429,9 @@ exports.handler = async (event) => {
     const releaseMatch = path.match(/^\/team\/leads\/([^/]+)\/claim$/);
     if (method === 'DELETE' && releaseMatch) {
       const leadId = releaseMatch[1];
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const claimKey = { PK: `TEAM#${teamRecord.teamId}`, SK: `CLAIM#${leadId}` };
       const existing = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: claimKey }));

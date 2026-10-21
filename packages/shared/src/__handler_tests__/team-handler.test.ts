@@ -134,6 +134,10 @@ function seedTeamWithInvite(inviteId = 'inv-1', opts: { withLookup?: boolean } =
   store.set('TEAM#team-1|INFO', { PK: 'TEAM#team-1', SK: 'INFO', teamId: 'team-1', teamName: 'Blue Team', adminUserId: 'admin-1', maxMembers: 5 });
   store.set('TEAM#team-1|MEMBER#admin-1', { PK: 'TEAM#team-1', SK: 'MEMBER#admin-1', userId: 'admin-1', email: 'admin@test.com', role: 'admin' });
   store.set('USER#admin-1|TEAM_ADMIN', { PK: 'USER#admin-1', SK: 'TEAM_ADMIN', teamId: 'team-1', role: 'admin' });
+  // The owner must be an ENTITLED Summit admin for paid /team/* routes to pass the
+  // entitlement gate. (Seeded unless a test overrides the admin profile to simulate a
+  // lapse.)
+  store.set('USER#admin-1|PROFILE', { PK: 'USER#admin-1', SK: 'PROFILE', email: 'admin@test.com', subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_admin' });
   store.set(`TEAM#team-1|INVITE#${inviteId}`, { PK: 'TEAM#team-1', SK: `INVITE#${inviteId}`, inviteId, email: 'member@test.com', status: 'pending', expiresAt: new Date(Date.now() + 86400000).toISOString() });
   if (opts.withLookup) {
     store.set(`INVITE#${inviteId}|LOOKUP`, { PK: `INVITE#${inviteId}`, SK: 'LOOKUP', inviteId, teamId: 'team-1', email: 'member@test.com', expiresAt: new Date(Date.now() + 86400000).toISOString() });
@@ -302,5 +306,179 @@ describe('team-handler — invite lookup (Priority 5)', () => {
     const lookupWrite = sent.find((c) => c.name === 'PutCommand' && String(c.input.Item?.PK).startsWith('INVITE#') && c.input.Item?.SK === 'LOOKUP');
     expect(lookupWrite).toBeTruthy();
     expect(lookupWrite!.input.Item.teamId).toBe('team-1');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Summit access control (launch-blocker fix): paid /team/* routes must verify the
+// team OWNER's live Summit entitlement server-side, for admins AND employees. Team
+// records are never deleted on lapse; reactivation restores access to the same team.
+// Priority 2: PUT /team/colors is admin-only.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Seed a team owned by admin-1 and a joined member member-1, with the admin profile's
+// subscription set to `adminSub`. Member is free (team-granted). No duplicate teams.
+function seedActiveTeam(adminSub: any) {
+  store.set('TEAM#team-1|INFO', { PK: 'TEAM#team-1', SK: 'INFO', teamId: 'team-1', teamName: 'Blue Team', adminUserId: 'admin-1', maxMembers: 5, memberColors: { 'admin@test.com': 0 } });
+  store.set('TEAM#team-1|MEMBER#admin-1', { PK: 'TEAM#team-1', SK: 'MEMBER#admin-1', userId: 'admin-1', email: 'admin@test.com', role: 'admin' });
+  store.set('TEAM#team-1|MEMBER#member-1', { PK: 'TEAM#team-1', SK: 'MEMBER#member-1', userId: 'member-1', email: 'member@test.com', role: 'member' });
+  store.set('USER#admin-1|TEAM_ADMIN', { PK: 'USER#admin-1', SK: 'TEAM_ADMIN', teamId: 'team-1', role: 'admin' });
+  store.set('USER#member-1|TEAM_MEMBER', { PK: 'USER#member-1', SK: 'TEAM_MEMBER', teamId: 'team-1', role: 'member' });
+  store.set('USER#admin-1|PROFILE', { PK: 'USER#admin-1', SK: 'PROFILE', email: 'admin@test.com', ...adminSub });
+  store.set('USER#member-1|PROFILE', { PK: 'USER#member-1', SK: 'PROFILE', email: 'member@test.com', subscriptionTier: 'free', subscriptionStatus: 'none', teamGrantedAccess: true });
+}
+
+const adminEv = (m: string, p: string, b?: any) => ev(m, p, b, 'admin-1', 'admin@test.com');
+const memberEv = (m: string, p: string, b?: any) => ev(m, p, b, 'member-1', 'member@test.com');
+
+const DAY = 86400000;
+const future = () => new Date(Date.now() + 10 * DAY).toISOString();
+const past = () => new Date(Date.now() - DAY).toISOString();
+
+describe('team-handler — Summit entitlement gate (owner subscription drives access)', () => {
+  it('ACTIVE Summit owner: admin AND employee reach paid routes', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_a' });
+    expect((await handler(adminEv('GET', '/team/stats'))).statusCode).toBe(200);
+    expect((await handler(memberEv('GET', '/team/leads'))).statusCode).toBe(200);
+    expect((await handler(memberEv('GET', '/team/calendar'))).statusCode).toBe(200);
+    expect((await handler(memberEv('GET', '/team/analytics'))).statusCode).toBe(200);
+  });
+
+  it('ACTIVE TRIAL owner (trial not expired): access granted', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'trial', trialEndsAt: future(), stripeSubscriptionId: 'sub_a' });
+    expect((await handler(adminEv('GET', '/team/stats'))).statusCode).toBe(200);
+    expect((await handler(memberEv('GET', '/team/leads'))).statusCode).toBe(200);
+  });
+
+  it('SCHEDULED CANCELLATION before period end: still entitled (paid-through period)', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'active', subscriptionCancelAtPeriodEnd: true, subscriptionCurrentPeriodEnd: future(), stripeSubscriptionId: 'sub_a' });
+    expect((await handler(adminEv('GET', '/team/stats'))).statusCode).toBe(200);
+    expect((await handler(memberEv('GET', '/team/leads'))).statusCode).toBe(200);
+  });
+
+  it('PAST_DUE during allowed grace: access retained', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'past_due', stripeSubscriptionId: 'sub_a' });
+    expect((await handler(memberEv('GET', '/team/leads'))).statusCode).toBe(200);
+  });
+
+  it('EXPIRED TRIAL owner: all paid routes blocked (402) for admin AND employee', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'trial', trialEndsAt: past() });
+    expect((await handler(adminEv('GET', '/team/stats'))).statusCode).toBe(402);
+    expect((await handler(memberEv('GET', '/team/leads'))).statusCode).toBe(402);
+    expect((await handler(memberEv('GET', '/team/calendar'))).statusCode).toBe(402);
+    expect((await handler(memberEv('POST', '/team/leads/lead-x/claim', { leadName: 'X' }))).statusCode).toBe(402);
+  });
+
+  it('DOWNGRADED owner (tier soar): team routes blocked (402)', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_a' });
+    expect((await handler(adminEv('POST', '/team/invite', { email: 'x@test.com' }))).statusCode).toBe(402);
+    expect((await handler(memberEv('GET', '/team/leads'))).statusCode).toBe(402);
+  });
+
+  it('TERMINAL cancellation (status canceled, tier free): blocked (402)', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'free', subscriptionStatus: 'canceled', subscriptionCurrentPeriodEnd: past() });
+    expect((await handler(adminEv('GET', '/team/history'))).statusCode).toBe(402);
+    expect((await handler(memberEv('GET', '/team/analytics'))).statusCode).toBe(402);
+  });
+
+  it('SCHEDULED CANCELLATION whose period already ended: blocked (402)', async () => {
+    const handler = loadHandler();
+    // Edge: status still 'active' but cancelAtPeriodEnd and the period end is in the past.
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'active', subscriptionCancelAtPeriodEnd: true, subscriptionCurrentPeriodEnd: past(), stripeSubscriptionId: 'sub_a' });
+    expect((await handler(memberEv('GET', '/team/leads'))).statusCode).toBe(402);
+  });
+
+  it('DIRECT API bypass attempts by an expired owner are denied across routes', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'trial', trialEndsAt: past() });
+    for (const [m, p, b] of [
+      ['POST', '/team/invite', { email: 'x@test.com' }],
+      ['PUT', '/team/name', { teamName: 'Renamed Team' }],
+      ['DELETE', '/team/members/member-1', undefined],
+      ['GET', '/team/stats', undefined],
+      ['PUT', '/team/colors', { memberColors: { 'admin@test.com': 3 } }],
+    ] as const) {
+      const res = await handler(adminEv(m, p, b as any));
+      expect(res.statusCode).toBe(402);
+    }
+  });
+
+  it('DIRECT API bypass attempts by an employee of a lapsed team are denied', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'free', subscriptionStatus: 'canceled' });
+    for (const [m, p] of [
+      ['GET', '/team/leads'],
+      ['GET', '/team/calendar'],
+      ['GET', '/team/analytics'],
+      ['GET', '/team/notifications'],
+    ] as const) {
+      expect((await handler(memberEv(m, p))).statusCode).toBe(402);
+    }
+  });
+
+  it('LAPSE never deletes team records; GET /team and leave remain available (recovery)', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'trial', trialEndsAt: past() });
+    // Blocked paid route…
+    expect((await handler(memberEv('GET', '/team/leads'))).statusCode).toBe(402);
+    // …but the team records are intact and GET /team still works (so the UI can show
+    // status + a reactivation path).
+    const info = await handler(memberEv('GET', '/team'));
+    expect(info.statusCode).toBe(200);
+    expect(store.get('TEAM#team-1|INFO')).toBeTruthy();
+    expect(store.get('TEAM#team-1|MEMBER#member-1')).toBeTruthy();
+    // A member can still leave (recovery).
+    expect((await handler(memberEv('POST', '/team/leave'))).statusCode).toBe(200);
+  });
+
+  it('REACTIVATION restores access to the SAME team (no duplicate created)', async () => {
+    const handler = loadHandler();
+    // Start lapsed → blocked.
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'trial', trialEndsAt: past() });
+    expect((await handler(adminEv('GET', '/team/stats'))).statusCode).toBe(402);
+    // Owner resubscribes — webhook flips the PROFILE back to active team. Team records
+    // were never deleted, so the SAME team-1 is now fully accessible again.
+    const p = store.get('USER#admin-1|PROFILE');
+    store.set('USER#admin-1|PROFILE', { ...p, subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_a', trialEndsAt: undefined });
+    expect((await handler(adminEv('GET', '/team/stats'))).statusCode).toBe(200);
+    expect((await handler(memberEv('GET', '/team/leads'))).statusCode).toBe(200);
+    // Still exactly one team INFO record for team-1 (no duplicate).
+    const infos = [...store.keys()].filter((k) => k.endsWith('|INFO'));
+    expect(infos).toEqual(['TEAM#team-1|INFO']);
+  });
+});
+
+describe('team-handler — PUT /team/colors is admin-only (Priority 2)', () => {
+  it('admin (entitled) can set team colors', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_a' });
+    const res = await handler(adminEv('PUT', '/team/colors', { memberColors: { 'member@test.com': 4 } }));
+    expect(res.statusCode).toBe(200);
+    expect(store.get('TEAM#team-1|INFO').memberColors['member@test.com']).toBe(4);
+  });
+
+  it('member CANNOT change team-wide colors (403 NOT_ADMIN)', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_a' });
+    const before = JSON.stringify(store.get('TEAM#team-1|INFO').memberColors);
+    const res = await handler(memberEv('PUT', '/team/colors', { memberColors: { 'admin@test.com': 9 } }));
+    expect(res.statusCode).toBe(403);
+    const body = JSON.parse(res.body);
+    expect(body.error.code).toBe('NOT_ADMIN');
+    // Colors unchanged by the rejected member write.
+    expect(JSON.stringify(store.get('TEAM#team-1|INFO').memberColors)).toBe(before);
+  });
+
+  it('members can still READ team colors (GET /team/colors) when entitled', async () => {
+    const handler = loadHandler();
+    seedActiveTeam({ subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_a' });
+    expect((await handler(memberEv('GET', '/team/colors'))).statusCode).toBe(200);
   });
 });

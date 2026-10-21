@@ -120,3 +120,75 @@ describe('ConversationalSetup — onboarding navigation (order preserved)', () =
     expect(source).toContain("localStorage.setItem('hawkeye_onboarded', 'true')");
   });
 });
+
+describe('ConversationalSetup — final screen polish (premium branding)', () => {
+  it('uses the realistic hawk brand image on the final screen, not a cartoon/emoji bird', () => {
+    // The final "ready" screen must render the brand photo asset…
+    expect(source).toContain('src="/hawk.jpg"');
+    expect(source).toContain('alt="HawkEye-Cue"');
+    // …and must NOT fall back to the cartoon eagle emoji on that screen. We scope the
+    // check to the 'ready' block so other steps' emojis don't cause a false failure.
+    const start = source.indexOf("{step === 'ready' && (");
+    expect(start).toBeGreaterThan(-1);
+    const end = source.indexOf("{step !== 'ready'", start);
+    const block = source.slice(start, end === -1 ? start + 2000 : end);
+    expect(block).not.toContain('🦅');
+    expect(block).not.toContain('🔫');
+  });
+
+  it('uses the updated final-screen headline and subcopy', () => {
+    expect(source).toContain('Your HawkEye-Cue is ready.');
+    expect(source).toContain('Your next opportunity starts here.');
+    // Old copy must be gone.
+    expect(source).not.toContain('Your HawkEye is ready.');
+    expect(source).not.toContain("Let's find your first opportunity.");
+  });
+
+  it('uses the updated primary button label (no emoji) and keeps the loading label', () => {
+    expect(source).toContain('Enter HawkEye-Cue →');
+    expect(source).not.toContain("Let's go 🦅");
+    // Loading state preserved.
+    expect(source).toContain('Getting your Nest ready…');
+  });
+
+  // Helper: extract the full JSX for the 'ready' step (from its render guard up to
+  // the next sibling guard `{step !== 'ready'`), so slice-size never truncates copy.
+  function readyBlock(): string {
+    const start = source.indexOf("{step === 'ready' && (");
+    expect(start).toBeGreaterThan(-1);
+    const end = source.indexOf("{step !== 'ready'", start);
+    return source.slice(start, end === -1 ? start + 2000 : end);
+  }
+
+  it('preserves the trade and location summary on the final screen', () => {
+    const block = readyBlock();
+    expect(block).toContain('chosenTrade');
+    expect(block).toContain('🏷️ Trade:');
+    expect(block).toContain('📍 Area:');
+    expect(block).toContain('🎯 Focus:');
+  });
+
+  it('keeps the black/yellow/white branding on the final screen', () => {
+    const block = readyBlock();
+    // Yellow/amber accents + black button text (brand palette).
+    expect(block).toContain('from-amber-500 to-yellow-400');
+    expect(block).toContain('text-black');
+    expect(block).toContain('text-white');
+  });
+});
+
+describe('ConversationalSetup — product naming (HawkEye-Cue)', () => {
+  it('refers to the product as "HawkEye-Cue" in user-facing onboarding copy', () => {
+    expect(source).toContain("let's set up your HawkEye-Cue");
+    expect(source).toContain('This helps HawkEye-Cue judge local opportunities.');
+    expect(source).toContain('HawkEye-Cue uses your voice to draft responses');
+  });
+
+  it('has no bare "HawkEye" product references left in user-facing copy', () => {
+    // Strip internal localStorage identifiers (hawkeye_*) which are NOT product copy,
+    // then ensure no remaining "HawkEye" lacks the "-Cue" suffix.
+    const withoutStorageKeys = source.replace(/hawkeye_[a-z0-9_${}?.]+/gi, '');
+    const bareHawkEye = withoutStorageKeys.match(/HawkEye(?!-Cue)/g) || [];
+    expect(bareHawkEye).toEqual([]);
+  });
+});

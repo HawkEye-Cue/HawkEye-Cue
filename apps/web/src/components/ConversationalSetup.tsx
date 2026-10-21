@@ -115,7 +115,7 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
             <>
               <div>
                 <span className="text-4xl block mb-2">🦅</span>
-                <h2 className="text-2xl font-bold text-white">Hey {firstName}, let's set up your HawkEye</h2>
+                <h2 className="text-2xl font-bold text-white">Hey {firstName}, let's set up your HawkEye-Cue</h2>
                 <p className="text-sm text-slate-400 mt-2">First — what kind of business do you run?</p>
               </div>
               <input
@@ -224,7 +224,7 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
               <div>
                 <span className="text-4xl block mb-2">📍</span>
                 <h2 className="text-2xl font-bold text-white">Where do you serve customers?</h2>
-                <p className="text-sm text-slate-400 mt-2">Your city, county, or the areas you cover. This helps HawkEye judge local opportunities.</p>
+                <p className="text-sm text-slate-400 mt-2">Your city, county, or the areas you cover. This helps HawkEye-Cue judge local opportunities.</p>
               </div>
               <input
                 autoFocus
@@ -280,7 +280,7 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
               <div>
                 <span className="text-4xl block mb-2">💬</span>
                 <h2 className="text-2xl font-bold text-white">How would you naturally respond to a customer?</h2>
-                <p className="text-sm text-slate-400 mt-2">Write a quick example reply. HawkEye uses your voice to draft responses that sound like you.</p>
+                <p className="text-sm text-slate-400 mt-2">Write a quick example reply. HawkEye-Cue uses your voice to draft responses that sound like you.</p>
               </div>
               <textarea
                 autoFocus
@@ -297,10 +297,20 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
           )}
 
           {step === 'ready' && (
-            <div className="text-center space-y-5">
-              <span className="text-6xl block">🦅</span>
-              <h2 className="text-2xl font-bold text-white">Your HawkEye is ready.</h2>
-              <p className="text-sm text-slate-300">Let's find your first opportunity.</p>
+            <div className="text-center space-y-5 sm:space-y-6">
+              {/* Realistic hawk brand asset (replaces the cartoon emoji) framed in a
+                  premium black/yellow ring that matches the app's branding. */}
+              <div className="mx-auto h-24 w-24 sm:h-28 sm:w-28 rounded-full p-[3px] bg-gradient-to-br from-amber-400 to-yellow-500 shadow-[0_0_40px_-8px_rgba(251,191,36,0.6)]">
+                <img
+                  src="/hawk.jpg"
+                  alt="HawkEye-Cue"
+                  className="h-full w-full rounded-full object-cover ring-2 ring-black/80"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Your HawkEye-Cue is ready.</h2>
+                <p className="text-sm sm:text-base text-slate-300">Your next opportunity starts here.</p>
+              </div>
               <div className="text-left bg-white/5 border border-white/10 rounded-xl p-4 space-y-1.5 text-sm">
                 {chosenTrade && <p className="text-slate-300">🏷️ Trade: <span className="text-white font-medium">{chosenTrade.name}</span></p>}
                 {area && <p className="text-slate-300">📍 Area: <span className="text-white font-medium">{area}</span></p>}
@@ -309,9 +319,9 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
               <button
                 onClick={finish}
                 disabled={saving}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-extrabold rounded-xl disabled:opacity-50"
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-extrabold rounded-xl transition-all hover:brightness-105 active:scale-[0.99] disabled:opacity-50"
               >
-                {saving ? 'Getting your Nest ready…' : "Let's go 🦅"}
+                {saving ? 'Getting your Nest ready…' : 'Enter HawkEye-Cue →'}
               </button>
             </div>
           )}

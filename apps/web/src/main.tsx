@@ -9,6 +9,7 @@ import { CalendarProvider } from './contexts/CalendarContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ModeProvider } from './contexts/ModeContext';
 import { EditionProvider } from './contexts/EditionContext';
+import { SummitProvider } from './contexts/SummitContext';
 import App from './App';
 import './index.css';
 
@@ -30,9 +31,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <TradeProvider>
               <ModeProvider>
                 <EditionProvider>
+                <SummitProvider>
                 <CalendarProvider>
                   <App />
                 </CalendarProvider>
+                </SummitProvider>
                 </EditionProvider>
               </ModeProvider>
             </TradeProvider>

@@ -5,6 +5,7 @@ import { useTrade } from '../contexts/TradeContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
 import { useEdition } from '../contexts/EditionContext';
+import { useSummit } from '../contexts/SummitContext';
 import TradeSelector from '../components/TradeSelector';
 import ExtensionTour from '../components/ExtensionTour';
 import LeadDetectionExplainer from '../components/LeadDetectionExplainer';
@@ -19,6 +20,7 @@ export default function SettingsPage() {
   const { showToast } = useToast();
   const { mode, setMode } = useMode();
   const { edition, setEdition } = useEdition();
+  const { refresh: refreshSummit } = useSummit();
   const [switchingEdition, setSwitchingEdition] = useState(false);
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -82,6 +84,15 @@ export default function SettingsPage() {
       }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After a successful checkout (Stripe redirects back to /settings?checkout=success),
+  // refresh app-wide Summit access so "Summit HQ" appears in the nav immediately —
+  // no logout/login required.
+  useEffect(() => {
+    if (checkoutStatus === 'success') {
+      refreshSummit();
+    }
+  }, [checkoutStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll to suggestion box if hash is #suggestion
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useSummit } from '../contexts/SummitContext';
 import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
 import { folioDisplayName } from '../utils/folioName';
@@ -116,6 +117,7 @@ export default function TeamPage() {
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const { addEvent, events: myEvents } = useCalendar();
+  const { refresh: refreshSummit } = useSummit();
   const [tab, setTab] = useState<Tab>('manage');
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
@@ -404,6 +406,7 @@ export default function TeamPage() {
       await client.request('POST', '/team', { teamName: teamName.trim() });
       const result = await client.request<{ team: Team | null }>('GET', '/team');
       setTeam(result.team);
+      refreshSummit();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to create team';
       setError(msg.includes('NOT_TEAM_TIER') ? 'You need a Summit subscription to create a team. Upgrade in Settings.' : msg);
@@ -446,6 +449,8 @@ export default function TeamPage() {
       await client.request('POST', '/team/leave');
       setTeam(null);
       showToast('You left the team');
+      // Access may have ended — refresh so Summit HQ hides if no longer entitled.
+      refreshSummit();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to leave team');
     }
@@ -461,6 +466,8 @@ export default function TeamPage() {
       const result = await client.request<{ team: Team | null }>('GET', '/team');
       setTeam(result.team);
       setInviteCode('');
+      // Member just joined — surface Summit HQ in the nav without a reload.
+      refreshSummit();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to join team');
     }

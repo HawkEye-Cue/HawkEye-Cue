@@ -27,13 +27,31 @@ const here = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(resolve(here, './SettingsPage.tsx'), 'utf8');
 
 // Pure re-implementation of the gate, kept in lockstep with SettingsPage.tsx.
-// (Mirrors: soarTier && subscription?.status === 'trial' && !hasStripeSubscription.)
+// (Mirrors: subStatusKnown && soarTier && status === 'trial' && !hasStripeSubscription.)
 type Sub = { tier?: string; status?: string; stripeCustomerId?: string | null } | null;
-function soarTrialNeedsPayment(subscription: Sub): boolean {
+function soarTrialNeedsPayment(subscription: Sub, subStatusKnown = true): boolean {
+  if (!subStatusKnown) return false;
   const currentTier = subscription?.tier ?? 'free';
   const soarTier = ['growth', 'flight', 'base', 'soar'].includes(currentTier);
   const hasStripeSubscription = Boolean(subscription?.stripeCustomerId);
   return soarTier && subscription?.status === 'trial' && !hasStripeSubscription;
+}
+
+// Mirrors the fail-closed derived flags in SettingsPage:
+//   subStatusKnown = !subLoading && !subError
+//   trialEligible  = subStatusKnown && !everTrialed && !stripeCustomerId
+//   checkoutDisabled = !subStatusKnown || loadingTier !== null
+function subStatusKnown(subLoading: boolean, subError: string | null): boolean {
+  return !subLoading && !subError;
+}
+function trialEligible(subscription: Sub, subLoading: boolean, subError: string | null): boolean {
+  const known = subStatusKnown(subLoading, subError);
+  const everTrialed = Boolean((subscription as any)?.trialEndsAt);
+  const hasCustomer = Boolean(subscription?.stripeCustomerId);
+  return known && !everTrialed && !hasCustomer;
+}
+function checkoutDisabled(subLoading: boolean, subError: string | null, loadingTier: string | null): boolean {
+  return !subStatusKnown(subLoading, subError) || loadingTier !== null;
 }
 
 describe('SettingsPage — Soar trial checkout gate (truth table)', () => {
@@ -81,7 +99,7 @@ describe('SettingsPage — Soar card button wiring (source)', () => {
       'const hasStripeSubscription = Boolean(subscription?.stripeCustomerId);',
     );
     expect(source).toContain(
-      "const soarTrialNeedsPayment = soarTier && subscription?.status === 'trial' && !hasStripeSubscription;",
+      "const soarTrialNeedsPayment = subStatusKnown && soarTier && subscription?.status === 'trial' && !hasStripeSubscription;",
     );
   });
 
@@ -102,5 +120,88 @@ describe('SettingsPage — Soar card button wiring (source)', () => {
     expect(block).toContain('Continue Soar After Trial');
     // Falls back to "Add Payment Method" when no days remain.
     expect(block).toContain('Add Payment Method');
+  });
+});
+
+describe('SettingsPage — fail closed when subscription status is unknown', () => {
+  // Bug: a failed GET /subscription (e.g. "Failed to fetch"/CORS/401) left subscription
+  // null with no error flag, so the UI fell back to free-tier defaults and FALSELY
+  // advertised a fresh 7-day trial + showed "Upgrade" instead of "Continue Soar After
+  // Trial" for an account that already had an active trial. Status must fail closed.
+
+  it('status is NOT known while loading', () => {
+    expect(subStatusKnown(true, null)).toBe(false);
+  });
+
+  it('status is NOT known after a failed load (error set)', () => {
+    expect(subStatusKnown(false, 'Couldn\'t load your plan: Failed to fetch')).toBe(false);
+  });
+
+  it('status IS known only after a successful load', () => {
+    expect(subStatusKnown(false, null)).toBe(true);
+  });
+
+  it('NEVER advertises a fresh trial while loading or after an error', () => {
+    // Even with a free-looking (null) subscription, a pending/errored load must not
+    // advertise the 7-day trial.
+    expect(trialEligible(null, true, null)).toBe(false); // loading
+    expect(trialEligible(null, false, 'Failed to fetch')).toBe(false); // errored
+    // Only a verified, never-trialed, card-less account is eligible.
+    expect(trialEligible(null, false, null)).toBe(true);
+  });
+
+  it('does NOT advertise a fresh trial to an account that already trialed, once known', () => {
+    expect(trialEligible({ tier: 'soar', status: 'trial', ...( { trialEndsAt: '2026-10-27T00:00:00Z' } as any) }, false, null)).toBe(false);
+  });
+
+  it('hides the Continue-Soar button until status is known (even for a real trial)', () => {
+    const trialSub: Sub = { tier: 'soar', status: 'trial' };
+    expect(soarTrialNeedsPayment(trialSub, false)).toBe(false); // status unknown → hidden
+    expect(soarTrialNeedsPayment(trialSub, true)).toBe(true); // known → shown
+  });
+
+  it('disables checkout while loading or errored, enables only when known & idle', () => {
+    expect(checkoutDisabled(true, null, null)).toBe(true); // loading
+    expect(checkoutDisabled(false, 'err', null)).toBe(true); // errored
+    expect(checkoutDisabled(false, null, 'soar')).toBe(true); // a checkout already in flight
+    expect(checkoutDisabled(false, null, null)).toBe(false); // known + idle → enabled
+  });
+});
+
+describe('SettingsPage — error/retry wiring + handleUpgrade guard (source)', () => {
+  it('tracks a distinct subscription-error state', () => {
+    expect(source).toContain('const [subError, setSubError] = useState<string | null>(null);');
+  });
+
+  it('derives subStatusKnown from a successful (non-error) finished load', () => {
+    expect(source).toContain('const subStatusKnown = !subLoading && !subError;');
+  });
+
+  it('treats a 404 as "no record yet" (known) but any other failure as unknown', () => {
+    expect(source).toContain('if (status === 404)');
+    expect(source).toContain('setSubError(');
+  });
+
+  it('gates trialEligible and soarTrialNeedsPayment on subStatusKnown', () => {
+    expect(source).toContain('const trialEligible = subStatusKnown && !everTrialed && !subscription?.stripeCustomerId;');
+    expect(source).toContain('const soarTrialNeedsPayment = subStatusKnown && soarTier');
+  });
+
+  it('defines checkoutDisabled and uses it on the checkout buttons', () => {
+    expect(source).toContain('const checkoutDisabled = !subStatusKnown || loadingTier !== null;');
+    expect(source).toContain('disabled={checkoutDisabled}');
+  });
+
+  it('renders an error banner with a Retry action that re-fetches', () => {
+    expect(source).toContain('{subError && (');
+    expect(source).toContain('onClick={fetchSubscription}');
+    expect(source).toContain('Retry');
+  });
+
+  it('handleUpgrade refuses to start checkout while status is unverified', () => {
+    const idx = source.indexOf('async function handleUpgrade');
+    const block = source.slice(idx, idx + 500);
+    expect(block).toContain('if (subLoading || subError)');
+    expect(block).toContain('return;');
   });
 });

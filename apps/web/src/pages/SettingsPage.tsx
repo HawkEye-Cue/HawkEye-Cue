@@ -28,6 +28,13 @@ export default function SettingsPage() {
   const [couponCode, setCouponCode] = useState('');
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [subLoading, setSubLoading] = useState(true);
+  // Distinguish "we successfully loaded the subscription" from "the fetch failed and we
+  // don't actually know the account's state". Previously a failed fetch left
+  // subscription=null with no error flag, so the UI fell back to free-tier defaults and
+  // FALSELY advertised a brand-new 7-day trial (and showed "Upgrade" instead of
+  // "Continue Soar After Trial") to an account that already had an active trial. We must
+  // fail CLOSED: never advertise a fresh trial or enable checkout on unverified status.
+  const [subError, setSubError] = useState<string | null>(null);
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
   const [socialLoading, setSocialLoading] = useState(true);
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
@@ -93,19 +100,37 @@ export default function SettingsPage() {
     });
   }
 
-  // Fetch current subscription on mount
-  useEffect(() => {
-    async function fetchSubscription() {
-      try {
-        const client = await buildClient();
-        const sub = await client.getSubscription();
-        setSubscription(sub);
-      } catch {
-        // User may not have a subscription record yet
-      } finally {
-        setSubLoading(false);
+  // Fetch current subscription. Extracted + retryable so the error state offers a Retry.
+  async function fetchSubscription() {
+    setSubLoading(true);
+    setSubError(null);
+    try {
+      const client = await buildClient();
+      const sub = await client.getSubscription();
+      setSubscription(sub);
+      setSubError(null);
+    } catch (e: unknown) {
+      // A 404 means "no subscription record yet" — that is a KNOWN state (free, never
+      // trialed) and is safe to treat as such. Any other failure (network/"Failed to
+      // fetch", CORS, 401/403, 5xx) means the status is UNKNOWN: we must not guess.
+      const status = (e as { status?: number } | null)?.status;
+      if (status === 404) {
+        setSubscription(null);
+        setSubError(null);
+      } else {
+        setSubscription(null);
+        setSubError(
+          e instanceof Error && e.message
+            ? `Couldn't load your plan: ${e.message}`
+            : "Couldn't load your plan.",
+        );
       }
+    } finally {
+      setSubLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchSubscription();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -187,6 +212,13 @@ export default function SettingsPage() {
   }
 
   async function handleUpgrade(tier: 'base' | 'growth' | 'soar' | 'team') {
+    // Safety net: never start checkout while the subscription status is unverified —
+    // doing so risks a duplicate trial/subscription. The buttons are already disabled in
+    // this state; this guards programmatic/edge callers too.
+    if (subLoading || subError) {
+      setCheckoutError("We couldn't verify your current plan. Please retry loading your plan before changing it.");
+      return;
+    }
     setLoadingTier(tier);
     setCheckoutError(null);
     try {
@@ -253,11 +285,17 @@ export default function SettingsPage() {
   }
 
   const currentTier = subscription?.tier ?? 'free';
+  // We only "know" the account's billing state once the fetch has finished WITHOUT an
+  // error. While loading, or after a failed load, status is unverified and the UI must
+  // fail closed (no trial advertising, no checkout).
+  const subStatusKnown = !subLoading && !subError;
   // One trial per account: only advertise the 7-day trial to accounts that have NEVER
   // started one. Once trialEndsAt exists (active or expired) or the account has paid,
-  // upgrading does not grant a new trial, so we must not advertise it.
+  // upgrading does not grant a new trial, so we must not advertise it. Crucially, we
+  // ONLY advertise eligibility when the subscription status is actually known — never on
+  // a failed/one-pending load (which would falsely offer a fresh trial).
   const everTrialed = Boolean(subscription?.trialEndsAt);
-  const trialEligible = !everTrialed && !subscription?.stripeCustomerId;
+  const trialEligible = subStatusKnown && !everTrialed && !subscription?.stripeCustomerId;
   const trialMsRemaining = subscription?.trialEndsAt ? new Date(subscription.trialEndsAt).getTime() - Date.now() : 0;
   const trialDaysRemaining = trialMsRemaining > 0 ? Math.ceil(trialMsRemaining / (24 * 60 * 60 * 1000)) : 0;
 
@@ -270,7 +308,10 @@ export default function SettingsPage() {
   // billing via the portal, and the backend returns planChangeRequired for them).
   const soarTier = ['growth', 'flight', 'base', 'soar'].includes(currentTier);
   const hasStripeSubscription = Boolean(subscription?.stripeCustomerId);
-  const soarTrialNeedsPayment = soarTier && subscription?.status === 'trial' && !hasStripeSubscription;
+  const soarTrialNeedsPayment = subStatusKnown && soarTier && subscription?.status === 'trial' && !hasStripeSubscription;
+  // Checkout must be disabled until we have verified the subscription status, so we never
+  // start a checkout (or a second trial) based on a guessed/unknown state.
+  const checkoutDisabled = !subStatusKnown || loadingTier !== null;
 
   function tierLabel(tier: string) {
     const labels: Record<string, string> = { free: 'Nest (Free)', nest: 'Nest (Free)', base: 'Soar', flight: 'Soar', growth: 'Soar', soar: 'Soar', team: 'Summit', summit: 'Summit' };
@@ -364,7 +405,8 @@ export default function SettingsPage() {
           </div>
           <button
             onClick={() => handleUpgrade('team')}
-            disabled={loadingTier !== null}
+            disabled={checkoutDisabled}
+            title={!subStatusKnown ? 'Verifying your plan…' : undefined}
             className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
           >
             {loadingTier === 'team' ? '...' : 'Upgrade'}
@@ -570,6 +612,25 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* Subscription-load failure — fail closed. We hide trial advertising and disable
+            checkout (below) and give the user a clear retry instead of silently showing
+            free-tier defaults that could offer a duplicate trial. */}
+        {subError && (
+          <div className="mb-3 p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium">{subError}</p>
+              <p className="text-xs text-red-300/80 mt-1">We couldn't verify your current plan, so plan changes are paused to keep your trial and billing safe.</p>
+            </div>
+            <button
+              onClick={fetchSubscription}
+              disabled={subLoading}
+              className="shrink-0 px-3 py-1.5 bg-red-500/20 border border-red-400/40 text-red-100 rounded-lg text-xs font-bold hover:bg-red-500/30 disabled:opacity-50"
+            >
+              {subLoading ? 'Retrying…' : 'Retry'}
+            </button>
+          </div>
+        )}
+
         {/* Coupon Code Input */}
         <div className="mb-4">
           <label className="block text-sm text-slate-400 mb-1">Have a coupon code?</label>
@@ -615,8 +676,8 @@ export default function SettingsPage() {
               <li>🔗 Linked accounts</li>
               <li>📋 Unlimited Copy & Open workflow</li>
             </ul>
-            {!['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(currentTier) && (
-              <button onClick={() => handleUpgrade('soar')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+            {subStatusKnown && !['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(currentTier) && (
+              <button onClick={() => handleUpgrade('soar')} disabled={checkoutDisabled} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
                 {loadingTier === 'soar' ? 'Loading…' : 'Upgrade'}
               </button>
             )}
@@ -624,7 +685,7 @@ export default function SettingsPage() {
                 after the trial. Opens Stripe checkout; the existing trial end is
                 preserved (no new 7 days, no duplicate subscription). */}
             {soarTrialNeedsPayment && (
-              <button onClick={() => handleUpgrade('soar')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+              <button onClick={() => handleUpgrade('soar')} disabled={checkoutDisabled} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
                 {loadingTier === 'soar'
                   ? 'Loading…'
                   : trialDaysRemaining > 0
@@ -654,8 +715,8 @@ export default function SettingsPage() {
               <li>👥 Team leaderboard & stats</li>
               <li>👥 Shared leads & calendar</li>
             </ul>
-            {!['team', 'summit'].includes(currentTier) && (
-              <button onClick={() => handleUpgrade('team')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50">
+            {subStatusKnown && !['team', 'summit'].includes(currentTier) && (
+              <button onClick={() => handleUpgrade('team')} disabled={checkoutDisabled} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50">
                 {loadingTier === 'team' ? 'Loading…' : 'Upgrade'}
               </button>
             )}

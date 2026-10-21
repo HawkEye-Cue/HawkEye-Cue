@@ -261,6 +261,17 @@ export default function SettingsPage() {
   const trialMsRemaining = subscription?.trialEndsAt ? new Date(subscription.trialEndsAt).getTime() - Date.now() : 0;
   const trialDaysRemaining = trialMsRemaining > 0 ? Math.ceil(trialMsRemaining / (24 * 60 * 60 * 1000)) : 0;
 
+  // A Soar user who is on the free trial but has NO Stripe subscription yet (no card on
+  // file). Previously the Soar card just showed "Active" with no action, so these users
+  // could not add a payment method to continue after the trial. We surface a dedicated
+  // "Continue Soar After Trial" action for them. handleUpgrade('soar') opens Stripe TEST
+  // checkout and the backend pins trial_end to the existing trialEndsAt (no new 7 days,
+  // no duplicate trial). Users WITH a live Stripe subscription are excluded (they manage
+  // billing via the portal, and the backend returns planChangeRequired for them).
+  const soarTier = ['growth', 'flight', 'base', 'soar'].includes(currentTier);
+  const hasStripeSubscription = Boolean(subscription?.stripeCustomerId);
+  const soarTrialNeedsPayment = soarTier && subscription?.status === 'trial' && !hasStripeSubscription;
+
   function tierLabel(tier: string) {
     const labels: Record<string, string> = { free: 'Nest (Free)', nest: 'Nest (Free)', base: 'Soar', flight: 'Soar', growth: 'Soar', soar: 'Soar', team: 'Summit', summit: 'Summit' };
     return labels[tier] ?? tier;
@@ -607,6 +618,18 @@ export default function SettingsPage() {
             {!['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(currentTier) && (
               <button onClick={() => handleUpgrade('soar')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
                 {loadingTier === 'soar' ? 'Loading…' : 'Upgrade'}
+              </button>
+            )}
+            {/* Soar trial user with no card on file — let them add payment to continue
+                after the trial. Opens Stripe checkout; the existing trial end is
+                preserved (no new 7 days, no duplicate subscription). */}
+            {soarTrialNeedsPayment && (
+              <button onClick={() => handleUpgrade('soar')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+                {loadingTier === 'soar'
+                  ? 'Loading…'
+                  : trialDaysRemaining > 0
+                    ? `Continue Soar After Trial · keep ${trialDaysRemaining} day${trialDaysRemaining !== 1 ? 's' : ''}`
+                    : 'Add Payment Method'}
               </button>
             )}
           </div>

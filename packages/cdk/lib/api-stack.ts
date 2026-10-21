@@ -60,6 +60,36 @@ export class ApiStack extends cdk.Stack {
       return lambda.Code.fromAsset(`../../lambdas/dist/${assetName}`);
     };
 
+    // ─── OAuth env PRESERVATION (drift-safe, never embeds/prints secrets) ─────
+    // The email OAuth functions carry Google/Microsoft client id+secret in their Lambda
+    // env. Those live values were set out-of-band and are NOT in source (and must never
+    // be). A normal synth resolves `process.env.GOOGLE_CLIENT_ID || ''` to EMPTY, which a
+    // deploy would push — wiping the live credentials.
+    //
+    // Preservation strategy (no secret ever embedded, printed, or defaulted to empty):
+    // at DEPLOY time the operator loads the four live values into the deploy shell's
+    // environment (read transiently from the running Lambda; never written to source,
+    // git, or logs). CDK then synthesizes the SAME literals → the two functions show a
+    // ZERO diff. If the pin flag is on but the values are NOT present in the environment,
+    // we FAIL CLOSED (throw) rather than emit empty env that would wipe the credentials.
+    const oauthEnv = () => {
+      const v = {
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+        MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID || '',
+        MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET || '',
+      };
+      if (pinDriftedAssets && (!v.GOOGLE_CLIENT_ID || !v.GOOGLE_CLIENT_SECRET || !v.MICROSOFT_CLIENT_ID || !v.MICROSOFT_CLIENT_SECRET)) {
+        throw new Error(
+          'pinDriftedAssets=true requires the live OAuth env values to be present in the ' +
+          'deploy shell (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, MICROSOFT_CLIENT_ID, ' +
+          'MICROSOFT_CLIENT_SECRET) so EmailOAuthFn/CadenceEmailSenderFn are preserved ' +
+          'byte-identical. Refusing to synth empty OAuth env (would wipe production creds).',
+        );
+      }
+      return v;
+    };
+
     // ─── HTTP API with CORS ───────────────────────────────────────────────
     this.httpApi = new apigatewayv2.HttpApi(this, 'HttpApi', {
       apiName: 'SocialLeadGen-API',
@@ -532,10 +562,7 @@ export class ApiStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
       environment: {
         ...lambdaDefaults.environment,
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
-        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
-        MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID || '',
-        MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET || '',
+        ...oauthEnv(),
       },
     } as lambda.FunctionProps);
 
@@ -633,10 +660,7 @@ export class ApiStack extends cdk.Stack {
       memorySize: 512,
       environment: {
         ...lambdaDefaults.environment,
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
-        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
-        MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID || '',
-        MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET || '',
+        ...oauthEnv(),
       },
     } as lambda.FunctionProps);
 

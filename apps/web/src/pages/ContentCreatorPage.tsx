@@ -1247,6 +1247,39 @@ export default function ContentCreatorPage() {
               </button>
             </div>
 
+            {/* ── Post to My Flocks — inline Create→Flocks handoff ───────────────
+                When Facebook is a selected platform and a post is prepared, surface a
+                clearly visible path straight into the EXISTING Flocks Copy & Open
+                workflow (MassFlockPosting), carrying this prepared post + image. This
+                reuses the saved-groups store, group selection, duplicate safeguards,
+                and completed/missed tracking — no separate group system. Mobile-friendly
+                (full-width, large tap target). */}
+            {platforms.includes('facebook') && platformContent && (
+              <div className="pt-1">
+                <button
+                  onClick={() => setShowMassFlock(true)}
+                  className="w-full p-4 bg-gradient-to-r from-amber-500/15 to-orange-500/10 border-2 border-amber-500/40 rounded-xl hover:border-amber-500/60 hover:bg-amber-500/20 transition-all active:scale-[0.99] flex items-center gap-3 text-left"
+                >
+                  <span className="text-2xl shrink-0">🦅</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-white">Post to My Flocks</p>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      Pick your Facebook groups and Copy &amp; Open each one with this post — you post it yourself, nothing auto-posts.
+                    </p>
+                  </div>
+                  <span className="text-amber-300 text-lg shrink-0">→</span>
+                </button>
+                {savedGroupCount === 0 && (
+                  <button
+                    onClick={() => setShowFlockManager(true)}
+                    className="mt-1.5 w-full text-[11px] text-amber-300 hover:text-amber-200 text-center"
+                  >
+                    No groups saved yet — add your Facebook groups first
+                  </button>
+                )}
+              </div>
+            )}
+
             {error && (
               <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
                 {error}

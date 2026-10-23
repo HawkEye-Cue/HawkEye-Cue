@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useTrade } from '../contexts/TradeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
@@ -69,12 +69,15 @@ export default function DashboardPage() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [refreshEvents]);
 
-  // Redirect new users to onboarding
-  useEffect(() => {
-    if (!localStorage.getItem('hawkeye_onboarded')) {
-      navigate('/onboarding', { replace: true });
-    }
-  }, [navigate]);
+  // Onboarding gate — decided at render time (see the <Navigate> guard before the
+  // return), not via a post-paint effect that could leave a blank frame. Only genuinely
+  // new users (no local flag AND no saved trade) are sent to onboarding; a returning,
+  // fully-onboarded user on a fresh browser keeps their dashboard.
+  const needsOnboarding = (() => {
+    let hasFlag = false;
+    try { hasFlag = Boolean(localStorage.getItem('hawkeye_onboarded')); } catch { /* ignore */ }
+    return !hasFlag && !selectedTrade;
+  })();
 
   useEffect(() => {
     async function fetchTodayPosts() {
@@ -201,6 +204,11 @@ export default function DashboardPage() {
     task: '🤝',
     reminder: '🔔',
   };
+
+  // Render-time onboarding redirect for genuinely new users (no blank frame).
+  if (needsOnboarding) {
+    return <Navigate to="/onboarding" replace />;
+  }
 
   if (!selectedTrade) {
     return (

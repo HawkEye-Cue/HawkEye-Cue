@@ -102,6 +102,12 @@ export default function App() {
                 <Route path="/keywords" element={<KeywordsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                {/* Catch-all — any unmatched inner path renders the dashboard instead of an
+                    empty <main>. This guarantees the content area is never blank while the
+                    AppShell (sidebar + background) is mounted, e.g. on initial load, refresh,
+                    or an unexpected path. Fixes the "shell visible, main blank until a nav
+                    click" initial-render state. */}
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppShell>
           </AuthGuard>

@@ -72,3 +72,36 @@ describe('Sales route remains reachable (no functionality lost)', () => {
     expect(appTsx).toContain('<Route path="/sales" element={<SalesDashboardPage />} />');
   });
 });
+
+describe('Summit HQ — premium redesign (hero + section nav, charcoal/amber system)', () => {
+  it('uses the shared premium UI kit (HeroHeader + PillTabs)', () => {
+    expect(teamPage).toContain("import { HeroHeader, PillTabs } from '../components/ui';");
+    expect(teamPage).toContain('<HeroHeader');
+    expect(teamPage).toContain('<PillTabs');
+  });
+
+  it('defines the five command-center sections + Sales with anchors', () => {
+    for (const anchor of ['summit-scoreboard', 'summit-leads', 'summit-nests', 'summit-radar', 'summit-workspace', 'summit-sales']) {
+      expect(teamPage).toContain(`id="${anchor}"`);
+    }
+    // Section labels reflect the Flight Path command-center naming.
+    expect(teamPage).toContain('Scoreboard');
+    expect(teamPage).toContain('Flight Path');
+    expect(teamPage).toContain('Hawk Nests');
+    expect(teamPage).toContain('Radar');
+    expect(teamPage).toContain('Workspace');
+  });
+
+  it('the section nav jumps to the anchored section (reuses tab state)', () => {
+    expect(teamPage).toContain('function jumpToSection(id: Tab)');
+    expect(teamPage).toContain("scrollIntoView({ behavior: 'smooth'");
+  });
+
+  it('preserves all existing Summit sections (members, wins, lead nests, stats, calendar)', () => {
+    expect(teamPage).toContain('👥 Team Members');
+    expect(teamPage).toContain('Recent Wins');
+    expect(teamPage).toContain('Lead Nests');
+    expect(teamPage).toContain('Team Stats');
+    expect(teamPage).toContain('Team Calendar');
+  });
+});

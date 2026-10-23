@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useSummit } from '../contexts/SummitContext';
 import SalesDashboardPage from './SalesDashboardPage';
+import { HeroHeader, PillTabs } from '../components/ui';
 import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
 import { folioDisplayName } from '../utils/folioName';
@@ -616,18 +617,44 @@ export default function TeamPage() {
 
   const unreadNotifs = notifications.filter((n) => !n.dismissed).length;
 
+  // Premium Summit HQ section switcher — jumps to the anchored section (one focused
+  // area at a time, less scrolling). Reuses the declared `tab` state. Each pill maps to
+  // a section id rendered below; selecting a pill smooth-scrolls to it.
+  const summitSections: { id: Tab; label: string; anchor: string }[] = [
+    { id: 'manage', label: '🏔️ Scoreboard', anchor: 'summit-scoreboard' },
+    { id: 'leads', label: '🎯 Flight Path', anchor: 'summit-leads' },
+    { id: 'analytics', label: '🪺 Hawk Nests', anchor: 'summit-nests' },
+    { id: 'notifications', label: '📡 Radar', anchor: 'summit-radar' },
+    { id: 'calendar', label: '🗓️ Workspace', anchor: 'summit-workspace' },
+    { id: 'sales', label: '💰 Sales', anchor: 'summit-sales' },
+  ];
+  function jumpToSection(id: Tab) {
+    setTab(id);
+    const sec = summitSections.find((s) => s.id === id);
+    if (sec) {
+      try { document.getElementById(sec.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* ignore */ }
+    }
+  }
+
   return (
+    <div className="space-y-4">
+      {/* ── Premium Summit HQ header + section nav (charcoal/amber identity) ───── */}
+      <HeroHeader
+        title={team.teamName}
+        subtitle={`Summit HQ · ${team.members.length}/${team.maxMembers} members · your team command center`}
+        right={
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs font-bold">
+            🏔️ Summit
+          </span>
+        }
+      />
+      <div className="sticky top-0 z-20 -mx-1 px-1 py-1 bg-[#05080f]/80 backdrop-blur-sm rounded-xl">
+        <PillTabs tabs={summitSections.map((s) => ({ id: s.id, label: s.label }))} active={tab} onChange={jumpToSection} />
+      </div>
+
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {/* Left column: Team info, Members, Wins, Leads */}
-      <div className="min-w-0 space-y-4">
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-white">🏔️ {team.teamName}</h2>
-          <p className="text-xs text-slate-400">Summit · {team.members.length}/{team.maxMembers} members</p>
-        </div>
-      </div>
+      <div id="summit-scoreboard" className="min-w-0 space-y-4 scroll-mt-20">
 
       {error && (
         <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">{error}</div>
@@ -756,6 +783,8 @@ export default function TeamPage() {
         )}
       </div>
 
+      {/* 🏆 Wins — Radar section anchor */}
+      <div id="summit-radar" className="scroll-mt-20" />
       {/* 🏆 Wins */}
       {notifications.length > 0 && (
         <div className="glass-card space-y-2">
@@ -777,6 +806,8 @@ export default function TeamPage() {
         </div>
       )}
 
+      {/* 🎯 Live Lead Claiming — Flight Path section anchor */}
+      <div id="summit-leads" className="scroll-mt-20" />
       {/* 🎯 Live Lead Claiming — first responder claims the opportunity */}
       {(() => {
         // Show the newest leads (last 14 days) so the team can race to claim.
@@ -844,8 +875,8 @@ export default function TeamPage() {
         );
       })()}
 
-      {/* 🪹 Lead Nests by Member */}
-      <div className="glass-card space-y-3">
+      {/* 🪹 Lead Nests by Member — Hawk Nests section */}
+      <div id="summit-nests" className="glass-card space-y-3 scroll-mt-20">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white">🪹 Lead Nests</h3>
           <span className="text-xs text-slate-500">{teamLeads.length} total leads</span>
@@ -1101,8 +1132,8 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* 📅 Team Calendar — syncs with Dashboard */}
-      <div className="glass-card">
+      {/* 📅 Team Calendar — Shared Workspace section */}
+      <div id="summit-workspace" className="glass-card scroll-mt-20">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-white">📅 Team Calendar</h3>
         </div>
@@ -1356,6 +1387,7 @@ export default function TeamPage() {
         </div>
         <SalesDashboardPage />
       </div>
+    </div>
     </div>
   );
 }

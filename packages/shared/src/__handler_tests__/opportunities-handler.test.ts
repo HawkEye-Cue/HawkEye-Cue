@@ -331,3 +331,124 @@ describe('opportunities-handler — D1 Minimal Save & Promote', () => {
     }
   });
 });
+
+// ─── Add Cue regression suite (launch blocker) ──────────────────────────────────
+// Reproduces the exact manual-testing failure and guards the data write for the
+// combinations the Pipeline "Add Cue" form can produce. NOTE: the user-facing failure
+// was a SANDBOX ROUTING GAP (no /opportunities routes registered → 404), fixed in
+// sandbox-stack.ts. The handler itself accepts these payloads — these tests lock that in
+// so a future change can't silently start rejecting a basic manual lead.
+describe('opportunities-handler — Add Cue (manual lead) regression', () => {
+  // The exact payload the Pipeline form sends for the reported reproduction:
+  //   name "Sandbox Test Customer", source "Other", note "Testing Lead Creation",
+  //   policy type + expected premium left blank, worked-by = signed-in user.
+  function addCuePayload(overrides: Record<string, unknown> = {}) {
+    return {
+      keywordId: 'manual-entry',
+      sourceContent: 'Testing Lead Creation',
+      sourcePlatform: 'other',
+      sourceUrl: '',
+      sourceAuthor: 'Sandbox Test Customer',
+      leadSource: 'Other',
+      assignedTo: 'user-123@example.com',
+      ...overrides,
+    };
+  }
+
+  it('creates the reported lead (source Other, optional fields blank) → 201, one OPP, no protocol', async () => {
+    const handler = loadHandler();
+    const res = await handler(event('POST', '/opportunities', addCuePayload()));
+    expect(res.statusCode).toBe(201);
+    const puts = sent.filter((c) => c.name === 'PutCommand');
+    const oppPuts = puts.filter((c) => String(c.input.Item.SK).startsWith('OPP#'));
+    const protoPuts = puts.filter((c) => String(c.input.Item.SK).startsWith('LEAD_PROTOCOL#'));
+    expect(oppPuts).toHaveLength(1);
+    expect(protoPuts).toHaveLength(0); // plain capture — no paid follow-up protocol
+    const item = oppPuts[0].input.Item;
+    expect(item.sourceAuthor).toBe('Sandbox Test Customer');
+    expect(item.sourceContent).toBe('Testing Lead Creation');
+    expect(item.sourcePlatform).toBe('other');
+    expect(item.assignedTo).toBe('user-123@example.com');
+    expect(item.status).toBe('new');
+    // Optional fields left blank persist as null (not rejected, not undefined).
+    expect(item.policyType).toBeNull();
+    expect(item.expectedPremium).toBeNull();
+  });
+
+  it('optional fields truly optional: only name + source, everything else omitted → 201', async () => {
+    const handler = loadHandler();
+    const res = await handler(event('POST', '/opportunities', {
+      keywordId: 'manual-entry',
+      sourcePlatform: 'other',
+      sourceUrl: '',
+      sourceAuthor: 'Minimal Lead',
+    }));
+    expect(res.statusCode).toBe(201);
+    const item = sent.find((c) => c.name === 'PutCommand' && String(c.input.Item.SK).startsWith('OPP#'))!.input.Item;
+    expect(item.sourceAuthor).toBe('Minimal Lead');
+    expect(item.policyType).toBeNull();
+    expect(item.expectedPremium).toBeNull();
+    expect(item.leadSourceGroup).toBeNull();
+    expect(item.contactEmail).toBeNull();
+  });
+
+  it('trade-specific policy type does NOT block creation and is persisted', async () => {
+    const handler = loadHandler();
+    for (const policyType of ['Auto', 'Homeowners', 'Commercial Roof', 'HVAC Maintenance', 'Custom Trade Thing']) {
+      sent = [];
+      const res = await handler(event('POST', '/opportunities', addCuePayload({ policyType })));
+      expect(res.statusCode).toBe(201);
+      const item = sent.find((c) => c.name === 'PutCommand' && String(c.input.Item.SK).startsWith('OPP#'))!.input.Item;
+      expect(item.policyType).toBe(policyType);
+    }
+  });
+
+  it('expected premium, when provided, is stored as given', async () => {
+    const handler = loadHandler();
+    const res = await handler(event('POST', '/opportunities', addCuePayload({ expectedPremium: 1500 })));
+    expect(res.statusCode).toBe(201);
+    const item = sent.find((c) => c.name === 'PutCommand' && String(c.input.Item.SK).startsWith('OPP#'))!.input.Item;
+    expect(item.expectedPremium).toBe(1500);
+  });
+
+  it('rejects an unauthenticated request with 401 and writes nothing', async () => {
+    const handler = loadHandler();
+    const res = await handler({
+      requestContext: { http: { method: 'POST', path: '/opportunities' } }, // no jwt claims
+      body: JSON.stringify(addCuePayload()),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(sent.filter((c) => c.name === 'PutCommand')).toHaveLength(0);
+  });
+
+  it('a plain capture never triggers the paid follow-up entitlement gate (free for Nest)', async () => {
+    const handler = loadHandler();
+    // Even with NO profile (free/unknown), a plain Add Cue succeeds — only promoteToLead gates.
+    sendImpl = async () => ({ Items: [] }); // no PAID_PROFILE
+    const res = await handler(event('POST', '/opportunities', addCuePayload()));
+    expect(res.statusCode).toBe(201);
+  });
+});
+
+// ─── Sandbox infrastructure guard ───────────────────────────────────────────────
+// The actual launch blocker: the sandbox API Gateway never registered /opportunities,
+// so Add Cue 404'd. This locks the routes into the sandbox stack so they can't silently
+// go missing again. Source-level assertion (no CDK synth needed).
+describe('sandbox-stack — registers the Pipeline /opportunities routes', () => {
+  const sandboxStack = readFileSync(resolve(here, '../../../cdk/lib/sandbox-stack.ts'), 'utf8');
+
+  it('creates an opportunities Lambda wired to the sandbox table', () => {
+    expect(sandboxStack).toContain("existingCode('opportunities-handler')");
+    expect(sandboxStack).toContain('table.grantReadWriteData(opportunitiesFn)');
+  });
+
+  it('registers POST+GET /opportunities and the key sub-routes', () => {
+    expect(sandboxStack).toContain("path: '/opportunities',");
+    expect(sandboxStack).toContain("path: '/opportunities/stats'");
+    expect(sandboxStack).toContain("path: '/opportunities/{id}'");
+    expect(sandboxStack).toContain("path: '/opportunities/{id}/status'");
+    expect(sandboxStack).toContain("path: '/opportunities/{id}/promote'");
+    // All opportunities routes go through the Cognito authorizer.
+    expect(sandboxStack).toContain('SandboxOppInt');
+  });
+});

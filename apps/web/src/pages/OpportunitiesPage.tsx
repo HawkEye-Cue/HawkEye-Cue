@@ -5,7 +5,7 @@ import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useMode } from '../contexts/ModeContext';
 import { useSearchParams } from 'react-router-dom';
-import { ApiClient, displayCueAuthor } from '@social-lead-gen/shared';
+import { ApiClient, ApiError, displayCueAuthor } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats, Deal } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
 import LeadProfilePopup from '../components/LeadProfilePopup';
@@ -317,6 +317,24 @@ export default function OpportunitiesPage() {
   async function buildClient() {
     const token = await getToken();
     return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+  }
+
+  // Turn a failed Add-Cue request into a meaningful, SAFE user message instead of a
+  // blanket "Failed to add lead". We map the ApiError status/code to plain guidance and
+  // never surface raw internals. (Previously the catch swallowed everything, which hid
+  // real causes like a missing route (404), expired session (401), or validation (400).)
+  function addLeadErrorMessage(e: unknown): string {
+    if (e instanceof ApiError) {
+      if (e.status === 401) return '⚠️ Your session expired — please sign in again.';
+      if (e.status === 402) return '⚠️ This feature needs an active subscription.';
+      if (e.status === 403) return '⚠️ You don\u2019t have permission to add this lead.';
+      if (e.status === 400) return `⚠️ ${e.message || 'Please check the lead details and try again.'}`;
+      if (e.status === 404) return '⚠️ Couldn\u2019t reach the leads service. Please try again shortly.';
+      if (e.status >= 500) return '⚠️ The server had a problem saving this lead. Please try again.';
+      return `⚠️ ${e.message || 'Could not add lead.'}`;
+    }
+    // Network/offline or unexpected error — keep it safe and generic.
+    return '⚠️ Could not add lead — check your connection and try again.';
   }
 
   // Check tier
@@ -1035,8 +1053,8 @@ export default function OpportunitiesPage() {
                       setShowProtocolEditor(true);
                       localStorage.setItem(`hawkeye_protocol_set_${user?.sub}`, 'true');
                     }
-                  } catch {
-                    showToast('❌ Failed to add lead');
+                  } catch (e) {
+                    showToast(addLeadErrorMessage(e));
                   }
                 }}
                 disabled={!newLeadName.trim()}
@@ -1885,7 +1903,7 @@ const colors = step.type === 'call' ? 'bg-amber-500 border-amber-400' : step.typ
               // Save the suggested response as a note for this lead
               localStorage.setItem(`hawkeye_first_lead_${user?.sub}`, 'true');
               fetchData();
-            } catch { showToast('❌ Failed to add lead'); }
+            } catch (e) { showToast(addLeadErrorMessage(e)); }
           }}
         />
       )}

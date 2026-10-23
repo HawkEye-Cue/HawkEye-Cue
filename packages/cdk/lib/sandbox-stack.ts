@@ -215,6 +215,20 @@ export class SandboxStack extends cdk.Stack {
     table.grantReadWriteData(teamFn);
     teamFn.addToRolePolicy(resendSecretPolicy);
 
+    // ─── Opportunities / Pipeline handler (Add Cue, list, stats, status, promote,
+    //     follow-ups). Previously MISSING from the sandbox, so every Pipeline call 404'd
+    //     and "Add Cue" failed. Reuses the SAME compiled asset + table as prod; only needs
+    //     table read/write (no secrets). Entitlement for paid follow-up routes is gated
+    //     server-side from the user's profile in the same table. ──
+    const opportunitiesFn = new lambda.Function(this, 'SandboxOpportunitiesFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-OpportunitiesHandler',
+      handler: 'index.handler',
+      code: existingCode('opportunities-handler'),
+      description: 'Sandbox: Pipeline opportunities/leads (Add Cue, status, promote, follow-ups)',
+    });
+    table.grantReadWriteData(opportunitiesFn);
+
     // ─── Folio recap (on-demand only; NO EventBridge schedule in the sandbox) ──
     const folioRecapFn = new lambda.Function(this, 'SandboxFolioRecapFn', {
       ...lambdaDefaults,
@@ -405,6 +419,20 @@ export class SandboxStack extends cdk.Stack {
     httpApi.addRoutes({ path: '/team/notifications/{id}/dismiss', methods: [apigatewayv2.HttpMethod.POST], integration: teamInt, authorizer });
     httpApi.addRoutes({ path: '/team/folios', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
     httpApi.addRoutes({ path: '/team/member/{memberUserId}/pipeline', methods: [apigatewayv2.HttpMethod.GET], integration: teamInt, authorizer });
+
+    // ─── Opportunities / Pipeline routes (mirror of prod api-stack) ───────
+    // Capture/list/stats/status/delete are free (Nest); promote + follow-up protocol
+    // routes are gated server-side to Soar+ inside the handler. All authenticated.
+    const oppInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxOppInt', opportunitiesFn);
+    httpApi.addRoutes({ path: '/opportunities', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: oppInt, authorizer });
+    httpApi.addRoutes({ path: '/opportunities/stats', methods: [apigatewayv2.HttpMethod.GET], integration: oppInt, authorizer });
+    httpApi.addRoutes({ path: '/opportunities/protocol-template', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: oppInt, authorizer });
+    httpApi.addRoutes({ path: '/opportunities/{id}', methods: [apigatewayv2.HttpMethod.DELETE], integration: oppInt, authorizer });
+    httpApi.addRoutes({ path: '/opportunities/{id}/status', methods: [apigatewayv2.HttpMethod.PUT], integration: oppInt, authorizer });
+    httpApi.addRoutes({ path: '/opportunities/{id}/promote', methods: [apigatewayv2.HttpMethod.POST], integration: oppInt, authorizer });
+    httpApi.addRoutes({ path: '/opportunities/{id}/followups', methods: [apigatewayv2.HttpMethod.GET], integration: oppInt, authorizer });
+    httpApi.addRoutes({ path: '/opportunities/{id}/followups/{stepIdx}', methods: [apigatewayv2.HttpMethod.PUT], integration: oppInt, authorizer });
+    httpApi.addRoutes({ path: '/opportunities/{id}/protocol', methods: [apigatewayv2.HttpMethod.PUT], integration: oppInt, authorizer });
 
     // ─── NEW: AI routes (authenticated, same Cognito authorizer) ──────────
     const flockImportInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxFlockImportInt', flockImportFn);

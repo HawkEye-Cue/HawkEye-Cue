@@ -5,9 +5,10 @@ import { useToast } from '../contexts/ToastContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useSummit } from '../contexts/SummitContext';
 import SalesDashboardPage from './SalesDashboardPage';
-import { HeroHeader, PillTabs } from '../components/ui';
+import { HeroHeader, PillTabs, BoldStat, StatGrid, Panel } from '../components/ui';
 import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
+import TeamMemberPipeline from '../components/TeamMemberPipeline';
 import { folioDisplayName } from '../utils/folioName';
 
 interface TeamMember {
@@ -83,6 +84,9 @@ interface TeamAnalytics {
     revenue: number;
     flockRate: number;
   }[];
+  // Team-wide pipeline counts by deal stage (read-only team view for Flight Path).
+  // Returned by GET /team/analytics; same-team enforced server-side.
+  stageCounts?: { prospect: number; contacted: number; quoted: number; closing: number; won: number; lost: number };
 }
 
 interface DealNotification {
@@ -142,6 +146,10 @@ export default function TeamPage() {
   const [summitInactive, setSummitInactive] = useState(false);
   const [resendingInvite, setResendingInvite] = useState<string | null>(null);
   const [revokingInvite, setRevokingInvite] = useState<string | null>(null);
+  // Hawk Nests → "open workspace" slide-over. Holds the teammate whose pipeline is being
+  // viewed (read-only, same-team enforced server-side via GET /team/member/{id}/pipeline,
+  // the same route the reusable TeamMemberPipeline component uses).
+  const [openNest, setOpenNest] = useState<{ userId: string; name: string } | null>(null);
 
   // Shared data states
   const [teamCalendar, setTeamCalendar] = useState<TeamCalendarEvent[]>([]);
@@ -652,9 +660,63 @@ export default function TeamPage() {
         <PillTabs tabs={summitSections.map((s) => ({ id: s.id, label: s.label }))} active={tab} onChange={jumpToSection} />
       </div>
 
+      {/* ── 🏔️ SUMMIT SCOREBOARD — the team performance overview at a glance.
+          Prominent metric tiles (revenue, sales, active leads, conversion) sit ABOVE the
+          two-column workspace so the most important business numbers are immediately
+          visible. Sourced from the existing folio-filtered `stats` + `teamAnalytics` and
+          live `teamLeads` — no new metrics invented. Spans full width across both columns. */}
+      <div id="summit-scoreboard" className="scroll-mt-20 space-y-3">
+        {(() => {
+          // Team-wide numbers from the reused hooks. `stats` is folio-filtered (current
+          // period); `teamLeads` is the live shared pipeline; `teamAnalytics` adds deal/
+          // conversion context. We only DISPLAY real values and guard every divide.
+          const revenue = stats?.totalWonValue ?? teamAnalytics?.totalRevenue ?? 0;
+          const wonDeals = stats?.members?.reduce((s, m) => s + (m.wonDeals || 0), 0)
+            ?? teamAnalytics?.wonDeals ?? 0;
+          const openLeads = teamLeads.filter((l) => l.status !== 'converted' && l.status !== 'lost').length;
+          const totalDeals = teamAnalytics?.totalDeals ?? 0;
+          // Conversion only shown when we have a reliable denominator (avoids 0/0 noise).
+          const conversion = totalDeals > 0 ? Math.round((wonDeals / totalDeals) * 100) : null;
+          return (
+            <StatGrid cols={4}>
+              <BoldStat icon="💰" label={`Team Revenue${selectedFolio === 'all' ? ' (All Time)' : ' (Folio)'}`} value={`$${revenue.toLocaleString()}`} />
+              <BoldStat icon="🏆" label="Sales Closed" value={wonDeals} />
+              <BoldStat icon="🎯" label="Active Leads" value={openLeads} />
+              <BoldStat icon="📈" label="Conversion" value={conversion === null ? '—' : `${conversion}%`} />
+            </StatGrid>
+          );
+        })()}
+
+        {/* Individual employee performance — a compact, scannable row of per-member
+            production (revenue + sales this folio). Ranked, so the team sees who's
+            flying highest without opening a separate tab. Reuses folio-filtered `stats`. */}
+        {stats && stats.members.length > 0 && (
+          <Panel title="🏔️ Individual Performance" right={<span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : 'Current Folio'}</span>}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {[...stats.members].sort((a, b) => (b.wonValue || 0) - (a.wonValue || 0)).map((m, i) => {
+                const colorIdx = getMemberColorIndex(m.email);
+                const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                const name = displayNames[m.email] || m.email.split('@')[0];
+                return (
+                  <div key={m.email} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-xs">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span>
+                      <span className={`w-2 h-2 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
+                      <span className="text-xs text-white font-semibold truncate">{name}</span>
+                    </div>
+                    <p className="text-lg font-extrabold text-emerald-300 leading-none">${(m.wonValue || 0).toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{m.wonDeals || 0} sales · {m.activeDeals || 0} active</p>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+        )}
+      </div>
+
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {/* Left column: Team info, Members, Wins, Leads */}
-      <div id="summit-scoreboard" className="min-w-0 space-y-4 scroll-mt-20">
+      <div className="min-w-0 space-y-4">
 
       {error && (
         <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">{error}</div>
@@ -806,8 +868,72 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* 🎯 Live Lead Claiming — Flight Path section anchor */}
-      <div id="summit-leads" className="scroll-mt-20" />
+      {/* 🛩️ FLIGHT PATH — the signature interactive sales pipeline.
+          A visual stage-column view of where the TEAM's opportunities stand, built from
+          the real team-wide `stageCounts` returned by GET /team/analytics (same-team
+          enforced server-side). This is a READ-ONLY team overview: the backend exposes no
+          route for an admin to move a TEAMMATE's deal stage, so we surface the distribution
+          and direct paths into existing actions (claim below, open a member's workspace in
+          Hawk Nests) rather than fabricating a mutation that isn't supported. The
+          first-responder "Up for Grabs" claiming stays a separate, real interaction. */}
+      <div id="summit-leads" className="scroll-mt-20 space-y-3">
+        {teamAnalytics?.stageCounts && (() => {
+          const sc = teamAnalytics.stageCounts!;
+          // Order stages along the natural flight path (prospect → won), with lost shown
+          // separately so it doesn't distort the forward funnel.
+          const flow: { key: keyof typeof sc; label: string; icon: string; color: string }[] = [
+            { key: 'prospect', label: 'Prospect', icon: '🌱', color: '#64748b' },
+            { key: 'contacted', label: 'Contacted', icon: '📞', color: '#38bdf8' },
+            { key: 'quoted', label: 'Quoted', icon: '📝', color: '#a78bfa' },
+            { key: 'closing', label: 'Closing', icon: '🤝', color: '#fbbf24' },
+            { key: 'won', label: 'Won', icon: '🏆', color: '#34d399' },
+          ];
+          const maxCount = Math.max(1, ...flow.map((f) => sc[f.key] || 0));
+          const activeTotal = flow.reduce((s, f) => s + (sc[f.key] || 0), 0);
+          return (
+            <Panel
+              title="🛩️ Flight Path — Team Pipeline"
+              right={<span className="text-[10px] text-slate-500">{activeTotal} in flight · {sc.lost || 0} lost</span>}
+            >
+              {activeTotal === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-4">No opportunities in the pipeline yet. New leads land in the nests below.</p>
+              ) : (
+                <>
+                  {/* Stage columns — each shows the team-wide count + a proportional bar.
+                      Clicking a column focuses the Hawk Nests below so you can act on it. */}
+                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                    {flow.map((f, i) => {
+                      const count = sc[f.key] || 0;
+                      const h = Math.round((count / maxCount) * 72) + 6;
+                      return (
+                        <button
+                          key={f.key}
+                          onClick={() => { try { document.getElementById('summit-nests')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* ignore */ } }}
+                          className="group flex flex-col items-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-2 transition-all"
+                          title={`${count} opportunit${count === 1 ? 'y' : 'ies'} — ${f.label}`}
+                        >
+                          <span className="text-base leading-none mb-1">{f.icon}</span>
+                          <span className="text-lg font-extrabold text-white leading-none">{count}</span>
+                          <div className="w-full h-[78px] flex items-end mt-1.5">
+                            <div className="w-full rounded-t-md transition-all" style={{ height: `${h}px`, background: f.color }} />
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-1 text-center leading-tight">{f.label}</span>
+                          {i < flow.length - 1 && <span className="hidden" aria-hidden />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                    Team-wide pipeline across all members (read-only overview). To act on a lead, claim one below or open a teammate's workspace in Hawk Nests.
+                    Each person moves their own opportunities from their pipeline.
+                  </p>
+                </>
+              )}
+            </Panel>
+          );
+        })()}
+      </div>
+
       {/* 🎯 Live Lead Claiming — first responder claims the opportunity */}
       {(() => {
         // Show the newest leads (last 14 days) so the team can race to claim.
@@ -970,25 +1096,53 @@ export default function TeamPage() {
                   const memberStat = stats?.members?.find((m) => m.email === member.email);
                   const wonDeals = memberStat?.wonDeals || 0;
                   const wonValue = memberStat?.wonValue || 0;
+                  const activeDeals = memberStat?.activeDeals || 0;
+                  const roleLabel = member.role === 'admin' ? '👑 Admin' : '👤 Member';
                   return (
-                    <button
+                    <div
                       key={member.userId}
-                      onClick={() => setLeadFilter(isActive ? 'all' : member.email)}
-                      className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${isActive ? `${MEMBER_BORDER_COLORS[colorIdx]} ${MEMBER_BG_COLORS[colorIdx]} scale-[1.03] shadow-lg` : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
+                      className={`relative flex flex-col p-4 rounded-xl border-2 transition-all ${isActive ? `${MEMBER_BORDER_COLORS[colorIdx]} ${MEMBER_BG_COLORS[colorIdx]} shadow-lg` : 'border-white/15 bg-slate-800 hover:border-amber-500/40'}`}
                     >
-                      <span className="text-3xl mb-1">🪹</span>
+                      {/* Lead count badge */}
                       <div className={`absolute top-2 right-2 w-7 h-7 ${MEMBER_COLORS[colorIdx]} rounded-full flex items-center justify-center shadow-md`}>
                         <span className="text-xs font-bold text-white">{memberLeads.length}</span>
                       </div>
-                      <span className="text-xs text-white mt-1 font-medium text-center leading-tight">{name}</span>
-                      <div className="flex flex-col items-center gap-0.5 mt-1">
-                        <div className="flex gap-2">
-                          <span className="text-[9px] text-slate-400">{memberLeads.length} leads</span>
-                          <span className="text-[9px] text-green-400">{wonDeals} sales</span>
+                      {/* Tap header toggles this nest's lead filter below */}
+                      <button
+                        onClick={() => setLeadFilter(isActive ? 'all' : member.email)}
+                        className="flex flex-col items-center text-center"
+                        title={isActive ? 'Hide this nest\u2019s leads' : 'Show this nest\u2019s leads'}
+                      >
+                        <span className="text-2xl mb-0.5">🪹</span>
+                        <span className="text-xs text-white font-semibold leading-tight truncate max-w-full">{name}</span>
+                        <span className="text-[9px] text-slate-500">{roleLabel}</span>
+                      </button>
+                      {/* Performance mini-stats */}
+                      <div className="mt-2 grid grid-cols-3 gap-1 text-center">
+                        <div>
+                          <p className="text-xs font-extrabold text-white leading-none">{memberLeads.length}</p>
+                          <p className="text-[8px] text-slate-500 uppercase">Leads</p>
                         </div>
-                        {wonValue > 0 && <span className="text-[9px] text-green-300 font-medium">${wonValue.toLocaleString()}</span>}
+                        <div>
+                          <p className="text-xs font-extrabold text-emerald-400 leading-none">{wonDeals}</p>
+                          <p className="text-[8px] text-slate-500 uppercase">Sales</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-extrabold text-amber-400 leading-none">{activeDeals}</p>
+                          <p className="text-[8px] text-slate-500 uppercase">Active</p>
+                        </div>
                       </div>
-                    </button>
+                      {wonValue > 0 && (
+                        <p className="text-[10px] text-emerald-300 font-bold text-center mt-1.5">${wonValue.toLocaleString()} sold</p>
+                      )}
+                      {/* Open workspace — reuses the same-team pipeline slide-over */}
+                      <button
+                        onClick={() => setOpenNest({ userId: member.userId, name })}
+                        className="mt-2 w-full py-1.5 rounded-lg bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 text-[10px] font-bold text-amber-300 transition-all"
+                      >
+                        Open workspace →
+                      </button>
+                    </div>
                   );
                 });
               })()}
@@ -1079,21 +1233,21 @@ export default function TeamPage() {
             <span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : currentFolio ? folioDisplayName(`${currentFolio.start} to ${currentFolio.end}`) : 'Current Folio'}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-green-400">${(stats.totalWonValue || 0).toLocaleString()}</p>
-              <p className="text-xs text-slate-400">Premium (Folio)</p>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
+              <p className="text-xl font-extrabold text-emerald-300">${(stats.totalWonValue || 0).toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Premium (Folio)</p>
             </div>
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-blue-400">{stats.members.reduce((s, m) => s + (m.wonDeals || 0), 0)}</p>
-              <p className="text-xs text-slate-400">Won</p>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+              <p className="text-xl font-extrabold text-white">{stats.members.reduce((s, m) => s + (m.wonDeals || 0), 0)}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Won</p>
             </div>
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-purple-400">{teamLeads.length}</p>
-              <p className="text-xs text-slate-400">Total Leads</p>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+              <p className="text-xl font-extrabold text-white">{teamLeads.length}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Total Leads</p>
             </div>
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-amber-400">{teamAnalytics?.flockCompletionRate ?? 0}%</p>
-              <p className="text-xs text-slate-400">Flock Rate</p>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+              <p className="text-xl font-extrabold text-amber-300">{teamAnalytics?.flockCompletionRate ?? 0}%</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Flock Rate</p>
             </div>
           </div>
 
@@ -1388,6 +1542,20 @@ export default function TeamPage() {
         <SalesDashboardPage />
       </div>
     </div>
+
+    {/* 🪺 Hawk Nest workspace — a teammate's read-only pipeline slide-over, opened from a
+        nest card. Reuses the existing TeamMemberPipeline component + GET /team/member/{id}/
+        pipeline route (same-team enforced server-side), so permissions + data isolation are
+        preserved and no new backend logic is added. */}
+    {openNest && (
+      <TeamMemberPipeline
+        memberUserId={openNest.userId}
+        memberName={openNest.name}
+        folioStart={selectedFolio === 'all' ? undefined : currentFolio?.start}
+        folioEnd={selectedFolio === 'all' ? undefined : currentFolio?.end}
+        onClose={() => setOpenNest(null)}
+      />
+    )}
     </div>
   );
 }

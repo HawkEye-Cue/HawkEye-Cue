@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useSummit } from '../contexts/SummitContext';
+import SalesDashboardPage from './SalesDashboardPage';
 import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
 import { folioDisplayName } from '../utils/folioName';
@@ -93,7 +94,9 @@ interface DealNotification {
   dismissed: boolean;
 }
 
-type Tab = 'manage' | 'calendar' | 'leads' | 'analytics' | 'notifications';
+// 'sales' embeds the existing SalesDashboardPage so Summit HQ carries the COMPLETE
+// Sales experience with inherent feature parity (same component, same data hooks).
+type Tab = 'manage' | 'calendar' | 'leads' | 'analytics' | 'sales' | 'notifications';
 
 const MEMBER_COLORS = [
   'bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500',
@@ -607,6 +610,7 @@ export default function TeamPage() {
     { id: 'calendar', label: 'Calendar', icon: '📅' },
     { id: 'leads', label: 'Leads', icon: '🎯' },
     { id: 'analytics', label: 'Stats', icon: '📊' },
+    { id: 'sales', label: 'Sales', icon: '💰' },
     { id: 'notifications', label: 'Wins', icon: '🏆' },
   ];
 
@@ -1336,6 +1340,22 @@ export default function TeamPage() {
       </div>
 
       </div>{/* end right column */}
+
+      {/* ── Sales & Revenue — the COMPLETE Sales experience embedded in Summit HQ ──
+          Renders the exact standalone SalesDashboardPage component (same data hooks,
+          same team/individual sales, revenue, attribution, reporting) so Summit HQ has
+          inherent feature parity with the standalone /sales page. Spans the full width
+          below the two team columns. Only the presentation location changes; no Sales
+          business logic is duplicated or rewritten. Permissions + team data isolation
+          are enforced by the same backend the standalone page uses. */}
+      <div id="summit-sales" className="lg:col-span-2 space-y-3">
+        <div className="flex items-center gap-2 pt-2">
+          <span className="text-xl">💰</span>
+          <h2 className="text-lg font-bold text-white">Sales &amp; Revenue</h2>
+          <span className="text-[11px] text-slate-500">Team &amp; individual production</span>
+        </div>
+        <SalesDashboardPage />
+      </div>
     </div>
   );
 }

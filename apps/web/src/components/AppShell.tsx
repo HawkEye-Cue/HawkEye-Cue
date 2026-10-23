@@ -63,7 +63,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
   // Once Summit access is confirmed, surface "Summit HQ" as a PRIMARY nav item so it
   // feels like an automatic upgrade rather than something buried in Settings.
   const summitNavItem = { path: '/team', label: 'Summit HQ', icon: '🏔️', tour: 'summit' };
-  const navItems = isSummit ? [...baseNavItems, summitNavItem] : baseNavItems;
+  // For Summit users, the complete Sales experience is embedded INSIDE Summit HQ, so the
+  // standalone "Sales" primary nav item is hidden to avoid duplication. Soar (and any
+  // non-Summit) users keep the standalone Sales tab exactly as before. The /sales route
+  // itself stays registered and reachable (direct URL / Summit HQ embed both work), so
+  // no Sales functionality or history is lost.
+  const navWithSummit = isSummit
+    ? [...baseNavItems.filter((i) => i.path !== '/sales'), summitNavItem]
+    : baseNavItems;
+  const navItems = navWithSummit;
   // Avoid showing the team entry twice: when Summit HQ is in the primary nav, drop the
   // legacy "Summit (Team)" item from the "More" menu. Non-Summit users still see it in
   // More as the discovery/upgrade path.

@@ -28,7 +28,10 @@ describe('AppShell — Summit HQ navigation promotion', () => {
 
   it('defines a Summit HQ primary nav item and adds it only when isSummit', () => {
     expect(appShell).toContain("label: 'Summit HQ'");
-    expect(appShell).toContain('const navItems = isSummit ? [...baseNavItems, summitNavItem] : baseNavItems;');
+    // navItems is built from navWithSummit, which adds Summit HQ (and, for Summit,
+    // removes the standalone /sales item — now embedded inside Summit HQ).
+    expect(appShell).toContain("[...baseNavItems.filter((i) => i.path !== '/sales'), summitNavItem]");
+    expect(appShell).toContain('const navItems = navWithSummit;');
   });
 
   it('does not duplicate the team entry in the More menu when Summit HQ is primary', () => {

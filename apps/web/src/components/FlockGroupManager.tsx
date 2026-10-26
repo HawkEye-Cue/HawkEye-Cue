@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
+import SmartFlockImport from './SmartFlockImport';
 
 interface FlockGroup {
   id: string;
@@ -49,6 +50,13 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
   const [newDays, setNewDays] = useState<number[]>([]);
   const [newAnyday, setNewAnyday] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
+
+  // Re-read the saved groups from storage. SmartFlockImport writes directly to the
+  // same localStorage key, so after it closes we refresh so imported groups appear.
+  function reloadGroupsFromStorage() {
+    try { setGroups(JSON.parse(localStorage.getItem(storageKey) || '[]')); } catch { /* ignore */ }
+  }
 
   // On first open, import existing calendar flock events into the groups list (no duplicates)
   useEffect(() => {
@@ -249,6 +257,16 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
+          {/* Smart Flock Import — prominent AI entry point. Opens the existing
+              SmartFlockImport component; manual "+ Add a Group" remains below. */}
+          <button
+            onClick={() => setShowImport(true)}
+            className="w-full text-left p-3 rounded-xl bg-amber-500/10 border border-amber-500/40 hover:bg-amber-500/15 hover:border-amber-500/60 transition-all active:scale-[0.99]"
+          >
+            <p className="text-sm font-bold text-amber-200">📸 Import Groups with AI</p>
+            <p className="text-[11px] text-slate-300 mt-0.5">Upload screenshots of your Facebook groups and rules. HawkEye organizes them for you.</p>
+          </button>
+
           {/* Add New Group */}
           <details className="p-3 bg-white/5 border border-white/10 rounded-xl">
             <summary className="text-xs font-medium text-white cursor-pointer">+ Add a Group</summary>
@@ -438,6 +456,18 @@ export default function FlockGroupManager({ onClose }: { onClose: () => void }) 
           </button>
         </div>
       </div>
+
+      {/* Smart Flock Import — existing component, opened from the button above.
+          On close, refresh the list so any imported groups show immediately.
+          Wrapped with stopPropagation so the import modal's own backdrop click
+          doesn't also bubble up and close this Manage Flock Groups modal. */}
+      {showImport && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <SmartFlockImport
+            onClose={() => { setShowImport(false); reloadGroupsFromStorage(); }}
+          />
+        </div>
+      )}
     </div>
   );
 }

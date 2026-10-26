@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { peekInvite } from '../lib/pendingInvite';
+
+// After auth, route a user who arrived via a team invite back to /team?invite=<token>
+// so the invite is accepted for their account; otherwise land on the dashboard.
+function postAuthDestination(): string {
+  const invite = peekInvite();
+  return invite ? `/team?invite=${encodeURIComponent(invite)}` : '/';
+}
 
 function cognitoErrorMessage(err: unknown): string {
   if (err instanceof Error) {
@@ -37,9 +45,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      // If login succeeded without MFA, navigate to dashboard
-      // The mfaPending state will cause a re-render showing the MFA screen if needed
-      navigate('/');
+      // If login succeeded without MFA, navigate to the post-auth destination
+      // (pending team invite, if any, else dashboard). The mfaPending state will cause a
+      // re-render showing the MFA screen if needed.
+      navigate(postAuthDestination());
     } catch (err) {
       if (err instanceof Error && err.name === 'UserNotConfirmedException') {
         navigate('/confirm', { state: { email } });
@@ -61,7 +70,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await confirmMfa(mfaCode);
-      navigate('/');
+      navigate(postAuthDestination());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code. Please try again.');
     } finally {

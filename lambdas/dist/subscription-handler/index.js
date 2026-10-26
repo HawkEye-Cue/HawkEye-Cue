@@ -20,13 +20,36 @@ const TIER_PRICE_ENV = {
   team: 'STRIPE_PRICE_TEAM',
 };
 
+// AI generation limits keyed by the CANONICAL tier (free | soar | team). Legacy /
+// alias labels must be normalized (normalizeTier) before lookup so a Summit customer
+// is never silently dropped to the free limit.
 const AI_GENERATION_LIMITS = {
   free: 2,
-  base: 300,
-  growth: 300,
   soar: 300,
   team: 500,
 };
+
+// ─── Canonical tier normalization (single source of truth) ─────────────────────
+// Internal canonical tiers are: 'free', 'soar', 'team'. Everything else is an alias:
+//   nest / none / expired / '' / null  → free
+//   summit                              → team   (Summit is the marketing name for Team)
+//   base / growth / flight / pro        → soar   (legacy price labels)
+// Any UNRECOGNIZED value normalizes to 'free' — we NEVER silently upgrade an unknown
+// label into a paid tier. (The webhook additionally logs unknown paid metadata.)
+// NOTE: this map is intentionally duplicated verbatim in stripe-webhook/index.js and
+// team-handler/index.js (the compiled Lambda bundles cannot import from packages/shared).
+// A parity test (tier-normalization.test.ts) asserts all three copies agree.
+function normalizeTier(raw) {
+  const t = (raw || 'free').toString().toLowerCase();
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t;
+  return 'free'; // nest/none/expired/'' and any unrecognized label
+}
+
+function aiLimitForTier(tier) {
+  return AI_GENERATION_LIMITS[normalizeTier(tier)] ?? AI_GENERATION_LIMITS.free;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -66,13 +89,19 @@ function safeReturnBase(origin) {
   return DEFAULT_APP_ORIGIN;
 }
 
+// Which Secrets Manager secret holds the Stripe key. Defaults to the LIVE secret so
+// production behavior is unchanged when STRIPE_SECRET_ID is unset; the sandbox sets
+// STRIPE_SECRET_ID='SocialLeadGen/sandbox/Stripe' (TEST) and grants IAM only to it, so
+// the isolated sandbox exercises TEST Stripe instead of failing closed on the LIVE arn.
+const STRIPE_SECRET_ID = process.env.STRIPE_SECRET_ID || 'SocialLeadGen/Stripe';
+
 // Fetch Stripe secret key from Secrets Manager (cached per Lambda warm instance)
 let stripeInstance = null;
 async function getStripe() {
   if (stripeInstance) return stripeInstance;
 
   const result = await secretsClient.send(
-    new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Stripe' })
+    new GetSecretValueCommand({ SecretId: STRIPE_SECRET_ID })
   );
 
   const secret = JSON.parse(result.SecretString);
@@ -210,12 +239,15 @@ async function handleGetSubscription(userId, event) {
     }
   }
 
+  // Report the CANONICAL tier so the client and AI-limit lookup always agree
+  // (e.g. a stored 'summit' is reported as 'team' with the 500 limit, never free).
+  const canonicalTier = normalizeTier(tier);
   return ok({
-    tier,
+    tier: canonicalTier,
     status: user.subscriptionStatus ?? 'none',
     trialEndsAt: user.trialEndsAt ?? null,
     aiGenerationsUsed: user.aiGenerationsUsed ?? 0,
-    aiGenerationsLimit: AI_GENERATION_LIMITS[tier] ?? 2,
+    aiGenerationsLimit: aiLimitForTier(canonicalTier),
     currentPeriodEnd: user.subscriptionCurrentPeriodEnd ?? null,
     cancelAtPeriodEnd: Boolean(user.subscriptionCancelAtPeriodEnd),
     stripeCustomerId: user.stripeCustomerId ?? null,
@@ -337,11 +369,25 @@ async function handleCheckout(userId, body, origin) {
   const session = await stripe.checkout.sessions.create(sessionParams);
 
   // Disclose the first charge (amount + date) so the UI can show it before the user
-  // confirms. Stripe Checkout also shows this, but returning it lets our UI be explicit.
-  const TIER_PRICE_USD = { soar: 24.99, team: 99.99, summit: 99.99 };
+  // confirms. The amount comes from the ACTUAL configured Stripe Price (unit_amount)
+  // — never a hardcoded table — so disclosure can never drift from real billing. If
+  // the price can't be read we return null (UI falls back to Stripe Checkout's own
+  // display) rather than guessing.
+  let firstChargeAmount = null;
+  let firstChargeCurrency = null;
+  try {
+    const price = await stripe.prices.retrieve(priceId);
+    if (price && typeof price.unit_amount === 'number') {
+      firstChargeAmount = price.unit_amount / 100; // Stripe amounts are in minor units
+      firstChargeCurrency = (price.currency || 'usd').toUpperCase();
+    }
+  } catch (e) {
+    console.error('Could not retrieve Stripe price for disclosure:', e.message);
+  }
   return ok({
     checkoutUrl: session.url,
-    firstChargeAmount: TIER_PRICE_USD[tier] ?? null,
+    firstChargeAmount,
+    firstChargeCurrency,
     firstChargeAt: new Date(firstChargeAt * 1000).toISOString(),
     trialPreserved: trialActive,
     trialEndsAt: user.trialEndsAt ?? null,

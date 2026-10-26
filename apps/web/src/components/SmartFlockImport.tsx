@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
-import { ApiClient } from '@social-lead-gen/shared';
+import { ApiClient, normalizeFacebookGroupUrl } from '@social-lead-gen/shared';
 import type { ImportedFlockGroup } from '@social-lead-gen/shared';
 
 // Mirrors the FlockGroup shape used by FlockGroupManager + localStorage so imported
@@ -18,13 +18,20 @@ interface FlockGroup {
 // A reviewable row: the AI suggestion plus the user's editable corrections.
 interface ReviewRow extends ImportedFlockGroup {
   _rowId: string;
-  link: string;      // user can add the group link during review
-  approved: boolean; // included in the batch save
+  link: string;        // user can add the group link during review
+  approved: boolean;   // included in the batch save
+  // The user must explicitly confirm the posting days (AI days are only a suggestion).
+  // Starts false; set true when the user clicks "Confirm days"; RESET to false whenever
+  // the day selection changes, so a confident-but-wrong AI day can never be saved
+  // without a deliberate human confirmation of the final selection.
+  daysConfirmed: boolean;
 }
 
 const DAY_LABELS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_IMAGES = 8;
+const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8MB per image (matches Send-to-HawkEye)
+const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 
 async function fileToPayload(file: File): Promise<{ data: string; format: string }> {
   const buf = await file.arrayBuffer();
@@ -50,17 +57,92 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
   const storageKey = `hawkeye_flock_groups_${user?.sub}`;
 
   const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]); // object URLs, index-aligned with files
   const [analyzing, setAnalyzing] = useState(false);
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(e.target.files || []);
-    const combined = [...files, ...picked].slice(0, MAX_IMAGES);
-    setFiles(combined);
+  // Shared intake for BOTH file-picker and clipboard paste. Validates type/size,
+  // dedupes (by name+size), and enforces the 8-image cap. Returns a summary message.
+  const addFiles = useCallback((incoming: File[]) => {
+    if (incoming.length === 0) return;
     setError(null);
+    setFiles((prev) => {
+      const next = [...prev];
+      const seen = new Set(prev.map((f) => `${f.name}:${f.size}`));
+      const rejected: string[] = [];
+      const tooBig: string[] = [];
+      let addedAny = false;
+      for (const f of incoming) {
+        if (next.length >= MAX_IMAGES) { rejected.push(`max ${MAX_IMAGES} images`); break; }
+        const type = (f.type || '').toLowerCase();
+        if (!ACCEPTED_TYPES.includes(type)) { rejected.push(f.name || 'unsupported file'); continue; }
+        if (f.size > MAX_FILE_BYTES) { tooBig.push(f.name || 'image'); continue; }
+        const key = `${f.name}:${f.size}`;
+        if (seen.has(key)) continue; // dedupe
+        seen.add(key);
+        next.push(f);
+        addedAny = true;
+      }
+      const msgs: string[] = [];
+      if (tooBig.length) msgs.push(`Too large (max 8MB): ${tooBig.join(', ')}`);
+      if (rejected.length) msgs.push(`Skipped: ${rejected.join(', ')}`);
+      if (msgs.length) setError(msgs.join(' · '));
+      else if (!addedAny && incoming.length) setError('Those images were already added.');
+      return next;
+    });
+  }, []);
+
+  // Keep object-URL previews in sync with files (and revoke on cleanup).
+  useEffect(() => {
+    const urls = files.map((f) => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => { urls.forEach((u) => URL.revokeObjectURL(u)); };
+  }, [files]);
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    addFiles(Array.from(e.target.files || []));
+    e.target.value = ''; // allow re-picking the same file
   }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // Clipboard paste — active only while this modal is mounted. Ignores pastes that
+  // target a text field (so pasting into name/link inputs still works normally).
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+      }
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imgs: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it.kind === 'file' && it.type.startsWith('image/')) {
+          const f = it.getAsFile();
+          if (f) {
+            // Clipboard images often have no name — give them a friendly, unique one.
+            const ext = (f.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+            const named = new File([f], f.name || `pasted-${Date.now()}-${i}.${ext}`, { type: f.type });
+            imgs.push(named);
+          }
+        }
+      }
+      if (imgs.length > 0) {
+        e.preventDefault();
+        addFiles(imgs);
+        showToast(`📋 Added ${imgs.length} pasted screenshot${imgs.length !== 1 ? 's' : ''}`);
+      }
+    }
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [addFiles, showToast]);
 
   async function analyze() {
     if (files.length === 0) { setError('Add at least one screenshot first.'); return; }
@@ -76,15 +158,25 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
         setRows([]);
         return;
       }
-      setRows(groups.map((g, i) => ({
-        ...g,
-        _rowId: `row-${i}-${Math.random().toString(36).slice(2, 6)}`,
-        link: '',
-        // Default-approve only rows where the AI actually found rules AND a timing
-        // (specific days or any-day). Rows with no rules start UNapproved so the user
-        // must consciously set days before saving — promotion is never assumed.
-        approved: g.rulesFound && (g.anyday || g.postingDays.length > 0) && g.name.trim().length > 0,
-      })));
+      setRows(groups.map((g, i) => {
+        // Prefill the link ONLY if the AI returned one it actually read from the
+        // screenshot (backend may include `link`/`url`). We never invent a URL; if the
+        // extracted value isn't a valid group link we leave the field blank for the
+        // user to paste. A valid URL is required before saving (see saveApproved).
+        const extracted = (g as { link?: string; url?: string }).link ?? (g as { url?: string }).url ?? '';
+        const norm = extracted ? normalizeFacebookGroupUrl(extracted) : { ok: false, url: undefined };
+        return {
+          ...g,
+          _rowId: `row-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          link: norm.ok ? (norm.url as string) : '',
+          // Default-approve only rows where the AI actually found rules AND a timing
+          // (specific days or any-day). Rows with no rules start UNapproved so the user
+          // must consciously set days before saving — promotion is never assumed.
+          approved: g.rulesFound && (g.anyday || g.postingDays.length > 0) && g.name.trim().length > 0,
+          // AI days are a SUGGESTION — always require explicit confirmation before save.
+          daysConfirmed: false,
+        };
+      }));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not analyze the screenshots.');
     } finally {
@@ -103,8 +195,14 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
       const postingDays = r.postingDays.includes(day)
         ? r.postingDays.filter((d) => d !== day)
         : [...r.postingDays, day].sort((a, b) => a - b);
-      return { ...r, postingDays };
+      // Any change to the day selection invalidates a prior confirmation.
+      return { ...r, postingDays, daysConfirmed: false };
     }));
+  }
+
+  // Explicit per-row confirmation of the final posting-day selection.
+  function confirmDays(rowId: string) {
+    setRows((prev) => prev.map((r) => (r._rowId === rowId ? { ...r, daysConfirmed: true } : r)));
   }
 
   // Save approved rows into the existing group store (preserve existing, dedupe by
@@ -118,6 +216,29 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
     const missingTiming = approved.filter((r) => !r.anyday && r.postingDays.length === 0);
     if (missingTiming.length > 0) {
       setError(`Set allowed days (or "Any Day") for: ${missingTiming.map((r) => r.name).join(', ')}`);
+      return;
+    }
+
+    // Guard: posting days must be EXPLICITLY CONFIRMED by the user. AI-extracted days
+    // are only a suggestion; a confident-but-wrong day cannot be saved until the user
+    // confirms the final selection (and re-confirms after any change).
+    const unconfirmed = approved.filter((r) => !r.daysConfirmed);
+    if (unconfirmed.length > 0) {
+      setError(`Confirm the posting days for: ${unconfirmed.map((r) => r.name.trim() || 'Unnamed group').join(', ')}`);
+      return;
+    }
+
+    // Guard: a VALID Facebook group URL is REQUIRED before saving — Copy & Open relies
+    // on it to open the correct group. Validate+normalize each approved row's link.
+    const normalizedByRow = new Map<string, string>();
+    const badUrl: string[] = [];
+    for (const r of approved) {
+      const res = normalizeFacebookGroupUrl(r.link);
+      if (res.ok && res.url) normalizedByRow.set(r._rowId, res.url);
+      else badUrl.push(r.name.trim() || 'Unnamed group');
+    }
+    if (badUrl.length > 0) {
+      setError(`Paste a valid Facebook group link (…/groups/…) for: ${badUrl.join(', ')}`);
       return;
     }
 
@@ -138,7 +259,7 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
         toAdd.push({
           id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           name: r.name.trim(),
-          link: r.link.trim(),
+          link: normalizedByRow.get(r._rowId) as string, // validated + normalized URL
           postingDays: r.anyday ? [] : [...r.postingDays].sort((a, b) => a - b),
           anyday: r.anyday,
         });
@@ -194,7 +315,10 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
     return 1;
   }
 
-  const approvedCount = rows.filter((r) => r.approved && r.name.trim()).length;
+  const approvedRows = rows.filter((r) => r.approved && r.name.trim());
+  const approvedCount = approvedRows.length;
+  // All approved groups must have their posting days explicitly confirmed before save.
+  const allDaysConfirmed = approvedRows.every((r) => r.daysConfirmed);
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] px-3 pt-3 pb-20 overflow-y-auto" onClick={onClose}>
@@ -212,20 +336,44 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
           {/* Upload */}
           <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-3">
             <p className="text-xs text-slate-300">Add screenshots of your Facebook groups and their posting rules (up to {MAX_IMAGES}).</p>
-            <label className="block w-full text-center py-3 border-2 border-dashed border-amber-500/40 rounded-lg cursor-pointer hover:border-amber-500/70 text-amber-300 text-sm font-medium">
-              + Choose screenshots
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="hidden" onChange={onPick} />
-            </label>
+
+            {/* Paste target — Win+Shift+S then Ctrl+V, or choose files */}
+            <div className="w-full text-center py-4 border-2 border-dashed border-amber-500/40 rounded-lg bg-black/20">
+              <p className="text-sm font-medium text-amber-300">📋 Paste screenshots here (Ctrl + V)</p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Snap with <span className="text-slate-200">Windows + Shift + S</span>, come back, then press <span className="text-slate-200">Ctrl + V</span>
+              </p>
+              <label className="inline-block mt-2 px-3 py-1.5 bg-amber-500/15 border border-amber-500/40 rounded-lg cursor-pointer hover:bg-amber-500/25 text-amber-200 text-xs font-medium">
+                …or choose files
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="hidden" onChange={onPick} />
+              </label>
+            </div>
+
+            {/* Thumbnail previews (pasted + uploaded combined) with remove */}
             {files.length > 0 && (
-              <div className="space-y-1">
-                {files.map((f, i) => (
-                  <div key={i} className="flex items-center justify-between text-[11px] text-slate-400">
-                    <span className="truncate">{f.name}</span>
-                    <button onClick={() => setFiles(files.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 shrink-0 ml-2">✕</button>
-                  </div>
-                ))}
+              <div>
+                <p className="text-[11px] text-slate-400 mb-1.5">{files.length}/{MAX_IMAGES} image{files.length !== 1 ? 's' : ''} ready</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {files.map((f, i) => (
+                    <div key={`${f.name}-${f.size}-${i}`} className="relative group">
+                      <img
+                        src={previews[i]}
+                        alt={f.name || `screenshot ${i + 1}`}
+                        className="w-full h-16 object-cover rounded-lg border border-white/10"
+                      />
+                      <button
+                        onClick={() => removeFile(i)}
+                        aria-label={`Remove ${f.name || 'screenshot'}`}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold shadow hover:bg-red-400"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+
             <button
               onClick={analyze}
               disabled={files.length === 0 || analyzing}
@@ -266,21 +414,33 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
                     type="url"
                     value={r.link}
                     onChange={(e) => updateRow(r._rowId, { link: e.target.value })}
-                    placeholder="Facebook group link (optional)"
-                    className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs placeholder-slate-500"
+                    placeholder="Facebook group link — required (…/groups/…)"
+                    aria-label="Facebook group link (required)"
+                    className={`w-full px-2 py-1.5 bg-white/5 border rounded text-white text-xs placeholder-slate-500 ${
+                      r.approved && !r.link.trim() ? 'border-red-500/60' : 'border-white/10'
+                    }`}
                   />
+                  {r.approved && !r.link.trim() && (
+                    <p className="text-[10px] text-red-400">Paste the group link so Copy &amp; Open can open it. We couldn't read it from the screenshot.</p>
+                  )}
 
                   {r.warning && (
                     <p className="text-[10px] text-amber-400">⚠️ {r.warning}</p>
                   )}
-                  {r.frequencyLimit && (
-                    <p className="text-[10px] text-slate-400">Frequency: {r.frequencyLimit}</p>
-                  )}
-                  {r.restrictions && (
-                    <p className="text-[10px] text-slate-400">Rules: {r.restrictions}</p>
-                  )}
+
+                  {/* Prominent extracted-rules panel shown next to the day picker so the
+                      user can verify the selected days match what the group actually
+                      allows (addresses confident-but-wrong AI day selection). */}
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 space-y-0.5">
+                    <p className="text-[10px] font-bold text-amber-300">📋 Extracted rules — check these before confirming days</p>
+                    {r.restrictions
+                      ? <p className="text-[11px] text-slate-200 leading-snug">{r.restrictions}</p>
+                      : <p className="text-[11px] text-slate-400 italic">No specific rules text was read — set the days from the group’s own rules.</p>}
+                    {r.frequencyLimit && <p className="text-[10px] text-slate-300">Frequency: {r.frequencyLimit}</p>}
+                  </div>
 
                   {/* Day picker */}
+                  <p className="text-[10px] text-slate-400">Allowed posting days (AI suggestion — confirm below):</p>
                   <div className="flex gap-1">
                     {DAY_LABELS.map((_, i) => (
                       <button
@@ -301,10 +461,35 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
                     <input
                       type="checkbox"
                       checked={r.anyday}
-                      onChange={(e) => updateRow(r._rowId, { anyday: e.target.checked, postingDays: e.target.checked ? [] : r.postingDays })}
+                      onChange={(e) => updateRow(r._rowId, { anyday: e.target.checked, postingDays: e.target.checked ? [] : r.postingDays, daysConfirmed: false })}
                       className="w-4 h-4 rounded accent-amber-500"
                     />
                   </label>
+
+                  {/* Explicit per-row day confirmation. Required before saving; resets
+                      whenever the day selection or Any-Day changes. */}
+                  {r.approved && (
+                    r.daysConfirmed ? (
+                      <div className="flex items-center justify-between rounded-lg border border-green-500/40 bg-green-500/10 px-2 py-1.5">
+                        <span className="text-[11px] font-medium text-green-300">✓ Days confirmed</span>
+                        <button
+                          onClick={() => updateRow(r._rowId, { daysConfirmed: false })}
+                          className="text-[10px] text-slate-400 hover:text-white underline"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => confirmDays(r._rowId)}
+                        disabled={!r.anyday && r.postingDays.length === 0}
+                        aria-label={`Confirm posting days for ${r.name.trim() || 'group'}`}
+                        className="w-full py-1.5 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-200 text-[11px] font-bold hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Confirm posting days
+                      </button>
+                    )
+                  )}
                 </div>
               ))}
             </div>
@@ -315,7 +500,7 @@ export default function SmartFlockImport({ onClose }: { onClose: () => void }) {
         <div className="px-4 py-3 border-t border-white/10 space-y-2 shrink-0">
           <button
             onClick={saveApproved}
-            disabled={rows.length === 0 || approvedCount === 0 || saving}
+            disabled={rows.length === 0 || approvedCount === 0 || !allDaysConfirmed || saving}
             className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold rounded-lg disabled:opacity-50 transition-all"
           >
             {saving ? 'Saving…' : `✓ Save ${approvedCount} group${approvedCount !== 1 ? 's' : ''} & schedule`}

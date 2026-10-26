@@ -6,12 +6,21 @@ import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
-import { SOCIAL_PLATFORMS, ApiClient, isFlockEvent } from '@social-lead-gen/shared';
+import { SOCIAL_PLATFORMS, ApiClient, isFlockEvent, evaluateGroupRules } from '@social-lead-gen/shared';
 import type { SocialPlatform, Trade } from '@social-lead-gen/shared';
 import FlockGroupManager from '../components/FlockGroupManager';
 import SmartFlockImport from '../components/SmartFlockImport';
 import MassFlockPosting from '../components/MassFlockPosting';
 import OneScreenComposer from '../components/OneScreenComposer';
+import CreateLauncher, { type CreateLaunchChoice } from '../components/CreateLauncher';
+import { notifyPostScheduled } from '../lib/scheduledPostsRefresh';
+import FlockSafetyBar from '../components/FlockSafetyBar';
+import { useFlockSafety } from '../hooks/useFlockSafety';
+
+// Which Create workflow is in view. 'home' shows the welcoming three-choice launcher
+// (default); the others reveal existing sections. Smallest-safe restructuring: this
+// gates the already-built sections rather than rebuilding them. (Create Tab Redesign)
+type CreateView = 'home' | 'post' | 'groups' | 'schedule';
 
 const TONES = ['professional', 'casual', 'educational', 'urgent'] as const;
 
@@ -27,9 +36,16 @@ export default function ContentCreatorPage() {
   const { getToken, user } = useAuth();
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
-  const { events, removeEvent, toggleComplete, updateNotes, refreshEvents } = useCalendar();
+  // NOTE: `removeEvent` is intentionally NOT destructured here. The Create page no longer
+  // deletes any calendar events — the Missed Flocks backlog (which used removeEvent) was
+  // moved to a read-only "Posting Consistency" section in Hawk Insights. (Req 2: preserve
+  // historical records; do not delete.)
+  const { events, toggleComplete, updateNotes, refreshEvents } = useCalendar();
   const { showToast } = useToast();
   const { isPro } = useMode();
+  // Flock Safety Guard — advisory cross-workflow activity log, pacing reminder, and
+  // shared pause state. Never auto-posts; pausing is manual-resume only.
+  const flockSafety = useFlockSafety();
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [showHawkSwoop, setShowHawkSwoop] = useState(false);
   const [personalOnlyCues, setPersonalOnlyCues] = useState<Set<string>>(() => {
@@ -69,7 +85,9 @@ export default function ContentCreatorPage() {
   const [engagementType, setEngagementType] = useState<'comment' | 'dm' | 'call' | 'lead'>('comment');
   const [engagementNote, setEngagementNote] = useState('');
   const [engageIndex, setEngageIndex] = useState(0);
-  const [flocksTab, setFlocksTab] = useState<'today' | 'missed'>('today');
+  // The welcoming launcher is the default view. Advanced tools stay collapsed until asked.
+  const [view, setView] = useState<CreateView>('home');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showFlockManager, setShowFlockManager] = useState(false);
   const [showSmartImport, setShowSmartImport] = useState(false);
   const [showMassFlock, setShowMassFlock] = useState(false);
@@ -93,6 +111,25 @@ export default function ContentCreatorPage() {
   const [postHistory, setPostHistory] = useState<PostRecord[]>(() => {
     try { return JSON.parse(localStorage.getItem(postHistoryKey) || '[]'); } catch { return []; }
   });
+
+  // Saved Flock groups (same store as FlockGroupManager). Used to surface a group's
+  // permitted days / frequency / recent-posting near the Copy & Open control via the
+  // shared evaluateGroupRules helper. frequencyLimit is NOT persisted on saved groups
+  // today, so it is treated as "unknown" (never "safe").
+  interface SavedFlockGroup { id: string; name: string; link: string; postingDays?: number[]; anyday?: boolean; frequencyLimit?: string }
+  const savedFlockGroups: SavedFlockGroup[] = (() => {
+    try { return JSON.parse(localStorage.getItem(`hawkeye_flock_groups_${user?.sub}`) || '[]'); } catch { return []; }
+  })();
+
+  // Find the saved group that backs a calendar flock event (match by title/name, then
+  // link). Returns undefined when there's no matching saved group.
+  function findSavedGroupForEvent(ev: { title?: string; link?: string }): SavedFlockGroup | undefined {
+    const titleLower = (ev.title || '').trim().toLowerCase();
+    const linkLower = (ev.link || '').trim().toLowerCase();
+    return savedFlockGroups.find((g) =>
+      (titleLower && g.name?.trim().toLowerCase() === titleLower) ||
+      (linkLower && g.link?.trim().toLowerCase() === linkLower));
+  }
 
   function savePostRecord(content: string, groupTitle: string, groupLink: string) {
     const now = new Date();
@@ -137,6 +174,18 @@ export default function ContentCreatorPage() {
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
     );
   };
+
+  // Route a launcher choice to the matching workflow. 'post' reuses the existing composer
+  // collapse so no composer logic changes.
+  function handleLaunchChoice(choice: CreateLaunchChoice) {
+    setView(choice);
+    if (choice === 'post') setShowCreator(true);
+  }
+
+  // Count of today's incomplete flocks + saved groups — friendly context on the launcher.
+  const savedGroupCount = (() => {
+    try { return JSON.parse(localStorage.getItem(`hawkeye_flock_groups_${user?.sub}`) || '[]').length; } catch { return 0; }
+  })();
 
   async function fetchIdeas() {
     setIdeasLoading(true);
@@ -225,10 +274,24 @@ export default function ContentCreatorPage() {
     } finally { setAiPhotoLoading(false); }
   }
 
-  const handleGenerate = async () => {
+  // Accepts optional overrides so callers (Improve with AI, AI draft) can pass a
+  // resolved postType/baseText SYNCHRONOUSLY. Previously these callers did
+  // `setPostType('Educational')` then immediately called handleGenerate(), but React
+  // state updates are async so handleGenerate still read the OLD empty postType and the
+  // backend rejected it with "postType is required". Passing explicit overrides removes
+  // that race. A sensible default postType is resolved here so a manually written post
+  // never needs the user to pick a type to use Improve with AI.
+  const handleGenerate = async (overrides?: { postType?: string; baseText?: string }) => {
     setLoading(true);
     setError('');
     setPlatformContent(null);
+
+    // Resolve postType: explicit override → current selection → safe default. Each
+    // candidate is trimmed so a whitespace-only value never counts as "present" and we
+    // never send an effectively-empty postType.
+    const effectivePostType =
+      (overrides?.postType?.trim() || postType?.trim() || 'Educational');
+    const effectiveBaseText = overrides?.baseText !== undefined ? overrides.baseText : baseText;
 
     try {
       const token = await getToken();
@@ -239,10 +302,10 @@ export default function ContentCreatorPage() {
 
       const result = await client.generateContent({
         tone,
-        postType,
+        postType: effectivePostType,
         postLength,
         platforms,
-        baseText: baseText || undefined,
+        baseText: effectiveBaseText || undefined,
         tradeName: currentTrade?.name,
       });
 
@@ -304,17 +367,24 @@ export default function ContentCreatorPage() {
       showToast('✓ Ready to preview');
       return;
     }
-    // ai_draft: default a post type so generation isn't blocked, then generate.
-    if (!postType) setPostType('Educational');
-    await handleGenerate();
+    // ai_draft: resolve a default post type and pass it synchronously (no setState race).
+    const draftType = postType || 'Educational';
+    if (!postType) setPostType(draftType); // reflect in the UI for subsequent actions
+    await handleGenerate({ postType: draftType });
   }
 
   // "Improve with AI": run the user's written text through generation as base text.
+  // Uses the user's existing text + selected trade + platform as context. No post type
+  // is required from the user — we resolve a sensible default and pass everything
+  // synchronously so the request never omits postType. The user's original text is
+  // preserved in `ownContent` until they accept the AI improvement.
   async function handleImproveWithAI() {
-    if (!ownContent.trim()) return;
-    setBaseText(ownContent.trim());
-    if (!postType) setPostType('Educational');
-    await handleGenerate();
+    const text = ownContent.trim();
+    if (!text) return;
+    const improveType = postType || 'Educational';
+    if (!postType) setPostType(improveType); // reflect in the UI
+    setBaseText(text); // keep state in sync for later
+    await handleGenerate({ postType: improveType, baseText: text });
   }
 
   // Create AI Image from the composer — seeds the AI photo prompt with the intent.
@@ -359,7 +429,17 @@ export default function ContentCreatorPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon="✨" title="Flock" subtitle="What should I post?" />
+      <PageHeader icon="✨" title="Create" subtitle="Create it. Send it. Track what works." />
+
+      {/* Back to the three choices (hidden on the home launcher). */}
+      {view !== 'home' && (
+        <button
+          onClick={() => setView('home')}
+          className="text-xs text-slate-400 hover:text-amber-300 transition-colors"
+        >
+          ← All actions
+        </button>
+      )}
       {selectedTrades.length > 1 && (
         <div className="flex justify-center">
           <select
@@ -375,6 +455,56 @@ export default function ContentCreatorPage() {
             ))}
           </select>
         </div>
+      )}
+
+      {/* ── HOME: the welcoming three-choice launcher (Req 6) ───────────────── */}
+      {view === 'home' && (
+        <>
+          <CreateLauncher
+            onChoose={handleLaunchChoice}
+            todayFlockCount={todayCalendarEvents.filter((e) => isFlockEvent(e) && !e.completed).length}
+            savedGroupCount={savedGroupCount}
+          />
+
+          {/* Advanced / manage tools — collapsed by default (Req 6). */}
+          <div className="glass-card">
+            <button
+              onClick={() => setShowAdvanced((s) => !s)}
+              className="w-full flex items-center justify-between text-left"
+            >
+              <div>
+                <p className="text-sm font-bold text-white">⚙️ Advanced &amp; Manage</p>
+                <p className="text-[11px] text-slate-400">Manage groups, import groups, and view saved posts</p>
+              </div>
+              <span className="text-slate-300 text-sm">{showAdvanced ? '▼ Hide' : '▶ Open'}</span>
+            </button>
+            {showAdvanced && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  onClick={() => setShowFlockManager(true)}
+                  className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/40 hover:bg-amber-500/5 transition-all text-left"
+                >
+                  <p className="text-sm font-bold text-white">🦅 Manage Flock Groups</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Add, edit, remove · posting days</p>
+                </button>
+                <button
+                  onClick={() => setShowSmartImport(true)}
+                  className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/40 hover:bg-amber-500/5 transition-all text-left"
+                >
+                  <p className="text-sm font-bold text-white">📸 Smart Flock Import</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Upload screenshots · AI reads rules</p>
+                </button>
+                <button
+                  onClick={() => setView('groups')}
+                  className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/40 hover:bg-amber-500/5 transition-all text-left"
+                >
+                  <p className="text-sm font-bold text-white">📋 Saved Posts &amp; Flocks</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Open the groups workspace</p>
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* Hawk Swoop Animation */}
@@ -414,7 +544,9 @@ export default function ContentCreatorPage() {
         </div>
       )}
 
-      {/* ── Create a post (collapsed by default) ─────────────────────────── */}
+      {/* ── Create a post — shown in the 'post' view (and 'schedule', which also
+             needs a prepared post). Hidden on 'home' and 'groups'. ──────────── */}
+      {(view === 'post' || view === 'schedule') && (
       <button
         onClick={() => setShowCreator((s) => !s)}
         className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 hover:from-blue-600/30 hover:to-purple-600/30 transition-all"
@@ -428,8 +560,9 @@ export default function ContentCreatorPage() {
         </div>
         <span className="text-slate-300 text-sm">{showCreator ? '▼ Hide' : '▶ Open'}</span>
       </button>
+      )}
 
-      {showCreator && (
+      {(view === 'post' || view === 'schedule') && showCreator && (
       <div className="space-y-4">
       {/* Legacy Post Idea Generator (replaced by the one-screen composer) */}
       {false && (
@@ -768,7 +901,7 @@ export default function ContentCreatorPage() {
       )}
 
       <button
-        onClick={handleGenerate}
+        onClick={() => handleGenerate()}
         disabled={loading || !postType || platforms.length === 0}
         className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none btn-shimmer"
       >
@@ -1017,6 +1150,9 @@ export default function ContentCreatorPage() {
                       scheduledAt,
                       mediaUrls,
                     });
+                    // Tell the sibling Calendar to re-fetch so the new post appears
+                    // immediately (no manual browser refresh needed).
+                    notifyPostScheduled();
                     setSuccess('✓ Posted! It will go live in about 2 minutes.');
                     setShowHawkSwoop(true);
                     setTimeout(() => setShowHawkSwoop(false), 1400);
@@ -1092,6 +1228,9 @@ export default function ContentCreatorPage() {
                       scheduledAt,
                       mediaUrls: schedMediaUrls,
                     });
+                    // Tell the sibling Calendar to re-fetch so the scheduled post
+                    // appears immediately (no manual browser refresh needed).
+                    notifyPostScheduled();
                     setSuccess('✓ Scheduled! Check the Calendar tab.');
                     setShowHawkSwoop(true);
                     setTimeout(() => setShowHawkSwoop(false), 1400);
@@ -1107,6 +1246,39 @@ export default function ContentCreatorPage() {
                 Schedule
               </button>
             </div>
+
+            {/* ── Post to My Flocks — inline Create→Flocks handoff ───────────────
+                When Facebook is a selected platform and a post is prepared, surface a
+                clearly visible path straight into the EXISTING Flocks Copy & Open
+                workflow (MassFlockPosting), carrying this prepared post + image. This
+                reuses the saved-groups store, group selection, duplicate safeguards,
+                and completed/missed tracking — no separate group system. Mobile-friendly
+                (full-width, large tap target). */}
+            {platforms.includes('facebook') && platformContent && (
+              <div className="pt-1">
+                <button
+                  onClick={() => setShowMassFlock(true)}
+                  className="w-full p-4 bg-gradient-to-r from-amber-500/15 to-orange-500/10 border-2 border-amber-500/40 rounded-xl hover:border-amber-500/60 hover:bg-amber-500/20 transition-all active:scale-[0.99] flex items-center gap-3 text-left"
+                >
+                  <span className="text-2xl shrink-0">🦅</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-white">Post to My Flocks</p>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      Pick your Facebook groups and Copy &amp; Open each one with this post — you post it yourself, nothing auto-posts.
+                    </p>
+                  </div>
+                  <span className="text-amber-300 text-lg shrink-0">→</span>
+                </button>
+                {savedGroupCount === 0 && (
+                  <button
+                    onClick={() => setShowFlockManager(true)}
+                    className="mt-1.5 w-full text-[11px] text-amber-300 hover:text-amber-200 text-center"
+                  >
+                    No groups saved yet — add your Facebook groups first
+                  </button>
+                )}
+              </div>
+            )}
 
             {error && (
               <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">
@@ -1124,77 +1296,72 @@ export default function ContentCreatorPage() {
       </div>
       )}
 
-      {/* Flocks Tabs */}
+      {/* ── Post to Groups workspace — shown in the 'groups' view ───────────── */}
+      {view === 'groups' && (
       <div className="glass-card">
-        <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1 mb-3">
-          <button
-            onClick={() => setFlocksTab('today')}
-            className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-all ${flocksTab === 'today' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'}`}
-          >
-            🦅 Today's Flocks
-          </button>
-          <button
-            onClick={() => setFlocksTab('missed')}
-            className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-all ${flocksTab === 'missed' ? 'bg-red-500 text-white' : 'text-slate-400 hover:text-white'}`}
-          >
-            ⚠️ Missed {(() => { const now = new Date(); const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; const missed = events.filter((e) => isFlockEvent(e) && e.date < todayLocal && !e.completed); return missed.length > 0 ? `(${missed.length})` : ''; })()}
-          </button>
+        {/* Flock Safety Guard bar — consistent across all three posting workflows. */}
+        <div className="mb-3">
+          <FlockSafetyBar safety={flockSafety} />
+        </div>
+        <div className="mb-3">
+          <p className="text-sm font-bold text-white">🦅 Post to Groups</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Copy your post, open each group, paste, and post it yourself — then confirm. Opening a
+            group never posts for you. (These are Facebook group Flocks, separate from scheduled posts.)
+          </p>
         </div>
 
-        {/* Manage Groups Tile */}
-        <button
-          onClick={() => setShowFlockManager(true)}
-          className="w-full mb-4 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-2 border-amber-500/30 rounded-xl hover:border-amber-500/50 hover:bg-amber-500/15 transition-all active:scale-[0.98]"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🦅</span>
-            <div className="text-left flex-1">
-              <p className="text-sm font-bold text-white">Manage Flock Groups</p>
-              <p className="text-xs text-slate-400 mt-0.5">Add, edit, remove groups · Set posting days · Jumble rotation</p>
-            </div>
-            <span className="text-slate-500 text-lg">→</span>
-          </div>
-          {(() => {
-            try {
-              const groups = JSON.parse(localStorage.getItem(`hawkeye_flock_groups_${user?.sub}`) || '[]');
-              if (groups.length > 0) return <p className="text-[10px] text-amber-300 mt-2 text-left">{groups.length} group{groups.length !== 1 ? 's' : ''} saved</p>;
-            } catch {}
-            return null;
-          })()}
-        </button>
-
-        {/* Smart Flock Import — upload screenshots, AI reads the rules */}
-        <button
-          onClick={() => setShowSmartImport(true)}
-          className="w-full mb-4 p-4 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border-2 border-purple-500/30 rounded-xl hover:border-purple-500/50 hover:bg-purple-500/15 transition-all active:scale-[0.98]"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">📸</span>
-            <div className="text-left flex-1">
-              <p className="text-sm font-bold text-white">Smart Flock Import</p>
-              <p className="text-xs text-slate-400 mt-0.5">Upload group screenshots · AI reads names, days &amp; rules · review before saving</p>
-            </div>
-            <span className="text-slate-500 text-lg">→</span>
-          </div>
-        </button>
-
-        {/* Mass Flock Posting — post the same prepared post across ALL saved groups
-            tonight, independent of the weekly schedule. Manual, user-controlled. */}
+        {/* Mass Flock Posting — post the same prepared post across ALL saved groups in one
+            session. Manual, user-controlled. (Req 1: stays prominent & unchanged.) */}
         <button
           onClick={() => setShowMassFlock(true)}
-          className="w-full mb-4 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-2 border-amber-500/40 rounded-xl hover:border-amber-500/60 hover:bg-amber-500/15 transition-all active:scale-[0.98]"
+          className="w-full mb-3 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-2 border-amber-500/40 rounded-xl hover:border-amber-500/60 hover:bg-amber-500/15 transition-all active:scale-[0.98]"
         >
           <div className="flex items-center gap-3">
             <span className="text-3xl">🦅</span>
             <div className="text-left flex-1">
               <p className="text-sm font-bold text-white">Mass Flock Posting</p>
-              <p className="text-xs text-slate-400 mt-0.5">Post across ALL your groups tonight · one post, copy &amp; open each · your weekly schedule stays the same</p>
+              <p className="text-xs text-slate-400 mt-0.5">Post across ALL your groups in one session · one post, copy &amp; open each · schedule unchanged</p>
             </div>
             <span className="text-slate-500 text-lg">→</span>
           </div>
         </button>
 
-        {flocksTab === 'today' && (
+        {/* Start Flight Mode (Option A) — opens the Mass Flock modal, where Flight Mode
+            launches after the user prepares a post and selects groups. No change to the
+            modal, flightBridge, session sync, or the extension. (Req 1) */}
+        <button
+          onClick={() => setShowMassFlock(true)}
+          className="w-full mb-4 p-3 bg-black border-2 border-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-500/10 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+        >
+          <span className="text-base">🦅</span>
+          <span>Start Flight Mode</span>
+        </button>
+        <p className="text-[10px] text-slate-500 text-center -mt-2 mb-4">
+          Opens Mass Flock Posting — prepare your post &amp; pick groups, then launch the floating
+          panel on Facebook. Needs the HawkEye-Cue extension.
+        </p>
+
+        {/* Non-destructive pointer to Posting Consistency (replaces the old Missed backlog). */}
+        {(() => {
+          const now = new Date();
+          const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const missed = events.filter((e) => isFlockEvent(e) && e.date < todayLocal && !e.completed);
+          if (missed.length === 0) return null;
+          return (
+            <button
+              onClick={() => navigate('/hawk-insights')}
+              className="w-full mb-4 p-2.5 rounded-lg bg-white/5 border border-white/10 text-left hover:bg-white/10 transition-colors"
+            >
+              <p className="text-[11px] text-slate-400">
+                You have <span className="text-amber-300 font-semibold">{missed.length}</span> past
+                flock{missed.length !== 1 ? 's' : ''} you didn't post — see Posting Consistency in Insights →
+              </p>
+            </button>
+          );
+        })()}
+
+        {(
         <>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-white">Today's Flocks</span>
@@ -1208,6 +1375,35 @@ export default function ContentCreatorPage() {
             {(() => {
               const remaining = todayCalendarEvents.filter((e) => isFlockEvent(e) && !e.completed);
               const next = remaining[0];
+
+              // Flock Safety Guard: when posting is paused, replace the Copy & Open
+              // action with a clear paused notice (no auto-posting). Resume lives in
+              // the FlockSafetyBar at the top of this area.
+              if (flockSafety.paused) {
+                return (
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-center">
+                    <p className="text-sm font-bold text-amber-300 mb-1">⏸️ Posting paused</p>
+                    <p className="text-xs text-slate-400">Copy &amp; Open is on hold. Use “Resume posting” in the Safety bar above when you’re ready — nothing posts automatically.</p>
+                  </div>
+                );
+              }
+
+              // Surface the next group's permitted days / frequency / recent-posting so
+              // the user can review before posting. Advisory only.
+              const nextSaved = next ? findSavedGroupForEvent(next) : undefined;
+              const nextRules = next ? evaluateGroupRules({
+                group: {
+                  postingDays: nextSaved?.postingDays,
+                  anyday: nextSaved?.anyday,
+                  frequencyLimit: nextSaved?.frequencyLimit,
+                  name: next.title,
+                  link: next.link,
+                },
+                today: new Date().getDay(),
+                history: postHistory,
+                now: Date.now(),
+              }) : null;
+
               const isNestTier = ['free', 'nest'].includes(userTier);
               const nestLimit = 3;
               const nestUsedKey = `hawkeye_copyopen_used_${new Date().toISOString().split('T')[0]}`;
@@ -1240,6 +1436,9 @@ export default function ContentCreatorPage() {
                         }
                         // Save post record for analytics
                         savePostRecord(content, next.title, next.link!);
+                        // Flock Safety Guard: record the confirmed post (deduped across
+                        // workflows by group id/link so we never double-count).
+                        flockSafety.recordConfirmedPost('copyopen', { id: next.id, name: next.title, link: next.link });
                         setShowHawkSwoop(true);
                         setTimeout(() => setShowHawkSwoop(false), 1400);
                         window.open(next.link!, '_blank');
@@ -1263,6 +1462,15 @@ export default function ContentCreatorPage() {
                     <div className="flex items-center gap-2 justify-center">
                       <img src={readyImageSrc} alt="" className="w-8 h-8 rounded object-cover border border-white/10" />
                       <span className="text-[11px] text-slate-400">Photo attached to this flock</span>
+                    </div>
+                  )}
+                  {/* Flock Safety Guard: advisory rule surfacing for the next group. */}
+                  {nextRules && nextRules.messages.length > 0 && (
+                    <div className={`rounded-lg border p-2 space-y-0.5 ${nextRules.needsReview ? 'border-amber-500/50 bg-amber-500/10' : 'border-white/10 bg-white/5'}`}>
+                      <p className="text-[10px] font-bold text-amber-300">{nextRules.needsReview ? '⚠️ Review this group before posting' : 'ℹ️ Check this group\u2019s rules'}</p>
+                      {nextRules.messages.map((m, i) => (
+                        <p key={i} className="text-[11px] text-slate-300 leading-snug">{m}</p>
+                      ))}
                     </div>
                   )}
                   <p className="text-xs text-slate-400 text-center">{remaining.length} flock{remaining.length !== 1 ? 's' : ''} remaining{isNestTier ? ` • ${nestLimit - nestUsedToday} free uses left today` : ''}</p>
@@ -1329,6 +1537,9 @@ export default function ContentCreatorPage() {
                       ev.preventDefault();
                       ev.stopPropagation();
                       toggleComplete(e.id);
+                      // Flock Safety Guard: marking a flock complete is a confirmed
+                      // post. Record it (deduped across workflows by group id/link).
+                      flockSafety.recordConfirmedPost('today', { id: e.id, name: e.title, link: e.link });
                       setShowHawkSwoop(true);
                       setTimeout(() => setShowHawkSwoop(false), 1400);
                       setTimeout(() => {
@@ -1458,93 +1669,13 @@ export default function ContentCreatorPage() {
         </>
         )}
 
-        {flocksTab === 'missed' && (
-        <>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-white">⚠️ Missed Flocks</span>
-            <span className="text-xs text-slate-400">Uncompleted posts from previous days</span>
-          </div>
-          {(() => {
-            const now = new Date();
-            const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            const missedPosts = events.filter((e) => isFlockEvent(e) && e.date < todayLocal && !e.completed);
-            
-            if (missedPosts.length === 0) {
-              return (
-                <div className="text-center py-6">
-                  <p className="text-2xl mb-2">✅</p>
-                  <p className="text-sm text-green-300 font-medium">No missed flocks!</p>
-                  <p className="text-xs text-slate-500 mt-1">You're all caught up.</p>
-                </div>
-              );
-            }
-
-            // Group missed posts by date
-            const byDate: Record<string, typeof missedPosts> = {};
-            for (const post of missedPosts) {
-              if (!byDate[post.date]) byDate[post.date] = [];
-              byDate[post.date].push(post);
-            }
-            const sortedDates = Object.keys(byDate).sort().reverse();
-
-            return (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {sortedDates.map((date) => {
-                  const posts = byDate[date];
-                  const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  return (
-                    <details key={date} className="rounded-lg bg-red-500/5 border border-red-500/20" open={sortedDates.indexOf(date) === 0}>
-                      <summary className="flex items-center justify-between p-2.5 cursor-pointer">
-                        <span className="text-xs font-medium text-red-300">{dateLabel}</span>
-                        <span className="text-xs text-slate-500">{posts.length} missed</span>
-                      </summary>
-                      <div className="px-2.5 pb-2.5 space-y-1.5">
-                        {posts.map((post) => (
-                          <div key={post.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
-                            <span className="text-xs text-slate-300 flex-1 truncate">{post.title}</span>
-                            <div className="flex gap-1 shrink-0">
-                              {post.link && (
-                                <button
-                                  onClick={() => {
-                                    if (platformContent) {
-                                      navigator.clipboard.writeText(Object.values(platformContent)[0] || '');
-                                      showToast('📋 Copied!');
-                                    }
-                                    window.open(post.link!, '_blank');
-                                  }}
-                                  className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-1 rounded font-medium hover:bg-amber-500/30"
-                                >
-                                  {platformContent ? '📋 Post Now' : '🔗 Open'}
-                                </button>
-                              )}
-                              <button
-                                onClick={() => { toggleComplete(post.id); showToast('✓ Marked done'); }}
-                                className="text-[10px] bg-green-500/20 text-green-300 px-2 py-1 rounded font-medium hover:bg-green-500/30"
-                              >
-                                ✓ Done
-                              </button>
-                              <button
-                                onClick={() => removeEvent(post.id)}
-                                className="text-[10px] bg-red-500/20 text-red-300 px-2 py-1 rounded font-medium hover:bg-red-500/30"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </>
-        )}
       </div>
+      )}
 
-      {/* Saved Posts History */}
-      {postHistory.length > 0 && (
+      {/* Saved Posts History — shown in the groups workspace (and reachable via the
+          home "Advanced" tools which route here). Missed Flocks backlog has been removed
+          from Create; its information now lives in Hawk Insights → Posting Consistency. */}
+      {view === 'groups' && postHistory.length > 0 && (
         <details className="glass-card">
           <summary className="font-semibold text-white cursor-pointer flex items-center justify-between">
             <span>📋 Saved Posts</span>
@@ -1676,6 +1807,7 @@ export default function ContentCreatorPage() {
           getPreparedContent={() => (platformContent ? (Object.values(platformContent)[0] || '') : (ownContent || baseText || ''))}
           readyImageSrc={readyImageSrc}
           onDownloadImage={downloadReadyImage}
+          safety={flockSafety}
         />
       )}
     </div>

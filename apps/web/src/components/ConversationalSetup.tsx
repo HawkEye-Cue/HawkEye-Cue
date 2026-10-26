@@ -9,7 +9,18 @@ interface Props {
   onSkip: () => void;
 }
 
-type StepId = 'business' | 'area' | 'services' | 'accounts' | 'voice' | 'ready';
+type StepId = 'business' | 'plans' | 'area' | 'services' | 'accounts' | 'voice' | 'ready';
+
+// A few common trades shown as one-tap starters before the user types. Searching
+// still covers ALL supported trades — these are just quick picks for first-run.
+const POPULAR_TRADE_IDS = [
+  'roofing',
+  'insurance-agent',
+  'real-estate-agent',
+  'hvac-technician',
+  'electrician',
+  'plumber',
+];
 
 /**
  * Conversational setup — asks a few simple questions one at a time instead of
@@ -39,7 +50,13 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
     ? TRADES.filter((t) => t.name.toLowerCase().includes(tradeQuery.toLowerCase())).slice(0, 6)
     : [];
 
-  const STEP_ORDER: StepId[] = ['business', 'area', 'services', 'accounts', 'voice', 'ready'];
+  // One-tap starter trades (shown before the user types). Falls back gracefully if
+  // a constant id ever changes.
+  const popularTrades = POPULAR_TRADE_IDS
+    .map((id) => TRADES.find((t) => t.id === id))
+    .filter((t): t is Trade => Boolean(t));
+
+  const STEP_ORDER: StepId[] = ['business', 'plans', 'area', 'services', 'accounts', 'voice', 'ready'];
   const stepIndex = STEP_ORDER.indexOf(step);
   const pct = Math.round(((stepIndex + 1) / STEP_ORDER.length) * 100);
 
@@ -86,10 +103,10 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
-        {/* Progress */}
-        <div className="w-full bg-black rounded-full h-1.5 mb-8">
+        {/* Progress — visible track so the bar reads clearly on first paint */}
+        <div className="w-full bg-neutral-800 rounded-full h-1.5 mb-8">
           <div className="bg-gradient-to-r from-amber-500 to-yellow-400 h-1.5 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
         </div>
 
@@ -98,23 +115,42 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
             <>
               <div>
                 <span className="text-4xl block mb-2">🦅</span>
-                <h2 className="text-2xl font-bold text-white">Hey {firstName}, let's set up your HawkEye</h2>
+                <h2 className="text-2xl font-bold text-white">Hey {firstName}, let's set up your HawkEye-Cue</h2>
                 <p className="text-sm text-slate-400 mt-2">First — what kind of business do you run?</p>
               </div>
               <input
                 autoFocus
+                aria-label="Search your trade"
                 value={chosenTrade ? chosenTrade.name : tradeQuery}
                 onChange={(e) => { setChosenTrade(null); setTradeQuery(e.target.value); }}
                 placeholder="e.g. Roofing, Insurance, Real Estate…"
-                className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white text-base placeholder-slate-500"
+                className="w-full px-4 py-3 bg-neutral-900 border border-white/20 rounded-xl text-white text-base placeholder-slate-400 focus:border-amber-500/60 focus:outline-none"
               />
+              {/* Starter trades — visible immediately, before any typing. Search still
+                  covers all trades via the input above. */}
+              {!chosenTrade && tradeMatches.length === 0 && (
+                <div>
+                  <p className="text-xs text-slate-400 mb-2">Popular trades — tap one, or search above:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {popularTrades.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => { setChosenTrade(t); setTradeQuery(t.name); }}
+                        className="px-3 py-2 bg-neutral-800 hover:bg-white/10 border border-white/20 rounded-lg text-sm text-white transition-colors"
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {!chosenTrade && tradeMatches.length > 0 && (
                 <div className="space-y-1.5">
                   {tradeMatches.map((t) => (
                     <button
                       key={t.id}
                       onClick={() => { setChosenTrade(t); setTradeQuery(t.name); }}
-                      className="w-full text-left px-4 py-2.5 bg-black hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white"
+                      className="w-full text-left px-4 py-2.5 bg-neutral-900 hover:bg-white/10 border border-white/20 rounded-lg text-sm text-white transition-colors"
                     >
                       {t.name}
                     </button>
@@ -131,19 +167,71 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
             </>
           )}
 
+          {step === 'plans' && (
+            <>
+              <div>
+                <span className="text-4xl block mb-2">🎁</span>
+                <h2 className="text-2xl font-bold text-white">Your 7-day Soar trial is active</h2>
+                <p className="text-sm text-slate-300 mt-2">
+                  No payment method required. When the trial ends, your account automatically
+                  moves to Nest (Free) unless you choose to subscribe.
+                </p>
+              </div>
+
+              {/* Plan comparison — information only. These cards do NOT change your
+                  server-side trial; subscribing happens later in Settings. */}
+              <div className="space-y-2">
+                <div className="rounded-xl border border-white/15 bg-neutral-900 p-4">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-base font-bold text-white">🪺 Nest</span>
+                    <span className="text-sm font-semibold text-slate-200">Free</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Where you'll land after the trial if you don't subscribe.</p>
+                </div>
+
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-base font-bold text-white">🚀 Soar <span className="ml-1 text-[10px] bg-amber-500 text-black px-1.5 py-0.5 rounded font-bold align-middle">YOUR TRIAL</span></span>
+                    <span className="text-sm font-semibold text-amber-300">$24.99/mo</span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1">Leads, sales pipeline, insights, flocks, and Wingman — free for 7 days.</p>
+                </div>
+
+                <div className="rounded-xl border border-white/15 bg-neutral-900 p-4">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-base font-bold text-white">🏔️ Summit</span>
+                    <span className="text-sm font-semibold text-purple-300">$99.99/mo</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Everything in Soar plus team calendar, shared leads, and up to 5 members.</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-400">
+                You won't be charged unless you subscribe. Change or compare plans anytime in Settings.
+              </p>
+
+              <button
+                onClick={next}
+                className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl"
+              >
+                Continue with my Soar trial →
+              </button>
+            </>
+          )}
+
           {step === 'area' && (
             <>
               <div>
                 <span className="text-4xl block mb-2">📍</span>
                 <h2 className="text-2xl font-bold text-white">Where do you serve customers?</h2>
-                <p className="text-sm text-slate-400 mt-2">Your city, county, or the areas you cover. This helps HawkEye judge local opportunities.</p>
+                <p className="text-sm text-slate-400 mt-2">Your city, county, or the areas you cover. This helps HawkEye-Cue judge local opportunities.</p>
               </div>
               <input
                 autoFocus
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
                 placeholder="e.g. Brighton & the north metro"
-                className="w-full px-4 py-3 bg-black border border-white/10 rounded-xl text-white text-base placeholder-slate-500"
+                className="w-full px-4 py-3 bg-neutral-900 border border-white/20 rounded-xl text-white text-base placeholder-slate-400 focus:border-amber-500/60 focus:outline-none"
               />
               <div className="flex gap-2">
                 <button onClick={next} className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl">Next →</button>
@@ -164,7 +252,7 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
                 value={services}
                 onChange={(e) => setServices(e.target.value)}
                 placeholder="e.g. Home & auto bundles, life insurance"
-                className="w-full h-24 px-4 py-3 bg-black border border-white/10 rounded-xl text-white text-base placeholder-slate-500 resize-none"
+                className="w-full h-24 px-4 py-3 bg-neutral-900 border border-white/20 rounded-xl text-white text-base placeholder-slate-400 resize-none focus:border-amber-500/60 focus:outline-none"
               />
               <div className="flex gap-2">
                 <button onClick={next} className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl">Next →</button>
@@ -192,14 +280,14 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
               <div>
                 <span className="text-4xl block mb-2">💬</span>
                 <h2 className="text-2xl font-bold text-white">How would you naturally respond to a customer?</h2>
-                <p className="text-sm text-slate-400 mt-2">Write a quick example reply. HawkEye uses your voice to draft responses that sound like you.</p>
+                <p className="text-sm text-slate-400 mt-2">Write a quick example reply. HawkEye-Cue uses your voice to draft responses that sound like you.</p>
               </div>
               <textarea
                 autoFocus
                 value={voice}
                 onChange={(e) => setVoice(e.target.value)}
                 placeholder="e.g. Hey! Happy to help — I'll shoot you a quick quote today. What's the best number to reach you?"
-                className="w-full h-28 px-4 py-3 bg-black border border-white/10 rounded-xl text-white text-base placeholder-slate-500 resize-none"
+                className="w-full h-28 px-4 py-3 bg-neutral-900 border border-white/20 rounded-xl text-white text-base placeholder-slate-400 resize-none focus:border-amber-500/60 focus:outline-none"
               />
               <div className="flex gap-2">
                 <button onClick={next} className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-bold rounded-xl">Next →</button>
@@ -209,10 +297,20 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
           )}
 
           {step === 'ready' && (
-            <div className="text-center space-y-5">
-              <span className="text-6xl block">🦅</span>
-              <h2 className="text-2xl font-bold text-white">Your HawkEye is ready.</h2>
-              <p className="text-sm text-slate-300">Let's find your first opportunity.</p>
+            <div className="text-center space-y-5 sm:space-y-6">
+              {/* Realistic hawk brand asset (replaces the cartoon emoji) framed in a
+                  premium black/yellow ring that matches the app's branding. */}
+              <div className="mx-auto h-24 w-24 sm:h-28 sm:w-28 rounded-full p-[3px] bg-gradient-to-br from-amber-400 to-yellow-500 shadow-[0_0_40px_-8px_rgba(251,191,36,0.6)]">
+                <img
+                  src="/hawk.jpg"
+                  alt="HawkEye-Cue"
+                  className="h-full w-full rounded-full object-cover ring-2 ring-black/80"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Your HawkEye-Cue is ready.</h2>
+                <p className="text-sm sm:text-base text-slate-300">Your next opportunity starts here.</p>
+              </div>
               <div className="text-left bg-white/5 border border-white/10 rounded-xl p-4 space-y-1.5 text-sm">
                 {chosenTrade && <p className="text-slate-300">🏷️ Trade: <span className="text-white font-medium">{chosenTrade.name}</span></p>}
                 {area && <p className="text-slate-300">📍 Area: <span className="text-white font-medium">{area}</span></p>}
@@ -221,9 +319,9 @@ export default function ConversationalSetup({ onComplete, onSkip }: Props) {
               <button
                 onClick={finish}
                 disabled={saving}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-extrabold rounded-xl disabled:opacity-50"
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-extrabold rounded-xl transition-all hover:brightness-105 active:scale-[0.99] disabled:opacity-50"
               >
-                {saving ? 'Getting your Nest ready…' : "Let's go 🦅"}
+                {saving ? 'Getting your Nest ready…' : 'Enter HawkEye-Cue →'}
               </button>
             </div>
           )}

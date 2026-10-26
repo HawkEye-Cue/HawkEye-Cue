@@ -106,6 +106,14 @@ function sdkStubs() {
           },
         },
         checkout: { sessions: { create: async (...args: any[]) => { stripeCalls.push({ method: 'checkout.sessions.create', args }); checkoutSessionArgs = args[0]; return { url: 'https://checkout' }; } } },
+        // Price disclosure now derives from the ACTUAL Stripe Price (unit_amount), so the
+        // stub returns a price keyed to the configured price id. soar=price_soar→$24.99,
+        // team=price_team→$99.99 (minor units), mirroring the real test prices.
+        prices: { retrieve: async (id: string) => {
+          stripeCalls.push({ method: 'prices.retrieve', args: [id] });
+          const priceMap: Record<string, number> = { price_soar: 2499, price_team: 9999 };
+          return { id, unit_amount: priceMap[id] ?? null, currency: 'usd' };
+        } },
         promotionCodes: { list: async () => ({ data: [] }) },
       };
     },

@@ -29,6 +29,11 @@
   let flightTimer = null;
   let flightSavedAuthors = new Set(); // avoid double-saving the same author during a flight
 
+  // Launch-safe gate for the Take Flight AUTOMATION (see src/flags.js). OFF by default for
+  // production. When OFF, auto-scroll + auto-save never run, no matter how flightMode is set.
+  // Manual lead detection, the hawk overlay, and manual saving do NOT depend on this.
+  var TAKE_FLIGHT_ENABLED = !!(globalThis.HawkEyeFlags && globalThis.HawkEyeFlags.TAKE_FLIGHT_ENABLED);
+
   function detectPlatform() {
     const host = window.location.hostname;
     if (host.includes('facebook.com')) return 'facebook';
@@ -203,7 +208,21 @@
       btn.textContent = 'Saving...';
       btn.style.opacity = '0.6';
 
-      const authorName = extractAuthorName(postElement) || 'Unknown';
+      // Appreciation privacy: an appreciation is meaningful only if we can attribute it
+      // to a real person. If no identifiable tagger name was captured, do NOT save a
+      // record with a fabricated 'Unknown' tagger — explain why and let the user retry
+      // after scrolling the author name into view. (Leads use null here; appreciations
+      // are about WHO recommended you, so a nameless appreciation has no value.)
+      const extractedName = extractAuthorName(postElement);
+      if (!extractedName || extractedName === 'Unknown') {
+        status.textContent = "Couldn't read who recommended you — scroll their name into view and try again. (Not saved.)";
+        status.style.display = 'block';
+        status.style.color = '#f87171';
+        btn.textContent = '🙏 Appreciation';
+        btn.style.opacity = '1';
+        return;
+      }
+      const authorName = extractedName;
       const { authToken } = await chrome.storage.local.get(['authToken']);
       if (!authToken) {
         status.textContent = 'Not signed in — open extension popup';
@@ -425,6 +444,11 @@
   }
 
   function startFlight() {
+    // Launch-safe gate (src/flags.js): if the Take Flight AUTOMATION is disabled, this is a
+    // hard no-op — no auto-scroll, no auto-save — regardless of how flightMode got set
+    // (popup, leftover storage value, another UI path, or devtools). Manual scanning is
+    // unaffected because scanFeed()/the hawk overlay never go through here.
+    if (!TAKE_FLIGHT_ENABLED) { flightMode = false; return; }
     if (flightTimer) return;
     showToast('🦅 Take Flight — auto-scrolling for leads');
     flightTimer = setInterval(function() {
@@ -501,7 +525,8 @@
             if (container.setAttribute) container.setAttribute('data-hawkeye-seen', '1');
             createHawkOverlay(container, matched, postText);
             // During Take Flight, auto-score and auto-save real leads hands-free.
-            if (flightMode) autoSaveLead(container, postText);
+            // Gated: auto-save only when the automation is explicitly enabled.
+            if (TAKE_FLIGHT_ENABLED && flightMode) autoSaveLead(container, postText);
             return;
           }
         }
@@ -576,8 +601,10 @@
     scanFeed();
 
     // Start flight immediately if it was already on when this page loaded.
+    // When the automation is disabled, force flightMode off and never start — this blocks a
+    // leftover/other-path storage value from launching the automation.
     const flightState = await chrome.storage.local.get(['flightMode']);
-    flightMode = !!flightState.flightMode;
+    flightMode = TAKE_FLIGHT_ENABLED && !!flightState.flightMode;
     if (flightMode) startFlight();
 
     // Live-update keywords + flight mode when storage changes.
@@ -593,6 +620,9 @@
         wingmanKeywords = changes.wingmanKeywords.newValue;
       }
       if (changes.flightMode) {
+        // Ignore flightMode entirely when the automation is disabled — any attempt to flip
+        // it on (another UI, script, or devtools) is a no-op; ensure it stays stopped.
+        if (!TAKE_FLIGHT_ENABLED) { flightMode = false; stopFlight(); return; }
         flightMode = !!changes.flightMode.newValue;
         if (flightMode) { flightSavedAuthors = new Set(); startFlight(); }
         else { stopFlight(); }

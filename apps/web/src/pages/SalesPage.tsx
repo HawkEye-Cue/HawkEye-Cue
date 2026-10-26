@@ -910,8 +910,12 @@ export default function SalesPage() {
                 key={lead.id}
                 onClick={() => {
                   setName(lead.authorName);
-                  const platformSourceMap: Record<string, string> = { facebook: 'facebook-post', instagram: 'instagram-post', linkedin: 'linkedin-post', tiktok: 'tiktok' };
-                  setLeadSource(platformSourceMap[lead.platform] || 'hawkeye-lead');
+                  // Keys MUST match SalesDashboardPage SOURCE_LABELS so the "by source"
+                  // charts render a friendly label instead of the raw key. 'linkedin' and
+                  // 'extension-detected' (HawkEye Scan) are the labelled keys; the prior
+                  // 'linkedin-post' and 'hawkeye-lead' fallbacks were unlabelled.
+                  const platformSourceMap: Record<string, string> = { facebook: 'facebook-post', instagram: 'instagram-post', linkedin: 'linkedin', tiktok: 'other' };
+                  setLeadSource(platformSourceMap[lead.platform] || 'extension-detected');
                   setLeadSourceNote(`From ${lead.platform} — "${lead.postContent.slice(0, 60)}"`);
                   // Mark lead as converted
                   buildClient().then((client) => client.request('PUT', `/opportunities/${lead.id}/status`, { status: 'converted' })).catch(() => {});

@@ -20,6 +20,18 @@ const scheduler = new SchedulerClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
 const SCHEDULER_ROLE_ARN = process.env.SCHEDULER_ROLE_ARN;
 const PUBLISHER_FUNCTION_ARN = process.env.PUBLISHER_FUNCTION_ARN;
+// Optional EventBridge Scheduler group. When set, every schedule this handler
+// creates/reads/deletes is confined to that group (used by the isolated sandbox to
+// keep all schedules inside a dedicated SocialLeadGen-Sandbox group). When UNSET
+// (production today), GroupName is omitted and schedules land in the default group —
+// so production behavior is unchanged.
+const SCHEDULE_GROUP_NAME = process.env.SCHEDULE_GROUP_NAME;
+
+// Build the { GroupName } fragment only when a group is configured, so the field is
+// entirely absent from the API call otherwise (not sent as undefined).
+function groupFragment() {
+  return SCHEDULE_GROUP_NAME ? { GroupName: SCHEDULE_GROUP_NAME } : {};
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,6 +123,7 @@ async function handleSchedulePost(userId, body) {
     await scheduler.send(
       new CreateScheduleCommand({
         Name: scheduleName,
+        ...groupFragment(),
         ScheduleExpression: `at(${scheduledAt.replace(/\.\d{3}Z$/, '')})`,
         FlexibleTimeWindow: { Mode: 'OFF' },
         Target: {
@@ -189,7 +202,7 @@ async function handleDeletePost(userId, postId) {
   // Delete EventBridge schedule if scheduled
   if (item.status === 'scheduled') {
     try {
-      await scheduler.send(new DeleteScheduleCommand({ Name: `post-${postId}` }));
+      await scheduler.send(new DeleteScheduleCommand({ Name: `post-${postId}`, ...groupFragment() }));
     } catch {
       // Schedule may not exist or already fired
     }

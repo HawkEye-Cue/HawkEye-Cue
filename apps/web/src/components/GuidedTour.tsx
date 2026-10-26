@@ -40,6 +40,23 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
+// A rect is only usable to anchor the tour if the element is actually visible and
+// laid out. Hidden elements (e.g. the mobile-only bottom nav on desktop, which is
+// `lg:hidden`/display:none) and elements not yet laid out during a route transition
+// return a zero-size rect from getBoundingClientRect(). Anchoring the spotlight to
+// such a rect produced a FULL-SCREEN dark overlay (the spotlight's
+// `box-shadow: 0 0 0 9999px rgba(0,0,0,.75)` at 0,0) with the tooltip pushed off the
+// top of the viewport — the dashboard looked "almost black" with no visible dialog.
+// Treating a zero/off-screen rect as "no target" is the root-cause fix.
+export function isUsableRect(rect: DOMRect | null): rect is DOMRect {
+  if (!rect) return false;
+  if (rect.width <= 0 || rect.height <= 0) return false; // display:none / not laid out
+  // Must intersect the viewport (guards against wildly off-screen anchors).
+  if (rect.bottom <= 0 || rect.top >= window.innerHeight) return false;
+  if (rect.right <= 0 || rect.left >= window.innerWidth) return false;
+  return true;
+}
+
 export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -48,10 +65,31 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
   const isLast = step === TOUR_STEPS.length - 1;
 
   useEffect(() => {
-    const el = document.querySelector(current.selector);
-    if (el) {
-      setTargetRect(el.getBoundingClientRect());
-    } else {
+    let cancelled = false;
+    let raf = 0;
+    let attempts = 0;
+
+    // The nav may not be laid out on the first frame after onboarding navigates to the
+    // dashboard. Retry a few animation frames before giving up so a real (mobile)
+    // target isn't skipped due to a transient zero-rect — but never strand a dark
+    // overlay: if the target stays unusable, advance or finish.
+    function measure() {
+      if (cancelled) return;
+      const el = document.querySelector(current.selector);
+      const rect = el ? el.getBoundingClientRect() : null;
+
+      if (isUsableRect(rect)) {
+        setTargetRect(rect);
+        return;
+      }
+
+      attempts += 1;
+      if (attempts < 5) {
+        raf = requestAnimationFrame(measure);
+        return;
+      }
+
+      // Target is genuinely unavailable (e.g. hidden on this breakpoint). Skip it.
       setTargetRect(null);
       if (!isLast) {
         setStep((s) => s + 1);
@@ -59,6 +97,22 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
         onComplete();
       }
     }
+
+    measure();
+
+    // Keep the spotlight aligned if the viewport changes while the tour is open.
+    function onResize() {
+      const el = document.querySelector(current.selector);
+      const rect = el ? el.getBoundingClientRect() : null;
+      setTargetRect(isUsableRect(rect) ? rect : null);
+    }
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      cancelled = true;
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onResize);
+    };
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleNext() {
@@ -69,8 +123,9 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
     }
   }
 
-  // If no target found, don't render anything (auto-advancing)
-  if (!targetRect) return null;
+  // Never render the dark spotlight without a usable, visible anchor — otherwise the
+  // screen goes dark with no dialog. While (re)measuring, render nothing.
+  if (!isUsableRect(targetRect)) return null;
 
   return (
     <div className="fixed inset-0 z-[9999]" onClick={handleNext}>
@@ -86,12 +141,14 @@ export default function GuidedTour({ onComplete }: { onComplete: () => void }) {
         }}
       />
 
-      {/* Tooltip card — positioned above the nav bar */}
+      {/* Tooltip card — positioned above the nav bar. The `bottom` offset is clamped
+          so the card can never be pushed off the top of the viewport (which would hide
+          the dialog and leave only the dark spotlight visible). */}
       <div
         className="absolute animate-scale-in"
         style={{
           left: Math.max(12, Math.min(targetRect.left + targetRect.width / 2 - 150, window.innerWidth - 312)),
-          bottom: window.innerHeight - targetRect.top + 12,
+          bottom: Math.max(12, Math.min(window.innerHeight - targetRect.top + 12, window.innerHeight - 200)),
           width: 300,
         }}
       >

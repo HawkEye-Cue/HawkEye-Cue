@@ -19,6 +19,9 @@ import {
   setPaused,
   recentlyPostedWarning,
 } from '../lib/massFlock';
+import { evaluateGroupRules } from '@social-lead-gen/shared';
+import type { UseFlockSafety } from '../hooks/useFlockSafety';
+import FlockSafetyBar from './FlockSafetyBar';
 
 /**
  * Mass Flock Posting — manually post the SAME prepared post across ALL saved Facebook
@@ -35,6 +38,7 @@ export default function MassFlockPosting({
   getPreparedContent,
   readyImageSrc,
   onDownloadImage,
+  safety,
 }: {
   onClose: () => void;
   // Returns the current prepared post text from the composer (empty string if none).
@@ -43,6 +47,8 @@ export default function MassFlockPosting({
   readyImageSrc: string | null;
   // Reuse the existing image-save behavior (same as Copy & Open Next Flock).
   onDownloadImage: () => void;
+  // Flock Safety Guard — shared cross-workflow activity log + pause state.
+  safety: UseFlockSafety;
 }) {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -73,6 +79,32 @@ export default function MassFlockPosting({
   const prog = progress(session);
   const q = queue(allGroups, session);
   const warning = cur ? recentlyPostedWarning(cur, history) : null;
+
+  // Flock Safety Guard — evaluate the current group's posting rules. Fixes the Mass
+  // Flock gap: a not-permitted day or a possible frequency violation must be flagged
+  // and require an explicit "Post anyway" acknowledgement before it can be marked
+  // posted. Unknown rules are surfaced (never silently treated as eligible/safe).
+  const curRules = useMemo(() => {
+    if (!cur) return null;
+    return evaluateGroupRules({
+      group: {
+        postingDays: cur.postingDays,
+        anyday: cur.anyday,
+        frequencyLimit: (cur as { frequencyLimit?: string }).frequencyLimit,
+        name: cur.name,
+        link: cur.link,
+      },
+      today: new Date().getDay(),
+      history,
+      now: Date.now(),
+    });
+  }, [cur, history]);
+
+  // Tracks whether the user has explicitly acknowledged ("Post anyway / Review") a
+  // group that needsReview. Keyed by group id; reset is implicit as the current group
+  // advances. The confirm button is gated on this when needsReview is true.
+  const [reviewedGroupId, setReviewedGroupId] = useState<string | null>(null);
+  const needsReviewGate = !!(curRules?.needsReview && cur && reviewedGroupId !== cur.id);
 
   // Append to the SAME post-history store the daily flow uses (shape-compatible).
   const appendHistory = useCallback((content: string, group: FlockGroup) => {
@@ -109,10 +141,19 @@ export default function MassFlockPosting({
 
   function confirmPostedAndNext() {
     if (acting || !cur) return;
+    // Safety gate: a group needing review can't be marked posted until the user has
+    // explicitly acknowledged it (see the Review panel below).
+    if (needsReviewGate) {
+      showToast('⚠️ Review this group first, then confirm');
+      return;
+    }
     setActing(true);
     const content = getPreparedContent();
     appendHistory(content, cur);           // enrich history (dedupe signal next time)
     setSession((s) => markPosted(s, cur.id)); // idempotent — safe against double-click
+    // Flock Safety Guard: record the confirmed post (deduped across workflows).
+    safety.recordConfirmedPost('mass', { id: cur.id, name: cur.name, link: cur.link });
+    setReviewedGroupId(null); // clear acknowledgement as we advance to the next group
     showToast(`✓ Marked posted: ${cur.name}`);
     setTimeout(() => setActing(false), 400);
   }
@@ -210,12 +251,23 @@ export default function MassFlockPosting({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {/* Flock Safety Guard bar — shared across all posting workflows. */}
+          <FlockSafetyBar safety={safety} />
+
           {/* Progress bar */}
           <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all" style={{ width: `${prog.selected ? Math.round((prog.posted + prog.skipped) / prog.selected * 100) : 0}%` }} />
           </div>
 
-          {allDone ? (
+          {safety.paused ? (
+            // Shared pause takes priority — no posting controls while paused. Resume
+            // lives in the Safety bar above (manual resume only, no auto-resume).
+            <div className="text-center py-6">
+              <p className="text-2xl mb-2">⏸️</p>
+              <p className="text-sm font-bold text-amber-300">Posting paused</p>
+              <p className="text-xs text-slate-400 mt-1">Your session progress is saved. Use “Resume posting” above when you’re ready — nothing posts automatically.</p>
+            </div>
+          ) : allDone ? (
             <div className="text-center py-6">
               <p className="text-3xl mb-2">🎉</p>
               <p className="text-sm font-bold text-green-300">Session complete!</p>
@@ -244,6 +296,29 @@ export default function MassFlockPosting({
                 </div>
               )}
 
+              {/* Flock Safety Guard — permitted days / frequency / recent-posting per
+                  group. When the group needs review (not a permitted day, or a possible
+                  frequency violation), require an explicit acknowledgement before the
+                  user can mark it posted. Unknown rules are surfaced, never called safe. */}
+              {curRules && curRules.messages.length > 0 && (
+                <div className={`p-3 rounded-lg border space-y-1 ${curRules.needsReview ? 'border-amber-500/50 bg-amber-500/10' : 'border-white/10 bg-white/5'}`}>
+                  <p className="text-[11px] font-bold text-amber-300">
+                    {curRules.needsReview ? '⚠️ Review this group before posting' : 'ℹ️ Check this group\u2019s rules'}
+                  </p>
+                  {curRules.messages.map((m, i) => (
+                    <p key={i} className="text-[11px] text-slate-300 leading-snug">{m}</p>
+                  ))}
+                  {needsReviewGate && (
+                    <button
+                      onClick={() => cur && setReviewedGroupId(cur.id)}
+                      className="mt-1 w-full py-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 text-amber-200 text-[11px] font-bold hover:bg-amber-500/25 transition-colors"
+                    >
+                      I reviewed the rules — let me post anyway
+                    </button>
+                  )}
+                </div>
+              )}
+
               {!getPreparedContent().trim() && (
                 <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
                   <p className="text-xs text-amber-300">✍️ Prepare your post in the composer above first, then come back.</p>
@@ -262,7 +337,8 @@ export default function MassFlockPosting({
 
               <button
                 onClick={confirmPostedAndNext}
-                disabled={acting || !cur}
+                disabled={acting || !cur || needsReviewGate}
+                title={needsReviewGate ? 'Review this group’s rules first' : undefined}
                 className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 transition-all active:scale-95"
               >
                 ✓ Mark Posted & Next

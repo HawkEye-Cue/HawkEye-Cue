@@ -6,6 +6,7 @@ import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
 import { useEdition } from '../contexts/EditionContext';
+import { useSummit } from '../contexts/SummitContext';
 import { ApiClient, isFlockEvent } from '@social-lead-gen/shared';
 import HawkAnimations from './HawkAnimations';
 import GuidedTour from './GuidedTour';
@@ -52,13 +53,32 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
   const { mode } = useMode();
   const { isDiscover } = useEdition();
+  // Summit access drives whether "Summit HQ" is promoted into the main navigation.
+  // Reacts to subscription/team changes via the context's refresh() — no logout needed.
+  const { isSummit } = useSummit();
 
   // Edition-aware navigation. Discover swaps the built-in Pipeline for a CRM tab
   // and hides pipeline-only secondary items (Full Dashboard = calendar/scheduling).
-  const navItems = isDiscover ? discoverNavItems : growNavItems;
-  const visibleMoreItems = isDiscover
+  const baseNavItems = isDiscover ? discoverNavItems : growNavItems;
+  // Once Summit access is confirmed, surface "Summit HQ" as a PRIMARY nav item so it
+  // feels like an automatic upgrade rather than something buried in Settings.
+  const summitNavItem = { path: '/team', label: 'Summit HQ', icon: '🏔️', tour: 'summit' };
+  // For Summit users, the complete Sales experience is embedded INSIDE Summit HQ, so the
+  // standalone "Sales" primary nav item is hidden to avoid duplication. Soar (and any
+  // non-Summit) users keep the standalone Sales tab exactly as before. The /sales route
+  // itself stays registered and reachable (direct URL / Summit HQ embed both work), so
+  // no Sales functionality or history is lost.
+  const navWithSummit = isSummit
+    ? [...baseNavItems.filter((i) => i.path !== '/sales'), summitNavItem]
+    : baseNavItems;
+  const navItems = navWithSummit;
+  // Avoid showing the team entry twice: when Summit HQ is in the primary nav, drop the
+  // legacy "Summit (Team)" item from the "More" menu. Non-Summit users still see it in
+  // More as the discovery/upgrade path.
+  const visibleMoreItems = (isDiscover
     ? moreItems.filter((i) => i.path !== '/dashboard')
-    : moreItems;
+    : moreItems
+  ).filter((i) => !(isSummit && i.path === '/team'));
 
   // Load display names from server on startup + save user timezone
   useEffect(() => {
@@ -103,6 +123,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
     localStorage.setItem(key, 'true');
     setShowTour(false);
   }
+
+  // One-time "Welcome to Summit" entry. Shown once per user after Summit access is
+  // confirmed, giving a clear path into the team workspace. Dismissing (or entering)
+  // sets a per-user flag so it never nags again. Never shown to non-Summit users.
+  const summitWelcomeKey = user?.sub ? `hawkeye_summit_welcomed_${user.sub}` : 'hawkeye_summit_welcomed';
+  const [summitWelcomeDismissed, setSummitWelcomeDismissed] = useState(() => {
+    try { return Boolean(localStorage.getItem(summitWelcomeKey)); } catch { return false; }
+  });
+  function dismissSummitWelcome() {
+    try { localStorage.setItem(summitWelcomeKey, 'true'); } catch { /* ignore */ }
+    setSummitWelcomeDismissed(true);
+  }
+  const showSummitWelcome = isSummit && !summitWelcomeDismissed && !showTour;
 
   // ─── Notifications ───
   const { events } = useCalendar();
@@ -384,6 +417,29 @@ export default function AppShell({ children }: { children: ReactNode }) {
           240px sidebar offset → right-edge clipping. Transparent so the hawk shows through. */}
       <main key={location.pathname} className="p-3 sm:p-4 lg:py-8 lg:pr-8 lg:pl-60 w-full min-w-0 page-enter relative z-10" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
         <div className="max-w-2xl lg:max-w-[1400px] mx-auto w-full min-w-0">
+          {showSummitWelcome && (
+            <div className="mb-4 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-yellow-500/10 p-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-extrabold text-white">🏔️ Welcome to Summit</p>
+                <p className="text-xs text-slate-300 mt-1">Your team workspace is ready. Share calendars, leads and analytics, and celebrate wins together.</p>
+                <Link
+                  to="/team"
+                  onClick={dismissSummitWelcome}
+                  className="inline-block mt-3 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black rounded-lg text-xs font-bold hover:brightness-105 active:scale-[0.99] transition-all"
+                >
+                  Enter Summit HQ →
+                </Link>
+              </div>
+              <button
+                onClick={dismissSummitWelcome}
+                className="shrink-0 text-slate-400 hover:text-white text-sm"
+                title="Dismiss"
+                aria-label="Dismiss Summit welcome"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {children}
         </div>
       </main>

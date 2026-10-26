@@ -30,6 +30,66 @@ export class ApiStack extends cdk.Stack {
 
     const { userPool, userPoolClients, table, mediaBucket } = props;
 
+    // ─── Pin drifted assets (opt-in, for the scoped launch release) ───────
+    // Two functions (email-oauth-handler, cadence-email-sender) have local `dist`
+    // bundles that differ from what is currently deployed in production (their live
+    // code was last published out-of-band / from an earlier build). A normal `cdk
+    // deploy` would therefore ALSO update their code — out of scope for the billing/
+    // team launch. With `-c pinDriftedAssets=true` we pin ONLY those two functions to
+    // the EXACT S3 asset objects CloudFormation currently records (read from the live
+    // SocialLeadGen-Api template on 2026-10-20), so the launch deploy leaves them
+    // byte-identical while still shipping the intended subscription/webhook/
+    // appreciations/team/posts handler changes (which continue to bundle from dist).
+    const pinDriftedAssets =
+      this.node.tryGetContext('pinDriftedAssets') === 'true' ||
+      this.node.tryGetContext('pinDriftedAssets') === true;
+    const cdkAssetsBucket = pinDriftedAssets
+      ? s3.Bucket.fromBucketName(this, 'CdkAssetsBucketPin', `cdk-hnb659fds-assets-${this.account}-${this.region}`)
+      : undefined;
+    // Deployed asset keys (live SocialLeadGen-Api CloudFormation template, 2026-10-20).
+    const DEPLOYED_DRIFT_KEYS: Record<string, string> = {
+      'email-oauth-handler': 'e7f188a0ac3d5d40b0b1f7ed66ab6a46dbaf7222638ef8b15cddb910b37bf96f.zip',
+      'cadence-email-sender': 'd6ba25a7f91b4ce0d0458d7a02fb33b9cbb457f25af375eb9a3d948288b15d4c.zip',
+    };
+    // Code for a drift-pinned function: the live S3 object when the flag is on, else
+    // the normal local bundle (default behavior unchanged when the flag is absent).
+    const pinnedOrAsset = (assetName: keyof typeof DEPLOYED_DRIFT_KEYS): lambda.Code => {
+      if (pinDriftedAssets && cdkAssetsBucket) {
+        return lambda.Code.fromBucket(cdkAssetsBucket, DEPLOYED_DRIFT_KEYS[assetName]);
+      }
+      return lambda.Code.fromAsset(`../../lambdas/dist/${assetName}`);
+    };
+
+    // ─── OAuth env PRESERVATION (drift-safe, never embeds/prints secrets) ─────
+    // The email OAuth functions carry Google/Microsoft client id+secret in their Lambda
+    // env. Those live values were set out-of-band and are NOT in source (and must never
+    // be). A normal synth resolves `process.env.GOOGLE_CLIENT_ID || ''` to EMPTY, which a
+    // deploy would push — wiping the live credentials.
+    //
+    // Preservation strategy (no secret ever embedded, printed, or defaulted to empty):
+    // at DEPLOY time the operator loads the four live values into the deploy shell's
+    // environment (read transiently from the running Lambda; never written to source,
+    // git, or logs). CDK then synthesizes the SAME literals → the two functions show a
+    // ZERO diff. If the pin flag is on but the values are NOT present in the environment,
+    // we FAIL CLOSED (throw) rather than emit empty env that would wipe the credentials.
+    const oauthEnv = () => {
+      const v = {
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+        MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID || '',
+        MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET || '',
+      };
+      if (pinDriftedAssets && (!v.GOOGLE_CLIENT_ID || !v.GOOGLE_CLIENT_SECRET || !v.MICROSOFT_CLIENT_ID || !v.MICROSOFT_CLIENT_SECRET)) {
+        throw new Error(
+          'pinDriftedAssets=true requires the live OAuth env values to be present in the ' +
+          'deploy shell (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, MICROSOFT_CLIENT_ID, ' +
+          'MICROSOFT_CLIENT_SECRET) so EmailOAuthFn/CadenceEmailSenderFn are preserved ' +
+          'byte-identical. Refusing to synth empty OAuth env (would wipe production creds).',
+        );
+      }
+      return v;
+    };
+
     // ─── HTTP API with CORS ───────────────────────────────────────────────
     this.httpApi = new apigatewayv2.HttpApi(this, 'HttpApi', {
       apiName: 'SocialLeadGen-API',
@@ -312,6 +372,15 @@ export class ApiStack extends cdk.Stack {
 
     table.grantReadWriteData(stripeWebhookFn);
 
+    // Stripe Price IDs — the webhook's resolveTier() maps the PURCHASED Price ID → tier
+    // (authoritative over stale subscription metadata), so a customer-portal plan change
+    // resolves correctly. Mirrors the subscription handler's LIVE price ids above; without
+    // these the webhook cannot recognize any price and fails closed. (Launch fix.)
+    stripeWebhookFn.addEnvironment('STRIPE_PRICE_BASE', 'price_1Tg5DnD0B5PTsk5ePqsicJF6');
+    stripeWebhookFn.addEnvironment('STRIPE_PRICE_GROWTH', 'price_1Tg5DnD0B5PTsk5ePqsicJF6');
+    stripeWebhookFn.addEnvironment('STRIPE_PRICE_SOAR', 'price_1TtIyDD0B5PTsk5eRvabYqmG');
+    stripeWebhookFn.addEnvironment('STRIPE_PRICE_TEAM', 'price_1TtItpD0B5PTsk5e988EbiUS');
+
     // Grant Secrets Manager read access for Stripe keys
     stripeWebhookFn.addToRolePolicy(
       new iam.PolicyStatement({
@@ -497,15 +566,12 @@ export class ApiStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-EmailOAuth',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/email-oauth-handler'),
+      code: pinnedOrAsset('email-oauth-handler'),
       description: 'Handles Gmail/Outlook OAuth flows and sends emails via connected accounts',
       timeout: cdk.Duration.seconds(30),
       environment: {
         ...lambdaDefaults.environment,
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
-        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
-        MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID || '',
-        MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET || '',
+        ...oauthEnv(),
       },
     } as lambda.FunctionProps);
 
@@ -597,16 +663,13 @@ export class ApiStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-CadenceEmailSender',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/cadence-email-sender'),
+      code: pinnedOrAsset('cadence-email-sender'),
       description: 'Daily scheduled Lambda — sends cadence emails to leads via connected Gmail/Outlook',
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,
       environment: {
         ...lambdaDefaults.environment,
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
-        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
-        MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID || '',
-        MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET || '',
+        ...oauthEnv(),
       },
     } as lambda.FunctionProps);
 
@@ -1291,6 +1354,18 @@ export class ApiStack extends cdk.Stack {
     this.httpApi.addRoutes({
       path: '/team/invite',
       methods: [apigatewayv2.HttpMethod.POST],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/invite/resend',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: teamIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/team/invites/{inviteId}',
+      methods: [apigatewayv2.HttpMethod.DELETE],
       integration: teamIntegration,
       authorizer,
     });

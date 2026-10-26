@@ -27,7 +27,11 @@ export function canActivate(mapping: FieldMapping, requiredFields: string[]): bo
  * (Requirements 8.5, 8.6)
  */
 export function buildPayload(lead: Record<string, any>, mapping: FieldMapping): Record<string, string> {
-  const out: Record<string, string> = {};
+  // Use a null-prototype object so a destination field literally named "__proto__"
+  // (or other Object.prototype names) becomes a normal own-enumerable key instead of
+  // mutating the prototype. Without this, `out["__proto__"] = ...` would not appear in
+  // Object.keys(out), silently dropping that mapped column from the pushed payload / CSV.
+  const out: Record<string, string> = Object.create(null);
   for (const [crmField, hawkeyeField] of Object.entries(mapping)) {
     const value = lead[hawkeyeField];
     out[crmField] = value == null ? '' : String(value);

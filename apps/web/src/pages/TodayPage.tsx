@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useMode } from '../contexts/ModeContext';
 import { ApiClient } from '@social-lead-gen/shared';
+import { peekInvite } from '../lib/pendingInvite';
 import FlightPlan from '../components/FlightPlan';
 import type { FlightTask } from '../components/FlightPlan';
 import SetupProgress from '../components/SetupProgress';
@@ -50,12 +51,21 @@ export default function TodayPage() {
   const name = resolveName(user?.email);
   const greeting = greetingFor();
 
-  // Redirect brand-new users to onboarding (same rule the old dashboard used)
-  useEffect(() => {
-    if (!localStorage.getItem('hawkeye_onboarded')) {
-      navigate('/onboarding', { replace: true });
-    }
-  }, [navigate]);
+  // Onboarding gate — decide at RENDER time (via <Navigate> below), never via a
+  // post-paint effect. The old effect called navigate() AFTER the first paint, which
+  // left the dashboard rendering a dead/blank frame until the redirect committed (and on
+  // some initial loads it never visibly committed until a manual nav click). Deciding
+  // here means we either render the dashboard OR redirect — the main content is never
+  // blank-but-mounted.
+  //
+  // We also stop treating the device-local `hawkeye_onboarded` flag as the sole signal:
+  // a returning, fully-onboarded user on a new browser/device has a saved trade but no
+  // local flag. Such a user should NOT be bounced to onboarding. We only send genuinely
+  // new users (no local flag AND no trade selected yet) to onboarding.
+  const hasOnboardedFlag = (() => {
+    try { return Boolean(localStorage.getItem('hawkeye_onboarded')); } catch { return false; }
+  })();
+  const needsOnboarding = !hasOnboardedFlag && !selectedTrade;
 
   useEffect(() => {
     let cancelled = false;
@@ -168,6 +178,19 @@ export default function TodayPage() {
     { label: 'Posts ready', value: counts.postsReady, icon: '✨', accent: 'purple', route: '/create' },
     { label: 'Active pipeline', value: `$${counts.activeValue.toLocaleString()}`, icon: '💰', accent: 'green', route: '/pipeline?view=deals' },
   ];
+
+  // Invited-employee fast path: a pending team invite takes priority over business-owner
+  // onboarding. Send them straight to invitation acceptance (Summit HQ) instead of
+  // Grow/Discover/CRM/business setup. acceptInvite still enforces email-match/expiry/etc.
+  const pendingInvite = peekInvite();
+  if (needsOnboarding && pendingInvite) {
+    return <Navigate to={`/team?invite=${encodeURIComponent(pendingInvite)}`} replace />;
+  }
+
+  // Render-time onboarding redirect (no blank frame). Only genuinely new users land here.
+  if (needsOnboarding) {
+    return <Navigate to="/onboarding" replace />;
+  }
 
   return (
     <div className="space-y-4 pb-8">

@@ -123,10 +123,11 @@ export function useTeamData() {
     try {
       setError(null);
       const client = await buildClient();
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+      // NOTE: ApiClient.request does not accept an AbortSignal, so a local
+      // AbortController/timeout here was dead code (it never cancelled the request).
+      // Removed to avoid the misleading no-op; add real cancellation only if
+      // ApiClient.request gains signal support.
       const result = await client.request<{ events: TeamCalendarEvent[] }>('GET', `/team/calendar?start=${start}&end=${end}`);
-      clearTimeout(timeout);
       setTeamCalendar(result.events || []);
     } catch {
       setError('Team calendar unavailable');

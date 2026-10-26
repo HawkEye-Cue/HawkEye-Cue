@@ -363,6 +363,39 @@ export const TIER_LIMITS: Record<'free' | 'nest' | 'soar' | 'summit' | 'team', T
   team: { aiGenerations: 500, keywords: Infinity, scheduledPosts: Infinity },
 };
 
+// --- Canonical tier normalization (source of truth) ---
+// The billing/entitlement Lambdas (subscription-handler, stripe-webhook, team-handler)
+// each carry a VERBATIM copy of this logic because the compiled bundles cannot import
+// from this package. The parity test tier-normalization.test.ts imports this canonical
+// implementation and asserts every handler copy produces identical results, so the
+// copies can never silently drift.
+//
+// Canonical tiers: 'free' | 'soar' | 'team'. Aliases:
+//   nest / none / expired / '' / null → free
+//   summit                            → team   (Summit = marketing name for Team)
+//   base / growth / flight / pro      → soar   (legacy price labels)
+// Any UNRECOGNIZED label → free (never silently upgrade an unknown label into paid).
+export type CanonicalTier = 'free' | 'soar' | 'team';
+
+export function normalizeTier(raw: unknown): CanonicalTier {
+  const t = (raw ?? 'free').toString().toLowerCase();
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t as CanonicalTier;
+  return 'free';
+}
+
+// AI generation limits keyed by canonical tier. Mirrors TIER_LIMITS.aiGenerations.
+export const AI_GENERATION_LIMITS_BY_TIER: Record<CanonicalTier, number> = {
+  free: 2,
+  soar: 300,
+  team: 500,
+};
+
+export function aiGenerationLimitForTier(raw: unknown): number {
+  return AI_GENERATION_LIMITS_BY_TIER[normalizeTier(raw)];
+}
+
 // --- Social Platforms ---
 
 export const SOCIAL_PLATFORMS: SocialPlatform[] = [

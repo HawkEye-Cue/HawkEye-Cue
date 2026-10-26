@@ -1,7 +1,7 @@
 'use strict';
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, ScanCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, ScanCommand, QueryCommand, PutCommand, DeleteCommand, UpdateCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -9,24 +9,95 @@ const secretsClient = new SecretsManagerClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
 const FROM_EMAIL = 'HawkEye-Cue <notifications@hawkeyecue.com>';
 
+// ─── Email idempotency: recoverable pending → sent lease ────────────────────
+// State machine on EMAILSENT#<key>:
+//   (absent)                → claimable
+//   status='pending', lease not expired → BLOCKED (another worker is sending now)
+//   status='pending', lease EXPIRED     → claimable (prior worker crashed mid-send;
+//                                          recover rather than suppress for 30 days)
+//   status='sent'                        → BLOCKED permanently (TTL 30d) — already sent
+//
+// claimEmailSend returns { ok, token }. The token (leaseOwner) must be passed to
+// confirmEmailSent/releaseEmailClaim; their conditional updates REQUIRE the stored
+// leaseOwner to still equal the token, so an expired worker that wakes up late can
+// NEVER overwrite a newer worker's claim.
+//
+// NOTE on ambiguous outcomes: if the provider ACCEPTS the send but we crash before
+// confirmEmailSent, the lease expires and a retry may resend (at-least-once). True
+// exactly-once requires a provider-level idempotency key — see sendEmail (Resend
+// 'Idempotency-Key' header) which we set to the claim key as the smallest safe guard.
+const LEASE_SECONDS = 120;
+function newLeaseToken() {
+  // crypto.randomUUID is available in Node 20 (Lambda runtime).
+  try { return require('crypto').randomUUID(); } catch (e) { return String(Date.now()) + Math.random(); }
+}
+async function claimEmailSend(claimKey) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const token = newLeaseToken();
+  try {
+    await dynamo.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: { PK: `EMAILSENT#${claimKey}`, SK: 'CLAIM', status: 'pending', leaseOwner: token, leaseUntil: nowSec + LEASE_SECONDS, claimedAt: new Date().toISOString() },
+      // Claimable when: no item exists, OR the item is a pending claim whose lease has
+      // expired (crash recovery). A 'sent' item (no leaseUntil, or status sent) blocks.
+      ConditionExpression: 'attribute_not_exists(PK) OR (#st = :pending AND leaseUntil < :now)',
+      ExpressionAttributeNames: { '#st': 'status' },
+      ExpressionAttributeValues: { ':pending': 'pending', ':now': nowSec },
+    }));
+    return { ok: true, token };
+  } catch (e) {
+    if (e && e.name === 'ConditionalCheckFailedException') return { ok: false, token: null };
+    throw e;
+  }
+}
+// Mark a successful send as permanently sent (30-day TTL). Guarded by leaseOwner so a
+// stale worker cannot flip a newer claim to sent.
+async function confirmEmailSent(claimKey, token) {
+  const ttl = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
+  try {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `EMAILSENT#${claimKey}`, SK: 'CLAIM' },
+      UpdateExpression: 'SET #st = :sent, #ttl = :ttl REMOVE leaseUntil',
+      ConditionExpression: 'leaseOwner = :tok',
+      ExpressionAttributeNames: { '#st': 'status', '#ttl': 'ttl' },
+      ExpressionAttributeValues: { ':sent': 'sent', ':ttl': ttl, ':tok': token },
+    }));
+  } catch (e) { /* lost the lease to a newer worker — safe to ignore */ }
+}
+// Release a pending claim on failure so a retry can resend. Guarded by leaseOwner.
+async function releaseEmailClaim(claimKey, token) {
+  try {
+    await dynamo.send(new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `EMAILSENT#${claimKey}`, SK: 'CLAIM' },
+      ...(token ? { ConditionExpression: 'leaseOwner = :tok', ExpressionAttributeValues: { ':tok': token } } : {}),
+    }));
+  } catch (e) { /* best-effort / lost lease */ }
+}
+
 // ─── Resend Email Helper ──────────────────────────────────────────────────────
 let resendApiKey = null;
 async function getResendKey() {
   if (resendApiKey) return resendApiKey;
-  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Resend' }));
+  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: process.env.RESEND_SECRET_ID || 'SocialLeadGen/Resend' }));
   const secret = JSON.parse(result.SecretString);
   resendApiKey = secret.RESEND_API_KEY;
   return resendApiKey;
 }
 
-async function sendEmail(to, subject, textOrHtml) {
+async function sendEmail(to, subject, textOrHtml, idempotencyKey) {
   const apiKey = await getResendKey();
   const isHtml = textOrHtml.includes('<');
   const payload = { from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject };
   if (isHtml) { payload.html = textOrHtml; } else { payload.text = textOrHtml; }
+  const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+  // Smallest safe provider-level guard against duplicates after an ambiguous outcome:
+  // Resend honors an Idempotency-Key header (same key within 24h → one send).
+  if (idempotencyKey) headers['Idempotency-Key'] = String(idempotencyKey).slice(0, 256);
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
@@ -219,6 +290,102 @@ ${teamMemberStats && teamMemberStats.length > 1 ? 'Great work team — new folio
   return { subject, body };
 }
 
+// ─── Daily Team Recap aggregation (reuses existing deal reads) ──────────────
+// Aggregates ONE team for a given reporting day. "Today's closed sales" use the WON
+// transition date (updatedAt on a won deal) when available — NOT the deal/lead creation
+// date — so a sale counts on the day it actually closed. New-lead count uses OPP# items
+// created that day. Returns null if the team has no members. Computed once per team and
+// reused for every recipient (agency isolation: only this team's members are read).
+async function aggregateTeamToday(members, dayStr) {
+  if (!members || members.length === 0) return null;
+  const perEmployee = [];
+  let agencySales = 0;        // total won premium today
+  let agencyDealCount = 0;    // # won deals today
+  let agencyNewLeads = 0;     // # OPP# created today
+  const closedToday = [];     // { salesperson, dealName, value }
+
+  for (const m of members) {
+    const uid = m.userId;
+    const name = (m.email || '').split('@')[0] || 'Member';
+    const deals = await getDealsForUser(uid);
+    let empSales = 0, empDeals = 0;
+    for (const d of deals) {
+      if (d.stage !== 'won') continue;
+      // WON-transition date proxy: updatedAt on a won deal. Fall back to createdAt ONLY
+      // if updatedAt is absent (legacy rows). We never count by creation date alone when
+      // a won-transition date exists.
+      const wonDay = (d.updatedAt || d.createdAt || '').slice(0, 10);
+      if (wonDay !== dayStr) continue;
+      const val = d.dealValue || 0;
+      empSales += val; empDeals += 1;
+      agencySales += val; agencyDealCount += 1;
+      closedToday.push({ salesperson: name, dealName: d.dealName || 'Deal', value: val });
+    }
+    // New leads today for this member (OPP# items created today).
+    try {
+      const oppResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: { ':pk': `USER#${uid}`, ':sk': 'OPP#' },
+      }));
+      agencyNewLeads += (oppResult.Items || []).filter((o) => (o.createdAt || '').slice(0, 10) === dayStr).length;
+    } catch (e) { /* best-effort */ }
+    perEmployee.push({ name, sales: empSales, deals: empDeals });
+  }
+  perEmployee.sort((a, b) => b.sales - a.sales);
+  const topPerformer = perEmployee.find((e) => e.sales > 0) || null;
+  return { perEmployee, agencySales, agencyDealCount, agencyNewLeads, closedToday, topPerformer };
+}
+
+// Build the daily team recap email (HawkEye-Cue branding). Every recipient sees the
+// same team-wide + per-employee view (per requirement). Goals are rendered ONLY if a
+// supported goal field is present on the team record; otherwise omitted (no new goal
+// system invented).
+function buildTeamRecapEmail(agg, teamName, dayStr, teamGoal) {
+  const money = (n) => `$${(n || 0).toLocaleString()}`;
+  const empRows = agg.perEmployee.map((e, i) =>
+    `<tr><td style="padding:6px 10px;color:#e2e8f0;">${i === 0 && e.sales > 0 ? '⭐ ' : ''}${e.name}</td><td style="padding:6px 10px;text-align:right;color:#fbbf24;font-weight:700;">${money(e.sales)}</td><td style="padding:6px 10px;text-align:right;color:#94a3b8;">${e.deals}</td></tr>`
+  ).join('');
+  const closedRows = agg.closedToday.length
+    ? agg.closedToday.map((c) => `<li style="margin:2px 0;color:#cbd5e1;">${c.salesperson} — ${c.dealName} (${money(c.value)})</li>`).join('')
+    : '<li style="color:#94a3b8;">No sales closed today yet</li>';
+  const goalBlock = (typeof teamGoal === 'number' && teamGoal > 0)
+    ? `<div style="background:#0b1220;border:1px solid #1e293b;border-radius:10px;padding:12px;margin:12px 0;"><p style="margin:0;color:#93c5fd;font-size:13px;">🎯 Agency goal: ${money(teamGoal)} · ${Math.min(100, Math.round((agg.agencySales / teamGoal) * 100))}% today</p></div>`
+    : '';
+  const subject = `🦅 ${teamName} — Daily Team Recap: ${money(agg.agencySales)} sold today`;
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:20px;background:#0f172a;">
+      <h2 style="color:#f97316;margin:0 0 4px 0;">🦅 Daily Team Recap</h2>
+      <p style="color:#94a3b8;font-size:12px;margin:0 0 16px 0;">${teamName} · ${dayStr}</p>
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <div style="flex:1;background:#111827;border:1px solid #1f2937;border-radius:10px;padding:12px;text-align:center;">
+          <p style="margin:0;color:#fbbf24;font-size:20px;font-weight:800;">${money(agg.agencySales)}</p>
+          <p style="margin:2px 0 0 0;color:#94a3b8;font-size:11px;">Agency Sales Today</p>
+        </div>
+        <div style="flex:1;background:#111827;border:1px solid #1f2937;border-radius:10px;padding:12px;text-align:center;">
+          <p style="margin:0;color:#e2e8f0;font-size:20px;font-weight:800;">${agg.agencyDealCount}</p>
+          <p style="margin:2px 0 0 0;color:#94a3b8;font-size:11px;">Deals Won</p>
+        </div>
+        <div style="flex:1;background:#111827;border:1px solid #1f2937;border-radius:10px;padding:12px;text-align:center;">
+          <p style="margin:0;color:#e2e8f0;font-size:20px;font-weight:800;">${agg.agencyNewLeads}</p>
+          <p style="margin:2px 0 0 0;color:#94a3b8;font-size:11px;">New Leads</p>
+        </div>
+      </div>
+      ${goalBlock}
+      ${agg.topPerformer ? `<p style="color:#fbbf24;font-size:14px;margin:0 0 12px 0;">🏆 Top performer today: <strong style="color:#fff;">${agg.topPerformer.name}</strong> — ${money(agg.topPerformer.sales)}</p>` : ''}
+      <h3 style="color:#fff;font-size:14px;margin:12px 0 6px 0;">Individual Production</h3>
+      <table style="width:100%;border-collapse:collapse;background:#111827;border:1px solid #1f2937;border-radius:10px;overflow:hidden;">
+        <tr style="background:#1f2937;"><th style="padding:6px 10px;text-align:left;color:#94a3b8;font-size:11px;">Employee</th><th style="padding:6px 10px;text-align:right;color:#94a3b8;font-size:11px;">Sales</th><th style="padding:6px 10px;text-align:right;color:#94a3b8;font-size:11px;">Deals</th></tr>
+        ${empRows}
+      </table>
+      <h3 style="color:#fff;font-size:14px;margin:16px 0 6px 0;">Today's Closed Sales</h3>
+      <ul style="margin:0;padding-left:18px;font-size:13px;">${closedRows}</ul>
+      <p style="color:#64748b;font-size:11px;margin:18px 0 0 0;">Daily team recap · manage in Settings → Notifications. — HawkEye-Cue</p>
+    </div>
+  `;
+  return { subject, html };
+}
+
 exports.handler = async () => {
   console.log('Folio Recap Lambda triggered');
 
@@ -332,11 +499,16 @@ exports.handler = async () => {
       const { subject, body } = buildRecapEmail(stats, folioLabel, agencyTotal, teamMemberStats);
 
       for (const email of emails.slice(0, 10)) {
+        const claim = `foliorecap|${email}|${folioEnd}`;
+        const lease = await claimEmailSend(claim);
+        if (!lease.ok) { console.log(`Folio recap already sent/in-progress for ${email} ${folioEnd} — skip`); continue; }
         try {
-          await sendEmail(email, subject, body);
+          await sendEmail(email, subject, body, claim);
+          await confirmEmailSent(claim, lease.token);
           emailsSent++;
           console.log(`Recap sent to ${email} for user ${userId}`);
         } catch (e) {
+          await releaseEmailClaim(claim, lease.token); // allow retry
           console.error(`Failed to send recap to ${email}:`, e.message);
         }
       }
@@ -344,13 +516,18 @@ exports.handler = async () => {
 
     console.log(`Folio Recap complete. ${emailsSent} emails sent.`);
 
+    // Shared across Morning Digest, Lead-Going-Cold, Weekly Recap, and Daily Team Recap.
+    // Declared in the handler scope (NOT inside the digest try-block) so the later blocks
+    // can read it — a const inside the digest block died with it, throwing
+    // "allProfiles is not defined" and silently suppressing cold-lead/weekly/team-recap sends.
+    let allProfiles = [];
+
     // ─── Daily Morning Digest Emails ──────────────────────────────────────
     let digestsSent = 0;
     try {
       const today = getTodayStr();
       // Scan all users who have profiles
       let lastKey = undefined;
-      const allProfiles = [];
       do {
         const scanResult = await dynamo.send(new ScanCommand({
           TableName: TABLE_NAME,
@@ -399,8 +576,17 @@ exports.handler = async () => {
               <p style="font-size:11px;color:#94a3b8;margin:16px 0 0 0;">Manage notifications in Settings → Email Notifications.</p>
             </div>
           `;
-          await sendEmail(email, subject, html);
-          digestsSent++;
+          const digestClaim = `digest|${email}|${today}`;
+          const digestLease = await claimEmailSend(digestClaim);
+          if (!digestLease.ok) { continue; } // already sent/in-progress today
+          try {
+            await sendEmail(email, subject, html, digestClaim);
+            await confirmEmailSent(digestClaim, digestLease.token);
+            digestsSent++;
+          } catch (sendErr) {
+            await releaseEmailClaim(digestClaim, digestLease.token); // allow retry
+            throw sendErr;
+          }
         } catch (e) {
           console.error(`[digest] Error for user ${userId}:`, e.message);
         }
@@ -511,8 +697,17 @@ exports.handler = async () => {
                 <p style="font-size:11px;color:#94a3b8;margin:16px 0 0 0;">Manage notifications in Settings → Email Notifications.</p>
               </div>
             `;
-            await sendEmail(email, subject, html);
-            weeklyRecapsSent++;
+            const weekClaim = `weekly|${email}|${getTodayStr()}`;
+            const weekLease = await claimEmailSend(weekClaim);
+            if (!weekLease.ok) { continue; } // already sent/in-progress this Monday
+            try {
+              await sendEmail(email, subject, html, weekClaim);
+              await confirmEmailSent(weekClaim, weekLease.token);
+              weeklyRecapsSent++;
+            } catch (sendErr) {
+              await releaseEmailClaim(weekClaim, weekLease.token); // allow retry
+              throw sendErr;
+            }
           } catch (e) {
             console.error(`[weekly] Error for user ${userId}:`, e.message);
           }
@@ -523,7 +718,73 @@ exports.handler = async () => {
       }
     }
 
-    return { statusCode: 200, body: `Folio: ${emailsSent}, Digests: ${digestsSent}, Cold: ${coldLeadsSent}, Weekly: ${weeklyRecapsSent}` };
+    // ─── Daily Team Recap (Summit teams) ──────────────────────────────────
+    // Every active team member (incl. owner) gets the SAME complete team recap once/day.
+    // Aggregated ONCE per team and reused for all recipients. Agency-isolated: only the
+    // team's own MEMBER# rows are read. Reporting day uses the team's timezone field if
+    // present, else the handler's UTC day (documented limitation — no new tz infra).
+    let teamRecapsSent = 0;
+    try {
+      // Resolve distinct teams from admin/member link records across all profiles.
+      const teamIds = new Set();
+      for (const profile of allProfiles) {
+        const uid = profile.PK.replace('USER#', '');
+        for (const sk of ['TEAM_ADMIN', 'TEAM_MEMBER']) {
+          const r = await dynamo.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'PK = :pk AND SK = :sk',
+            ExpressionAttributeValues: { ':pk': `USER#${uid}`, ':sk': sk },
+          }));
+          const tId = (r.Items || [])[0]?.teamId;
+          if (tId) teamIds.add(tId);
+        }
+      }
+      for (const teamId of teamIds) {
+        // Team info (name + optional timezone/goal — used only if already present).
+        const infoRes = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `TEAM#${teamId}`, SK: 'INFO' } }));
+        const info = infoRes.Item || {};
+        const teamName = info.teamName || 'Your Team';
+        const teamGoal = typeof info.dailyGoal === 'number' ? info.dailyGoal : (typeof info.goal === 'number' ? info.goal : undefined);
+        const reportDay = info.timezone ? new Date(new Date().toLocaleString('en-US', { timeZone: info.timezone })).toISOString().slice(0, 10) : today;
+
+        // All active members (incl. owner — the admin has a MEMBER# row).
+        const membersRes = await dynamo.send(new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':pk': `TEAM#${teamId}`, ':sk': 'MEMBER#' },
+        }));
+        const members = (membersRes.Items || []).filter((m) => m.userId && m.email);
+        if (members.length === 0) continue;
+
+        // Aggregate ONCE per team, reuse for every recipient.
+        const agg = await aggregateTeamToday(members, reportDay);
+        if (!agg) continue;
+        const { subject, html } = buildTeamRecapEmail(agg, teamName, reportDay, teamGoal);
+
+        for (const m of members) {
+          // Respect teamRecap preference (default ON). Read the member's profile prefs.
+          const profRes = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${m.userId}`, SK: 'PROFILE' } }));
+          const prefs = (profRes.Item && profRes.Item.emailNotifications) || {};
+          if (prefs.teamRecap === false) continue;
+          const claim = `teamrecap|${m.email}|${reportDay}`;
+          const lease = await claimEmailSend(claim);
+          if (!lease.ok) continue; // already sent/in-progress today
+          try {
+            await sendEmail(m.email, subject, html, claim);
+            await confirmEmailSent(claim, lease.token);
+            teamRecapsSent++;
+          } catch (sendErr) {
+            await releaseEmailClaim(claim, lease.token); // retryable
+            console.error(`[team-recap] send failed for ${m.email}:`, sendErr.message);
+          }
+        }
+      }
+      console.log(`Daily team recaps sent: ${teamRecapsSent}`);
+    } catch (e) {
+      console.error('[team-recap] Error:', e.message);
+    }
+
+    return { statusCode: 200, body: `Folio: ${emailsSent}, Digests: ${digestsSent}, Cold: ${coldLeadsSent}, Weekly: ${weeklyRecapsSent}, TeamRecap: ${teamRecapsSent}` };
   } catch (e) {
     console.error('Folio Recap error:', e);
     return { statusCode: 500, body: e.message };

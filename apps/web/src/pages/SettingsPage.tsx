@@ -5,6 +5,7 @@ import { useTrade } from '../contexts/TradeContext';
 import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
 import { useEdition } from '../contexts/EditionContext';
+import { useSummit } from '../contexts/SummitContext';
 import TradeSelector from '../components/TradeSelector';
 import ExtensionTour from '../components/ExtensionTour';
 import LeadDetectionExplainer from '../components/LeadDetectionExplainer';
@@ -19,6 +20,7 @@ export default function SettingsPage() {
   const { showToast } = useToast();
   const { mode, setMode } = useMode();
   const { edition, setEdition } = useEdition();
+  const { refresh: refreshSummit } = useSummit();
   const [switchingEdition, setSwitchingEdition] = useState(false);
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -28,6 +30,13 @@ export default function SettingsPage() {
   const [couponCode, setCouponCode] = useState('');
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [subLoading, setSubLoading] = useState(true);
+  // Distinguish "we successfully loaded the subscription" from "the fetch failed and we
+  // don't actually know the account's state". Previously a failed fetch left
+  // subscription=null with no error flag, so the UI fell back to free-tier defaults and
+  // FALSELY advertised a brand-new 7-day trial (and showed "Upgrade" instead of
+  // "Continue Soar After Trial") to an account that already had an active trial. We must
+  // fail CLOSED: never advertise a fresh trial or enable checkout on unverified status.
+  const [subError, setSubError] = useState<string | null>(null);
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
   const [socialLoading, setSocialLoading] = useState(true);
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
@@ -76,6 +85,15 @@ export default function SettingsPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // After a successful checkout (Stripe redirects back to /settings?checkout=success),
+  // refresh app-wide Summit access so "Summit HQ" appears in the nav immediately —
+  // no logout/login required.
+  useEffect(() => {
+    if (checkoutStatus === 'success') {
+      refreshSummit();
+    }
+  }, [checkoutStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Scroll to suggestion box if hash is #suggestion
   useEffect(() => {
     if (window.location.hash === '#suggestion') {
@@ -93,19 +111,37 @@ export default function SettingsPage() {
     });
   }
 
-  // Fetch current subscription on mount
-  useEffect(() => {
-    async function fetchSubscription() {
-      try {
-        const client = await buildClient();
-        const sub = await client.getSubscription();
-        setSubscription(sub);
-      } catch {
-        // User may not have a subscription record yet
-      } finally {
-        setSubLoading(false);
+  // Fetch current subscription. Extracted + retryable so the error state offers a Retry.
+  async function fetchSubscription() {
+    setSubLoading(true);
+    setSubError(null);
+    try {
+      const client = await buildClient();
+      const sub = await client.getSubscription();
+      setSubscription(sub);
+      setSubError(null);
+    } catch (e: unknown) {
+      // A 404 means "no subscription record yet" — that is a KNOWN state (free, never
+      // trialed) and is safe to treat as such. Any other failure (network/"Failed to
+      // fetch", CORS, 401/403, 5xx) means the status is UNKNOWN: we must not guess.
+      const status = (e as { status?: number } | null)?.status;
+      if (status === 404) {
+        setSubscription(null);
+        setSubError(null);
+      } else {
+        setSubscription(null);
+        setSubError(
+          e instanceof Error && e.message
+            ? `Couldn't load your plan: ${e.message}`
+            : "Couldn't load your plan.",
+        );
       }
+    } finally {
+      setSubLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchSubscription();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -187,6 +223,13 @@ export default function SettingsPage() {
   }
 
   async function handleUpgrade(tier: 'base' | 'growth' | 'soar' | 'team') {
+    // Safety net: never start checkout while the subscription status is unverified —
+    // doing so risks a duplicate trial/subscription. The buttons are already disabled in
+    // this state; this guards programmatic/edge callers too.
+    if (subLoading || subError) {
+      setCheckoutError("We couldn't verify your current plan. Please retry loading your plan before changing it.");
+      return;
+    }
     setLoadingTier(tier);
     setCheckoutError(null);
     try {
@@ -253,24 +296,91 @@ export default function SettingsPage() {
   }
 
   const currentTier = subscription?.tier ?? 'free';
+  // We only "know" the account's billing state once the fetch has finished WITHOUT an
+  // error. While loading, or after a failed load, status is unverified and the UI must
+  // fail closed (no trial advertising, no checkout).
+  const subStatusKnown = !subLoading && !subError;
   // One trial per account: only advertise the 7-day trial to accounts that have NEVER
   // started one. Once trialEndsAt exists (active or expired) or the account has paid,
-  // upgrading does not grant a new trial, so we must not advertise it.
+  // upgrading does not grant a new trial, so we must not advertise it. Crucially, we
+  // ONLY advertise eligibility when the subscription status is actually known — never on
+  // a failed/one-pending load (which would falsely offer a fresh trial).
   const everTrialed = Boolean(subscription?.trialEndsAt);
-  const trialEligible = !everTrialed && !subscription?.stripeCustomerId;
+  const trialEligible = subStatusKnown && !everTrialed && !subscription?.stripeCustomerId;
   const trialMsRemaining = subscription?.trialEndsAt ? new Date(subscription.trialEndsAt).getTime() - Date.now() : 0;
   const trialDaysRemaining = trialMsRemaining > 0 ? Math.ceil(trialMsRemaining / (24 * 60 * 60 * 1000)) : 0;
+
+  // A Soar user who is on the free trial but has NO Stripe subscription yet (no card on
+  // file). Previously the Soar card just showed "Active" with no action, so these users
+  // could not add a payment method to continue after the trial. We surface a dedicated
+  // "Continue Soar After Trial" action for them. handleUpgrade('soar') opens Stripe TEST
+  // checkout and the backend pins trial_end to the existing trialEndsAt (no new 7 days,
+  // no duplicate trial). Users WITH a live Stripe subscription are excluded (they manage
+  // billing via the portal, and the backend returns planChangeRequired for them).
+  const soarTier = ['growth', 'flight', 'base', 'soar'].includes(currentTier);
+  const hasStripeSubscription = Boolean(subscription?.stripeCustomerId);
+  const soarTrialNeedsPayment = subStatusKnown && soarTier && subscription?.status === 'trial' && !hasStripeSubscription;
+  // Checkout must be disabled until we have verified the subscription status, so we never
+  // start a checkout (or a second trial) based on a guessed/unknown state.
+  const checkoutDisabled = !subStatusKnown || loadingTier !== null;
 
   function tierLabel(tier: string) {
     const labels: Record<string, string> = { free: 'Nest (Free)', nest: 'Nest (Free)', base: 'Soar', flight: 'Soar', growth: 'Soar', soar: 'Soar', team: 'Summit', summit: 'Summit' };
     return labels[tier] ?? tier;
   }
 
+  // ─── Settings category navigation ────────────────────────────────────────────
+  // Six primary categories; only the selected one's content renders (less clutter,
+  // less scrolling). Every existing control is preserved — just grouped. The choice
+  // persists so a refresh keeps you where you were. Deep-link to #suggestion opens
+  // Privacy & Data (where the suggestion box lives).
+  type SettingsCategory = 'account' | 'business' | 'connections' | 'billing' | 'notifications' | 'privacy';
+  const CATEGORIES: { id: SettingsCategory; label: string; icon: string }[] = [
+    { id: 'account', label: 'My Account', icon: '👤' },
+    { id: 'business', label: 'My Business', icon: '🏢' },
+    { id: 'connections', label: 'Connections', icon: '🔗' },
+    { id: 'billing', label: 'Plan & Billing', icon: '💳' },
+    { id: 'notifications', label: 'Notifications', icon: '🔔' },
+    { id: 'privacy', label: 'Privacy & Data', icon: '🔒' },
+  ];
+  const initialCategory: SettingsCategory =
+    window.location.hash === '#suggestion'
+      ? 'privacy'
+      : ((localStorage.getItem('hawkeye_settings_category') as SettingsCategory) || 'account');
+  const [category, setCategory] = useState<SettingsCategory>(initialCategory);
+  function selectCategory(c: SettingsCategory) {
+    setCategory(c);
+    localStorage.setItem('hawkeye_settings_category', c);
+  }
+
   return (
-    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
-      {/* Left column: account info, trade selector, subscription plans */}
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+      {/* ── Category nav: a vertical list on desktop, a horizontal scroll of pills on
+          mobile. Black/charcoal surface, orange active state, white text. ── */}
+      <nav className="lg:sticky lg:top-2" aria-label="Settings categories">
+        <h2 className="text-xl font-bold text-white mb-3 px-1">Settings</h2>
+        <div className="flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => selectCategory(c.id)}
+              aria-current={category === c.id ? 'page' : undefined}
+              className={`shrink-0 lg:w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
+                category === c.id ? 'bg-orange-500 text-black' : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <span aria-hidden>{c.icon}</span>
+              <span className="whitespace-nowrap">{c.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* ── Selected category content (one at a time) ── */}
       <div className="min-w-0 space-y-4">
-      <h2 className="text-xl font-bold text-white">Settings</h2>
+
+      {/* ═══ MY ACCOUNT ═══ */}
+      {category === 'account' && (<div className="space-y-4">
 
       {/* Guided vs Pro mode */}
       <div className="glass-card">
@@ -353,7 +463,8 @@ export default function SettingsPage() {
           </div>
           <button
             onClick={() => handleUpgrade('team')}
-            disabled={loadingTier !== null}
+            disabled={checkoutDisabled}
+            title={!subStatusKnown ? 'Verifying your plan…' : undefined}
             className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
           >
             {loadingTier === 'team' ? '...' : 'Upgrade'}
@@ -378,18 +489,6 @@ export default function SettingsPage() {
         </div>
         <span className="text-slate-500">→</span>
       </button>
-
-      {/* Checkout success/cancel banners */}
-      {checkoutStatus === 'success' && (
-        <div className="p-3 rounded-lg bg-green-950/40 border border-green-500/40 text-sm text-green-300">
-          🎉 Subscription activated! Welcome to the {tierLabel(currentTier)} plan.
-        </div>
-      )}
-      {checkoutStatus === 'cancelled' && (
-        <div className="p-3 rounded-lg bg-yellow-950/40 border border-yellow-500/40 text-sm text-yellow-300">
-          Checkout was cancelled. No charge was made.
-        </div>
-      )}
 
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Account</h3>
@@ -429,11 +528,19 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      </div>)}
+
+      {/* ═══ MY BUSINESS ═══ */}
+      {category === 'business' && (<div className="space-y-4">
       <TradeSelector />
 
       {/* Folio Setup — set periods or turn off for trades that don't use folios */}
       <FolioSetup />
 
+      </div>)}
+
+      {/* ═══ CONNECTIONS ═══ */}
+      {category === 'connections' && (<div className="space-y-4">
       {/* Connected Social Accounts */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Connected Social Accounts</h3>
@@ -499,6 +606,21 @@ export default function SettingsPage() {
         )}
       </div>
 
+      </div>)}
+
+      {/* ═══ PLAN & BILLING ═══ */}
+      {category === 'billing' && (<div className="space-y-4">
+      {/* Checkout success/cancel banners (billing) */}
+      {checkoutStatus === 'success' && (
+        <div className="p-3 rounded-lg bg-green-950/40 border border-green-500/40 text-sm text-green-300">
+          🎉 Subscription activated! Welcome to the {tierLabel(currentTier)} plan.
+        </div>
+      )}
+      {checkoutStatus === 'cancelled' && (
+        <div className="p-3 rounded-lg bg-yellow-950/40 border border-yellow-500/40 text-sm text-yellow-300">
+          Checkout was cancelled. No charge was made.
+        </div>
+      )}
       {/* Active subscription management */}
       {currentTier !== 'free' && (
         <div className="glass-card">
@@ -559,6 +681,25 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* Subscription-load failure — fail closed. We hide trial advertising and disable
+            checkout (below) and give the user a clear retry instead of silently showing
+            free-tier defaults that could offer a duplicate trial. */}
+        {subError && (
+          <div className="mb-3 p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium">{subError}</p>
+              <p className="text-xs text-red-300/80 mt-1">We couldn't verify your current plan, so plan changes are paused to keep your trial and billing safe.</p>
+            </div>
+            <button
+              onClick={fetchSubscription}
+              disabled={subLoading}
+              className="shrink-0 px-3 py-1.5 bg-red-500/20 border border-red-400/40 text-red-100 rounded-lg text-xs font-bold hover:bg-red-500/30 disabled:opacity-50"
+            >
+              {subLoading ? 'Retrying…' : 'Retry'}
+            </button>
+          </div>
+        )}
+
         {/* Coupon Code Input */}
         <div className="mb-4">
           <label className="block text-sm text-slate-400 mb-1">Have a coupon code?</label>
@@ -604,9 +745,21 @@ export default function SettingsPage() {
               <li>🔗 Linked accounts</li>
               <li>📋 Unlimited Copy & Open workflow</li>
             </ul>
-            {!['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(currentTier) && (
-              <button onClick={() => handleUpgrade('soar')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+            {subStatusKnown && !['growth', 'flight', 'base', 'soar', 'team', 'summit'].includes(currentTier) && (
+              <button onClick={() => handleUpgrade('soar')} disabled={checkoutDisabled} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
                 {loadingTier === 'soar' ? 'Loading…' : 'Upgrade'}
+              </button>
+            )}
+            {/* Soar trial user with no card on file — let them add payment to continue
+                after the trial. Opens Stripe checkout; the existing trial end is
+                preserved (no new 7 days, no duplicate subscription). */}
+            {soarTrialNeedsPayment && (
+              <button onClick={() => handleUpgrade('soar')} disabled={checkoutDisabled} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-black py-2 rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+                {loadingTier === 'soar'
+                  ? 'Loading…'
+                  : trialDaysRemaining > 0
+                    ? `Continue Soar After Trial · keep ${trialDaysRemaining} day${trialDaysRemaining !== 1 ? 's' : ''}`
+                    : 'Add Payment Method'}
               </button>
             )}
           </div>
@@ -631,8 +784,8 @@ export default function SettingsPage() {
               <li>👥 Team leaderboard & stats</li>
               <li>👥 Shared leads & calendar</li>
             </ul>
-            {!['team', 'summit'].includes(currentTier) && (
-              <button onClick={() => handleUpgrade('team')} disabled={loadingTier !== null} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50">
+            {subStatusKnown && !['team', 'summit'].includes(currentTier) && (
+              <button onClick={() => handleUpgrade('team')} disabled={checkoutDisabled} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50">
                 {loadingTier === 'team' ? 'Loading…' : 'Upgrade'}
               </button>
             )}
@@ -640,12 +793,10 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Keyword Tracking - NOW ABOVE pricing was moved, this stays where subscription was */}
-      </div>{/* end left column */}
+      </div>)}{/* end PLAN & BILLING */}
 
-      {/* Right column: connected social accounts, keyword tracking, browser extension */}
-      <div className="min-w-0 space-y-4">
-      {/* Keyword Tracking - NOW ABOVE pricing was moved, this stays where subscription was */}
+      {/* ═══ MY BUSINESS (continued): Keyword Tracking ═══ */}
+      {category === 'business' && (<div className="space-y-4">
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">🔑 Keyword Tracking</h3>
         <p className="text-sm text-slate-400 mb-3">Keywords the browser extension and lead scanner watch for.</p>
@@ -755,6 +906,10 @@ export default function SettingsPage() {
         )}
       </div>
 
+      </div>)}{/* end MY BUSINESS (keywords) */}
+
+      {/* ═══ CONNECTIONS (continued): Browser Extension + Email Automation ═══ */}
+      {category === 'connections' && (<div className="space-y-4">
       {/* Browser Extension */}
       <div className="glass-card">
         <h3 className="font-semibold mb-2 text-white">🦅 Browser Extension</h3>
@@ -828,10 +983,15 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      </div>)}{/* end CONNECTIONS (browser extension) */}
+
+      {/* Modals — always mounted regardless of active category (triggered from various cards) */}
       {showExtensionTour && <ExtensionTour onClose={() => setShowExtensionTour(false)} />}
       {showLeadExplainer && <LeadDetectionExplainer onClose={() => setShowLeadExplainer(false)} />}
       {showHowTo && <HowToGuide onClose={() => setShowHowTo(false)} />}
 
+      {/* ═══ NOTIFICATIONS ═══ */}
+      {category === 'notifications' && (<div className="space-y-4">
       {/* Email Notification Preferences */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">📧 Email Notifications</h3>
@@ -882,6 +1042,10 @@ export default function SettingsPage() {
         </button>
       </div>
 
+      </div>)}{/* end NOTIFICATIONS */}
+
+      {/* ═══ CONNECTIONS (continued): Email Automation ═══ */}
+      {category === 'connections' && (<div className="space-y-4">
       {/* Email Automation — Gmail/Outlook Integration */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">✉️ Email Automation</h3>
@@ -1019,6 +1183,19 @@ export default function SettingsPage() {
       </div>
 
       {/* Suggestion Box */}
+      </div>)}{/* end CONNECTIONS (email automation) */}
+
+      {/* ═══ PRIVACY & DATA ═══ */}
+      {category === 'privacy' && (<div className="space-y-4">
+      {/* Privacy & Data controls — export + delete live on the dedicated Privacy page. */}
+      <Link to="/privacy" className="glass-card flex items-center justify-between hover:bg-white/5 transition-colors">
+        <div>
+          <p className="text-sm font-medium text-white">🔒 Privacy &amp; Your Data</p>
+          <p className="text-xs text-slate-400">Export your data or permanently delete your account</p>
+        </div>
+        <span className="text-slate-500">→</span>
+      </Link>
+
       <details id="suggestion" className="glass-card" open={window.location.hash === '#suggestion'}>
         <summary className="font-semibold text-white cursor-pointer flex items-center gap-2">
           💡 Have a Suggestion?
@@ -1059,7 +1236,9 @@ export default function SettingsPage() {
           📧 Contact Us: briannafrashier@hawkeyecue.com
         </a>
       </div>
-      </div>{/* end right column */}
+      </div>)}{/* end PRIVACY & DATA */}
+
+      </div>{/* end category content */}
     </div>
   );
 }

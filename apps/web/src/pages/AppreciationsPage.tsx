@@ -154,6 +154,10 @@ export default function AppreciationsPage() {
       showToast('✓ Appreciation saved');
     } catch (e) {
       console.error('Failed to add:', e);
+      // Surface the server's explanation (e.g. a missing/unknown tagger is rejected so
+      // we never store a nameless appreciation) instead of failing silently.
+      const msg = e instanceof Error ? e.message : 'Could not save appreciation';
+      showToast(`❌ ${msg}`);
     } finally {
       setAdding(false);
     }

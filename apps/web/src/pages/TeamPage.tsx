@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useCalendar } from '../contexts/CalendarContext';
+import { useSummit } from '../contexts/SummitContext';
+import SalesDashboardPage from './SalesDashboardPage';
+import { HeroHeader, PillTabs, BoldStat, StatGrid, Panel } from '../components/ui';
 import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
+import TeamMemberPipeline from '../components/TeamMemberPipeline';
 import { folioDisplayName } from '../utils/folioName';
+import { consumeInvite } from '../lib/pendingInvite';
 
 interface TeamMember {
   userId: string;
@@ -17,6 +23,8 @@ interface TeamInvite {
   inviteId: string;
   email: string;
   createdAt: string;
+  expiresAt?: string;
+  acceptUrl?: string;
 }
 
 interface Team {
@@ -77,6 +85,9 @@ interface TeamAnalytics {
     revenue: number;
     flockRate: number;
   }[];
+  // Team-wide pipeline counts by deal stage (read-only team view for Flight Path).
+  // Returned by GET /team/analytics; same-team enforced server-side.
+  stageCounts?: { prospect: number; contacted: number; quoted: number; closing: number; won: number; lost: number };
 }
 
 interface DealNotification {
@@ -89,7 +100,9 @@ interface DealNotification {
   dismissed: boolean;
 }
 
-type Tab = 'manage' | 'calendar' | 'leads' | 'analytics' | 'notifications';
+// 'sales' embeds the existing SalesDashboardPage so Summit HQ carries the COMPLETE
+// Sales experience with inherent feature parity (same component, same data hooks).
+type Tab = 'manage' | 'calendar' | 'leads' | 'analytics' | 'sales' | 'notifications';
 
 const MEMBER_COLORS = [
   'bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500',
@@ -116,7 +129,9 @@ export default function TeamPage() {
   const { getToken, user } = useAuth();
   const { showToast } = useToast();
   const { addEvent, events: myEvents } = useCalendar();
-  const [tab, setTab] = useState<Tab>('manage');
+  const { refresh: refreshSummit } = useSummit();
+  // Summit HQ now opens focused on the Sales Tracker (sales performance is the centerpiece).
+  const [tab, setTab] = useState<Tab>('sales');
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -127,6 +142,16 @@ export default function TeamPage() {
   const [inviteCode, setInviteCode] = useState('');
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState('');
+  // Summit entitlement recovery state — set when a paid /team/* route returns 402
+  // SUMMIT_INACTIVE (owner's subscription lapsed). We show a reactivation prompt instead
+  // of a generic error, and the team records remain intact for when access is restored.
+  const [summitInactive, setSummitInactive] = useState(false);
+  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
+  const [revokingInvite, setRevokingInvite] = useState<string | null>(null);
+  // Hawk Nests → "open workspace" slide-over. Holds the teammate whose pipeline is being
+  // viewed (read-only, same-team enforced server-side via GET /team/member/{id}/pipeline,
+  // the same route the reusable TeamMemberPipeline component uses).
+  const [openNest, setOpenNest] = useState<{ userId: string; name: string } | null>(null);
 
   // Shared data states
   const [teamCalendar, setTeamCalendar] = useState<TeamCalendarEvent[]>([]);
@@ -219,6 +244,15 @@ export default function TeamPage() {
     return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
   }
 
+  // Detect the 402 SUMMIT_INACTIVE response (owner's Summit subscription lapsed). We flip
+  // a recovery flag so the UI shows a "Reactivate Summit" prompt rather than a blank/error
+  // screen. Team data is preserved server-side; reactivating restores access.
+  function is402(e: unknown): boolean {
+    const status = (e as { status?: number } | null)?.status;
+    const code = (e as { code?: string } | null)?.code;
+    return status === 402 || code === 'SUMMIT_INACTIVE';
+  }
+
   // Fetch team info on mount
   useEffect(() => {
     async function fetchTeam() {
@@ -283,6 +317,23 @@ export default function TeamPage() {
     fetchTeam();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Deep-link: an invite email links to /team?invite=<code>. Prefill the Join field so
+  // the invitee just clicks "Join" (no copy/paste). We do NOT auto-submit — the user must
+  // be logged in with the invited email, and acceptInvite enforces the email match.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      // Prefer the URL param; otherwise fall back to a token stashed during the auth flow
+      // (the AuthGuard saved it before redirecting an unauthenticated invitee to landing).
+      const code = params.get('invite') || consumeInvite();
+      if (code) {
+        setInviteCode(code);
+        // Clean the URL so a refresh doesn't re-trigger.
+        window.history.replaceState({}, '', '/team');
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   // Load display names from server on mount (cross-device sync)
   useEffect(() => {
     async function loadDisplayNames() {
@@ -335,7 +386,8 @@ export default function TeamPage() {
       const client = await buildClient();
       const result = await client.request<{ leads: TeamLead[] }>('GET', '/team/leads');
       setTeamLeads(result.leads || []);
-    } catch { setTeamLeads([]); }
+      setSummitInactive(false);
+    } catch (e) { setTeamLeads([]); if (is402(e)) setSummitInactive(true); }
     finally { setLeadsLoading(false); }
   }
 
@@ -404,6 +456,7 @@ export default function TeamPage() {
       await client.request('POST', '/team', { teamName: teamName.trim() });
       const result = await client.request<{ team: Team | null }>('GET', '/team');
       setTeam(result.team);
+      refreshSummit();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to create team';
       setError(msg.includes('NOT_TEAM_TIER') ? 'You need a Summit subscription to create a team. Upgrade in Settings.' : msg);
@@ -428,6 +481,37 @@ export default function TeamPage() {
     finally { setInviting(false); }
   }
 
+  // Resend a pending invite: revokes the old code and issues a fresh one + email.
+  async function handleResendInvite(email: string, inviteId: string) {
+    setResendingInvite(inviteId);
+    setError('');
+    try {
+      const client = await buildClient();
+      await client.request('POST', '/team/invite/resend', { email });
+      const result = await client.request<{ team: Team | null }>('GET', '/team');
+      setTeam(result.team);
+      showToast('✓ Invite resent — a new code & email were sent');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to resend invite');
+    } finally { setResendingInvite(null); }
+  }
+
+  // Revoke a pending invite: deletes it so the admin can re-invite cleanly.
+  async function handleRevokeInvite(inviteId: string) {
+    if (!confirm('Revoke this pending invite? The current code/link will stop working.')) return;
+    setRevokingInvite(inviteId);
+    setError('');
+    try {
+      const client = await buildClient();
+      await client.request('DELETE', `/team/invites/${encodeURIComponent(inviteId)}`);
+      const result = await client.request<{ team: Team | null }>('GET', '/team');
+      setTeam(result.team);
+      showToast('✓ Invite revoked');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to revoke invite');
+    } finally { setRevokingInvite(null); }
+  }
+
   async function handleRemoveMember(memberId: string) {
     if (!confirm('Remove this team member? They will lose access to shared team features.')) return;
     try {
@@ -446,6 +530,8 @@ export default function TeamPage() {
       await client.request('POST', '/team/leave');
       setTeam(null);
       showToast('You left the team');
+      // Access may have ended — refresh so Summit HQ hides if no longer entitled.
+      refreshSummit();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to leave team');
     }
@@ -461,6 +547,8 @@ export default function TeamPage() {
       const result = await client.request<{ team: Team | null }>('GET', '/team');
       setTeam(result.team);
       setInviteCode('');
+      // Member just joined — surface Summit HQ in the nav without a reload.
+      refreshSummit();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to join team');
     }
@@ -535,26 +623,122 @@ export default function TeamPage() {
     { id: 'calendar', label: 'Calendar', icon: '📅' },
     { id: 'leads', label: 'Leads', icon: '🎯' },
     { id: 'analytics', label: 'Stats', icon: '📊' },
+    { id: 'sales', label: 'Sales', icon: '💰' },
     { id: 'notifications', label: 'Wins', icon: '🏆' },
   ];
 
   const unreadNotifs = notifications.filter((n) => !n.dismissed).length;
 
+  // Premium Summit HQ section switcher — jumps to the anchored section (one focused
+  // area at a time, less scrolling). Reuses the declared `tab` state. Each pill maps to
+  // a section id rendered below; selecting a pill smooth-scrolls to it.
+  // Sales performance leads the Summit HQ experience (centerpiece), with the Scoreboard
+  // totals next and Team Members management moved into the Workspace section.
+  const summitSections: { id: Tab; label: string; anchor: string }[] = [
+    { id: 'sales', label: '💰 Sales Tracker', anchor: 'summit-sales' },
+    { id: 'manage', label: '🏔️ Scoreboard', anchor: 'summit-scoreboard' },
+    { id: 'leads', label: '🎯 Flight Path', anchor: 'summit-leads' },
+    { id: 'analytics', label: '🪺 Hawk Nests', anchor: 'summit-nests' },
+    { id: 'notifications', label: '📡 Radar', anchor: 'summit-radar' },
+    { id: 'calendar', label: '🗓️ Workspace', anchor: 'summit-workspace' },
+  ];
+  function jumpToSection(id: Tab) {
+    setTab(id);
+    const sec = summitSections.find((s) => s.id === id);
+    if (sec) {
+      try { document.getElementById(sec.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* ignore */ }
+    }
+  }
+
   return (
+    <div className="space-y-4">
+      {/* ── Premium Summit HQ header + section nav (charcoal/amber identity) ───── */}
+      <HeroHeader
+        title={team.teamName}
+        subtitle={`Summit HQ · ${team.members.length}/${team.maxMembers} members · your team command center`}
+        right={
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs font-bold">
+            🏔️ Summit
+          </span>
+        }
+      />
+      <div className="sticky top-0 z-20 -mx-1 px-1 py-1 bg-[#05080f]/80 backdrop-blur-sm rounded-xl">
+        <PillTabs tabs={summitSections.map((s) => ({ id: s.id, label: s.label }))} active={tab} onChange={jumpToSection} />
+      </div>
+
+      {/* ── 🏔️ SUMMIT SCOREBOARD — the team performance overview at a glance.
+          Prominent metric tiles (revenue, sales, active leads, conversion) sit ABOVE the
+          two-column workspace so the most important business numbers are immediately
+          visible. Sourced from the existing folio-filtered `stats` + `teamAnalytics` and
+          live `teamLeads` — no new metrics invented. Spans full width across both columns. */}
+      <div id="summit-scoreboard" className="scroll-mt-20 space-y-3">
+        {(() => {
+          // Team-wide numbers from the reused hooks. `stats` is folio-filtered (current
+          // period); `teamLeads` is the live shared pipeline; `teamAnalytics` adds deal/
+          // conversion context. We only DISPLAY real values and guard every divide.
+          const revenue = stats?.totalWonValue ?? teamAnalytics?.totalRevenue ?? 0;
+          const wonDeals = stats?.members?.reduce((s, m) => s + (m.wonDeals || 0), 0)
+            ?? teamAnalytics?.wonDeals ?? 0;
+          const openLeads = teamLeads.filter((l) => l.status !== 'converted' && l.status !== 'lost').length;
+          const totalDeals = teamAnalytics?.totalDeals ?? 0;
+          // Conversion only shown when we have a reliable denominator (avoids 0/0 noise).
+          const conversion = totalDeals > 0 ? Math.round((wonDeals / totalDeals) * 100) : null;
+          return (
+            <StatGrid cols={4}>
+              <BoldStat icon="💰" label={`Team Revenue${selectedFolio === 'all' ? ' (All Time)' : ' (Folio)'}`} value={`$${revenue.toLocaleString()}`} />
+              <BoldStat icon="🏆" label="Sales Closed" value={wonDeals} />
+              <BoldStat icon="🎯" label="Active Leads" value={openLeads} />
+              <BoldStat icon="📈" label="Conversion" value={conversion === null ? '—' : `${conversion}%`} />
+            </StatGrid>
+          );
+        })()}
+
+        {/* Individual employee performance — a compact, scannable row of per-member
+            production (revenue + sales this folio). Ranked, so the team sees who's
+            flying highest without opening a separate tab. Reuses folio-filtered `stats`. */}
+        {stats && stats.members.length > 0 && (
+          <Panel title="🏔️ Individual Performance" right={<span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : 'Current Folio'}</span>}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {[...stats.members].sort((a, b) => (b.wonValue || 0) - (a.wonValue || 0)).map((m, i) => {
+                const colorIdx = getMemberColorIndex(m.email);
+                const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
+                const name = displayNames[m.email] || m.email.split('@')[0];
+                return (
+                  <div key={m.email} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-xs">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span>
+                      <span className={`w-2 h-2 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
+                      <span className="text-xs text-white font-semibold truncate">{name}</span>
+                    </div>
+                    <p className="text-lg font-extrabold text-emerald-300 leading-none">${(m.wonValue || 0).toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{m.wonDeals || 0} sales · {m.activeDeals || 0} active</p>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+        )}
+      </div>
+
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {/* Left column: Team info, Members, Wins, Leads */}
       <div className="min-w-0 space-y-4">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-white">🏔️ {team.teamName}</h2>
-          <p className="text-xs text-slate-400">Summit · {team.members.length}/{team.maxMembers} members</p>
-        </div>
-      </div>
-
       {error && (
         <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/40 text-sm text-red-300">{error}</div>
+      )}
+
+      {summitInactive && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/40">
+          <p className="text-sm font-bold text-amber-300">🏔️ Summit is inactive</p>
+          <p className="text-xs text-slate-300 mt-1">
+            Your team's Summit subscription isn't active right now, so shared team features are paused.
+            Your team, members, leads, calendar and sales history are all safe — reactivate Summit to restore access.
+          </p>
+          <Link to="/settings" className="inline-block mt-3 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black rounded-lg text-xs font-bold hover:brightness-105">
+            Reactivate Summit →
+          </Link>
+        </div>
       )}
 
       {/* 👥 Team Members */}
@@ -630,17 +814,45 @@ export default function TeamPage() {
           </div>
         )}
         {team.invites.length > 0 && (
-          <div className="space-y-1 pt-2 border-t border-white/10">
+          <div className="space-y-1.5 pt-2 border-t border-white/10">
             {team.invites.map((invite) => (
-              <div key={invite.inviteId} className="flex items-center justify-between bg-amber-500/10 px-3 py-1.5 rounded-lg">
-                <p className="text-xs text-amber-300">{invite.email}</p>
-                <p className="text-[10px] text-slate-500">Pending</p>
+              <div key={invite.inviteId} className="bg-amber-500/10 px-3 py-2 rounded-lg">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-amber-300 truncate">{invite.email}</p>
+                  <p className="text-[10px] text-slate-500 shrink-0">Pending</p>
+                </div>
+                {team.role === 'admin' && (
+                  <div className="flex items-center gap-3 mt-1.5">
+                    {invite.acceptUrl && (
+                      <button
+                        onClick={() => { navigator.clipboard?.writeText(invite.acceptUrl!); showToast('✓ Invite link copied'); }}
+                        className="text-[11px] text-blue-400 hover:text-blue-300"
+                      >Copy link</button>
+                    )}
+                    <button
+                      onClick={() => { navigator.clipboard?.writeText(invite.inviteId); showToast('✓ Invite code copied'); }}
+                      className="text-[11px] text-slate-400 hover:text-white"
+                    >Copy code</button>
+                    <button
+                      onClick={() => handleResendInvite(invite.email, invite.inviteId)}
+                      disabled={resendingInvite === invite.inviteId}
+                      className="text-[11px] text-amber-400 hover:text-amber-300 disabled:opacity-50"
+                    >{resendingInvite === invite.inviteId ? 'Resending…' : 'Resend'}</button>
+                    <button
+                      onClick={() => handleRevokeInvite(invite.inviteId)}
+                      disabled={revokingInvite === invite.inviteId}
+                      className="text-[11px] text-red-400 hover:text-red-300 disabled:opacity-50"
+                    >{revokingInvite === invite.inviteId ? 'Revoking…' : 'Revoke'}</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
 
+      {/* 🏆 Wins — Radar section anchor */}
+      <div id="summit-radar" className="scroll-mt-20" />
       {/* 🏆 Wins */}
       {notifications.length > 0 && (
         <div className="glass-card space-y-2">
@@ -661,6 +873,72 @@ export default function TeamPage() {
           })}
         </div>
       )}
+
+      {/* 🛩️ FLIGHT PATH — the signature interactive sales pipeline.
+          A visual stage-column view of where the TEAM's opportunities stand, built from
+          the real team-wide `stageCounts` returned by GET /team/analytics (same-team
+          enforced server-side). This is a READ-ONLY team overview: the backend exposes no
+          route for an admin to move a TEAMMATE's deal stage, so we surface the distribution
+          and direct paths into existing actions (claim below, open a member's workspace in
+          Hawk Nests) rather than fabricating a mutation that isn't supported. The
+          first-responder "Up for Grabs" claiming stays a separate, real interaction. */}
+      <div id="summit-leads" className="scroll-mt-20 space-y-3">
+        {teamAnalytics?.stageCounts && (() => {
+          const sc = teamAnalytics.stageCounts!;
+          // Order stages along the natural flight path (prospect → won), with lost shown
+          // separately so it doesn't distort the forward funnel.
+          const flow: { key: keyof typeof sc; label: string; icon: string; color: string }[] = [
+            { key: 'prospect', label: 'Prospect', icon: '🌱', color: '#64748b' },
+            { key: 'contacted', label: 'Contacted', icon: '📞', color: '#38bdf8' },
+            { key: 'quoted', label: 'Quoted', icon: '📝', color: '#a78bfa' },
+            { key: 'closing', label: 'Closing', icon: '🤝', color: '#fbbf24' },
+            { key: 'won', label: 'Won', icon: '🏆', color: '#34d399' },
+          ];
+          const maxCount = Math.max(1, ...flow.map((f) => sc[f.key] || 0));
+          const activeTotal = flow.reduce((s, f) => s + (sc[f.key] || 0), 0);
+          return (
+            <Panel
+              title="🛩️ Flight Path — Team Pipeline"
+              right={<span className="text-[10px] text-slate-500">{activeTotal} in flight · {sc.lost || 0} lost</span>}
+            >
+              {activeTotal === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-4">No opportunities in the pipeline yet. New leads land in the nests below.</p>
+              ) : (
+                <>
+                  {/* Stage columns — each shows the team-wide count + a proportional bar.
+                      Clicking a column focuses the Hawk Nests below so you can act on it. */}
+                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                    {flow.map((f, i) => {
+                      const count = sc[f.key] || 0;
+                      const h = Math.round((count / maxCount) * 72) + 6;
+                      return (
+                        <button
+                          key={f.key}
+                          onClick={() => { try { document.getElementById('summit-nests')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* ignore */ } }}
+                          className="group flex flex-col items-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-2 transition-all"
+                          title={`${count} opportunit${count === 1 ? 'y' : 'ies'} — ${f.label}`}
+                        >
+                          <span className="text-base leading-none mb-1">{f.icon}</span>
+                          <span className="text-lg font-extrabold text-white leading-none">{count}</span>
+                          <div className="w-full h-[78px] flex items-end mt-1.5">
+                            <div className="w-full rounded-t-md transition-all" style={{ height: `${h}px`, background: f.color }} />
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-1 text-center leading-tight">{f.label}</span>
+                          {i < flow.length - 1 && <span className="hidden" aria-hidden />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                    Team-wide pipeline across all members (read-only overview). To act on a lead, claim one below or open a teammate's workspace in Hawk Nests.
+                    Each person moves their own opportunities from their pipeline.
+                  </p>
+                </>
+              )}
+            </Panel>
+          );
+        })()}
+      </div>
 
       {/* 🎯 Live Lead Claiming — first responder claims the opportunity */}
       {(() => {
@@ -729,8 +1007,8 @@ export default function TeamPage() {
         );
       })()}
 
-      {/* 🪹 Lead Nests by Member */}
-      <div className="glass-card space-y-3">
+      {/* 🪹 Lead Nests by Member — Hawk Nests section */}
+      <div id="summit-nests" className="glass-card space-y-3 scroll-mt-20">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white">🪹 Lead Nests</h3>
           <span className="text-xs text-slate-500">{teamLeads.length} total leads</span>
@@ -824,25 +1102,53 @@ export default function TeamPage() {
                   const memberStat = stats?.members?.find((m) => m.email === member.email);
                   const wonDeals = memberStat?.wonDeals || 0;
                   const wonValue = memberStat?.wonValue || 0;
+                  const activeDeals = memberStat?.activeDeals || 0;
+                  const roleLabel = member.role === 'admin' ? '👑 Admin' : '👤 Member';
                   return (
-                    <button
+                    <div
                       key={member.userId}
-                      onClick={() => setLeadFilter(isActive ? 'all' : member.email)}
-                      className={`relative flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all ${isActive ? `${MEMBER_BORDER_COLORS[colorIdx]} ${MEMBER_BG_COLORS[colorIdx]} scale-[1.03] shadow-lg` : 'border-white/20 bg-slate-800 hover:border-amber-500/40'}`}
+                      className={`relative flex flex-col p-4 rounded-xl border-2 transition-all ${isActive ? `${MEMBER_BORDER_COLORS[colorIdx]} ${MEMBER_BG_COLORS[colorIdx]} shadow-lg` : 'border-white/15 bg-slate-800 hover:border-amber-500/40'}`}
                     >
-                      <span className="text-3xl mb-1">🪹</span>
+                      {/* Lead count badge */}
                       <div className={`absolute top-2 right-2 w-7 h-7 ${MEMBER_COLORS[colorIdx]} rounded-full flex items-center justify-center shadow-md`}>
                         <span className="text-xs font-bold text-white">{memberLeads.length}</span>
                       </div>
-                      <span className="text-xs text-white mt-1 font-medium text-center leading-tight">{name}</span>
-                      <div className="flex flex-col items-center gap-0.5 mt-1">
-                        <div className="flex gap-2">
-                          <span className="text-[9px] text-slate-400">{memberLeads.length} leads</span>
-                          <span className="text-[9px] text-green-400">{wonDeals} sales</span>
+                      {/* Tap header toggles this nest's lead filter below */}
+                      <button
+                        onClick={() => setLeadFilter(isActive ? 'all' : member.email)}
+                        className="flex flex-col items-center text-center"
+                        title={isActive ? 'Hide this nest\u2019s leads' : 'Show this nest\u2019s leads'}
+                      >
+                        <span className="text-2xl mb-0.5">🪹</span>
+                        <span className="text-xs text-white font-semibold leading-tight truncate max-w-full">{name}</span>
+                        <span className="text-[9px] text-slate-500">{roleLabel}</span>
+                      </button>
+                      {/* Performance mini-stats */}
+                      <div className="mt-2 grid grid-cols-3 gap-1 text-center">
+                        <div>
+                          <p className="text-xs font-extrabold text-white leading-none">{memberLeads.length}</p>
+                          <p className="text-[8px] text-slate-500 uppercase">Leads</p>
                         </div>
-                        {wonValue > 0 && <span className="text-[9px] text-green-300 font-medium">${wonValue.toLocaleString()}</span>}
+                        <div>
+                          <p className="text-xs font-extrabold text-emerald-400 leading-none">{wonDeals}</p>
+                          <p className="text-[8px] text-slate-500 uppercase">Sales</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-extrabold text-amber-400 leading-none">{activeDeals}</p>
+                          <p className="text-[8px] text-slate-500 uppercase">Active</p>
+                        </div>
                       </div>
-                    </button>
+                      {wonValue > 0 && (
+                        <p className="text-[10px] text-emerald-300 font-bold text-center mt-1.5">${wonValue.toLocaleString()} sold</p>
+                      )}
+                      {/* Open workspace — reuses the same-team pipeline slide-over */}
+                      <button
+                        onClick={() => setOpenNest({ userId: member.userId, name })}
+                        className="mt-2 w-full py-1.5 rounded-lg bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 text-[10px] font-bold text-amber-300 transition-all"
+                      >
+                        Open workspace →
+                      </button>
+                    </div>
                   );
                 });
               })()}
@@ -933,21 +1239,21 @@ export default function TeamPage() {
             <span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : currentFolio ? folioDisplayName(`${currentFolio.start} to ${currentFolio.end}`) : 'Current Folio'}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-green-400">${(stats.totalWonValue || 0).toLocaleString()}</p>
-              <p className="text-xs text-slate-400">Premium (Folio)</p>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
+              <p className="text-xl font-extrabold text-emerald-300">${(stats.totalWonValue || 0).toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Premium (Folio)</p>
             </div>
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-blue-400">{stats.members.reduce((s, m) => s + (m.wonDeals || 0), 0)}</p>
-              <p className="text-xs text-slate-400">Won</p>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+              <p className="text-xl font-extrabold text-white">{stats.members.reduce((s, m) => s + (m.wonDeals || 0), 0)}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Won</p>
             </div>
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-purple-400">{teamLeads.length}</p>
-              <p className="text-xs text-slate-400">Total Leads</p>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+              <p className="text-xl font-extrabold text-white">{teamLeads.length}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Total Leads</p>
             </div>
-            <div className="bg-slate-700 rounded-lg p-3 text-center">
-              <p className="text-xl font-bold text-amber-400">{teamAnalytics?.flockCompletionRate ?? 0}%</p>
-              <p className="text-xs text-slate-400">Flock Rate</p>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+              <p className="text-xl font-extrabold text-amber-300">{teamAnalytics?.flockCompletionRate ?? 0}%</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Flock Rate</p>
             </div>
           </div>
 
@@ -986,8 +1292,8 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* 📅 Team Calendar — syncs with Dashboard */}
-      <div className="glass-card">
+      {/* 📅 Team Calendar — Shared Workspace section */}
+      <div id="summit-workspace" className="glass-card scroll-mt-20">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-white">📅 Team Calendar</h3>
         </div>
@@ -1225,6 +1531,37 @@ export default function TeamPage() {
       </div>
 
       </div>{/* end right column */}
+
+      {/* ── Sales & Revenue — the COMPLETE Sales experience embedded in Summit HQ ──
+          Renders the exact standalone SalesDashboardPage component (same data hooks,
+          same team/individual sales, revenue, attribution, reporting) so Summit HQ has
+          inherent feature parity with the standalone /sales page. Spans the full width
+          below the two team columns. Only the presentation location changes; no Sales
+          business logic is duplicated or rewritten. Permissions + team data isolation
+          are enforced by the same backend the standalone page uses. */}
+      <div id="summit-sales" className="lg:col-span-2 space-y-3">
+        <div className="flex items-center gap-2 pt-2">
+          <span className="text-xl">💰</span>
+          <h2 className="text-lg font-bold text-white">Sales Tracker</h2>
+          <span className="text-[11px] text-slate-500">Team &amp; individual production</span>
+        </div>
+        <SalesDashboardPage />
+      </div>
+    </div>
+
+    {/* 🪺 Hawk Nest workspace — a teammate's read-only pipeline slide-over, opened from a
+        nest card. Reuses the existing TeamMemberPipeline component + GET /team/member/{id}/
+        pipeline route (same-team enforced server-side), so permissions + data isolation are
+        preserved and no new backend logic is added. */}
+    {openNest && (
+      <TeamMemberPipeline
+        memberUserId={openNest.userId}
+        memberName={openNest.name}
+        folioStart={selectedFolio === 'all' ? undefined : currentFolio?.start}
+        folioEnd={selectedFolio === 'all' ? undefined : currentFolio?.end}
+        onClose={() => setOpenNest(null)}
+      />
+    )}
     </div>
   );
 }

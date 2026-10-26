@@ -10,12 +10,20 @@ const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const secretsClient = new SecretsManagerClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
 const FROM_EMAIL = 'HawkEye-Cue <notifications@hawkeyecue.com>';
+// Environment-aware app base URL for invite links. Production defaults to the live
+// domain; sandbox/staging set APP_BASE_URL (e.g. http://localhost:5173) so test invites
+// deep-link to the right environment instead of always pointing at production.
+const APP_BASE_URL = (process.env.APP_BASE_URL || 'https://hawkeyecue.com').replace(/\/$/, '');
+// Build the deep-link that pre-fills the invite code on the Team "Join a Team" screen.
+function buildInviteAcceptUrl(inviteId) {
+  return `${APP_BASE_URL}/team?invite=${encodeURIComponent(inviteId)}`;
+}
 
 // ─── Resend Email Helper ──────────────────────────────────────────────────────
 let resendApiKey = null;
 async function getResendKey() {
   if (resendApiKey) return resendApiKey;
-  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Resend' }));
+  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: process.env.RESEND_SECRET_ID || 'SocialLeadGen/Resend' }));
   const secret = JSON.parse(result.SecretString);
   resendApiKey = secret.RESEND_API_KEY;
   return resendApiKey;
@@ -44,13 +52,64 @@ function getUserId(event) { return event.requestContext?.authorizer?.jwt?.claims
 // the account's own profile so legacy labels (summit) and expired trials are handled
 // consistently — e.g. a profile stored as 'summit' is treated as 'team', and an
 // expired trial does not grant team access.
+// Canonical tier normalization — MUST match the copies in subscription-handler and
+// stripe-webhook (tier-normalization.test.ts asserts parity). Canonical: free|soar|team.
 function normalizeTier(raw) {
   const t = (raw || 'free').toString().toLowerCase();
-  if (t === 'nest' || t === 'none' || t === 'expired' || t === '') return 'free';
   if (t === 'summit') return 'team';
   if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
   if (t === 'free' || t === 'soar' || t === 'team') return t;
-  return 'free';
+  return 'free'; // nest/none/expired/'' and any unrecognized label
+}
+
+// Rank for comparing entitlements so team access is additive and never DOWNGRADES a
+// member's own paid plan.
+const TIER_RANK = { free: 0, soar: 1, team: 2 };
+function tierRank(t) { return TIER_RANK[normalizeTier(t)] ?? 0; }
+
+// Does this profile have a personal, independently-paid subscription (not team-granted)?
+// A real Stripe subscription id is the marker of self-paid access.
+function hasPersonalPaidSubscription(profile) {
+  if (!profile) return false;
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+  const paidStatus = status === 'active' || status === 'trial' || status === 'trialing' || status === 'past_due';
+  return Boolean(profile.stripeSubscriptionId) && paidStatus;
+}
+
+// Restore a member's PERSONAL subscription state when they leave / are removed from a
+// team. Team access is additive, so exiting a team must NEVER remove independently-paid
+// access:
+//   • If the member still has their own Stripe subscription, their personal fields were
+//     never clobbered — we only clear the team-grant flags.
+//   • Otherwise restore the snapshot captured at accept time (preTeam*). Falls back to
+//     free/none only when there was genuinely no prior paid state.
+// Idempotent and safe to call for any exiting member.
+async function restorePersonalSubscriptionAfterTeamExit(memberUserId) {
+  const prof = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `USER#${memberUserId}`, SK: 'PROFILE' },
+  }));
+  const p = prof.Item || {};
+
+  // Member kept their own Stripe subscription throughout → never downgrade it.
+  if (hasPersonalPaidSubscription(p)) {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${memberUserId}`, SK: 'PROFILE' },
+      UpdateExpression: 'REMOVE preTeamTier, preTeamStatus, teamGrantedAccess',
+    }));
+    return;
+  }
+
+  // No live personal subscription → restore the pre-team snapshot if we have one.
+  const restoreTier = p.preTeamTier != null ? p.preTeamTier : 'free';
+  const restoreStatus = p.preTeamStatus != null ? p.preTeamStatus : 'none';
+  await dynamo.send(new UpdateCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `USER#${memberUserId}`, SK: 'PROFILE' },
+    UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s REMOVE preTeamTier, preTeamStatus, teamGrantedAccess',
+    ExpressionAttributeValues: { ':t': restoreTier, ':s': restoreStatus },
+  }));
 }
 function effectiveTier(profile) {
   if (!profile) return 'free';
@@ -61,6 +120,81 @@ function effectiveTier(profile) {
   return normalizeTier(profile.subscriptionTier);
 }
 function isTeamTier(profile) { return effectiveTier(profile) === 'team'; }
+
+// ─── Summit entitlement gate (ongoing paid access, not just tier) ───────────────
+// Whether a profile currently has LIVE Summit entitlement. Unlike isTeamTier (which
+// only asks "is the stored tier team?"), this additionally requires the subscription
+// to be in a state that still grants paid access RIGHT NOW:
+//   • active / trialing (trial not yet expired)                    → entitled
+//   • past_due                                                     → entitled (billing
+//       retry grace — matches the billing handlers, which keep tier on past_due)
+//   • scheduled cancellation (cancelAtPeriodEnd=true) is STILL entitled until the paid
+//       period actually ends (subscriptionCurrentPeriodEnd in the future / unknown).
+//   • expired trial, canceled (terminal), or non-team tier         → NOT entitled
+// Never mutates records — a lapse hides paid features but leaves the team intact so
+// reactivation restores access to the SAME team.
+function isSummitEntitled(profile) {
+  if (!profile) return false;
+  if (effectiveTier(profile) !== 'team') return false; // expired trial already drops to free here
+  const status = (profile.subscriptionStatus || '').toLowerCase();
+
+  // Terminal states never grant access.
+  if (status === 'canceled' || status === 'cancelled' || status === 'expired' || status === 'incomplete_expired' || status === 'unpaid') {
+    return false;
+  }
+
+  // Live/grace states grant access. (Empty status tolerated for legacy/seed records
+  // that are still stored at the team tier — effectiveTier already gated the tier.)
+  const liveStatuses = ['active', 'trial', 'trialing', 'past_due', ''];
+  if (!liveStatuses.includes(status)) return false;
+
+  // Scheduled cancellation: access continues until the paid period actually ends.
+  // If we have a period-end and it is in the past, access has lapsed.
+  if (profile.subscriptionCancelAtPeriodEnd && profile.subscriptionCurrentPeriodEnd) {
+    if (new Date(profile.subscriptionCurrentPeriodEnd).getTime() < Date.now()) return false;
+  }
+  return true;
+}
+
+// Authoritative gate for paid /team/* operations: team access flows from the team
+// OWNER's (admin's) Summit entitlement. Resolves the team's admin profile and checks
+// isSummitEntitled. Returns { entitled: boolean }. Used for BOTH admins and members —
+// an employee's access is only as valid as the owner's live subscription.
+async function isTeamEntitled(teamId) {
+  // The team INFO record carries adminUserId (the owner). Fall back to scanning the
+  // TEAM_ADMIN member if INFO is missing adminUserId (legacy teams).
+  const info = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `TEAM#${teamId}`, SK: 'INFO' },
+  }));
+  let adminUserId = info.Item?.adminUserId || null;
+  if (!adminUserId) {
+    const members = await getTeamMembers(teamId);
+    const admin = (members || []).find((m) => m.role === 'admin');
+    adminUserId = admin?.userId || null;
+  }
+  if (!adminUserId) return { entitled: false, adminUserId: null };
+
+  const adminProfile = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `USER#${adminUserId}`, SK: 'PROFILE' },
+  }));
+  return { entitled: isSummitEntitled(adminProfile.Item), adminUserId };
+}
+
+// Convenience: resolve the caller's team AND verify the owner's entitlement in one step.
+// Returns { error } (a ready-to-return response) OR { teamRecord }.
+async function requireEntitledTeam(userId) {
+  const teamRecord = await getUserTeam(userId);
+  if (!teamRecord) return { error: err(403, 'NO_TEAM', 'You are not in a team') };
+  const { entitled } = await isTeamEntitled(teamRecord.teamId);
+  if (!entitled) {
+    // 402 Payment Required — distinct from 403 so the client can show a reactivation
+    // prompt. Team records are untouched; resubscribing restores access.
+    return { error: err(402, 'SUMMIT_INACTIVE', 'This team\'s Summit subscription is not active. Reactivate Summit to restore team access.') };
+  }
+  return { teamRecord };
+}
 
 // ─── Get user's team info ─────────────────────────────────────────────────────
 async function getUserTeam(userId) {
@@ -207,14 +341,66 @@ async function inviteMember(teamId, adminUserId, inviteEmail) {
     },
   }));
 
-  // Send invite email
+  // Direct-lookup record so acceptInvite can resolve the invite by its code with a
+  // single GetItem (PK=INVITE#{inviteId}) instead of a full-table Scan — no new GSI or
+  // infra change required. Carries a TTL matching the invite expiry so it self-cleans.
+  await dynamo.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      PK: `INVITE#${inviteId}`,
+      SK: 'LOOKUP',
+      inviteId,
+      teamId,
+      email: inviteEmail,
+      createdAt: now,
+      expiresAt,
+      ttl: Math.floor(new Date(expiresAt).getTime() / 1000),
+    },
+  }));
+
+  // Send invite email with an ENVIRONMENT-AWARE accept link (not hardcoded to prod).
+  const acceptUrl = buildInviteAcceptUrl(inviteId);
   try {
-    await sendEmail(inviteEmail, `🦅 You've been invited to join a team on HawkEye-Cue!`, `You've been invited to join "${teamInfo.Item.teamName}" on HawkEye-Cue!\n\nSign up or log in at https://hawkeyecue.com to accept the invite.\n\nYour invite code: ${inviteId}\n\n— HawkEye-Cue`);
+    await sendEmail(
+      inviteEmail,
+      `🦅 You've been invited to join a team on HawkEye-Cue!`,
+      `You've been invited to join "${teamInfo.Item.teamName}" on HawkEye-Cue!\n\n` +
+      `Accept your invite: ${acceptUrl}\n\n` +
+      `Sign up or log in with THIS email address (${inviteEmail}) first, then the invite applies automatically.\n\n` +
+      `If the link doesn't work, go to Summit (Team) → Join a Team and paste this code:\n${inviteId}\n\n` +
+      `This invite expires in 7 days.\n\n— HawkEye-Cue`,
+    );
   } catch (e) {
     console.error('Failed to send invite email:', e.message);
   }
 
-  return ok({ inviteId, email: inviteEmail, status: 'pending' });
+  return ok({ inviteId, email: inviteEmail, status: 'pending', acceptUrl });
+}
+
+// ─── Revoke a pending invite (admin only) ───────────────────────────────────────
+// Deletes the pending INVITE# record and its LOOKUP so the admin can re-invite the same
+// email (duplicate guard no longer blocks) and the old code stops working. Never touches
+// members or team data. Accepted/expired invites are left as-is.
+async function revokeInvite(teamId, inviteId) {
+  const inviteRec = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `TEAM#${teamId}`, SK: `INVITE#${inviteId}` },
+  }));
+  if (!inviteRec.Item) return err(404, 'INVITE_NOT_FOUND', 'Invite not found');
+  if (inviteRec.Item.status !== 'pending') {
+    return err(400, 'INVITE_NOT_PENDING', 'Only a pending invite can be revoked');
+  }
+  await dynamo.send(new DeleteCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `TEAM#${teamId}`, SK: `INVITE#${inviteId}` },
+  }));
+  // Best-effort lookup cleanup (also self-expires via TTL).
+  try {
+    await dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { PK: `INVITE#${inviteId}`, SK: 'LOOKUP' } }));
+  } catch (e) {
+    console.error('Failed to delete invite lookup on revoke (TTL will clean up):', e.message);
+  }
+  return ok({ revoked: true, inviteId });
 }
 
 // ─── Accept invite ────────────────────────────────────────────────────────────
@@ -232,27 +418,50 @@ async function acceptInvite(userId, inviteId) {
   }));
   const userEmail = profile.Item?.email || '';
 
-  // Find the invite by scanning teams (in production, use a GSI)
+  // Resolve the invite. FAST PATH: a direct GetItem on the INVITE#{inviteId} LOOKUP
+  // record (written at invite time) gives us the teamId in O(1) with no Scan. We then
+  // read the authoritative invite record (TEAM#{teamId} / INVITE#{inviteId}) to check
+  // status/expiry/email. LEGACY FALLBACK: invites created before the lookup record
+  // existed won't have one, so fall back to the previous table Scan for those only.
   let invite = null;
   let teamId = null;
-  let lastKey = undefined;
 
-  do {
-    const result = await dynamo.send(new ScanCommand({
+  const lookup = await dynamo.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: `INVITE#${inviteId}`, SK: 'LOOKUP' },
+  }));
+  if (lookup.Item?.teamId) {
+    teamId = lookup.Item.teamId;
+    const inviteRec = await dynamo.send(new GetCommand({
       TableName: TABLE_NAME,
-      FilterExpression: 'inviteId = :iid AND #status = :s',
-      ExpressionAttributeNames: { '#status': 'status' },
-      ExpressionAttributeValues: { ':iid': inviteId, ':s': 'pending' },
-      ExclusiveStartKey: lastKey,
+      Key: { PK: `TEAM#${teamId}`, SK: `INVITE#${inviteId}` },
     }));
-    const found = (result.Items || [])[0];
-    if (found) {
-      invite = found;
-      teamId = found.PK.replace('TEAM#', '');
-      break;
+    // Only treat a still-pending invite as valid (an accepted/revoked one is not).
+    if (inviteRec.Item && inviteRec.Item.status === 'pending') {
+      invite = inviteRec.Item;
     }
-    lastKey = result.LastEvaluatedKey;
-  } while (lastKey);
+  }
+
+  if (!invite) {
+    // Legacy fallback: pre-lookup invites. Bounded by the usual pending-invite volume.
+    let lastKey = undefined;
+    do {
+      const result = await dynamo.send(new ScanCommand({
+        TableName: TABLE_NAME,
+        FilterExpression: 'inviteId = :iid AND #status = :s',
+        ExpressionAttributeNames: { '#status': 'status' },
+        ExpressionAttributeValues: { ':iid': inviteId, ':s': 'pending' },
+        ExclusiveStartKey: lastKey,
+      }));
+      const found = (result.Items || []).find((it) => String(it.SK).startsWith('INVITE#'));
+      if (found) {
+        invite = found;
+        teamId = found.PK.replace('TEAM#', '');
+        break;
+      }
+      lastKey = result.LastEvaluatedKey;
+    } while (lastKey);
+  }
 
   if (!invite) return err(404, 'INVITE_NOT_FOUND', 'Invite not found or already accepted');
 
@@ -308,13 +517,59 @@ async function acceptInvite(userId, inviteId) {
     ExpressionAttributeValues: { ':s': 'accepted', ':u': userId, ':t': now },
   }));
 
-  // Upgrade member's subscription tier to team
-  await dynamo.send(new UpdateCommand({
-    TableName: TABLE_NAME,
-    Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
-    UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s',
-    ExpressionAttributeValues: { ':t': 'team', ':s': 'active' },
-  }));
+  // Best-effort cleanup of the direct-lookup record (also self-expires via TTL).
+  try {
+    await dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { PK: `INVITE#${inviteId}`, SK: 'LOOKUP' } }));
+  } catch (e) {
+    console.error('Failed to delete invite lookup record (TTL will clean up):', e.message);
+  }
+
+  // ─── Entitlement: team access is ADDITIVE; never clobber a personal subscription ──
+  // A member may already have their OWN paid Soar/Summit subscription. Accepting a team
+  // invite must NOT overwrite or erase it. We therefore:
+  //   • snapshot the member's current personal subscription fields onto the PROFILE
+  //     (preTeam*) so leaving/removal can restore them exactly, and
+  //   • only ELEVATE the PROFILE's visible tier when team (rank 2) is higher than what
+  //     they already have — a self-paid Summit/Soar member keeps their own fields, and
+  //     a free member's PROFILE is elevated to team for the duration of membership.
+  // The authoritative "is this access personal or team-granted?" marker is
+  // stripeSubscriptionId (a real Stripe id ⇒ personal). The TEAM_MEMBER record is the
+  // source of truth for team membership itself.
+  const memberProfile = profile.Item || {};
+  const personalPaid = hasPersonalPaidSubscription(memberProfile);
+  const snapshot = {
+    preTeamTier: personalPaid ? (memberProfile.subscriptionTier ?? null) : (memberProfile.subscriptionTier ?? 'free'),
+    preTeamStatus: personalPaid ? (memberProfile.subscriptionStatus ?? null) : (memberProfile.subscriptionStatus ?? 'none'),
+    teamGrantedAccess: true,
+  };
+
+  if (personalPaid && tierRank(memberProfile.subscriptionTier) >= TIER_RANK.team) {
+    // Self-paid Summit already ≥ team: record the snapshot flags only; leave the paid
+    // subscription fields completely untouched.
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      UpdateExpression: 'SET preTeamTier = :pt, preTeamStatus = :ps, teamGrantedAccess = :g',
+      ExpressionAttributeValues: { ':pt': snapshot.preTeamTier, ':ps': snapshot.preTeamStatus, ':g': true },
+    }));
+  } else {
+    // Free member OR self-paid Soar: snapshot their prior state, then surface team
+    // access. For a self-paid Soar member we DO NOT touch stripe* fields, so their own
+    // subscription (and its billing) is intact; we only raise the visible tier/status
+    // to team for the membership. preTeam* lets us restore the exact prior tier on exit.
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s, preTeamTier = :pt, preTeamStatus = :ps, teamGrantedAccess = :g',
+      ExpressionAttributeValues: {
+        ':t': 'team',
+        ':s': personalPaid ? (memberProfile.subscriptionStatus ?? 'active') : 'active',
+        ':pt': snapshot.preTeamTier,
+        ':ps': snapshot.preTeamStatus,
+        ':g': true,
+      },
+    }));
+  }
 
   return ok({ teamId, teamName: teamInfo.Item?.teamName, role: 'member' });
 }
@@ -341,13 +596,8 @@ async function removeMember(teamId, adminUserId, memberUserId) {
     Key: { PK: `USER#${memberUserId}`, SK: 'TEAM_MEMBER' },
   }));
 
-  // Downgrade member back to free
-  await dynamo.send(new UpdateCommand({
-    TableName: TABLE_NAME,
-    Key: { PK: `USER#${memberUserId}`, SK: 'PROFILE' },
-    UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s',
-    ExpressionAttributeValues: { ':t': 'free', ':s': 'none' },
-  }));
+  // Restore the member's PERSONAL subscription (never strip independently-paid access).
+  await restorePersonalSubscriptionAfterTeamExit(memberUserId);
 
   return ok({ removed: memberUserId });
 }
@@ -546,7 +796,7 @@ exports.handler = async (event) => {
           role: teamRecord.role,
           maxMembers: teamInfo.Item?.maxMembers || 5,
           members: members.map((m) => ({ userId: m.userId, email: m.email, role: m.role, joinedAt: m.joinedAt })),
-          invites: invites.filter((i) => i.status === 'pending').map((i) => ({ inviteId: i.inviteId, email: i.email, createdAt: i.createdAt })),
+          invites: invites.filter((i) => i.status === 'pending').map((i) => ({ inviteId: i.inviteId, email: i.email, createdAt: i.createdAt, expiresAt: i.expiresAt, acceptUrl: buildInviteAcceptUrl(i.inviteId) })),
         },
       });
     }
@@ -575,15 +825,49 @@ exports.handler = async (event) => {
       return ok({ team: result });
     }
 
-    // POST /team/invite — invite a member (admin only)
+    // POST /team/invite — invite a member (admin only + live Summit entitlement)
     if (method === 'POST' && path === '/team/invite') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can invite');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can invite');
 
       const body = event.body ? JSON.parse(event.body) : {};
       if (!body.email) return err(400, 'INVALID_INPUT', 'Email is required');
 
       return inviteMember(teamRecord.teamId, userId, body.email.trim().toLowerCase());
+    }
+
+    // POST /team/invite/resend — revoke the current pending invite for an email and send
+    // a fresh one (admin only + entitlement). Avoids the ALREADY_INVITED duplicate guard
+    // and issues a new code + 7-day expiry. Idempotent-ish: safe to call repeatedly.
+    if (method === 'POST' && path === '/team/invite/resend') {
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can resend invites');
+
+      const body = event.body ? JSON.parse(event.body) : {};
+      if (!body.email) return err(400, 'INVALID_INPUT', 'Email is required');
+      const email = body.email.trim().toLowerCase();
+
+      // Revoke any existing pending invite for this email so the re-invite isn't blocked.
+      const existing = (await getTeamInvites(teamRecord.teamId)).filter((i) => i.email === email && i.status === 'pending');
+      for (const inv of existing) {
+        await revokeInvite(teamRecord.teamId, inv.inviteId);
+      }
+      return inviteMember(teamRecord.teamId, userId, email);
+    }
+
+    // DELETE /team/invites/{inviteId} — revoke a pending invite (admin only + entitlement)
+    const inviteMatch = path.match(/^\/team\/invites\/([^/]+)$/);
+    if (method === 'DELETE' && inviteMatch) {
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can revoke invites');
+
+      return revokeInvite(teamRecord.teamId, decodeURIComponent(inviteMatch[1]));
     }
 
     // POST /team/accept — accept an invite
@@ -597,16 +881,20 @@ exports.handler = async (event) => {
     // DELETE /team/members/{memberId} — remove a member (admin only)
     const memberMatch = path.match(/^\/team\/members\/([^/]+)$/);
     if (method === 'DELETE' && memberMatch) {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can remove members');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can remove members');
 
       return removeMember(teamRecord.teamId, userId, memberMatch[1]);
     }
 
-    // PUT /team/name — rename the team
+    // PUT /team/name — rename the team (admin only + live Summit entitlement)
     if (method === 'PUT' && path === '/team/name') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can rename');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can rename');
 
       const body = event.body ? JSON.parse(event.body) : {};
       const trimmedName = (body.teamName || '').trim();
@@ -617,10 +905,14 @@ exports.handler = async (event) => {
       return updateTeamName(teamRecord.teamId, userId, trimmedName);
     }
 
-    // PUT /team/colors — save member color assignments (any team member can update)
+    // PUT /team/colors — save member color assignments (ADMIN ONLY + live entitlement).
+    // Colors are a team-wide setting; restrict writes to the admin to match the UI, which
+    // only renders the color controls as clickable for admins.
     if (method === 'PUT' && path === '/team/colors') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only the team admin can change team colors');
 
       const body = event.body ? JSON.parse(event.body) : {};
       const colors = body.memberColors || {};
@@ -636,10 +928,11 @@ exports.handler = async (event) => {
       return ok({ saved: true, memberColors: colors });
     }
 
-    // GET /team/colors — get team member color assignments
+    // GET /team/colors — get team member color assignments (any member + live entitlement)
     if (method === 'GET' && path === '/team/colors') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const teamInfo = await dynamo.send(new GetCommand({
         TableName: TABLE_NAME,
@@ -652,8 +945,10 @@ exports.handler = async (event) => {
     // GET /team/stats — team performance dashboard (admin only)
     // Optional query: folioStart, folioEnd to filter to a specific folio period
     if (method === 'GET' && path === '/team/stats') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
 
       const qs = event.queryStringParameters || {};
       return getTeamStats(teamRecord.teamId, userId, qs.folioStart, qs.folioEnd);
@@ -661,8 +956,10 @@ exports.handler = async (event) => {
 
     // GET /team/history — rolling 13-month production history (admin only)
     if (method === 'GET' && path === '/team/history') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord || teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
+      if (teamRecord.role !== 'admin') return err(403, 'NOT_ADMIN', 'Only team admin can view stats');
 
       return getTeamMonthlyHistory(teamRecord.teamId, userId);
     }
@@ -687,13 +984,11 @@ exports.handler = async (event) => {
         Key: { PK: `USER#${userId}`, SK: skToDelete },
       }));
 
-      // Downgrade subscription
-      await dynamo.send(new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
-        UpdateExpression: 'SET subscriptionTier = :t, subscriptionStatus = :s',
-        ExpressionAttributeValues: { ':t': 'free', ':s': 'none' },
-      }));
+      // Restore the user's PERSONAL subscription instead of a blanket free downgrade —
+      // a member or admin with their own paid Soar/Summit subscription keeps it when
+      // they leave. (The admin's own Stripe subscription, if any, is never touched here;
+      // cancelling the team's billing is a separate, explicit Stripe action.)
+      await restorePersonalSubscriptionAfterTeamExit(userId);
 
       // If admin left and others remain, transfer admin role
       if (teamRecord.role === 'admin' && members.length > 1) {
@@ -749,10 +1044,11 @@ exports.handler = async (event) => {
       return ok({ left: true });
     }
 
-    // GET /team/calendar — shared team calendar events
+    // GET /team/calendar — shared team calendar events (any member + live entitlement)
     if (method === 'GET' && path === '/team/calendar') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const members = await getTeamMembers(teamRecord.teamId);
       const params = event.queryStringParameters || {};
@@ -787,10 +1083,11 @@ exports.handler = async (event) => {
       return ok({ events: allEvents });
     }
 
-    // GET /team/leads — combined lead pool from all team members
+    // GET /team/leads — combined lead pool from all team members (any member + entitlement)
     if (method === 'GET' && path === '/team/leads') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const members = await getTeamMembers(teamRecord.teamId);
       const params = event.queryStringParameters || {};
@@ -870,8 +1167,9 @@ exports.handler = async (event) => {
 
       try {
         // Get target user's profile to check notification preferences
-        const teamRecord = await getUserTeam(userId);
-        if (!teamRecord) return ok({ sent: false });
+        const gate = await requireEntitledTeam(userId);
+        if (gate.error) return ok({ sent: false, reason: 'not-entitled' });
+        const teamRecord = gate.teamRecord;
         const members = await getTeamMembers(teamRecord.teamId);
         const targetMember = members.find((m) => m.email === targetEmail);
         if (!targetMember) return ok({ sent: false });
@@ -910,8 +1208,9 @@ exports.handler = async (event) => {
     const pipelineMatch = path.match(/^\/team\/member\/([^/]+)\/pipeline$/);
     if (method === 'GET' && pipelineMatch) {
       const memberUserId = decodeURIComponent(pipelineMatch[1]);
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       // Authorization: the requested member must be on the SAME team as the requester.
       const members = await getTeamMembers(teamRecord.teamId);
@@ -972,8 +1271,9 @@ exports.handler = async (event) => {
 
     // GET /team/folios — distinct folio periods across ALL team members' deals
     if (method === 'GET' && path === '/team/folios') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const members = await getTeamMembers(teamRecord.teamId);
       const folioSet = new Set();
@@ -997,10 +1297,11 @@ exports.handler = async (event) => {
       return ok({ folios });
     }
 
-    // GET /team/analytics — merged team analytics (filtered to current folio)
+    // GET /team/analytics — merged team analytics (any member + live entitlement)
     if (method === 'GET' && path === '/team/analytics') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       // Determine folio window — from query params, or the requesting user's folio config
       const qs = event.queryStringParameters || {};
@@ -1108,10 +1409,11 @@ exports.handler = async (event) => {
       });
     }
 
-    // GET /team/notifications — deal close notifications from teammates
+    // GET /team/notifications — deal close notifications from teammates (member + entitlement)
     if (method === 'GET' && path === '/team/notifications') {
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       // Get notifications for this user
       const result = await dynamo.send(new QueryCommand({
@@ -1154,8 +1456,9 @@ exports.handler = async (event) => {
     const claimMatch = path.match(/^\/team\/leads\/([^/]+)\/claim$/);
     if (method === 'POST' && claimMatch) {
       const leadId = claimMatch[1];
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const body = event.body ? JSON.parse(event.body) : {};
       const now = new Date().toISOString();
@@ -1201,8 +1504,9 @@ exports.handler = async (event) => {
     const releaseMatch = path.match(/^\/team\/leads\/([^/]+)\/claim$/);
     if (method === 'DELETE' && releaseMatch) {
       const leadId = releaseMatch[1];
-      const teamRecord = await getUserTeam(userId);
-      if (!teamRecord) return err(403, 'NO_TEAM', 'You are not in a team');
+      const gate = await requireEntitledTeam(userId);
+      if (gate.error) return gate.error;
+      const teamRecord = gate.teamRecord;
 
       const claimKey = { PK: `TEAM#${teamRecord.teamId}`, SK: `CLAIM#${leadId}` };
       const existing = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: claimKey }));

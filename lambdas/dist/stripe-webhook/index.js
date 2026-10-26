@@ -166,27 +166,92 @@ async function releaseClaim(eventId) {
   }
 }
 
+// Which Secrets Manager secret holds the Stripe keys. Defaults to the LIVE secret so
+// production is unchanged when STRIPE_SECRET_ID is unset; the sandbox sets it to the
+// TEST secret ('SocialLeadGen/sandbox/Stripe') and grants IAM only to that arn.
+const STRIPE_SECRET_ID = process.env.STRIPE_SECRET_ID || 'SocialLeadGen/Stripe';
+
 // Secrets cached per warm instance
 let cachedSecrets = null;
 async function getSecrets() {
   if (cachedSecrets) return cachedSecrets;
 
   const result = await secretsClient.send(
-    new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Stripe' })
+    new GetSecretValueCommand({ SecretId: STRIPE_SECRET_ID })
   );
 
   cachedSecrets = JSON.parse(result.SecretString);
   return cachedSecrets;
 }
 
-// Map Stripe product/price metadata tier → internal tier name
-// Falls back to subscription metadata if price metadata is missing
+// ─── Canonical tier normalization (single source of truth) ─────────────────────
+// Internal canonical tiers: 'free', 'soar', 'team'. Aliases:
+//   nest / none / expired / '' / null → free
+//   summit                            → team
+//   base / growth / flight / pro      → soar
+// Any UNRECOGNIZED label → free (never silently upgrade an unknown label to paid).
+// NOTE: duplicated verbatim in subscription-handler/index.js and team-handler/index.js
+// (the compiled bundles can't import packages/shared). tier-normalization.test.ts
+// asserts all three copies agree.
+function normalizeTier(raw) {
+  const t = (raw || 'free').toString().toLowerCase();
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'free' || t === 'soar' || t === 'team') return t;
+  return 'free';
+}
+
+// Map a Stripe Price ID → canonical tier using the SAME env vars checkout uses, so the
+// price the customer actually bought is authoritative when metadata is absent/garbled.
+function tierFromPriceId(priceId) {
+  if (!priceId) return null;
+  const byEnv = [
+    [process.env.STRIPE_PRICE_TEAM, 'team'],
+    [process.env.STRIPE_PRICE_SOAR, 'soar'],
+    [process.env.STRIPE_PRICE_BASE, 'soar'],
+    [process.env.STRIPE_PRICE_GROWTH, 'soar'],
+  ];
+  for (const [env, tier] of byEnv) {
+    if (env && env === priceId) return tier;
+  }
+  return null;
+}
+
+// Resolve the canonical tier for a subscription. Order of trust:
+//   1. the actual purchased Price ID — AUTHORITATIVE. It reflects what the customer is
+//      actually being billed for right now, so a Stripe customer-portal plan change
+//      (which swaps the Price but does NOT rewrite subscription.metadata) is honored.
+//   2. subscription.metadata.tier (set by our checkout) — fallback ONLY when the Price
+//      is unrecognized/missing (e.g. a legacy or mis-synced subscription).
+// Returns { tier, resolved } where resolved=false means NEITHER source identified a
+// known paid tier. Callers MUST NOT silently grant a paid tier when resolved=false —
+// they keep the account un-upgraded and log for investigation. This guarantees we
+// never grant Soar/Team off an unrecognized/invalid billing payload, and that stale
+// metadata can never override the real purchased Price.
 function resolveTier(subscription) {
-  const meta = subscription.metadata ?? {};
-  const tier = meta.tier;
-  const validTiers = ['base', 'growth', 'soar', 'team'];
-  if (tier && validTiers.includes(tier)) return tier;
-  return 'base'; // safe fallback
+  // 1. Purchased Price ID is the source of truth for the current plan.
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  if (priceId) {
+    const fromPrice = tierFromPriceId(priceId);
+    if (fromPrice) return { tier: fromPrice, resolved: true };
+    // A price IS present but matches NO configured Soar/Summit price. This is a
+    // billing state we do not recognize — FAIL CLOSED and log for investigation.
+    // We deliberately do NOT fall back to subscription.metadata here: stale metadata
+    // from an earlier plan must never grant paid access against an unknown price.
+    console.warn(`resolveTier: unrecognized purchased Price id "${priceId}" on subscription ${subscription.id} — NOT granting paid access (fail closed). Investigate price→tier config.`);
+    return { tier: 'free', resolved: false };
+  }
+  // 2. No price data on the event at all (e.g. a payload that omits items). Fall back
+  //    to our own checkout metadata.tier, which is the only signal we have.
+  const metaTier = subscription.metadata?.tier;
+  if (metaTier) {
+    const norm = normalizeTier(metaTier);
+    // normalizeTier only yields a PAID tier for a recognized paid label; an unknown
+    // label collapses to 'free', which we treat as "not resolved from metadata".
+    if (norm === 'soar' || norm === 'team') return { tier: norm, resolved: true };
+  }
+  // 3. Fail closed: neither a price nor recognizable metadata identified a paid tier.
+  return { tier: 'free', resolved: false };
 }
 
 // ─── Event handlers ───────────────────────────────────────────────────────────
@@ -201,18 +266,27 @@ async function handleCheckoutCompleted(session) {
 
   const customerId = session.customer;
   const subscriptionId = session.subscription;
-  const tier = session.metadata?.tier ?? 'base';
+  // Trust our own checkout metadata.tier, normalized. If it's missing/unknown we do
+  // NOT guess a paid tier here — but we still record the Stripe identifiers so the
+  // follow-up customer.subscription.updated event (which can read the Price) reconciles
+  // the correct tier. Never silently grant a paid tier off an unrecognized label.
+  const norm = normalizeTier(session.metadata?.tier);
+  const resolvedPaid = norm === 'soar' || norm === 'team';
 
-  console.log(`Activating ${tier} for user ${userId}, stripe customer ${customerId}`);
-
-  await updateUserSubscription(userId, {
-    subscriptionTier: tier,
+  const fields = {
     stripeCustomerId: customerId,
     stripeSubscriptionId: subscriptionId,
     subscriptionStatus: 'active',
-    // Reset AI generation count on new subscription
-    aiGenerationsUsed: 0,
-  });
+    aiGenerationsUsed: 0, // reset AI generation count on new subscription
+  };
+  if (resolvedPaid) {
+    fields.subscriptionTier = norm;
+    console.log(`Activating ${norm} for user ${userId}, stripe customer ${customerId}`);
+  } else {
+    console.warn(`checkout.session.completed: unrecognized tier metadata "${session.metadata?.tier}" for user ${userId}; recording identifiers only, awaiting subscription.updated to resolve tier from the Price.`);
+  }
+
+  await updateUserSubscription(userId, fields);
 }
 
 // Apply a subscription-state write only if it is not older than the state we have
@@ -252,6 +326,24 @@ async function applySubscriptionState(userId, fields, eventTs) {
   }
 }
 
+// Resolve a subscription's current-period-end to an ISO string, resilient to Stripe
+// API-version differences and missing values. Newer Stripe API versions moved
+// current_period_end OFF the subscription object and ONTO each subscription item, so we
+// check the top-level field first, then fall back to the first item's value. Returns
+// null (NOT a thrown RangeError) when the value is genuinely absent/invalid, so a
+// legitimate event — e.g. a cancel_at_period_end update whose payload omits the field —
+// records cleanly instead of crashing the whole webhook.
+function resolvePeriodEndIso(subscription) {
+  const epoch =
+    subscription?.current_period_end ??
+    subscription?.items?.data?.[0]?.current_period_end ??
+    null;
+  if (typeof epoch !== 'number' || !Number.isFinite(epoch)) return null;
+  const ms = epoch * 1000;
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 // customer.subscription.updated — handles upgrades, downgrades, renewals, cancel_at_period_end
 async function handleSubscriptionUpdated(subscription, eventTs) {
   const userId = subscription.metadata?.userId;
@@ -260,24 +352,40 @@ async function handleSubscriptionUpdated(subscription, eventTs) {
     return;
   }
 
-  const tier = resolveTier(subscription);
+  const { tier, resolved } = resolveTier(subscription);
   const status = subscription.status; // active, past_due, canceled, etc.
-  const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+  // Safe period-end resolution (top-level OR item-nested OR null) — never throws.
+  const currentPeriodEnd = resolvePeriodEndIso(subscription);
   const cancelAtPeriodEnd = subscription.cancel_at_period_end;
 
-  console.log(`Subscription updated for user ${userId}: tier=${tier}, status=${status}, cancelAtPeriodEnd=${cancelAtPeriodEnd}`);
+  console.log(`Subscription updated for user ${userId}: tier=${tier} (resolved=${resolved}), status=${status}, cancelAtPeriodEnd=${cancelAtPeriodEnd}`);
+
+  // Entitlement rule:
+  //   - status 'active'/'trialing': grant the resolved paid tier. If the tier could
+  //     NOT be resolved from metadata OR the Price (resolved=false), do NOT invent a
+  //     paid tier — leave subscriptionTier untouched and log. (A later event with
+  //     readable Price/metadata will reconcile.)
+  //   - any other status (past_due handled separately; canceled/unpaid/incomplete):
+  //     entitlement is not granted here; terminal removal happens on subscription.deleted.
+  const isEntitledStatus = status === 'active' || status === 'trialing';
 
   const fields = {
-    // Keep access while a cancellation is merely SCHEDULED (status still 'active'
-    // with cancel_at_period_end=true). Access is removed on the terminal
-    // subscription.deleted event at period end, not when cancel is scheduled.
-    subscriptionTier: status === 'active' ? tier : 'free',
     subscriptionStatus: status,
     subscriptionCurrentPeriodEnd: currentPeriodEnd,
     stripeSubscriptionId: subscription.id,
     stripeCustomerId: subscription.customer,
     subscriptionCancelAtPeriodEnd: Boolean(cancelAtPeriodEnd),
   };
+  if (isEntitledStatus) {
+    if (resolved) {
+      fields.subscriptionTier = tier; // canonical soar|team
+    } else {
+      console.warn(`subscription.updated: could not resolve a paid tier for user ${userId} (metadata+price both unrecognized); leaving stored tier unchanged — NOT silently granting paid.`);
+    }
+  } else {
+    // Non-entitled, non-terminal states (e.g. past_due, incomplete) keep tier as-is;
+    // we only move status. Access removal is driven by subscription.deleted.
+  }
 
   await applySubscriptionState(userId, fields, eventTs);
 }

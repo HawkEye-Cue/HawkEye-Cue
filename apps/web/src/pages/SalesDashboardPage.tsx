@@ -171,8 +171,10 @@ export default function SalesDashboardPage() {
     const totalRevenue = wonDeals.reduce((s, d) => s + (Number(d.value) || 0), 0);
     const salesCount = wonDeals.length;
     const avgDeal = salesCount > 0 ? totalRevenue / salesCount : 0;
-    // Win rate = sales closed vs opportunities worked in the window.
-    const winRate = Math.round((salesCount / (scoped.length || 1)) * 100);
+    // Win rate = sales closed vs opportunities worked in the window. salesCount (won
+    // deals in window) and scoped (opportunities in window) are different populations,
+    // so a sale with no in-window opportunity could push this over 100% — clamp it.
+    const winRate = Math.min(100, Math.round((salesCount / (scoped.length || 1)) * 100));
     const stage = {
       new: scoped.filter((l) => l.status === 'new').length,
       followed_up: scoped.filter((l) => l.status === 'followed_up').length,

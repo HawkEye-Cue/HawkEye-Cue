@@ -26,9 +26,9 @@ describe('Summit HQ — embeds the existing Sales experience (parity by reuse)',
     expect(teamPage).toContain('<SalesDashboardPage />');
   });
 
-  it('presents it as a Sales & Revenue section within Summit HQ', () => {
+  it('presents it as the Sales Tracker section within Summit HQ', () => {
     expect(teamPage).toContain('id="summit-sales"');
-    expect(teamPage).toContain('Sales &amp; Revenue');
+    expect(teamPage).toContain('Sales Tracker');
   });
 
   it('does NOT reimplement Sales logic (reuses the component, not a copy)', () => {

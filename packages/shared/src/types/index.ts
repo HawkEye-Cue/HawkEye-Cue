@@ -103,6 +103,10 @@ export interface Opportunity {
   assignedTo?: string | null;
   expectedPremium?: string | number | null;
   bucket?: string | null;
+  // CRM pipeline sub-stage (additive, optional). Refines the middle board columns
+  // (contacted | quoted | closing) within status='followed_up'. NEW/CLIENTS derive
+  // from status, so they are not stored here. null/absent on legacy records.
+  pipelineStage?: 'contacted' | 'quoted' | 'closing' | null;
   leadColor?: string | null;
   // CRM push tracking
   pushStatus?: PushStatus;

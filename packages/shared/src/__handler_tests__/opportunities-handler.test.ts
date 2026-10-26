@@ -452,3 +452,133 @@ describe('sandbox-stack — registers the Pipeline /opportunities routes', () =>
     expect(sandboxStack).toContain('SandboxOppInt');
   });
 });
+
+// ─── pipelineStage (additive CRM sub-stage) ─────────────────────────────────────
+// Validates the new optional field on PUT /opportunities/{id}/status:
+//   • persists a valid sub-stage via UpdateCommand (SET pipelineStage = ...)
+//   • rejects invalid values (400, no write)
+//   • NEW/CLIENTS labels map to "clear" (null) since those columns derive from status
+//   • never changes the stored `status` when only pipelineStage is sent (so moving a
+//     customer around the board — including toward CLIENTS handling — never logs a sale;
+//     logging a sale is a separate /sales/deals action, not this handler)
+//   • GET is backward-compatible: legacy records (no pipelineStage) return null
+describe('opportunities-handler — pipelineStage (CRM sub-stage, additive)', () => {
+  // Make the status handler's "find the item" query resolve to an existing followed_up OPP.
+  function existingOpp(extra: Record<string, unknown> = {}) {
+    return (c: SentCommand) => {
+      if (c.name === 'QueryCommand' && c.input.ExpressionAttributeValues?.[':oppId']) {
+        return { Items: [{ PK: 'USER#user-123', SK: 'OPP#t#opp1', opportunityId: 'opp1', status: 'followed_up', ...extra }] };
+      }
+      return undefined;
+    };
+  }
+
+  it('persists a valid sub-stage (quoted) via UpdateCommand without touching status', async () => {
+    const handler = loadHandler();
+    const find = existingOpp();
+    sendImpl = async (c) => find(c) ?? { Items: [] };
+    const res = await handler(event('PUT', '/opportunities/opp1/status', { pipelineStage: 'quoted' }));
+    expect(res.statusCode).toBe(200);
+    const upd = sent.find((c) => c.name === 'UpdateCommand')!;
+    expect(upd.input.UpdateExpression).toContain('pipelineStage = :pipelineStage');
+    expect(upd.input.ExpressionAttributeValues[':pipelineStage']).toBe('quoted');
+    // status must NOT be in the update when only pipelineStage was sent
+    expect(upd.input.UpdateExpression).not.toContain('#status');
+    expect(JSON.parse(res.body).pipelineStage).toBe('quoted');
+  });
+
+  it('accepts closing and contacted (case-insensitive) and stores the canonical lowercase', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => existingOpp()(c) ?? { Items: [] };
+    for (const [input, expected] of [['CLOSING', 'closing'], ['Contacted', 'contacted']] as const) {
+      sent = [];
+      const res = await handler(event('PUT', '/opportunities/opp1/status', { pipelineStage: input }));
+      expect(res.statusCode).toBe(200);
+      const upd = sent.find((c) => c.name === 'UpdateCommand')!;
+      expect(upd.input.ExpressionAttributeValues[':pipelineStage']).toBe(expected);
+    }
+  });
+
+  it('maps NEW/CLIENTS labels to null (those columns derive from status, not sub-stage)', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => existingOpp()(c) ?? { Items: [] };
+    for (const label of ['NEW', 'clients']) {
+      sent = [];
+      const res = await handler(event('PUT', '/opportunities/opp1/status', { pipelineStage: label }));
+      expect(res.statusCode).toBe(200);
+      const upd = sent.find((c) => c.name === 'UpdateCommand')!;
+      expect(upd.input.ExpressionAttributeValues[':pipelineStage']).toBeNull();
+    }
+  });
+
+  it('clears the sub-stage when passed null', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => existingOpp({ pipelineStage: 'quoted' })(c) ?? { Items: [] };
+    const res = await handler(event('PUT', '/opportunities/opp1/status', { pipelineStage: null }));
+    expect(res.statusCode).toBe(200);
+    const upd = sent.find((c) => c.name === 'UpdateCommand')!;
+    expect(upd.input.ExpressionAttributeValues[':pipelineStage']).toBeNull();
+  });
+
+  it('rejects an invalid sub-stage (400) and writes nothing', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => existingOpp()(c) ?? { Items: [] };
+    const res = await handler(event('PUT', '/opportunities/opp1/status', { pipelineStage: 'won' }));
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error.code).toBe('INVALID_PIPELINE_STAGE');
+    expect(sent.filter((c) => c.name === 'UpdateCommand')).toHaveLength(0);
+  });
+
+  it('a pipelineStage-only update satisfies the "at least one field" check', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => existingOpp()(c) ?? { Items: [] };
+    const res = await handler(event('PUT', '/opportunities/opp1/status', { pipelineStage: 'contacted' }));
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('can set status AND pipelineStage together (board move to a middle column)', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => existingOpp()(c) ?? { Items: [] };
+    const res = await handler(event('PUT', '/opportunities/opp1/status', { status: 'followed_up', pipelineStage: 'closing' }));
+    expect(res.statusCode).toBe(200);
+    const upd = sent.find((c) => c.name === 'UpdateCommand')!;
+    expect(upd.input.UpdateExpression).toContain('#status = :status');
+    expect(upd.input.UpdateExpression).toContain('pipelineStage = :pipelineStage');
+    expect(upd.input.ExpressionAttributeValues[':status']).toBe('followed_up');
+    expect(upd.input.ExpressionAttributeValues[':pipelineStage']).toBe('closing');
+  });
+
+  it('GET is backward-compatible: legacy record with no pipelineStage returns null', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => {
+      if (c.name === 'QueryCommand') {
+        return { Items: [{ PK: 'USER#user-123', SK: 'OPP#t#legacy1', opportunityId: 'legacy1', keywordId: 'kw1', sourcePlatform: 'facebook', status: 'followed_up', createdAt: '2024-01-01T00:00:00Z' }] };
+      }
+      return { Items: [] };
+    };
+    const res = await handler(event('GET', '/opportunities'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).opportunities[0].pipelineStage).toBeNull();
+  });
+
+  it('GET returns a stored pipelineStage unchanged', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => {
+      if (c.name === 'QueryCommand') {
+        return { Items: [{ PK: 'USER#user-123', SK: 'OPP#t#opp2', opportunityId: 'opp2', keywordId: 'kw1', sourcePlatform: 'facebook', status: 'followed_up', pipelineStage: 'quoted', createdAt: '2024-01-01T00:00:00Z' }] };
+      }
+      return { Items: [] };
+    };
+    const res = await handler(event('GET', '/opportunities'));
+    expect(JSON.parse(res.body).opportunities[0].pipelineStage).toBe('quoted');
+  });
+
+  it('moving around the board never writes a Deal/sale (this handler has no sales write)', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => existingOpp()(c) ?? { Items: [] };
+    await handler(event('PUT', '/opportunities/opp1/status', { pipelineStage: 'closing' }));
+    // No sales/deal write path exists in this handler; assert no Put to a DEAL/SALE SK.
+    const dealWrites = sent.filter((c) => c.name === 'PutCommand' && /DEAL|SALE/i.test(String(c.input?.Item?.SK || '')));
+    expect(dealWrites).toHaveLength(0);
+  });
+});

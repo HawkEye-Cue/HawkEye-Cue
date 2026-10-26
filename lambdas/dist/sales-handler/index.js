@@ -14,20 +14,23 @@ const FROM_EMAIL = 'HawkEye-Cue <notifications@hawkeyecue.com>';
 let resendApiKey = null;
 async function getResendKey() {
   if (resendApiKey) return resendApiKey;
-  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Resend' }));
+  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: process.env.RESEND_SECRET_ID || 'SocialLeadGen/Resend' }));
   const secret = JSON.parse(result.SecretString);
   resendApiKey = secret.RESEND_API_KEY;
   return resendApiKey;
 }
 
-async function sendEmail(to, subject, textOrHtml) {
+async function sendEmail(to, subject, textOrHtml, idempotencyKey) {
   const apiKey = await getResendKey();
   const isHtml = textOrHtml.includes('<');
   const payload = { from: FROM_EMAIL, to: Array.isArray(to) ? to : [to], subject };
   if (isHtml) { payload.html = textOrHtml; } else { payload.text = textOrHtml; }
+  const headers = { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+  // Provider-level duplicate guard for ambiguous outcomes (Resend Idempotency-Key).
+  if (idempotencyKey) headers['Idempotency-Key'] = String(idempotencyKey).slice(0, 256);
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
@@ -104,9 +107,65 @@ async function requirePaidFeature(userId, feature) {
 const STAGES = ['prospect', 'contacted', 'quoted', 'closing', 'won', 'lost'];
 
 // ─── Team Deal Won Notification ───────────────────────────────────────────────
-async function notifyTeamDealWon(userId, dealName, dealValue) {
+// ─── Email idempotency: recoverable pending → sent lease ────────────────────
+// (Mirrors folio-recap.) EMAILSENT#<key> state machine:
+//   absent                               → claimable
+//   pending + lease live                 → BLOCKED (a worker is sending now)
+//   pending + lease EXPIRED              → claimable (prior worker crashed — recover,
+//                                          don't suppress for 30 days)
+//   sent                                 → BLOCKED (TTL 30d) — already delivered
+// claimEmailSend → { ok, token }. confirmEmailSent/releaseEmailClaim require the stored
+// leaseOwner to equal the token, so a late/expired worker can't overwrite a newer claim.
+// Ambiguous-outcome note: a crash after provider-accept but before confirm may resend on
+// retry (at-least-once); the Resend 'Idempotency-Key' header (passed as the claim key)
+// is the smallest provider-level guard against that duplicate.
+const LEASE_SECONDS = 120;
+async function claimEmailSend(claimKey) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const token = randomUUID();
+  try {
+    await dynamo.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: { PK: `EMAILSENT#${claimKey}`, SK: 'CLAIM', status: 'pending', leaseOwner: token, leaseUntil: nowSec + LEASE_SECONDS, claimedAt: new Date().toISOString() },
+      ConditionExpression: 'attribute_not_exists(PK) OR (#st = :pending AND leaseUntil < :now)',
+      ExpressionAttributeNames: { '#st': 'status' },
+      ExpressionAttributeValues: { ':pending': 'pending', ':now': nowSec },
+    }));
+    return { ok: true, token };
+  } catch (e) {
+    if (e && e.name === 'ConditionalCheckFailedException') return { ok: false, token: null };
+    throw e;
+  }
+}
+async function confirmEmailSent(claimKey, token) {
+  const ttl = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
+  try {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `EMAILSENT#${claimKey}`, SK: 'CLAIM' },
+      UpdateExpression: 'SET #st = :sent, #ttl = :ttl REMOVE leaseUntil',
+      ConditionExpression: 'leaseOwner = :tok',
+      ExpressionAttributeNames: { '#st': 'status', '#ttl': 'ttl' },
+      ExpressionAttributeValues: { ':sent': 'sent', ':ttl': ttl, ':tok': token },
+    }));
+  } catch (e) { /* lost lease to a newer worker — ignore */ }
+}
+async function releaseEmailClaim(claimKey, token) {
+  try {
+    await dynamo.send(new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `EMAILSENT#${claimKey}`, SK: 'CLAIM' },
+      ...(token ? { ConditionExpression: 'leaseOwner = :tok', ExpressionAttributeValues: { ':tok': token } } : {}),
+    }));
+  } catch (e) { /* best-effort / lost lease */ }
+}
+
+async function notifyTeamDealWon(userId, dealName, dealValue, dealId) {
   // Check if user belongs to a team
   const { GetCommand } = require('@aws-sdk/lib-dynamodb');
+  // Stable idempotency scope for THIS won-deal. If no dealId is supplied, fall back to
+  // a name+value hash so repeated identical calls still de-dupe within the TTL window.
+  const dealScope = dealId || `${(dealName || '').toLowerCase().trim()}|${dealValue || 0}`;
 
   let teamId = null;
   let userEmail = '';
@@ -153,6 +212,25 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
     ExpressionAttributeValues: { ':pk': `TEAM#${teamId}`, ':sk': 'MEMBER#' },
   }));
   const teammates = (membersResult.Items || []).filter((m) => m.userId !== userId);
+
+  // Owner-inclusion backfill: the agency owner is normally also a MEMBER# row, but on
+  // legacy/partial teams the owner may be linked only via TEAM#<id>/INFO.adminUserId
+  // (or their own USER#<owner>/TEAM_ADMIN) without a MEMBER# row. Ensure the owner is
+  // still notified — unless the owner IS the seller (seller gets the separate seller
+  // confirmation below). Deduped by userId so we never double-add an existing member.
+  try {
+    const infoRes = await dynamo.send(new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `TEAM#${teamId}`, SK: 'INFO' },
+    }));
+    const ownerUserId = infoRes.Item?.adminUserId || null;
+    if (ownerUserId && ownerUserId !== userId && !teammates.some((m) => m.userId === ownerUserId)) {
+      teammates.push({ userId: ownerUserId, email: infoRes.Item?.adminEmail || '' });
+    }
+  } catch (e) {
+    console.error('[team-win] owner-inclusion backfill failed (non-fatal):', e.message);
+  }
+
   console.log(`[team-win] Team ${teamId}: ${teammates.length} teammate(s) to notify about ${dealName} ($${dealValue})`);
 
   const now = new Date().toISOString();
@@ -186,6 +264,14 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
       const mateNotifs = (mateProfile.Items || [])[0]?.emailNotifications || {};
       console.log(`[team-win] Mate ${mate.userId}: email=${mateEmail || 'NONE'}, teamWin=${mateNotifs.teamWin}`);
       if (mateEmail && mateNotifs.teamWin !== false) {
+        // Idempotency: claim this (deal, teammate) send. Skip if already sent; release
+        // on failure so a retry can resend ONLY the failed recipient.
+        const mateClaim = `sale|${dealScope}|${mate.userId}`;
+        const mateLease = await claimEmailSend(mateClaim);
+        if (!mateLease.ok) {
+          console.log(`[team-win] Skip ${mate.userId} — already notified for this deal`);
+          continue;
+        }
         const displayName = userEmail.split('@')[0];
         const html = `
           <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
@@ -199,17 +285,29 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
             <p style="font-size:11px;color:#94a3b8;margin:16px 0 0 0;">Manage notifications in Settings → Email Notifications.</p>
           </div>
         `;
-        await sendEmail(mateEmail, `🏆 ${displayName} closed "${dealName}" — $${(dealValue || 0).toLocaleString()}!`, html);
-        console.log(`[team-win] ✓ Email sent to ${mateEmail}`);
+        try {
+          await sendEmail(mateEmail, `🏆 ${displayName} closed "${dealName}" — $${(dealValue || 0).toLocaleString()}!`, html, mateClaim);
+          await confirmEmailSent(mateClaim, mateLease.token);
+          console.log(`[team-win] ✓ Email sent to ${mateEmail}`);
+        } catch (sendErr) {
+          await releaseEmailClaim(mateClaim, mateLease.token); // allow retry
+          throw sendErr;
+        }
       }
     } catch (e) {
       console.error(`[team-win-email] Failed for mate ${mate.userId}:`, e.message);
     }
   }
 
-  // Also send a confirmation to the seller
+  // Also send a confirmation to the seller — exactly once per won deal.
   if (userEmail) {
+    const sellerClaim = `sale|${dealScope}|seller|${userId}`;
+    const sellerLease = await claimEmailSend(sellerClaim);
     try {
+      if (!sellerLease.ok) {
+        console.log('[team-win] Seller confirmation already sent for this deal — skip');
+        return;
+      }
       const sellerHtml = `
         <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
           <h2 style="color:#16a34a;margin:0 0 16px 0;">🎉 Sale Logged!</h2>
@@ -221,8 +319,14 @@ async function notifyTeamDealWon(userId, dealName, dealValue) {
           <a href="https://hawkeyecue.com/sales" style="display:inline-block;background:#16a34a;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">View Sales →</a>
         </div>
       `;
-      await sendEmail(userEmail, `🎉 Sale logged: ${dealName} — $${(dealValue || 0).toLocaleString()}`, sellerHtml);
-      console.log(`[team-win] ✓ Confirmation sent to seller ${userEmail}`);
+      try {
+        await sendEmail(userEmail, `🎉 Sale logged: ${dealName} — $${(dealValue || 0).toLocaleString()}`, sellerHtml, sellerClaim);
+        await confirmEmailSent(sellerClaim, sellerLease.token);
+        console.log(`[team-win] ✓ Confirmation sent to seller ${userEmail}`);
+      } catch (sendErr) {
+        await releaseEmailClaim(sellerClaim, sellerLease.token); // allow retry
+        throw sendErr;
+      }
     } catch (e) {
       console.error('[team-win] Failed to send seller confirmation:', e.message);
     }
@@ -413,7 +517,7 @@ async function handleCreateDeal(userId, body) {
   // If deal is created as 'won', notify team (only on a genuinely new deal).
   if (stage === 'won') {
     try {
-      await notifyTeamDealWon(userId, name.trim(), dealValue);
+      await notifyTeamDealWon(userId, name.trim(), dealValue, dealId);
     } catch (e) {
       console.error('Failed to send team deal notification on create:', e.message);
     }
@@ -464,7 +568,7 @@ async function handleUpdateDeal(userId, dealId, body) {
   // If deal was just moved to 'won', notify team members
   if (body.stage === 'won' && previousStage !== 'won') {
     try {
-      await notifyTeamDealWon(userId, body.name || item.dealName, body.value !== undefined ? body.value : item.dealValue);
+      await notifyTeamDealWon(userId, body.name || item.dealName, body.value !== undefined ? body.value : item.dealValue, dealId);
     } catch (e) {
       console.error('Failed to send team deal notification:', e.message);
     }

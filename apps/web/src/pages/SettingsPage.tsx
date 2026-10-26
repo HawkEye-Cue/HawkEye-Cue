@@ -329,11 +329,58 @@ export default function SettingsPage() {
     return labels[tier] ?? tier;
   }
 
+  // ─── Settings category navigation ────────────────────────────────────────────
+  // Six primary categories; only the selected one's content renders (less clutter,
+  // less scrolling). Every existing control is preserved — just grouped. The choice
+  // persists so a refresh keeps you where you were. Deep-link to #suggestion opens
+  // Privacy & Data (where the suggestion box lives).
+  type SettingsCategory = 'account' | 'business' | 'connections' | 'billing' | 'notifications' | 'privacy';
+  const CATEGORIES: { id: SettingsCategory; label: string; icon: string }[] = [
+    { id: 'account', label: 'My Account', icon: '👤' },
+    { id: 'business', label: 'My Business', icon: '🏢' },
+    { id: 'connections', label: 'Connections', icon: '🔗' },
+    { id: 'billing', label: 'Plan & Billing', icon: '💳' },
+    { id: 'notifications', label: 'Notifications', icon: '🔔' },
+    { id: 'privacy', label: 'Privacy & Data', icon: '🔒' },
+  ];
+  const initialCategory: SettingsCategory =
+    window.location.hash === '#suggestion'
+      ? 'privacy'
+      : ((localStorage.getItem('hawkeye_settings_category') as SettingsCategory) || 'account');
+  const [category, setCategory] = useState<SettingsCategory>(initialCategory);
+  function selectCategory(c: SettingsCategory) {
+    setCategory(c);
+    localStorage.setItem('hawkeye_settings_category', c);
+  }
+
   return (
-    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
-      {/* Left column: account info, trade selector, subscription plans */}
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+      {/* ── Category nav: a vertical list on desktop, a horizontal scroll of pills on
+          mobile. Black/charcoal surface, orange active state, white text. ── */}
+      <nav className="lg:sticky lg:top-2" aria-label="Settings categories">
+        <h2 className="text-xl font-bold text-white mb-3 px-1">Settings</h2>
+        <div className="flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => selectCategory(c.id)}
+              aria-current={category === c.id ? 'page' : undefined}
+              className={`shrink-0 lg:w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
+                category === c.id ? 'bg-orange-500 text-black' : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <span aria-hidden>{c.icon}</span>
+              <span className="whitespace-nowrap">{c.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* ── Selected category content (one at a time) ── */}
       <div className="min-w-0 space-y-4">
-      <h2 className="text-xl font-bold text-white">Settings</h2>
+
+      {/* ═══ MY ACCOUNT ═══ */}
+      {category === 'account' && (<div className="space-y-4">
 
       {/* Guided vs Pro mode */}
       <div className="glass-card">
@@ -443,18 +490,6 @@ export default function SettingsPage() {
         <span className="text-slate-500">→</span>
       </button>
 
-      {/* Checkout success/cancel banners */}
-      {checkoutStatus === 'success' && (
-        <div className="p-3 rounded-lg bg-green-950/40 border border-green-500/40 text-sm text-green-300">
-          🎉 Subscription activated! Welcome to the {tierLabel(currentTier)} plan.
-        </div>
-      )}
-      {checkoutStatus === 'cancelled' && (
-        <div className="p-3 rounded-lg bg-yellow-950/40 border border-yellow-500/40 text-sm text-yellow-300">
-          Checkout was cancelled. No charge was made.
-        </div>
-      )}
-
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Account</h3>
         <div className="space-y-2 text-sm">
@@ -493,11 +528,19 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      </div>)}
+
+      {/* ═══ MY BUSINESS ═══ */}
+      {category === 'business' && (<div className="space-y-4">
       <TradeSelector />
 
       {/* Folio Setup — set periods or turn off for trades that don't use folios */}
       <FolioSetup />
 
+      </div>)}
+
+      {/* ═══ CONNECTIONS ═══ */}
+      {category === 'connections' && (<div className="space-y-4">
       {/* Connected Social Accounts */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">Connected Social Accounts</h3>
@@ -563,6 +606,21 @@ export default function SettingsPage() {
         )}
       </div>
 
+      </div>)}
+
+      {/* ═══ PLAN & BILLING ═══ */}
+      {category === 'billing' && (<div className="space-y-4">
+      {/* Checkout success/cancel banners (billing) */}
+      {checkoutStatus === 'success' && (
+        <div className="p-3 rounded-lg bg-green-950/40 border border-green-500/40 text-sm text-green-300">
+          🎉 Subscription activated! Welcome to the {tierLabel(currentTier)} plan.
+        </div>
+      )}
+      {checkoutStatus === 'cancelled' && (
+        <div className="p-3 rounded-lg bg-yellow-950/40 border border-yellow-500/40 text-sm text-yellow-300">
+          Checkout was cancelled. No charge was made.
+        </div>
+      )}
       {/* Active subscription management */}
       {currentTier !== 'free' && (
         <div className="glass-card">
@@ -735,12 +793,10 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Keyword Tracking - NOW ABOVE pricing was moved, this stays where subscription was */}
-      </div>{/* end left column */}
+      </div>)}{/* end PLAN & BILLING */}
 
-      {/* Right column: connected social accounts, keyword tracking, browser extension */}
-      <div className="min-w-0 space-y-4">
-      {/* Keyword Tracking - NOW ABOVE pricing was moved, this stays where subscription was */}
+      {/* ═══ MY BUSINESS (continued): Keyword Tracking ═══ */}
+      {category === 'business' && (<div className="space-y-4">
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">🔑 Keyword Tracking</h3>
         <p className="text-sm text-slate-400 mb-3">Keywords the browser extension and lead scanner watch for.</p>
@@ -850,6 +906,10 @@ export default function SettingsPage() {
         )}
       </div>
 
+      </div>)}{/* end MY BUSINESS (keywords) */}
+
+      {/* ═══ CONNECTIONS (continued): Browser Extension + Email Automation ═══ */}
+      {category === 'connections' && (<div className="space-y-4">
       {/* Browser Extension */}
       <div className="glass-card">
         <h3 className="font-semibold mb-2 text-white">🦅 Browser Extension</h3>
@@ -923,10 +983,15 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      </div>)}{/* end CONNECTIONS (browser extension) */}
+
+      {/* Modals — always mounted regardless of active category (triggered from various cards) */}
       {showExtensionTour && <ExtensionTour onClose={() => setShowExtensionTour(false)} />}
       {showLeadExplainer && <LeadDetectionExplainer onClose={() => setShowLeadExplainer(false)} />}
       {showHowTo && <HowToGuide onClose={() => setShowHowTo(false)} />}
 
+      {/* ═══ NOTIFICATIONS ═══ */}
+      {category === 'notifications' && (<div className="space-y-4">
       {/* Email Notification Preferences */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">📧 Email Notifications</h3>
@@ -977,6 +1042,10 @@ export default function SettingsPage() {
         </button>
       </div>
 
+      </div>)}{/* end NOTIFICATIONS */}
+
+      {/* ═══ CONNECTIONS (continued): Email Automation ═══ */}
+      {category === 'connections' && (<div className="space-y-4">
       {/* Email Automation — Gmail/Outlook Integration */}
       <div className="glass-card">
         <h3 className="font-semibold mb-3 text-white">✉️ Email Automation</h3>
@@ -1114,6 +1183,19 @@ export default function SettingsPage() {
       </div>
 
       {/* Suggestion Box */}
+      </div>)}{/* end CONNECTIONS (email automation) */}
+
+      {/* ═══ PRIVACY & DATA ═══ */}
+      {category === 'privacy' && (<div className="space-y-4">
+      {/* Privacy & Data controls — export + delete live on the dedicated Privacy page. */}
+      <Link to="/privacy" className="glass-card flex items-center justify-between hover:bg-white/5 transition-colors">
+        <div>
+          <p className="text-sm font-medium text-white">🔒 Privacy &amp; Your Data</p>
+          <p className="text-xs text-slate-400">Export your data or permanently delete your account</p>
+        </div>
+        <span className="text-slate-500">→</span>
+      </Link>
+
       <details id="suggestion" className="glass-card" open={window.location.hash === '#suggestion'}>
         <summary className="font-semibold text-white cursor-pointer flex items-center gap-2">
           💡 Have a Suggestion?
@@ -1154,7 +1236,9 @@ export default function SettingsPage() {
           📧 Contact Us: briannafrashier@hawkeyecue.com
         </a>
       </div>
-      </div>{/* end right column */}
+      </div>)}{/* end PRIVACY & DATA */}
+
+      </div>{/* end category content */}
     </div>
   );
 }

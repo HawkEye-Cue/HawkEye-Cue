@@ -23,7 +23,7 @@ function buildInviteAcceptUrl(inviteId) {
 let resendApiKey = null;
 async function getResendKey() {
   if (resendApiKey) return resendApiKey;
-  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/Resend' }));
+  const result = await secretsClient.send(new GetSecretValueCommand({ SecretId: process.env.RESEND_SECRET_ID || 'SocialLeadGen/Resend' }));
   const secret = JSON.parse(result.SecretString);
   resendApiKey = secret.RESEND_API_KEY;
   return resendApiKey;

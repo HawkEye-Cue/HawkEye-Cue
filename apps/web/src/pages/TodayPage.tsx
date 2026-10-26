@@ -5,6 +5,7 @@ import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useMode } from '../contexts/ModeContext';
 import { ApiClient } from '@social-lead-gen/shared';
+import { peekInvite } from '../lib/pendingInvite';
 import FlightPlan from '../components/FlightPlan';
 import type { FlightTask } from '../components/FlightPlan';
 import SetupProgress from '../components/SetupProgress';
@@ -177,6 +178,14 @@ export default function TodayPage() {
     { label: 'Posts ready', value: counts.postsReady, icon: '✨', accent: 'purple', route: '/create' },
     { label: 'Active pipeline', value: `$${counts.activeValue.toLocaleString()}`, icon: '💰', accent: 'green', route: '/pipeline?view=deals' },
   ];
+
+  // Invited-employee fast path: a pending team invite takes priority over business-owner
+  // onboarding. Send them straight to invitation acceptance (Summit HQ) instead of
+  // Grow/Discover/CRM/business setup. acceptInvite still enforces email-match/expiry/etc.
+  const pendingInvite = peekInvite();
+  if (needsOnboarding && pendingInvite) {
+    return <Navigate to={`/team?invite=${encodeURIComponent(pendingInvite)}`} replace />;
+  }
 
   // Render-time onboarding redirect (no blank frame). Only genuinely new users land here.
   if (needsOnboarding) {

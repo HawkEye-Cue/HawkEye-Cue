@@ -372,6 +372,15 @@ export class ApiStack extends cdk.Stack {
 
     table.grantReadWriteData(stripeWebhookFn);
 
+    // Stripe Price IDs — the webhook's resolveTier() maps the PURCHASED Price ID → tier
+    // (authoritative over stale subscription metadata), so a customer-portal plan change
+    // resolves correctly. Mirrors the subscription handler's LIVE price ids above; without
+    // these the webhook cannot recognize any price and fails closed. (Launch fix.)
+    stripeWebhookFn.addEnvironment('STRIPE_PRICE_BASE', 'price_1Tg5DnD0B5PTsk5ePqsicJF6');
+    stripeWebhookFn.addEnvironment('STRIPE_PRICE_GROWTH', 'price_1Tg5DnD0B5PTsk5ePqsicJF6');
+    stripeWebhookFn.addEnvironment('STRIPE_PRICE_SOAR', 'price_1TtIyDD0B5PTsk5eRvabYqmG');
+    stripeWebhookFn.addEnvironment('STRIPE_PRICE_TEAM', 'price_1TtItpD0B5PTsk5e988EbiUS');
+
     // Grant Secrets Manager read access for Stripe keys
     stripeWebhookFn.addToRolePolicy(
       new iam.PolicyStatement({

@@ -9,6 +9,7 @@ import { ApiClient, ApiError, displayCueAuthor } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats, Deal } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
 import LeadProfilePopup from '../components/LeadProfilePopup';
+import PipelineBoard from '../components/PipelineBoard';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import ProNudge from '../components/ProNudge';
@@ -142,6 +143,8 @@ export default function OpportunitiesPage() {
   const [newBucketName, setNewBucketName] = useState('');
   const [selectedLead, setSelectedLead] = useState<Opportunity | null>(null);
   const [selectedFollowUpDay, setSelectedFollowUpDay] = useState<string | null>(null);
+  // CRM board vs the existing classic list. Persisted so the user's choice sticks.
+  const [crmView, setCrmView] = useState<boolean>(() => localStorage.getItem('hawkeye_pipeline_crm_view') !== 'false');
   // Golden path: a converted Cue (Client) can have a logged Sale (won Deal).
   // The persisted Deal (keyed by opportunityId) is the SINGLE source of truth for
   // "Sale logged" — no localStorage flags. We hold the set of opportunityIds that
@@ -240,10 +243,17 @@ export default function OpportunitiesPage() {
   }, [showTeamLeads, isInTeam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Trade-specific policy types (same as SalesPage TRADE_CONFIGS)
+  // Default insurance policy types — also used as the fallback when no trade is resolved
+  // (previously the dropdown showed only "Other", because the no-trade fallback was []).
+  const DEFAULT_INSURANCE_POLICY_TYPES = [
+    'Auto', 'Homeowners', 'Home + Auto Bundle', 'Renters', 'Condo', 'Landlord',
+    'Umbrella', 'Motorcycle', 'RV', 'Boat', 'Life', 'Commercial Auto',
+    'General Liability', 'Business Owners Policy', 'Workers Comp',
+  ];
   const LEAD_POLICY_TYPES: Record<string, string[]> = {
-    'insurance-agent': ['Home', 'Auto', 'Life', 'Commercial', 'Motorcycle', 'Trailer', 'Boat', 'Umbrella', 'Renters', 'Condo', 'Flood', 'Bundle'],
+    'insurance-agent': DEFAULT_INSURANCE_POLICY_TYPES,
     'health-insurance-agent': ['Individual', 'Family', 'Medicare', 'Medicaid', 'Group/Employer', 'Dental', 'Vision', 'Supplemental', 'Short-Term'],
-    'insurance-producer': ['Home', 'Auto', 'Life', 'Commercial', 'Motorcycle', 'Trailer', 'Boat', 'Umbrella', 'Renters', 'Condo', 'Flood', 'Bundle'],
+    'insurance-producer': DEFAULT_INSURANCE_POLICY_TYPES,
     'real-estate-agent': ['Single Family', 'Condo/Townhome', 'Multi-Family', 'Luxury', 'Land/Lot', 'Commercial', 'Investment Property', 'New Construction', 'Foreclosure'],
     'mortgage-lender': ['Conventional', 'FHA', 'VA', 'USDA', 'Jumbo', 'Refinance', 'HELOC', 'Reverse Mortgage', 'Construction'],
     'roofing': ['Shingle Replacement', 'Metal Roof', 'Flat Roof', 'Tile Roof', 'Roof Repair', 'Storm Damage', 'Inspection', 'Gutter Install', 'Skylight'],
@@ -305,13 +315,15 @@ export default function OpportunitiesPage() {
   const [policyTypes, setPolicyTypes] = useState<string[]>(() => {
     const saved = localStorage.getItem(dealTypesKey);
     if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
-    return selectedTrade ? (LEAD_POLICY_TYPES[selectedTrade.id] || ['Service', 'Project', 'Consultation', 'Contract', 'Custom']) : [];
+    // Fall back to the selected trade's list, else the default insurance list (never []),
+    // so the dropdown always offers real options even before a trade is resolved.
+    return selectedTrade ? (LEAD_POLICY_TYPES[selectedTrade.id] || ['Service', 'Project', 'Consultation', 'Contract', 'Custom']) : DEFAULT_INSURANCE_POLICY_TYPES;
   });
 
   useEffect(() => {
     const saved = localStorage.getItem(dealTypesKey);
     if (saved) { try { setPolicyTypes(JSON.parse(saved)); return; } catch { /* ignore */ } }
-    setPolicyTypes(selectedTrade ? (LEAD_POLICY_TYPES[selectedTrade.id] || ['Service', 'Project', 'Consultation', 'Contract', 'Custom']) : []);
+    setPolicyTypes(selectedTrade ? (LEAD_POLICY_TYPES[selectedTrade.id] || ['Service', 'Project', 'Consultation', 'Contract', 'Custom']) : DEFAULT_INSURANCE_POLICY_TYPES);
   }, [dealTypesKey, selectedTrade]);
 
   async function buildClient() {
@@ -1208,7 +1220,68 @@ export default function OpportunitiesPage() {
             </div>
           )}
 
-          {/* Nest grid */}
+          {/* CRM board vs classic view toggle */}
+          <div className="flex items-center justify-end">
+            <div className="flex items-center gap-1 rounded-lg bg-black/40 border border-white/10 p-1">
+              <button
+                onClick={() => { setCrmView(true); localStorage.setItem('hawkeye_pipeline_crm_view', 'true'); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${crmView ? 'bg-orange-500 text-black' : 'text-slate-300 hover:text-white'}`}
+                aria-pressed={crmView}
+              >
+                CRM Board
+              </button>
+              <button
+                onClick={() => { setCrmView(false); localStorage.setItem('hawkeye_pipeline_crm_view', 'false'); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${!crmView ? 'bg-orange-500 text-black' : 'text-slate-300 hover:text-white'}`}
+                aria-pressed={!crmView}
+              >
+                Classic
+              </button>
+            </div>
+          </div>
+
+          {/* CRM board (reuses existing data + handlers; no backend change) */}
+          {crmView && (
+            <PipelineBoard
+              leads={leads}
+              userSub={user?.sub}
+              updatingId={updatingId}
+              onUpdateStatus={handleUpdateStatus}
+              onMoveToClient={moveToWon}
+              onLogSale={openLogSale}
+              onOpenDetail={(lead) => setSelectedLead(lead)}
+              hasLoggedSale={(lead) => loggedSaleOppIds.has(lead.id)}
+              onPersistStage={async (id, stage) => {
+                // Persist the CRM sub-stage server-side so it syncs across devices.
+                // Uses the existing opportunities status endpoint with an additive,
+                // free-form `pipelineStage` field (same pattern as `bucket`). Safe no-op
+                // if the sandbox backend field isn't deployed yet (handler ignores it).
+                try {
+                  const client = await buildClient();
+                  await client.request('PUT', `/opportunities/${id}/status`, { pipelineStage: stage });
+                } catch { /* best-effort; localStorage fallback already applied */ }
+              }}
+              employeeNameFor={(lead) => {
+                const a = (lead as any).assignedTo as string | undefined;
+                if (!a) return undefined;
+                // Prefer a readable display name; fall back to the email's local part.
+                const m = teamMembers.find((tm) => tm.email === a);
+                return m ? a.split('@')[0] : a.split('@')[0];
+              }}
+              employeeFilter={
+                isInTeam && teamMembers.length > 1
+                  ? {
+                      options: [{ value: 'all', label: 'All Team' }, ...teamMembers.map((m) => ({ value: m.email, label: m.email.split('@')[0] }))],
+                      value: teamLeadFilter,
+                      onChange: setTeamLeadFilter,
+                    }
+                  : undefined
+              }
+            />
+          )}
+
+          {/* Nest grid (classic view) */}
+          {!crmView && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {(() => {
               const activeLeads = leads.filter((l) => l.status !== 'converted' && !perchedIds.has(l.id));
@@ -1295,11 +1368,12 @@ export default function OpportunitiesPage() {
               );
             })}
           </div>
+          )}
         </div>
       )}
 
-      {/* Leads Table — scalable for hundreds */}
-      {loading ? (
+      {/* Leads Table — scalable for hundreds (classic view only; CRM board replaces it) */}
+      {crmView ? null : loading ? (
         <div className="glass-card"><LoadingSkeleton rows={4} variant="list" /></div>
       ) : leads.length === 0 ? (
         <div className="glass-card">

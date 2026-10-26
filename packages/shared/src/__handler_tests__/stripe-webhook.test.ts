@@ -421,6 +421,78 @@ describe('stripe-webhook — tier correctness (Priority 1)', () => {
     expect(userRecord().stripeSubscriptionId).toBe('sub_1'); // identifiers recorded
     expect(userRecord().subscriptionTier).toBe('free');       // but NOT silently upgraded
   });
+
+  // ─── Regression: Price ID is authoritative over stale metadata (portal plan change) ──
+  // A Stripe customer-portal upgrade swaps the Price but does NOT rewrite
+  // subscription.metadata, so metadata.tier stays at the ORIGINAL plan. The purchased
+  // Price must win so the real current plan is reflected.
+  it('REGRESSION: stale Soar metadata + Summit price resolves to team (portal upgrade)', async () => {
+    const handler = loadHandler();
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'soar', subscriptionStatus: 'active', trialEndsAt: '2026-11-02T00:00:00.000Z' });
+    constructedEvent = subUpdatedWithPrice('evt_up', 1_700_000_110, { metaTier: 'soar', priceId: 'price_team' });
+    const res = await handler(webhookEvent({ id: 'evt_up' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('team');                 // Price wins
+    expect(userRecord().trialEndsAt).toBe('2026-11-02T00:00:00.000Z');  // trial date preserved
+    expect(userRecord().stripeSubscriptionId).toBe('sub_1');            // same subscription, not a new one
+  });
+
+  it('REGRESSION: stale Summit metadata + Soar price resolves to soar (portal downgrade)', async () => {
+    const handler = loadHandler();
+    constructedEvent = subUpdatedWithPrice('evt_down', 1_700_000_111, { metaTier: 'summit', priceId: 'price_soar' });
+    const res = await handler(webhookEvent({ id: 'evt_down' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('soar'); // Price wins over stale 'summit' metadata
+  });
+
+  it('matching metadata and price agree (team + team price → team)', async () => {
+    const handler = loadHandler();
+    constructedEvent = subUpdatedWithPrice('evt_match', 1_700_000_112, { metaTier: 'summit', priceId: 'price_team' });
+    const res = await handler(webhookEvent({ id: 'evt_match' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('team');
+  });
+
+  it('unrecognized purchased price FAILS CLOSED even with stale paid metadata (no grant off stale meta)', async () => {
+    // A price IS present but matches no configured Soar/Summit price. Stale metadata
+    // must NOT grant paid access — fail closed and leave the prior tier unchanged.
+    const handler = loadHandler();
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'free' });
+    constructedEvent = subUpdatedWithPrice('evt_badprice', 1_700_000_113, { metaTier: 'team', priceId: 'price_unknown' });
+    const res = await handler(webhookEvent({ id: 'evt_badprice' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('free');       // NOT granted off stale metadata
+    expect(userRecord().subscriptionStatus).toBe('active');   // status still recorded
+  });
+
+  it('metadata fallback applies ONLY when the event carries no price data', async () => {
+    // Preserve safe behavior for events that legitimately omit items/price: our own
+    // checkout metadata.tier is the only signal, so a recognized paid label is honored.
+    const handler = loadHandler();
+    constructedEvent = subUpdatedWithPrice('evt_noprice', 1_700_000_116, { metaTier: 'summit', priceId: null });
+    const res = await handler(webhookEvent({ id: 'evt_noprice' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('team'); // metadata fallback (no price present)
+  });
+
+  it('unknown price AND unknown metadata cannot grant paid access (fail closed)', async () => {
+    const handler = loadHandler();
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'free' });
+    constructedEvent = subUpdatedWithPrice('evt_none', 1_700_000_114, { metaTier: 'mystery', priceId: 'price_unknown' });
+    const res = await handler(webhookEvent({ id: 'evt_none' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().subscriptionTier).toBe('free'); // neither source → no paid grant
+  });
+
+  it('existing subscription is updated in place (no second subscription id created)', async () => {
+    const handler = loadHandler();
+    store.set('USER#user-123|PROFILE', { PK: 'USER#user-123', SK: 'PROFILE', email: 'u@test.com', subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_1' });
+    constructedEvent = subUpdatedWithPrice('evt_inplace', 1_700_000_115, { metaTier: 'soar', priceId: 'price_team' });
+    const res = await handler(webhookEvent({ id: 'evt_inplace' }));
+    expect(res.statusCode).toBe(200);
+    expect(userRecord().stripeSubscriptionId).toBe('sub_1'); // same subscription
+    expect(userRecord().subscriptionTier).toBe('team');
+  });
 });
 
 // ─── Priority 3: failed-payment does not prematurely remove access ──────────────

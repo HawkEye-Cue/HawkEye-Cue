@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import { stashInviteFromSearch } from './lib/pendingInvite';
 import AppShell from './components/AppShell';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -26,12 +27,16 @@ import ProfilePage from './pages/ProfilePage';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { search } = useLocation();
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
   if (!isAuthenticated) {
+    // Preserve a team-invite token (e.g. /team?invite=<token>) across the redirect to
+    // landing/login/register so it can be accepted after the user authenticates.
+    stashInviteFromSearch(search);
     return <Navigate to="/landing" replace />;
   }
 

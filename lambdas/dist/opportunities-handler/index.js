@@ -73,6 +73,24 @@ async function requireFollowUp(userId) {
 
 const VALID_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'tiktok', 'nextdoor', 'other'];
 const VALID_STATUSES = ['new', 'followed_up', 'converted', 'dismissed'];
+// CRM pipeline sub-stage (additive, optional). The stored `status` is unchanged — this
+// only refines the three middle board columns within status='followed_up'. NEW and
+// CLIENTS derive from status ('new' / 'converted'), so they are not stored here.
+// Accepted sub-stage values (lowercase, canonical): contacted | quoted | closing.
+// `null`/'' clears the sub-stage (e.g. moving back to NEW or into CLIENTS).
+const VALID_PIPELINE_STAGES = ['contacted', 'quoted', 'closing'];
+// Normalize an incoming pipelineStage. Returns { ok, value } — value is the canonical
+// lowercase sub-stage, or null to clear. Rejects anything outside the approved set so a
+// bad value can never corrupt the record. Backward-compatible: absent field = no change.
+function normalizePipelineStage(raw) {
+  if (raw === null || raw === '') return { ok: true, value: null };
+  const v = String(raw).trim().toLowerCase();
+  // Tolerate the capitalized CRM labels NEW/CLIENTS by mapping them to "clear" since
+  // those columns are derived from status, not stored as a sub-stage.
+  if (v === 'new' || v === 'clients') return { ok: true, value: null };
+  if (VALID_PIPELINE_STAGES.includes(v)) return { ok: true, value: v };
+  return { ok: false, value: null };
+}
 
 // Validate an opportunity create request.
 //
@@ -181,6 +199,8 @@ async function handleGetOpportunities(userId) {
     policyType: item.policyType || null,
     assignedTo: item.assignedTo || null,
     bucket: item.bucket || null,
+    // CRM pipeline sub-stage (additive, optional; null for legacy records).
+    pipelineStage: item.pipelineStage || null,
     expectedPremium: item.expectedPremium || null,
     leadNotes: item.leadNotes || null,
     leadColor: item.leadColor || null,
@@ -372,14 +392,25 @@ async function handlePromoteToLead(userId, opportunityId) {
 // PUT /opportunities/{id}/status
 async function handleUpdateStatus(userId, opportunityId, body) {
   const { status, assignedTo, policyType, expectedPremium, bucket, contactEmail } = body || {};
+  const hasPipelineStage = body && body.pipelineStage !== undefined;
 
   // At least one field must be provided
-  if (!status && assignedTo === undefined && policyType === undefined && expectedPremium === undefined && bucket === undefined && contactEmail === undefined) {
+  if (!status && assignedTo === undefined && policyType === undefined && expectedPremium === undefined && bucket === undefined && contactEmail === undefined && !hasPipelineStage) {
     return respond(400, { error: { code: 'INVALID_INPUT', message: 'At least one field is required' } });
   }
 
   if (status && !VALID_STATUSES.includes(status)) {
     return respond(400, { error: { code: 'INVALID_STATUS', message: `status must be one of: ${VALID_STATUSES.join(', ')}` } });
+  }
+
+  // Validate the optional CRM sub-stage without touching the stored status.
+  let pipelineStageValue = null;
+  if (hasPipelineStage) {
+    const norm = normalizePipelineStage(body.pipelineStage);
+    if (!norm.ok) {
+      return respond(400, { error: { code: 'INVALID_PIPELINE_STAGE', message: `pipelineStage must be one of: ${VALID_PIPELINE_STAGES.join(', ')} (or null to clear)` } });
+    }
+    pipelineStageValue = norm.value;
   }
 
   // Query to find the full SK for this opportunity
@@ -424,6 +455,10 @@ async function handleUpdateStatus(userId, opportunityId, body) {
     updates.push('bucket = :bucket');
     values[':bucket'] = bucket || null;
   }
+  if (hasPipelineStage) {
+    updates.push('pipelineStage = :pipelineStage');
+    values[':pipelineStage'] = pipelineStageValue;
+  }
   if (body.leadNotes !== undefined) {
     updates.push('leadNotes = :leadNotes');
     values[':leadNotes'] = body.leadNotes || null;
@@ -455,7 +490,7 @@ async function handleUpdateStatus(userId, opportunityId, body) {
     })
   );
 
-  return respond(200, { id: opportunityId, status: status || item.status, assignedTo: assignedTo !== undefined ? assignedTo : item.assignedTo, policyType: policyType !== undefined ? policyType : item.policyType, expectedPremium: expectedPremium !== undefined ? expectedPremium : item.expectedPremium, bucket: bucket !== undefined ? bucket : item.bucket });
+  return respond(200, { id: opportunityId, status: status || item.status, assignedTo: assignedTo !== undefined ? assignedTo : item.assignedTo, policyType: policyType !== undefined ? policyType : item.policyType, expectedPremium: expectedPremium !== undefined ? expectedPremium : item.expectedPremium, bucket: bucket !== undefined ? bucket : item.bucket, pipelineStage: hasPipelineStage ? pipelineStageValue : (item.pipelineStage || null) });
 }
 
 // DELETE /opportunities/{id}

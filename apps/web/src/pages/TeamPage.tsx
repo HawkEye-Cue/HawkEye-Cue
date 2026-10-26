@@ -10,6 +10,7 @@ import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
 import TeamMemberPipeline from '../components/TeamMemberPipeline';
 import { folioDisplayName } from '../utils/folioName';
+import { consumeInvite } from '../lib/pendingInvite';
 
 interface TeamMember {
   userId: string;
@@ -129,7 +130,8 @@ export default function TeamPage() {
   const { showToast } = useToast();
   const { addEvent, events: myEvents } = useCalendar();
   const { refresh: refreshSummit } = useSummit();
-  const [tab, setTab] = useState<Tab>('manage');
+  // Summit HQ now opens focused on the Sales Tracker (sales performance is the centerpiece).
+  const [tab, setTab] = useState<Tab>('sales');
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -321,7 +323,9 @@ export default function TeamPage() {
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      const code = params.get('invite');
+      // Prefer the URL param; otherwise fall back to a token stashed during the auth flow
+      // (the AuthGuard saved it before redirecting an unauthenticated invitee to landing).
+      const code = params.get('invite') || consumeInvite();
       if (code) {
         setInviteCode(code);
         // Clean the URL so a refresh doesn't re-trigger.
@@ -628,13 +632,15 @@ export default function TeamPage() {
   // Premium Summit HQ section switcher — jumps to the anchored section (one focused
   // area at a time, less scrolling). Reuses the declared `tab` state. Each pill maps to
   // a section id rendered below; selecting a pill smooth-scrolls to it.
+  // Sales performance leads the Summit HQ experience (centerpiece), with the Scoreboard
+  // totals next and Team Members management moved into the Workspace section.
   const summitSections: { id: Tab; label: string; anchor: string }[] = [
+    { id: 'sales', label: '💰 Sales Tracker', anchor: 'summit-sales' },
     { id: 'manage', label: '🏔️ Scoreboard', anchor: 'summit-scoreboard' },
     { id: 'leads', label: '🎯 Flight Path', anchor: 'summit-leads' },
     { id: 'analytics', label: '🪺 Hawk Nests', anchor: 'summit-nests' },
     { id: 'notifications', label: '📡 Radar', anchor: 'summit-radar' },
     { id: 'calendar', label: '🗓️ Workspace', anchor: 'summit-workspace' },
-    { id: 'sales', label: '💰 Sales', anchor: 'summit-sales' },
   ];
   function jumpToSection(id: Tab) {
     setTab(id);
@@ -1536,7 +1542,7 @@ export default function TeamPage() {
       <div id="summit-sales" className="lg:col-span-2 space-y-3">
         <div className="flex items-center gap-2 pt-2">
           <span className="text-xl">💰</span>
-          <h2 className="text-lg font-bold text-white">Sales &amp; Revenue</h2>
+          <h2 className="text-lg font-bold text-white">Sales Tracker</h2>
           <span className="text-[11px] text-slate-500">Team &amp; individual production</span>
         </div>
         <SalesDashboardPage />

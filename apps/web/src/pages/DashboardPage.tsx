@@ -4,6 +4,7 @@ import { useTrade } from '../contexts/TradeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useToast } from '../contexts/ToastContext';
+import { peekInvite } from '../lib/pendingInvite';
 import { TRADES, ApiClient } from '@social-lead-gen/shared';
 import type { ScheduledPost } from '@social-lead-gen/shared';
 import TradeSelector from '../components/TradeSelector';
@@ -204,6 +205,14 @@ export default function DashboardPage() {
     task: '🤝',
     reminder: '🔔',
   };
+
+  // Invited-employee fast path: a pending team invite takes priority over business-owner
+  // onboarding — route straight to invitation acceptance (Summit HQ), skipping
+  // Grow/Discover/CRM/business/subscription setup. acceptInvite enforces security.
+  const pendingInvite = peekInvite();
+  if (needsOnboarding && pendingInvite) {
+    return <Navigate to={`/team?invite=${encodeURIComponent(pendingInvite)}`} replace />;
+  }
 
   // Render-time onboarding redirect for genuinely new users (no blank frame).
   if (needsOnboarding) {

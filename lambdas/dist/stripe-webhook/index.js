@@ -218,13 +218,31 @@ function tierFromPriceId(priceId) {
 }
 
 // Resolve the canonical tier for a subscription. Order of trust:
-//   1. subscription.metadata.tier (set by our checkout) — normalized.
-//   2. the actual purchased Price ID — authoritative if metadata is missing/garbled.
+//   1. the actual purchased Price ID — AUTHORITATIVE. It reflects what the customer is
+//      actually being billed for right now, so a Stripe customer-portal plan change
+//      (which swaps the Price but does NOT rewrite subscription.metadata) is honored.
+//   2. subscription.metadata.tier (set by our checkout) — fallback ONLY when the Price
+//      is unrecognized/missing (e.g. a legacy or mis-synced subscription).
 // Returns { tier, resolved } where resolved=false means NEITHER source identified a
 // known paid tier. Callers MUST NOT silently grant a paid tier when resolved=false —
 // they keep the account un-upgraded and log for investigation. This guarantees we
-// never grant Soar/Team off an unrecognized/invalid billing payload.
+// never grant Soar/Team off an unrecognized/invalid billing payload, and that stale
+// metadata can never override the real purchased Price.
 function resolveTier(subscription) {
+  // 1. Purchased Price ID is the source of truth for the current plan.
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  if (priceId) {
+    const fromPrice = tierFromPriceId(priceId);
+    if (fromPrice) return { tier: fromPrice, resolved: true };
+    // A price IS present but matches NO configured Soar/Summit price. This is a
+    // billing state we do not recognize — FAIL CLOSED and log for investigation.
+    // We deliberately do NOT fall back to subscription.metadata here: stale metadata
+    // from an earlier plan must never grant paid access against an unknown price.
+    console.warn(`resolveTier: unrecognized purchased Price id "${priceId}" on subscription ${subscription.id} — NOT granting paid access (fail closed). Investigate price→tier config.`);
+    return { tier: 'free', resolved: false };
+  }
+  // 2. No price data on the event at all (e.g. a payload that omits items). Fall back
+  //    to our own checkout metadata.tier, which is the only signal we have.
   const metaTier = subscription.metadata?.tier;
   if (metaTier) {
     const norm = normalizeTier(metaTier);
@@ -232,9 +250,7 @@ function resolveTier(subscription) {
     // label collapses to 'free', which we treat as "not resolved from metadata".
     if (norm === 'soar' || norm === 'team') return { tier: norm, resolved: true };
   }
-  const priceId = subscription.items?.data?.[0]?.price?.id;
-  const fromPrice = tierFromPriceId(priceId);
-  if (fromPrice) return { tier: fromPrice, resolved: true };
+  // 3. Fail closed: neither a price nor recognizable metadata identified a paid tier.
   return { tier: 'free', resolved: false };
 }
 

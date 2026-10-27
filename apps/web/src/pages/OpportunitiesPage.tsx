@@ -731,6 +731,7 @@ export default function OpportunitiesPage() {
       // createDeal threw). A sale means the prospect is now a customer. Idempotent: if the
       // lead is already converted we skip the status write. Never creates a duplicate client
       // (same OPP record, status flip only) and never logs a second deal (server dedupes).
+      let convertFailed = false;
       if (lead.status !== 'converted') {
         try {
           await client.request('PUT', `/opportunities/${lead.id}/status`, { status: 'converted' });
@@ -741,9 +742,16 @@ export default function OpportunitiesPage() {
             new: Math.max(0, prev.new - (lead.status === 'new' ? 1 : 0)),
             followedUp: Math.max(0, prev.followedUp - (lead.status === 'followed_up' ? 1 : 0)),
           }));
-        } catch { /* sale saved; conversion can be retried via the board if it fails */ }
+        } catch {
+          // Sale IS saved; only the Client conversion failed. Warn clearly. Retrying is
+          // safe: the same clientRequestId dedupes the sale (no second deal), and the
+          // user can finish converting via the card's stage control / Move to Clients.
+          convertFailed = true;
+        }
       }
-      if ((res as any).alreadyLogged) {
+      if (convertFailed) {
+        showToast('⚠️ Sale saved, but moving to Clients failed — retry from the card (no duplicate sale will be created).');
+      } else if ((res as any).alreadyLogged) {
         showToast('✓ Sale already logged for this Cue');
       } else {
         showToast('💵 Sale logged — moved to Clients');

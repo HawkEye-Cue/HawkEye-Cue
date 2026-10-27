@@ -179,6 +179,9 @@ export interface CreateDealInput {
   bundleItems?: { type: string; value: number }[];
   createdAt?: string;
   opportunityId?: string | null;
+  // Idempotency key for a single submission — dedupes accidental duplicate posts of the
+  // SAME sale (double-click/retry) without blocking additional legitimate sales.
+  clientRequestId?: string;
   sourcePlatform?: string | null;
   sourceUrl?: string | null;
   sourceGroup?: string | null;

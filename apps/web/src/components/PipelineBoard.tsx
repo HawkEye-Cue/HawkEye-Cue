@@ -296,23 +296,33 @@ export default function PipelineBoard(props: PipelineBoardProps) {
                         </span>
                         {emp && <span className="text-[10px] text-slate-300 bg-white/5 rounded px-1.5 py-0.5 shrink-0">{emp}</span>}
                       </div>
-                      {stage.key === 'clients' && (
-                        <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between gap-2">
-                          {sold ? (
+                      {/* Log Sale is available on EVERY active stage. Logging a sale records
+                          the won deal and auto-converts the prospect to Client (handled by
+                          the page's onLogSale flow). Clients that already have a sale show
+                          "Log Additional Sale" so multiple legitimate sales are allowed. */}
+                      <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+                        {stage.key === 'clients' && sold ? (
+                          <>
                             <span className="text-[11px] text-green-400">✓ Sale logged</span>
-                          ) : (
-                            <>
-                              <span className="text-[11px] text-slate-500">No sale yet</span>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); onLogSale(lead); }}
-                                className="px-2.5 py-1 rounded-md bg-orange-500 hover:bg-orange-400 text-black text-[11px] font-bold"
-                              >
-                                Log Sale
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onLogSale(lead); }}
+                              className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold border border-white/15"
+                            >
+                              Log Additional Sale
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[11px] text-slate-500">{stage.key === 'clients' ? 'No sale yet' : 'Won this deal?'}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onLogSale(lead); }}
+                              className="px-2.5 py-1 rounded-md bg-orange-500 hover:bg-orange-400 text-black text-[11px] font-bold"
+                            >
+                              Log Sale
+                            </button>
+                          </>
+                        )}
+                      </div>
                       {/* Accessible stage dropdown (keyboard alternative to drag) */}
                       <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                         <label className="sr-only" htmlFor={`stage-${lead.id}`}>Change stage for {leadName(lead)}</label>

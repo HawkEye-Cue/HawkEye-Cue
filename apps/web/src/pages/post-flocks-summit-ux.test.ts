@@ -37,9 +37,15 @@ describe('Daily Flocks — Post Type never required', () => {
 
 // ─── Create → Post to Groups handoff (prominent orange) + preselect ────────────
 describe('Daily Flocks — Create → Post to Groups handoff', () => {
-  it('shows a prominent ORANGE "Post to My Flocks →" CTA in the editor', () => {
-    expect(contentPage).toContain('Post to My Flocks →');
+  it('shows a prominent ORANGE "Start Today\u2019s Flocks →" CTA in the editor', () => {
+    expect(contentPage).toContain("Start Today's Flocks →");
     expect(contentPage).toContain('from-orange-500 to-amber-500');
+  });
+  it('launches MassFlockPosting with autoStart (skips the group-select screen)', () => {
+    const idx = contentPage.indexOf('<MassFlockPosting');
+    const block = contentPage.slice(idx, idx + 2000);
+    expect(block).toContain('autoStart');
+    expect(block).toContain('preselectGroupIds={');
   });
 
   it('carries into the EXISTING MassFlockPosting workflow (no new system)', () => {

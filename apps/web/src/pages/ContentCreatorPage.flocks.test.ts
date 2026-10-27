@@ -25,9 +25,9 @@ describe('Create → Flocks handoff (Area 2)', () => {
     expect(source).toContain('<MassFlockPosting');
   });
 
-  it('surfaces a prominent "Post to My Flocks" entry gated on Facebook + a prepared post', () => {
-    // Prominent orange "Post to My Flocks →" CTA (unified studio).
-    expect(source).toContain('Post to My Flocks →');
+  it('surfaces a prominent "Start Today\u2019s Flocks" entry gated on Facebook + a prepared post', () => {
+    // One-click orange "Start Today's Flocks →" CTA.
+    expect(source).toContain("Start Today's Flocks →");
     expect(source).toContain("{platforms.includes('facebook') && platformContent && (");
   });
 
@@ -37,7 +37,7 @@ describe('Create → Flocks handoff (Area 2)', () => {
     expect(idx).toBeGreaterThan(-1);
     const block = source.slice(idx, idx + 1600);
     expect(block).toContain('setShowMassFlock(true)');
-    expect(block).toContain('Post to My Flocks →');
+    expect(block).toContain("Start Today's Flocks →");
   });
 
   it('carries the prepared post content into MassFlockPosting via getPreparedContent', () => {

@@ -1275,9 +1275,9 @@ export default function ContentCreatorPage() {
                 >
                   <span className="text-2xl shrink-0">🦅</span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-base font-extrabold">Post to My Flocks →</p>
+                    <p className="text-base font-extrabold">Start Today's Flocks →</p>
                     <p className="text-[11px] font-medium text-black/70 mt-0.5">
-                      Copy &amp; Open each Facebook group with this post — you post it yourself, nothing auto-posts.
+                      Jump straight to your first group with this post — Copy &amp; Open, you post it yourself, nothing auto-posts.
                     </p>
                   </div>
                 </button>
@@ -1833,6 +1833,9 @@ export default function ContentCreatorPage() {
                 .map((g: { id: string }) => g.id);
             } catch { return []; }
           })()}
+          /* One-click "Start Today's Flocks": skip the group-select screen and land
+             directly on the first group when today's valid groups are known. */
+          autoStart
         />
       )}
     </div>

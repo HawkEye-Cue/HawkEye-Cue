@@ -85,16 +85,19 @@ export default function ContentCreatorPage() {
   const [engagementType, setEngagementType] = useState<'comment' | 'dm' | 'call' | 'lead'>('comment');
   const [engagementNote, setEngagementNote] = useState('');
   const [engageIndex, setEngageIndex] = useState(0);
-  // The welcoming launcher is the default view. Advanced tools stay collapsed until asked.
-  const [view, setView] = useState<CreateView>('home');
+  // Unified content studio: Create opens with the post editor ALREADY OPEN and ready
+  // (Create Post → Post to My Flocks → Done). The three-card launcher is no longer the
+  // landing; its choices remain reachable via the compact tools/back-link. Advanced
+  // tools stay collapsed until asked.
+  const [view, setView] = useState<CreateView>('post');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showFlockManager, setShowFlockManager] = useState(false);
   const [showSmartImport, setShowSmartImport] = useState(false);
   const [showMassFlock, setShowMassFlock] = useState(false);
   // The whole "create a post" toolset (ideas + AI photo + composer) is collapsed by
-  // default so the page opens on Today's Flocks (the daily job). Auto-expands once
-  // a post is generated so the Copy & Open flow is visible.
-  const [showCreator, setShowCreator] = useState(false);
+  // Open the composer by default so the studio is ready to write immediately when the
+  // user clicks Create (no extra click to reveal the editor). Auto-expands on generate.
+  const [showCreator, setShowCreator] = useState(true);
   const [showReturnBanner, setShowReturnBanner] = useState(false);
 
   // Post history — tracks which content was posted to which groups and when
@@ -549,16 +552,17 @@ export default function ContentCreatorPage() {
       {(view === 'post' || view === 'schedule') && (
       <button
         onClick={() => setShowCreator((s) => !s)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 hover:from-blue-600/30 hover:to-purple-600/30 transition-all"
+        /* Studio header — brand charcoal/amber (removed blue/purple). */
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-amber-500/5 border border-amber-500/30 hover:from-amber-500/25 hover:to-amber-500/10 transition-all"
       >
         <div className="flex items-center gap-2">
           <span className="text-xl">✍️</span>
           <div className="text-left">
-            <p className="text-sm font-bold text-white">Create a post</p>
-            <p className="text-[11px] text-slate-400">Write your own or let AI draft it — plus ideas &amp; photos</p>
+            <p className="text-sm font-bold text-white">Content Studio — write your post</p>
+            <p className="text-[11px] text-slate-400">Write your own or let Wingman draft it — plus ideas &amp; photos</p>
           </div>
         </div>
-        <span className="text-slate-300 text-sm">{showCreator ? '▼ Hide' : '▶ Open'}</span>
+        <span className="text-amber-300 text-sm">{showCreator ? '▼ Hide' : '▶ Open'}</span>
       </button>
       )}
 
@@ -1271,7 +1275,7 @@ export default function ContentCreatorPage() {
                 >
                   <span className="text-2xl shrink-0">🦅</span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-base font-extrabold">Post to Groups →</p>
+                    <p className="text-base font-extrabold">Post to My Flocks →</p>
                     <p className="text-[11px] font-medium text-black/70 mt-0.5">
                       Copy &amp; Open each Facebook group with this post — you post it yourself, nothing auto-posts.
                     </p>

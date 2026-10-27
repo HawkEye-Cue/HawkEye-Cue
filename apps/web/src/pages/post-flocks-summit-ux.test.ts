@@ -37,8 +37,8 @@ describe('Daily Flocks — Post Type never required', () => {
 
 // ─── Create → Post to Groups handoff (prominent orange) + preselect ────────────
 describe('Daily Flocks — Create → Post to Groups handoff', () => {
-  it('shows a prominent ORANGE "Post to Groups →" CTA in the editor', () => {
-    expect(contentPage).toContain('Post to Groups →');
+  it('shows a prominent ORANGE "Post to My Flocks →" CTA in the editor', () => {
+    expect(contentPage).toContain('Post to My Flocks →');
     expect(contentPage).toContain('from-orange-500 to-amber-500');
   });
 
@@ -94,6 +94,72 @@ describe('createSession — today\u2019s-flock preselection', () => {
 
   it('falls back to ALL valid groups if the preselect matches nothing (never empty)', () => {
     expect(createSession(groups, ['zzz']).selectedIds).toEqual(['a', 'b', 'c']);
+  });
+});
+
+// ─── Create studio opens ready ─────────────────────────────────────────────────
+describe('Create — unified studio opens with the editor ready', () => {
+  it('defaults the view to the post editor (not the three-card launcher)', () => {
+    expect(contentPage).toContain("useState<CreateView>('post')");
+  });
+  it('opens the composer by default (showCreator starts true)', () => {
+    expect(contentPage).toContain('const [showCreator, setShowCreator] = useState(true)');
+  });
+  it('rebrands the studio header to charcoal/amber (no blue/purple gradient)', () => {
+    expect(contentPage).toContain('Content Studio — write your post');
+    expect(contentPage).not.toContain('from-blue-600/20 to-purple-600/20');
+  });
+});
+
+// ─── The Hawk's Perch leaderboard ──────────────────────────────────────────────
+describe("Summit HQ — The Hawk's Perch consolidated leaderboard", () => {
+  it('renders HawkPerch in its own section below the sales graph', () => {
+    expect(teamPage).toContain("import HawkPerch from '../components/HawkPerch';");
+    expect(teamPage).toContain('<HawkPerch');
+    const perchIdx = teamPage.indexOf('id="summit-perch"');
+    const salesIdx = teamPage.indexOf('id="summit-sales"');
+    expect(perchIdx).toBeGreaterThan(salesIdx); // perch after the sales graph
+  });
+  it('removes the old duplicate rankings (Individual Performance grid + Team-Stats leaderboard)', () => {
+    expect(teamPage).not.toContain('🏔️ Individual Performance');
+    expect(teamPage).not.toContain('🏆 Leaderboard');
+  });
+  it('labels reporting periods clearly (folio vs year-to-date)', () => {
+    expect(teamPage).toContain('Premium written year-to-date');
+    expect(teamPage).toMatch(/Premium \(This Folio\)|Premium \(All Time\)/);
+  });
+});
+
+// ─── Team Operations tabs + collapsible Team Settings ──────────────────────────
+describe('Summit HQ — Team Operations tabs (one section at a time)', () => {
+  it('defines an opsTab state with the four operations sections', () => {
+    expect(teamPage).toContain("type OpsTab = 'leads' | 'pipeline' | 'calendar' | 'workspace'");
+    expect(teamPage).toContain("useState<OpsTab>('leads')");
+  });
+  it('renders an Operations tab bar (Leads/Pipeline/Calendar/Workspace)', () => {
+    for (const label of ['🪺 Leads', '🛩️ Pipeline', '🗓️ Calendar', '📊 Workspace']) {
+      expect(teamPage).toContain(label);
+    }
+  });
+  it('gates each operations section on the active tab (only one shows at a time)', () => {
+    expect(teamPage).toContain("hidden={opsTab !== 'pipeline'}"); // Flight Path
+    expect(teamPage).toContain("hidden={opsTab !== 'leads'}");    // Lead Nests
+    expect(teamPage).toContain("hidden={opsTab !== 'calendar'}"); // Calendar
+    expect(teamPage).toContain("stats && opsTab === 'workspace'"); // Team Stats
+  });
+});
+
+describe('Summit HQ — collapsible Team Settings (collapsed by default)', () => {
+  it('has a Team Settings toggle, collapsed by default', () => {
+    expect(teamPage).toContain('const [showTeamSettings, setShowTeamSettings] = useState(false)');
+    expect(teamPage).toContain('Team Settings');
+  });
+  it('gates Team Members / invitations behind the toggle', () => {
+    expect(teamPage).toContain('{showTeamSettings && (');
+    // The members + invite controls are preserved inside (not removed).
+    expect(teamPage).toContain('👥 Team Members');
+    expect(teamPage).toContain('Save Names & Colors');
+    expect(teamPage).toContain('handleInvite');
   });
 });
 

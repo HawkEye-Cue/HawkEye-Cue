@@ -134,9 +134,13 @@ describe('Priority 1 — Summit Scoreboard (prominent, real metric tiles)', () =
     expect(teamPage).toContain("conversion === null ? '—'");
   });
 
-  it('shows individual employee performance ranked by production', () => {
-    expect(teamPage).toContain('Individual Performance');
-    expect(teamPage).toContain('.sort((a, b) => (b.wonValue || 0) - (a.wonValue || 0))');
+  it('shows a single consolidated employee ranking via The Hawk\u2019s Perch (no duplicate grid)', () => {
+    // The old "Individual Performance" grid + generic leaderboard were consolidated into
+    // ONE ranking: the HawkPerch component (ranked by premium written in HawkPerch.tsx).
+    expect(teamPage).toContain('<HawkPerch');
+    expect(teamPage).toContain('id="summit-perch"');
+    // No duplicate employee-ranking grid remains in TeamPage itself.
+    expect(teamPage).not.toContain('🏔️ Individual Performance');
   });
 
   // Pure re-implementation of the headline metric logic to prove it behaves correctly.

@@ -8,6 +8,7 @@ import SalesDashboardPage from './SalesDashboardPage';
 import { HeroHeader, PillTabs, BoldStat, StatGrid, Panel } from '../components/ui';
 import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
+import HawkPerch from '../components/HawkPerch';
 import TeamMemberPipeline from '../components/TeamMemberPipeline';
 import { folioDisplayName } from '../utils/folioName';
 import { consumeInvite } from '../lib/pendingInvite';
@@ -148,6 +149,11 @@ export default function TeamPage() {
   const [summitInactive, setSummitInactive] = useState(false);
   const [resendingInvite, setResendingInvite] = useState<string | null>(null);
   const [revokingInvite, setRevokingInvite] = useState<string | null>(null);
+  // Team Operations: show ONE section at a time (less clutter). Team Settings (members,
+  // invites, name/color editing) is collapsed by default so it doesn't dominate.
+  type OpsTab = 'leads' | 'pipeline' | 'calendar' | 'workspace';
+  const [opsTab, setOpsTab] = useState<OpsTab>('leads');
+  const [showTeamSettings, setShowTeamSettings] = useState(false);
   // Hawk Nests → "open workspace" slide-over. Holds the teammate whose pipeline is being
   // viewed (read-only, same-team enforced server-side via GET /team/member/{id}/pipeline,
   // the same route the reusable TeamMemberPipeline component uses).
@@ -634,13 +640,14 @@ export default function TeamPage() {
   // a section id rendered below; selecting a pill smooth-scrolls to it.
   // Sales performance leads the Summit HQ experience (centerpiece), with the Scoreboard
   // totals next and Team Members management moved into the Workspace section.
+  // Top nav links ONLY to always-visible sections (Sales, Perch, Scoreboard, Radar). The
+  // Team Operations sections (Leads/Pipeline/Calendar/Workspace) are reached via the
+  // dedicated Operations tab bar below — so we no longer link to those (now-gated)
+  // sections here, preventing jumps to a hidden element.
   const summitSections: { id: Tab; label: string; anchor: string }[] = [
     { id: 'sales', label: '💰 Sales Tracker', anchor: 'summit-sales' },
     { id: 'manage', label: '🏔️ Scoreboard', anchor: 'summit-scoreboard' },
-    { id: 'leads', label: '🎯 Flight Path', anchor: 'summit-leads' },
-    { id: 'analytics', label: '🪺 Hawk Nests', anchor: 'summit-nests' },
     { id: 'notifications', label: '📡 Radar', anchor: 'summit-radar' },
-    { id: 'calendar', label: '🗓️ Workspace', anchor: 'summit-workspace' },
   ];
   function jumpToSection(id: Tab) {
     setTab(id);
@@ -682,6 +689,40 @@ export default function TeamPage() {
         <SalesDashboardPage />
       </div>
 
+      {/* ── 🦅 THE HAWK'S PERCH — the ONE consolidated employee sales leaderboard.
+          Ranks employees strictly by Net New Business Premium written for the selected
+          folio (reuses /team/stats member data). Replaces the old generic thin-bar
+          leaderboard AND the separate Individual Performance grid — no duplicate rankings. */}
+      {stats && stats.members.length > 0 && (
+        <div id="summit-perch" className="scroll-mt-20">
+          <HawkPerch
+            members={stats.members.map((m) => ({ userId: m.userId, email: m.email, wonValue: m.wonValue || 0, wonDeals: m.wonDeals || 0 }))}
+            colorClassFor={(email) => MEMBER_COLORS[getMemberColorIndex(email)]}
+            displayNameFor={(email) => {
+              try { const n = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); return n[email] || email.split('@')[0]; } catch { return email.split('@')[0]; }
+            }}
+            periodLabel={selectedFolio === 'all' ? 'All Time' : 'Current Folio'}
+            teamTotal={stats.totalWonValue || 0}
+          />
+        </div>
+      )}
+
+      {/* ── 🧭 TEAM OPERATIONS — one section at a time (Leads / Pipeline / Calendar /
+          Workspace). Replaces the old simultaneous stacking; each tab gates its existing
+          section's render below so no section logic is rewritten. */}
+      <div className="sticky top-12 z-10 -mx-1 px-1 py-1 bg-[#05080f]/80 backdrop-blur-sm rounded-xl">
+        <PillTabs
+          tabs={[
+            { id: 'leads', label: '🪺 Leads' },
+            { id: 'pipeline', label: '🛩️ Pipeline' },
+            { id: 'calendar', label: '🗓️ Calendar' },
+            { id: 'workspace', label: '📊 Workspace' },
+          ]}
+          active={opsTab}
+          onChange={(id) => setOpsTab(id as OpsTab)}
+        />
+      </div>
+
       {/* ── 🏔️ SUMMIT SCOREBOARD — the team performance overview at a glance.
           Prominent metric tiles (revenue, sales, active leads, conversion) sit ABOVE the
           two-column workspace so the most important business numbers are immediately
@@ -709,31 +750,9 @@ export default function TeamPage() {
           );
         })()}
 
-        {/* Individual employee performance — a compact, scannable row of per-member
-            production (revenue + sales this folio). Ranked, so the team sees who's
-            flying highest without opening a separate tab. Reuses folio-filtered `stats`. */}
-        {stats && stats.members.length > 0 && (
-          <Panel title="🏔️ Individual Performance" right={<span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : 'Current Folio'}</span>}>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-              {[...stats.members].sort((a, b) => (b.wonValue || 0) - (a.wonValue || 0)).map((m, i) => {
-                const colorIdx = getMemberColorIndex(m.email);
-                const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
-                const name = displayNames[m.email] || m.email.split('@')[0];
-                return (
-                  <div key={m.email} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <span className="text-xs">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span>
-                      <span className={`w-2 h-2 rounded-full ${MEMBER_COLORS[colorIdx]} shrink-0`} />
-                      <span className="text-xs text-white font-semibold truncate">{name}</span>
-                    </div>
-                    <p className="text-lg font-extrabold text-emerald-300 leading-none">${(m.wonValue || 0).toLocaleString()}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{m.wonDeals || 0} sales · {m.activeDeals || 0} active</p>
-                  </div>
-                );
-              })}
-            </div>
-          </Panel>
-        )}
+        {/* (Individual employee performance is now consolidated into "The Hawk's Perch"
+            leaderboard directly below the sales graph — removed here to avoid a duplicate
+            employee ranking.) */}
       </div>
 
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
@@ -757,7 +776,25 @@ export default function TeamPage() {
         </div>
       )}
 
+      {/* ⚙️ TEAM SETTINGS — collapsible. Members, invitations, and name/color editing
+          live here, collapsed by default so they don't dominate the dashboard. All
+          existing controls/actions are preserved verbatim inside. */}
+      <button
+        onClick={() => setShowTeamSettings((s) => !s)}
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.03] border border-white/10 hover:border-amber-500/40 hover:bg-amber-500/5 transition-all"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-lg">⚙️</span>
+          <div className="text-left">
+            <p className="text-sm font-bold text-white">Team Settings</p>
+            <p className="text-[11px] text-slate-400">Members, invitations, names &amp; colors</p>
+          </div>
+        </div>
+        <span className="text-amber-300 text-sm">{showTeamSettings ? '▼ Hide' : '▶ Manage'}</span>
+      </button>
+
       {/* 👥 Team Members */}
+      {showTeamSettings && (
       <div className="glass-card space-y-3">
         <h3 className="font-semibold text-white">👥 Team Members</h3>
         <p className="text-xs text-slate-400">Edit display names and colors below, then click Save</p>
@@ -866,6 +903,7 @@ export default function TeamPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* 🏆 Wins — Radar section anchor */}
       <div id="summit-radar" className="scroll-mt-20" />
@@ -898,8 +936,8 @@ export default function TeamPage() {
           and direct paths into existing actions (claim below, open a member's workspace in
           Hawk Nests) rather than fabricating a mutation that isn't supported. The
           first-responder "Up for Grabs" claiming stays a separate, real interaction. */}
-      <div id="summit-leads" className="scroll-mt-20 space-y-3">
-        {teamAnalytics?.stageCounts && (() => {
+      <div id="summit-leads" className="scroll-mt-20 space-y-3" hidden={opsTab !== 'pipeline'}>
+        {opsTab === 'pipeline' && teamAnalytics?.stageCounts && (() => {
           const sc = teamAnalytics.stageCounts!;
           // Order stages along the natural flight path (prospect → won), with lost shown
           // separately so it doesn't distort the forward funnel.
@@ -1024,7 +1062,7 @@ export default function TeamPage() {
       })()}
 
       {/* 🪹 Lead Nests by Member — Hawk Nests section */}
-      <div id="summit-nests" className="glass-card space-y-3 scroll-mt-20">
+      <div id="summit-nests" className="glass-card space-y-3 scroll-mt-20" hidden={opsTab !== 'leads'}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white">🪹 Lead Nests</h3>
           <span className="text-xs text-slate-500">{teamLeads.length} total leads</span>
@@ -1247,17 +1285,17 @@ export default function TeamPage() {
       {/* Right column: Calendar, Stats */}
       <div className="min-w-0 space-y-4">
 
-      {/* 📊 Stats — current folio only (from folio-filtered stats) */}
-      {stats && (
+      {/* 📊 Stats — current folio only (from folio-filtered stats) · Workspace tab */}
+      {stats && opsTab === 'workspace' && (
         <div className="glass-card space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-white">📊 Team Stats</h3>
             <span className="text-[10px] text-slate-500">{selectedFolio === 'all' ? 'All Time' : currentFolio ? folioDisplayName(`${currentFolio.start} to ${currentFolio.end}`) : 'Current Folio'}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
-              <p className="text-xl font-extrabold text-emerald-300">${(stats.totalWonValue || 0).toLocaleString()}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Premium (Folio)</p>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+              <p className="text-xl font-extrabold text-amber-300">${(stats.totalWonValue || 0).toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{selectedFolio === 'all' ? 'Premium (All Time)' : 'Premium (This Folio)'}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
               <p className="text-xl font-extrabold text-white">{stats.members.reduce((s, m) => s + (m.wonDeals || 0), 0)}</p>
@@ -1279,37 +1317,20 @@ export default function TeamPage() {
             const ytd = monthlyHistory.filter((m) => m.key.startsWith(String(now.getFullYear()))).reduce((s, m) => s + m.premium, 0);
             if (monthlyHistory.length === 0) return null;
             return (
-              <div className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-500/20 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-green-300">${ytd.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-400">Premium earned so far in {now.getFullYear()}</p>
+              <div className="bg-black/40 border border-amber-500/20 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-amber-300">${ytd.toLocaleString()}</p>
+                <p className="text-[10px] text-slate-400">Premium written year-to-date ({now.getFullYear()}, all folios)</p>
               </div>
             );
           })()}
 
-          {/* Leaderboard — current folio */}
-          <div className="space-y-1.5">
-            <p className="text-xs text-slate-400 font-semibold">🏆 Leaderboard {selectedFolio !== 'all' && <span className="font-normal text-slate-500">(current folio)</span>}</p>
-            {[...stats.members].sort((a, b) => b.wonValue - a.wonValue).slice(0, 5).map((m, i) => {
-              const colorIdx = getMemberColorIndex(m.email);
-              const displayNames = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}');
-              const name = displayNames[m.email] || m.email.split('@')[0];
-              return (
-                <div key={m.email} className="flex items-center justify-between bg-slate-700 px-3 py-2 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
-                    <div className={`w-2.5 h-2.5 rounded-full ${MEMBER_COLORS[colorIdx]}`} />
-                    <span className="text-xs text-white">{name}</span>
-                  </div>
-                  <span className="text-xs font-bold text-green-400">${(m.wonValue || 0).toLocaleString()}</span>
-                </div>
-              );
-            })}
-          </div>
+          {/* (Employee ranking lives in "The Hawk's Perch" below the sales graph — the
+              duplicate Team-Stats leaderboard was removed to avoid two competing rankings.) */}
         </div>
       )}
 
-      {/* 📅 Team Calendar — Shared Workspace section */}
-      <div id="summit-workspace" className="glass-card scroll-mt-20">
+      {/* 📅 Team Calendar — Calendar tab */}
+      <div id="summit-workspace" className="glass-card scroll-mt-20" hidden={opsTab !== 'calendar'}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-white">📅 Team Calendar</h3>
         </div>

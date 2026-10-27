@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useMode } from '../contexts/ModeContext';
-import { ApiClient } from '@social-lead-gen/shared';
+import { ApiClient, isFlockEvent } from '@social-lead-gen/shared';
 import { peekInvite } from '../lib/pendingInvite';
 import FlightPlan from '../components/FlightPlan';
 import type { FlightTask } from '../components/FlightPlan';
@@ -116,6 +116,16 @@ export default function TodayPage() {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return events.filter((e) => e.date === today && (e.type === 'meeting' || e.type === 'reminder') && !e.completed);
+  }, [events]);
+
+  // Today's Flocks progress — drives the Today dashboard quick-access card. Reuses the
+  // same calendar flock events the Create/Flocks flow uses (no new data).
+  const flockToday = useMemo(() => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todays = events.filter((e) => e.date === today && isFlockEvent(e));
+    const done = todays.filter((e) => e.completed).length;
+    return { total: todays.length, done, remaining: todays.length - done };
   }, [events]);
 
   // Build the guided flight plan from what actually needs attention
@@ -296,6 +306,36 @@ export default function TodayPage() {
           )}
         </div>
       </div>
+
+      {/* Today's Flocks quick-access card — prominent entry to the daily Facebook-group
+          posting job. Shows remaining/progress and jumps straight into the Create→Flocks
+          flow (where the post editor + MassFlockPosting live). If the user hasn't written
+          a post yet, the Create page opens the editor and continues into Flocks. */}
+      {flockToday.total > 0 && (
+        <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-5 shadow-lg shadow-black/30">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300">🦅 Today's Flocks</p>
+              <p className="text-2xl font-extrabold text-white mt-1">
+                {flockToday.remaining > 0 ? `${flockToday.remaining} group${flockToday.remaining !== 1 ? 's' : ''} remaining` : 'All done today! 🎉'}
+              </p>
+              <p className="text-xs text-slate-300 mt-0.5">{flockToday.done}/{flockToday.total} posted</p>
+            </div>
+            {flockToday.remaining > 0 && (
+              <button
+                onClick={() => navigate('/create')}
+                className="shrink-0 px-5 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-black text-sm font-extrabold rounded-xl shadow-lg shadow-orange-500/25 transition-all active:scale-95"
+              >
+                Start Today's Flocks →
+              </button>
+            )}
+          </div>
+          {/* progress bar */}
+          <div className="mt-3 h-2 w-full bg-white/10 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all" style={{ width: `${flockToday.total ? Math.round((flockToday.done / flockToday.total) * 100) : 0}%` }} />
+          </div>
+        </div>
+      )}
 
       {showPlan && <FlightPlan tasks={tasks} onClose={() => setShowPlan(false)} />}
     </div>

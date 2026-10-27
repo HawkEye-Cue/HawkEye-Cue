@@ -25,8 +25,9 @@ describe('Create → Flocks handoff (Area 2)', () => {
     expect(source).toContain('<MassFlockPosting');
   });
 
-  it('surfaces a "Post to My Flocks" entry gated on Facebook + a prepared post', () => {
-    expect(source).toContain('Post to My Flocks');
+  it('surfaces a prominent "Post to Groups" entry gated on Facebook + a prepared post', () => {
+    // Label updated to the prominent orange "Post to Groups →" CTA (post-launch UX).
+    expect(source).toContain('Post to Groups →');
     expect(source).toContain("{platforms.includes('facebook') && platformContent && (");
   });
 
@@ -34,9 +35,9 @@ describe('Create → Flocks handoff (Area 2)', () => {
     // Anchor on the unique gating condition and scan the whole entry block.
     const idx = source.indexOf("{platforms.includes('facebook') && platformContent && (");
     expect(idx).toBeGreaterThan(-1);
-    const block = source.slice(idx, idx + 1200);
+    const block = source.slice(idx, idx + 1600);
     expect(block).toContain('setShowMassFlock(true)');
-    expect(block).toContain('Post to My Flocks');
+    expect(block).toContain('Post to Groups →');
   });
 
   it('carries the prepared post content into MassFlockPosting via getPreparedContent', () => {
@@ -47,7 +48,7 @@ describe('Create → Flocks handoff (Area 2)', () => {
 
   it('nudges the user to add groups first when none are saved (no dead-end)', () => {
     const idx = source.indexOf("{platforms.includes('facebook') && platformContent && (");
-    const block = source.slice(idx, idx + 1400);
+    const block = source.slice(idx, idx + 1800);
     expect(block).toContain('savedGroupCount === 0');
     expect(block).toContain('setShowFlockManager(true)');
   });

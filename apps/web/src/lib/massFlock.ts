@@ -46,11 +46,21 @@ export function partitionGroups(groups: FlockGroup[]): { valid: FlockGroup[]; in
   return { valid, invalid };
 }
 
-// Build a fresh session: default-select every group WITH a valid link.
-export function createSession(groups: FlockGroup[]): MassFlockSession {
+// Build a fresh session. By default selects every group WITH a valid link.
+// Optional preselectIds narrows the initial selection to those ids (intersected with
+// valid groups) — used to preselect "today's scheduled flocks" when launched from the
+// post editor. If preselectIds is omitted/empty-after-intersection, we fall back to all
+// valid groups so the user is never left with an empty selection.
+export function createSession(groups: FlockGroup[], preselectIds?: string[]): MassFlockSession {
   const { valid } = partitionGroups(groups);
+  const validIds = valid.map((g) => g.id);
+  let selectedIds = validIds;
+  if (preselectIds && preselectIds.length > 0) {
+    const narrowed = validIds.filter((id) => preselectIds.includes(id));
+    if (narrowed.length > 0) selectedIds = narrowed; // fall back to all-valid if none match
+  }
   return {
-    selectedIds: valid.map((g) => g.id),
+    selectedIds,
     postedIds: [],
     skippedIds: [],
     currentIndex: 0,

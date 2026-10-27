@@ -62,9 +62,26 @@ describe('lead-scanner — canonical schema + preserved dedupe (P0-1)', () => {
     expect(fnSlice).toMatch(/sourcePlatform:\s*lead\.platform\.toLowerCase\(\)/);
     expect(fnSlice).toMatch(/sourceContent:\s*lead\.text/);
     expect(fnSlice).toMatch(/leadSource:\s*'extension-detected'/);
-    // sourceAuthor is derived (maps 'Unknown' sentinel to null — D1, no fabrication).
+    // sourceAuthor is derived via the shared author-quality rule (junk UI labels / URLs
+    // → null; no fabrication). Keep in lockstep with opportunity-intake.isUsableAuthor.
     expect(fnSlice).toMatch(/sourceAuthor:\s*canonicalAuthor/);
-    expect(fnSlice).toMatch(/canonicalAuthor\s*=\s*\(lead\.authorName\s*&&\s*lead\.authorName\s*!==\s*'Unknown'\)/);
+    expect(fnSlice).toMatch(/canonicalAuthor\s*=\s*isUsableAuthor\(lead\.authorName\)/);
+  });
+
+  it('auto-detected background-scan leads enter the review-first Inbox (status inbox)', () => {
+    // Both automatic write paths must land in the Opportunity Inbox, not the pipeline.
+    expect(fnSlice).toMatch(/status:\s*'inbox'/);
+    expect(fnSlice).not.toMatch(/status:\s*'new'/);
+  });
+
+  it('applies author-quality rejection (shared isUsableAuthor is defined + used)', () => {
+    expect(src).toMatch(/function isUsableAuthor/);
+    expect(src).toContain('INTAKE_URL_OR_DOMAIN');
+  });
+
+  it('still dedupes on the stable sourceCommentId (server-side, unchanged)', () => {
+    expect(fnSlice).toMatch(/FilterExpression:\s*'sourceCommentId = :cid'/);
+    expect(fnSlice).toMatch(/length\s*>\s*0\)\s*\{[\s\S]*?return false/);
   });
 
   it('does NOT fabricate a sourceUrl (empty string)', () => {

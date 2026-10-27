@@ -140,6 +140,9 @@ export function formatDate(dateStr: string): string {
 
 const VALID_STATUS_TRANSITIONS: Record<OpportunityStatus, OpportunityStatus[]> =
   {
+    // 'inbox' = review-first auto-detected state. The user either adds it to the
+    // pipeline (→ new) or dismisses it.
+    inbox: ['new', 'dismissed'],
     new: ['followed_up', 'dismissed'],
     followed_up: ['converted', 'dismissed'],
     converted: [],
@@ -149,6 +152,8 @@ const VALID_STATUS_TRANSITIONS: Record<OpportunityStatus, OpportunityStatus[]> =
 /**
  * Checks if a status transition is valid for an opportunity.
  * Valid transitions:
+ * - inbox → new (Add to Pipeline)
+ * - inbox → dismissed
  * - new → followed_up
  * - new → dismissed
  * - followed_up → converted

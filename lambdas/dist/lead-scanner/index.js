@@ -18,6 +18,26 @@ const TABLE_NAME = process.env.TABLE_NAME;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// Author quality (mirror of packages/shared opportunity-intake.ts). Reject UI labels,
+// URLs/domains as identities; junk → null so the UI shows "Author unavailable".
+const INTAKE_UI_LABELS = new Set([
+  'unknown', 'unnamed', 'photos', 'photo', 'videos', 'video', 'reels', 'reel',
+  'see more', 'see less', 'like', 'comment', 'share', 'follow', 'following',
+  'message', 'sponsored', 'suggested for you', 'shared post', 'facebook',
+  'write a comment', 'active', 'admin', 'top contributor', 'author',
+  'see what you’ve been waiting for', "see what you've been waiting for",
+]);
+const INTAKE_URL_OR_DOMAIN = /(https?:\/\/|www\.|m\.me\b|\bfb\.me\b|@|\.com\b|\.net\b|\.org\b|\.io\b|\.co\b|\.lc\b|\.gov\b|\.edu\b|\.biz\b|\.info\b|\.us\b|\.ca\b|\.uk\b)/i;
+function isUsableAuthor(author) {
+  const a = (author == null ? '' : String(author)).trim();
+  if (a.length < 2) return false;
+  if (INTAKE_UI_LABELS.has(a.toLowerCase())) return false;
+  if (INTAKE_URL_OR_DOMAIN.test(a)) return false;
+  if (!/[a-z\u00c0-\u024f]/i.test(a)) return false;
+  if (a.length > 60) return false;
+  return true;
+}
+
 let cachedSecret = null;
 async function getBundleSocialSecret() {
   if (cachedSecret) return cachedSecret;
@@ -157,14 +177,16 @@ async function saveLeadAndNotify(userId, lead) {
   // keep working unchanged.
   // D1: no fabricated author/content/url — sourceAuthor is null when none was captured,
   // and sourceUrl stays empty (background scans have no post URL).
-  const canonicalAuthor = (lead.authorName && lead.authorName !== 'Unknown') ? lead.authorName : null;
+  // Author quality: only persist a usable identity (junk UI labels/URLs → null).
+  const canonicalAuthor = isUsableAuthor(lead.authorName) ? String(lead.authorName).trim() : null;
   await dynamo.send(new PutCommand({
     TableName: TABLE_NAME,
     Item: {
       PK: `USER#${userId}`,
       SK: `OPP#${now}#${id}`,
       opportunityId: id,
-      // Dedupe + compatibility fields (unchanged):
+      // Dedupe + compatibility fields (unchanged). sourceCommentId is the stable per-post
+      // id this path dedupes on (the Query above returns early when it already exists).
       sourceCommentId: lead.commentId,
       platform: lead.platform.toLowerCase(),
       authorName: lead.authorName,
@@ -178,7 +200,9 @@ async function saveLeadAndNotify(userId, lead) {
       sourceContent: lead.text,
       sourceUrl: '',
       leadSource: 'extension-detected',
-      status: 'new',
+      // Review-first: auto-detected background-scan leads enter the Opportunity Inbox,
+      // NOT the New Leads pipeline, until the user adds them (same rule as the extension).
+      status: 'inbox',
       detectedAt: now,
       createdAt: now,
     },

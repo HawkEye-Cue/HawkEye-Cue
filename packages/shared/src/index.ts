@@ -69,3 +69,14 @@ export {
 export * from './api-client/index.js';
 export * from './crm/index.js';
 export { isFlockEvent, type FlockClassifiable } from './flocks.js';
+export {
+  isAutoDetected,
+  isUsableAuthor,
+  sanitizeAuthorForStorage,
+  displayAuthorOrUnavailable,
+  canonicalizePostUrl,
+  dedupeKeyForPost,
+  isDuplicatePost,
+  AUTHOR_UNAVAILABLE,
+  type IntakeClassifiable,
+} from './opportunity-intake.js';

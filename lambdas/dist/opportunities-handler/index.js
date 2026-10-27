@@ -8,6 +8,7 @@ const {
   UpdateCommand,
   DeleteCommand,
   GetCommand,
+  TransactWriteCommand,
 } = require('@aws-sdk/lib-dynamodb');
 const { randomUUID } = require('crypto');
 
@@ -72,7 +73,70 @@ async function requireFollowUp(userId) {
 }
 
 const VALID_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'tiktok', 'nextdoor', 'other'];
-const VALID_STATUSES = ['new', 'followed_up', 'converted', 'dismissed'];
+// 'inbox' is the review-first pre-pipeline state for AUTOMATICALLY detected opportunities
+// (extension + background scanner). Inbox items do NOT appear in the New Leads column or
+// count until the user explicitly adds them to the pipeline (which flips them to 'new').
+// Manual entry goes straight to 'new' as before. See isAutoDetectedBody + handleCreate.
+const VALID_STATUSES = ['inbox', 'new', 'followed_up', 'converted', 'dismissed'];
+
+// ─── Intake quality helpers (mirror of packages/shared opportunity-intake.ts) ───
+// Inlined here because this Lambda is bundled standalone (no shared-package import at
+// runtime). Keep in lockstep with the shared module + its tests.
+function isAutoDetectedBody(body) {
+  if (!body) return false;
+  if (body.autoDetected === true) return true;
+  if (body.keywordId === 'extension-detected') return true;
+  if (body.source === 'background-scan') return true;
+  if (Array.isArray(body.matchedKeywords)) return true;
+  return false;
+}
+const INTAKE_UI_LABELS = new Set([
+  'unknown', 'unnamed', 'photos', 'photo', 'videos', 'video', 'reels', 'reel',
+  'see more', 'see less', 'like', 'comment', 'share', 'follow', 'following',
+  'message', 'sponsored', 'suggested for you', 'shared post', 'facebook',
+  'write a comment', 'active', 'admin', 'top contributor', 'author',
+  'see what you’ve been waiting for', "see what you've been waiting for",
+]);
+const INTAKE_URL_OR_DOMAIN = /(https?:\/\/|www\.|m\.me\b|\bfb\.me\b|@|\.com\b|\.net\b|\.org\b|\.io\b|\.co\b|\.lc\b|\.gov\b|\.edu\b|\.biz\b|\.info\b|\.us\b|\.ca\b|\.uk\b)/i;
+function isUsableAuthor(author) {
+  const a = (author == null ? '' : String(author)).trim();
+  if (a.length < 2) return false;
+  if (INTAKE_UI_LABELS.has(a.toLowerCase())) return false;
+  if (INTAKE_URL_OR_DOMAIN.test(a)) return false;
+  if (!/[a-z\u00c0-\u024f]/i.test(a)) return false;
+  if (a.length > 60) return false;
+  return true;
+}
+// Canonicalize a post URL for dedupe. Strips tracking params/fragments; returns null for
+// a bare feed root (not a per-post identifier). Mirrors shared canonicalizePostUrl.
+function intakeCanonicalizePostUrl(url) {
+  const raw = (url == null ? '' : String(url)).trim();
+  if (!raw) return null;
+  const noProto = raw.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '');
+  if (/^(m\.|mobile\.)?facebook\.com$/i.test(noProto)) return null;
+  try {
+    const u = new URL(raw);
+    const fbid = u.searchParams.get('story_fbid') || u.searchParams.get('fbid');
+    const path = u.pathname.replace(/\/+$/, '');
+    const postMatch = path.match(/\/(posts|permalink|videos|reel|p)\/([^/]+)/i);
+    if (postMatch) return (u.hostname.replace(/^www\./i, '') + path).toLowerCase();
+    if (fbid) return (u.hostname.replace(/^www\./i, '') + '/' + fbid).toLowerCase();
+    if (path && path !== '') return (u.hostname.replace(/^www\./i, '') + path).toLowerCase();
+    return null;
+  } catch (e) { return null; }
+}
+// Stable dedupe key for one source post: post id → canonical URL → author+content.
+// Returns null when there is nothing reliable to key on (never dedupe blindly).
+function intakeDedupeKey(input) {
+  const id = (input.postId == null ? '' : String(input.postId)).trim();
+  if (id) return 'id:' + id.toLowerCase();
+  const canon = intakeCanonicalizePostUrl(input.sourceUrl);
+  if (canon) return 'url:' + canon;
+  const author = (input.sourceAuthor == null ? '' : String(input.sourceAuthor)).trim().toLowerCase();
+  const content = (input.sourceContent == null ? '' : String(input.sourceContent)).replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 80);
+  if (content) return 'ac:' + author + '|' + content;
+  return null;
+}
 // CRM pipeline sub-stage (additive, optional). The stored `status` is unchanged — this
 // only refines the three middle board columns within status='followed_up'. NEW and
 // CLIENTS derive from status ('new' / 'converted'), so they are not stored here.
@@ -242,49 +306,115 @@ async function handleCreateOpportunity(userId, body) {
 
   // D1: Minimal Save stores no author/content. Only persist what was provided.
   const hasContent = typeof body.sourceContent === 'string' && body.sourceContent.length > 0;
-  const hasAuthor = typeof body.sourceAuthor === 'string' && body.sourceAuthor.length > 0;
+  // Author quality: only persist a real, usable identity. Junk (UI labels like "Photos",
+  // URLs/domains like "m.me", ad links) is stored as null → UI shows "Author unavailable".
+  // Preserves the original sourceUrl + post content regardless.
+  const usableAuthor = isUsableAuthor(body.sourceAuthor) ? String(body.sourceAuthor).trim() : null;
+  const hasAuthor = usableAuthor !== null;
   // Explicit promotion at save time. Minimal/Enriched save alone does NOT promote.
   const promoteToLead = body.promoteToLead === true;
 
-  await dynamo.send(
-    new PutCommand({
-      TableName: TABLE_NAME,
-      Item: {
-        PK: `USER#${userId}`,
-        SK: `OPP#${now}#${opportunityId}`,
-        opportunityId,
-        keywordId: body.keywordId || 'manual-entry',
-        sourceContent: hasContent ? body.sourceContent.substring(0, 5000) : null,
-        sourcePlatform: body.sourcePlatform || 'other',
-        sourceUrl: body.sourceUrl || '',
-        sourceAuthor: hasAuthor ? body.sourceAuthor : null,
-        leadSource: body.leadSource || null,
-        leadSourceGroup: body.leadSourceGroup || null,
-        consentBasis: body.consentBasis || null,
-        policyType: body.policyType || null,
-        assignedTo: body.assignedTo || null,
-        bucket: body.bucket || null,
-        expectedPremium: body.expectedPremium || null,
-        contactEmail: body.contactEmail || null,
-        status: 'new',
-        // Opportunity → Lead marker (D1). An Opportunity stays an Opportunity until an
-        // explicit promote. Only set true if the caller explicitly promoted at save time.
-        promotedToLead: promoteToLead,
-        promotedAt: promoteToLead ? now : null,
-        pushStatus: 'not_pushed',
-        createdAt: now,
-      },
-    })
-  );
+  // Review-first gating: automatically detected opportunities land in the Opportunity
+  // Inbox ('inbox'), NOT the New Leads pipeline. Manual entry keeps its straight-to-'new'
+  // behavior. An explicit promote at save time (manual intent) still goes to 'new'.
+  const autoDetected = isAutoDetectedBody(body) && !promoteToLead;
+  const initialStatus = autoDetected ? 'inbox' : 'new';
+
+  // The opportunity item (built once; written either plainly or inside a dedupe txn).
+  const oppItem = {
+    PK: `USER#${userId}`,
+    SK: `OPP#${now}#${opportunityId}`,
+    opportunityId,
+    keywordId: body.keywordId || 'manual-entry',
+    sourceContent: hasContent ? body.sourceContent.substring(0, 5000) : null,
+    sourcePlatform: body.sourcePlatform || 'other',
+    sourceUrl: body.sourceUrl || '',
+    sourceAuthor: usableAuthor,
+    leadSource: body.leadSource || null,
+    leadSourceGroup: body.leadSourceGroup || null,
+    consentBasis: body.consentBasis || null,
+    policyType: body.policyType || null,
+    assignedTo: body.assignedTo || null,
+    bucket: body.bucket || null,
+    expectedPremium: body.expectedPremium || null,
+    contactEmail: body.contactEmail || null,
+    status: initialStatus,
+    // Opportunity → Lead marker (D1). An Opportunity stays an Opportunity until an
+    // explicit promote. Only set true if the caller explicitly promoted at save time.
+    promotedToLead: promoteToLead,
+    promotedAt: promoteToLead ? now : null,
+    pushStatus: 'not_pushed',
+    createdAt: now,
+  };
+
+  // ─── Server-side duplicate prevention (auto-detected only) ───────────────────
+  // Manual entry is NEVER deduped (preserves existing behavior). For auto-detected
+  // captures we reserve a per-user sentinel keyed by a STABLE post identifier. The
+  // sentinel AND the opportunity are written in ONE atomic TransactWriteCommand with a
+  // ConditionExpression attribute_not_exists(SK) on the sentinel. Because the two writes
+  // commit or roll back together, a failed opportunity write can NEVER leave an orphaned
+  // sentinel that would permanently block a legitimate future capture. The transaction is
+  // user-scoped (PK), O(1) (two item writes, no Query/Scan), and atomic against
+  // simultaneous submissions (only one concurrent identical txn wins).
+  // If no reliable key exists we do NOT dedupe (never block blindly) — plain Put.
+  //
+  // INTENTIONAL: the sentinel is permanent, so a post the user DISMISSED is not
+  // re-captured by a later automatic scan (dismiss = "stop surfacing this post"). To add
+  // such a person deliberately, use manual entry (keywordId 'manual-entry'), which bypasses
+  // this dedupe entirely.
+  const dedupeKey = autoDetected
+    ? intakeDedupeKey({
+        postId: body.postId ?? body.sourceCommentId,
+        sourceUrl: body.sourceUrl,
+        sourceAuthor: usableAuthor,
+        sourceContent: hasContent ? body.sourceContent : null,
+      })
+    : null;
+
+  if (dedupeKey) {
+    try {
+      await dynamo.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: TABLE_NAME,
+                Item: { PK: `USER#${userId}`, SK: `OPPDEDUPE#${dedupeKey}`, opportunityId, createdAt: now },
+                ConditionExpression: 'attribute_not_exists(SK)',
+              },
+            },
+            { Put: { TableName: TABLE_NAME, Item: oppItem } },
+          ],
+        })
+      );
+    } catch (e) {
+      // The dedupe condition failed → this post was already captured for this user. A
+      // cancelled transaction writes NOTHING (no orphaned OPP, no orphaned sentinel).
+      // Idempotent: report success with the existing record id, writing no new OPP.
+      const name = e && (e.name || e.code);
+      if (name === 'TransactionCanceledException' || name === 'ConditionalCheckFailedException') {
+        let existingId = null;
+        try {
+          const got = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: `OPPDEDUPE#${dedupeKey}` } }));
+          existingId = got && got.Item ? got.Item.opportunityId : null;
+        } catch (_) { /* best-effort */ }
+        return respond(200, { id: existingId, duplicate: true, status: 'inbox' });
+      }
+      throw e;
+    }
+  } else {
+    // Manual entry (or keyless auto-detect): single plain Put — no dedupe sentinel.
+    await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: oppItem }));
+  }
 
   // D1: The Lead follow-up protocol is a LEAD side effect. It is created ONLY when the
   // opportunity is explicitly promoted to a Lead — never on a plain (Minimal/Enriched)
   // save. This prevents a silent derived personal-data record (leadName) on save.
   if (promoteToLead) {
-    await createLeadProtocol(userId, opportunityId, now, hasAuthor ? body.sourceAuthor : null);
+    await createLeadProtocol(userId, opportunityId, now, usableAuthor);
   }
 
-  return respond(201, { id: opportunityId, status: 'new', promotedToLead: promoteToLead, createdAt: now });
+  return respond(201, { id: opportunityId, status: initialStatus, promotedToLead: promoteToLead, createdAt: now });
 }
 
 // Create the Lead follow-up protocol from the user's saved template, if any.
@@ -534,6 +664,9 @@ async function handleGetStats(userId) {
   const items = result.Items || [];
   const stats = {
     total: items.length,
+    // Review-first: 'inbox' (auto-detected, pending review) is counted separately and is
+    // NOT part of 'new'. 'new' = items the user has added to the pipeline or entered manually.
+    inbox: items.filter((i) => i.status === 'inbox').length,
     new: items.filter((i) => i.status === 'new').length,
     followed_up: items.filter((i) => i.status === 'followed_up').length,
     converted: items.filter((i) => i.status === 'converted').length,

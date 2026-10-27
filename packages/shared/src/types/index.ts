@@ -6,7 +6,10 @@ export type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 
 
 export type PostStatus = 'draft' | 'scheduled' | 'published' | 'failed';
 
-export type OpportunityStatus = 'new' | 'followed_up' | 'converted' | 'dismissed';
+// 'inbox' = review-first pre-pipeline state for AUTO-detected opportunities (extension +
+// background scanner). Inbox items are excluded from the New Leads column/count until the
+// user explicitly adds them to the pipeline (→ 'new'). Manual entry goes straight to 'new'.
+export type OpportunityStatus = 'inbox' | 'new' | 'followed_up' | 'converted' | 'dismissed';
 
 export type DevicePlatform = 'ios' | 'android';
 
@@ -118,6 +121,8 @@ export interface Opportunity {
 
 export interface OpportunityStats {
   total: number;
+  /** Auto-detected opportunities awaiting review in the Opportunity Inbox. */
+  inbox?: number;
   new: number;
   followedUp: number;
   converted: number;

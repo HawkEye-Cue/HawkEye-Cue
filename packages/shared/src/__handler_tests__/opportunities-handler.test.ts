@@ -59,6 +59,8 @@ function sdkStubs() {
       // GetCommand is used by the server-side entitlement check (profile lookup) that
       // guards the paid followUp routes (promote / promoteToLead).
       GetCommand: cmd('GetCommand'),
+      // TransactWriteCommand atomically writes the dedupe sentinel + OPP item together.
+      TransactWriteCommand: cmd('TransactWriteCommand'),
     },
   } as Record<string, any>;
 }
@@ -86,6 +88,21 @@ function event(method: string, path: string, body?: any) {
     requestContext: { http: { method, path }, authorizer: { jwt: { claims: { sub: 'user-123' } } } },
     body: body ? JSON.stringify(body) : undefined,
   };
+}
+
+// The OPP item may be written either as a standalone PutCommand (manual / keyless) OR as
+// one leg of a TransactWriteCommand (auto-detected with a dedupe key). This finds it in
+// either place so assertions on the stored item are write-path agnostic.
+function findOppItem(cmds: SentCommand[]): any | undefined {
+  const put = cmds.find((c) => c.name === 'PutCommand' && String(c.input?.Item?.SK || '').startsWith('OPP#'));
+  if (put) return put.input.Item;
+  for (const c of cmds) {
+    if (c.name === 'TransactWriteCommand') {
+      const leg = (c.input.TransactItems || []).find((t: any) => String(t.Put?.Item?.SK || '').startsWith('OPP#'));
+      if (leg) return leg.Put.Item;
+    }
+  }
+  return undefined;
 }
 
 // Default profile returned by GetCommand(PROFILE). Paid (soar) so the entitlement
@@ -580,5 +597,291 @@ describe('opportunities-handler — pipelineStage (CRM sub-stage, additive)', ()
     // No sales/deal write path exists in this handler; assert no Put to a DEAL/SALE SK.
     const dealWrites = sent.filter((c) => c.name === 'PutCommand' && /DEAL|SALE/i.test(String(c.input?.Item?.SK || '')));
     expect(dealWrites).toHaveLength(0);
+  });
+});
+
+// ─── Review-first Opportunity Inbox + author quality (intake gating) ─────────────
+// Automatically detected opportunities (extension + background scanner) must land in
+// the 'inbox' pre-pipeline state, NOT 'new'. Manual entry keeps straight-to-'new'.
+// Author quality: junk authors are stored as null (UI shows "Author unavailable").
+describe('opportunities-handler — review-first Inbox gating', () => {
+  function autoPayload(overrides: Record<string, unknown> = {}) {
+    return {
+      keywordId: 'extension-detected',
+      sourceContent: 'Does anyone know a good insurance agent? Need a quote.',
+      sourcePlatform: 'facebook',
+      sourceUrl: 'https://www.facebook.com/',
+      sourceAuthor: 'Dana Prospect',
+      ...overrides,
+    };
+  }
+
+  it('extension-detected capture is created with status "inbox" (not new)', async () => {
+    const handler = loadHandler();
+    const res = await handler(event('POST', '/opportunities', autoPayload()));
+    expect(res.statusCode).toBe(201);
+    expect(JSON.parse(res.body).status).toBe('inbox');
+    const oppItem = findOppItem(sent)!;
+    expect(oppItem.status).toBe('inbox');
+  });
+
+  it('background-scan source is also gated to "inbox"', async () => {
+    const handler = loadHandler();
+    const res = await handler(event('POST', '/opportunities', autoPayload({ keywordId: 'kw1', source: 'background-scan' })));
+    expect(JSON.parse(res.body).status).toBe('inbox');
+  });
+
+  it('a record carrying matchedKeywords[] is gated to "inbox"', async () => {
+    const handler = loadHandler();
+    const res = await handler(event('POST', '/opportunities', autoPayload({ keywordId: 'kw1', matchedKeywords: ['insurance'] })));
+    expect(JSON.parse(res.body).status).toBe('inbox');
+  });
+
+  it('manual entry is UNCHANGED: created with status "new"', async () => {
+    const handler = loadHandler();
+    const res = await handler(event('POST', '/opportunities', {
+      keywordId: 'manual-entry', sourcePlatform: 'other', sourceUrl: '', sourceAuthor: 'Walk In', leadSource: 'referral',
+    }));
+    expect(JSON.parse(res.body).status).toBe('new');
+  });
+
+  it('an explicit promote-at-save goes to "new" even if auto markers are present', async () => {
+    const handler = loadHandler();
+    // promoteToLead signals manual intent; must not be trapped in the inbox.
+    sendImpl = async (c) => paidProfileGet(c) ?? { Items: [] };
+    const res = await handler(event('POST', '/opportunities', autoPayload({ promoteToLead: true })));
+    expect(JSON.parse(res.body).status).toBe('new');
+  });
+
+  it('junk author (Photos) is stored as null on an auto-detected inbox record', async () => {
+    const handler = loadHandler();
+    await handler(event('POST', '/opportunities', autoPayload({ sourceAuthor: 'Photos' })));
+    const oppItem = findOppItem(sent)!;
+    expect(oppItem.sourceAuthor).toBeNull();
+    // original source URL + content are preserved regardless.
+    expect(oppItem.sourceUrl).toBe('https://www.facebook.com/');
+    expect(oppItem.sourceContent).toContain('insurance agent');
+  });
+
+  it('URL/domain author (m.me) is stored as null', async () => {
+    const handler = loadHandler();
+    await handler(event('POST', '/opportunities', autoPayload({ sourceAuthor: 'm.me' })));
+    expect(findOppItem(sent)!.sourceAuthor).toBeNull();
+  });
+
+  it('a legitimate business name is preserved (not rejected)', async () => {
+    const handler = loadHandler();
+    await handler(event('POST', '/opportunities', autoPayload({ sourceAuthor: 'Rocky Mountain Insurance' })));
+    expect(findOppItem(sent)!.sourceAuthor).toBe('Rocky Mountain Insurance');
+  });
+
+  it('stats counts inbox separately and excludes it from "new"', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => {
+      if (c.name === 'QueryCommand') {
+        return { Items: [
+          { status: 'inbox' }, { status: 'inbox' },
+          { status: 'new' },
+          { status: 'converted' },
+        ] };
+      }
+      return paidProfileGet(c) ?? { Items: [] };
+    };
+    const res = await handler(event('GET', '/opportunities/stats'));
+    const { stats } = JSON.parse(res.body);
+    expect(stats.inbox).toBe(2);
+    expect(stats.new).toBe(1);
+    expect(stats.converted).toBe(1);
+  });
+
+  it('"Add to Pipeline" is an existing status PUT to new (no new endpoint needed)', async () => {
+    const handler = loadHandler();
+    sendImpl = async (c) => {
+      if (c.name === 'QueryCommand' && c.input.ExpressionAttributeValues?.[':oppId']) {
+        return { Items: [{ PK: 'USER#user-123', SK: 'OPP#t#opp1', opportunityId: 'opp1', status: 'inbox' }] };
+      }
+      return paidProfileGet(c) ?? { Items: [] };
+    };
+    const res = await handler(event('PUT', '/opportunities/opp1/status', { status: 'new' }));
+    expect(res.statusCode).toBe(200);
+    const upd = sent.find((c) => c.name === 'UpdateCommand')!;
+    expect(upd.input.ExpressionAttributeValues[':status']).toBe('new');
+  });
+});
+
+// ─── Server-side duplicate prevention (auto-detected only) ───────────────────
+// Auto-detected captures write the dedupe sentinel (SK OPPDEDUPE#<key>) AND the OPP item
+// in ONE atomic TransactWriteCommand with ConditionExpression attribute_not_exists(SK) on
+// the sentinel. First capture wins; repeats (incl. concurrent + other devices) cancel the
+// txn → 200 duplicate, no new OPP, no orphaned sentinel. Manual entry is never deduped.
+describe('opportunities-handler — server-side dedupe (atomic transaction)', () => {
+  function autoPayload(overrides: Record<string, unknown> = {}) {
+    return {
+      keywordId: 'extension-detected',
+      sourceContent: 'Does anyone know a good insurance agent? Need a quote.',
+      sourcePlatform: 'facebook',
+      sourceUrl: 'https://www.facebook.com/groups/x/posts/1001/',
+      sourceAuthor: 'Dana Prospect',
+      ...overrides,
+    };
+  }
+  // Helpers to read the two Put items inside a TransactWriteCommand.
+  function txnItems(c: SentCommand): any[] {
+    return (c.input.TransactItems || []).map((t: any) => t.Put?.Item).filter(Boolean);
+  }
+  function sentinelOf(c: SentCommand) { return txnItems(c).find((i) => String(i.SK).startsWith('OPPDEDUPE#')); }
+  function oppOf(c: SentCommand) { return txnItems(c).find((i) => String(i.SK).startsWith('OPP#')); }
+
+  // Simulate a table enforcing the sentinel's attribute_not_exists(SK) condition inside a
+  // transaction: if the sentinel key already exists, the WHOLE txn is cancelled (atomic).
+  function dedupeAwareImpl() {
+    const existing = new Set<string>();
+    return async (c: SentCommand) => {
+      const prof = paidProfileGet(c);
+      if (prof) return prof;
+      if (c.name === 'TransactWriteCommand') {
+        const s = sentinelOf(c);
+        const sk = s ? String(s.SK) : '';
+        if (sk && existing.has(sk)) {
+          const err: any = new Error('txn cancelled');
+          err.name = 'TransactionCanceledException';
+          throw err; // nothing is written — atomic rollback
+        }
+        if (sk) existing.add(sk);
+        return {};
+      }
+      if (c.name === 'GetCommand' && String(c.input.Key?.SK || '').startsWith('OPPDEDUPE#')) {
+        return { Item: { opportunityId: 'first-id', SK: c.input.Key.SK } };
+      }
+      return { Items: [] };
+    };
+  }
+
+  it('writes sentinel + OPP atomically in ONE transaction for an auto-detected capture', async () => {
+    const handler = loadHandler();
+    sendImpl = dedupeAwareImpl();
+    const res = await handler(event('POST', '/opportunities', autoPayload()));
+    expect(res.statusCode).toBe(201);
+    const txn = sent.find((c) => c.name === 'TransactWriteCommand')!;
+    expect(txn).toBeTruthy();
+    const sentinel = sentinelOf(txn)!;
+    const opp = oppOf(txn)!;
+    expect(sentinel).toBeTruthy();
+    expect(opp).toBeTruthy();
+    // sentinel condition guards against duplicates and is user-scoped + URL-keyed.
+    expect(txn.input.TransactItems.find((t: any) => String(t.Put.Item.SK).startsWith('OPPDEDUPE#')).Put.ConditionExpression).toBe('attribute_not_exists(SK)');
+    expect(String(sentinel.SK)).toContain('url:facebook.com/groups/x/posts/1001');
+    expect(String(sentinel.PK)).toBe('USER#user-123');
+    expect(opp.status).toBe('inbox');
+    // sentinel + opp reference the same opportunityId.
+    expect(sentinel.opportunityId).toBe(opp.opportunityId);
+  });
+
+  it('ORPHAN SAFETY: a failed OPP write rolls back the sentinel (no standalone PutCommand)', async () => {
+    const handler = loadHandler();
+    sendImpl = dedupeAwareImpl();
+    await handler(event('POST', '/opportunities', autoPayload()));
+    // There must be NO standalone PutCommand for an auto-detected capture — both items go
+    // through the transaction, so the sentinel cannot be committed without the OPP.
+    const standalonePut = sent.find((c) => c.name === 'PutCommand' && /OPP#|OPPDEDUPE#/.test(String(c.input.Item?.SK || '')));
+    expect(standalonePut).toBeUndefined();
+  });
+
+  it('a whole-transaction failure surfaces (no partial write) and does not 200-duplicate', async () => {
+    const handler = loadHandler();
+    // Simulate a NON-conditional transaction failure (e.g., throttling): must propagate,
+    // not be mistaken for a duplicate. Nothing is written (atomic).
+    sendImpl = async (c) => {
+      const prof = paidProfileGet(c); if (prof) return prof;
+      if (c.name === 'TransactWriteCommand') { const e: any = new Error('throttled'); e.name = 'ProvisionedThroughputExceededException'; throw e; }
+      return { Items: [] };
+    };
+    await expect(handler(event('POST', '/opportunities', autoPayload()))).rejects.toThrow();
+  });
+
+  it('a repeated capture returns 200 duplicate with NO new OPP (txn cancelled)', async () => {
+    const handler = loadHandler();
+    sendImpl = dedupeAwareImpl();
+    const r1 = await handler(event('POST', '/opportunities', autoPayload()));
+    expect(r1.statusCode).toBe(201);
+    sent = []; // only inspect writes from the SECOND (duplicate) call
+    const r2 = await handler(event('POST', '/opportunities', autoPayload()));
+    expect(r2.statusCode).toBe(200);
+    expect(JSON.parse(r2.body).duplicate).toBe(true);
+    // On the duplicate: the txn was attempted but cancelled (writes nothing), and there is
+    // NO committed OPP item. A cancelled TransactWriteCommand may still appear in `sent`
+    // (it was dispatched), so assert the txn CONTAINS no committed opp by checking the
+    // handler did not fall through to any standalone OPP PutCommand.
+    const standaloneOpp = sent.filter((c) => c.name === 'PutCommand' && String(c.input.Item?.SK || '').startsWith('OPP#'));
+    expect(standaloneOpp).toHaveLength(0);
+  });
+
+  it('retry after a duplicate stays idempotent (still 200, never a second OPP)', async () => {
+    const handler = loadHandler();
+    sendImpl = dedupeAwareImpl();
+    await handler(event('POST', '/opportunities', autoPayload()));
+    const r2 = await handler(event('POST', '/opportunities', autoPayload()));
+    const r3 = await handler(event('POST', '/opportunities', autoPayload()));
+    expect(r2.statusCode).toBe(200);
+    expect(r3.statusCode).toBe(200);
+  });
+
+  it('a capture from a DIFFERENT device (same user, same post) is deduped', async () => {
+    const handler = loadHandler();
+    sendImpl = dedupeAwareImpl();
+    await handler(event('POST', '/opportunities', autoPayload()));
+    sent = [];
+    const res = await handler(event('POST', '/opportunities', autoPayload({ sourceAuthor: 'Dana Prospect' })));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).duplicate).toBe(true);
+  });
+
+  it('simultaneous submissions: exactly one 201 and one 200 (atomic txn serializes)', async () => {
+    const handler = loadHandler();
+    sendImpl = dedupeAwareImpl();
+    const [a, b] = await Promise.all([
+      handler(event('POST', '/opportunities', autoPayload())),
+      handler(event('POST', '/opportunities', autoPayload())),
+    ]);
+    const codes = [a.statusCode, b.statusCode].sort();
+    expect(codes).toEqual([200, 201]);
+  });
+
+  it('background-scanner submissions are deduped by a COMPATIBLE key (sourceCommentId → id:)', async () => {
+    const handler = loadHandler();
+    sendImpl = dedupeAwareImpl();
+    const payload = { keywordId: 'kw1', source: 'background-scan', sourceCommentId: 'cmt-99', sourcePlatform: 'facebook', sourceUrl: '', sourceContent: 'need a roofer' };
+    const r1 = await handler(event('POST', '/opportunities', payload));
+    expect(r1.statusCode).toBe(201);
+    const txn = sent.find((c) => c.name === 'TransactWriteCommand')!;
+    expect(String(sentinelOf(txn)!.SK)).toContain('id:cmt-99');
+    sent = [];
+    const r2 = await handler(event('POST', '/opportunities', payload));
+    expect(r2.statusCode).toBe(200);
+  });
+
+  it('manual entry is NEVER deduped (plain Put, no transaction, no sentinel)', async () => {
+    const handler = loadHandler();
+    sendImpl = dedupeAwareImpl();
+    await handler(event('POST', '/opportunities', {
+      keywordId: 'manual-entry', sourcePlatform: 'other', sourceUrl: '', sourceAuthor: 'Walk In', leadSource: 'referral',
+    }));
+    expect(sent.find((c) => c.name === 'TransactWriteCommand')).toBeUndefined();
+    const oppPut = sent.find((c) => c.name === 'PutCommand' && String(c.input.Item.SK).startsWith('OPP#'))!;
+    expect(oppPut).toBeTruthy();
+    expect(oppPut.input.Item.status).toBe('new');
+  });
+
+  it('keyless auto-detect (bare feed URL, junk author, no content) is NOT deduped but still creates', async () => {
+    const handler = loadHandler();
+    sendImpl = dedupeAwareImpl();
+    await handler(event('POST', '/opportunities', {
+      keywordId: 'extension-detected', sourcePlatform: 'facebook', sourceUrl: 'https://www.facebook.com/', sourceAuthor: 'Photos',
+    }));
+    expect(sent.find((c) => c.name === 'TransactWriteCommand')).toBeUndefined();
+    // Still creates the OPP (in the inbox) — we never block blindly.
+    const oppPut = sent.find((c) => c.name === 'PutCommand' && String(c.input.Item.SK).startsWith('OPP#'))!;
+    expect(oppPut).toBeTruthy();
+    expect(oppPut.input.Item.status).toBe('inbox');
   });
 });

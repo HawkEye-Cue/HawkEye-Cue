@@ -6,6 +6,7 @@ const {
   QueryCommand,
   PutCommand,
   ScanCommand,
+  TransactWriteCommand,
 } = require('@aws-sdk/lib-dynamodb');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
@@ -17,6 +18,56 @@ const sns = new SNSClient({});
 const TABLE_NAME = process.env.TABLE_NAME;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Author quality (mirror of packages/shared opportunity-intake.ts). Reject UI labels,
+// URLs/domains as identities; junk → null so the UI shows "Author unavailable".
+const INTAKE_UI_LABELS = new Set([
+  'unknown', 'unnamed', 'photos', 'photo', 'videos', 'video', 'reels', 'reel',
+  'see more', 'see less', 'like', 'comment', 'share', 'follow', 'following',
+  'message', 'sponsored', 'suggested for you', 'shared post', 'facebook',
+  'write a comment', 'active', 'admin', 'top contributor', 'author',
+  'see what you’ve been waiting for', "see what you've been waiting for",
+]);
+const INTAKE_URL_OR_DOMAIN = /(https?:\/\/|www\.|m\.me\b|\bfb\.me\b|@|\.com\b|\.net\b|\.org\b|\.io\b|\.co\b|\.lc\b|\.gov\b|\.edu\b|\.biz\b|\.info\b|\.us\b|\.ca\b|\.uk\b)/i;
+function isUsableAuthor(author) {
+  const a = (author == null ? '' : String(author)).trim();
+  if (a.length < 2) return false;
+  if (INTAKE_UI_LABELS.has(a.toLowerCase())) return false;
+  if (INTAKE_URL_OR_DOMAIN.test(a)) return false;
+  if (!/[a-z\u00c0-\u024f]/i.test(a)) return false;
+  if (a.length > 60) return false;
+  return true;
+}
+// Cross-path dedupe key — IDENTICAL logic to the opportunities-handler (post id →
+// canonical URL → author+content). This lets the background scanner and the extension
+// path share ONE per-user OPPDEDUPE# sentinel namespace so the same post can't be saved
+// twice across the two write paths. Mirror of packages/shared opportunity-intake.ts.
+function intakeCanonicalizePostUrl(url) {
+  const raw = (url == null ? '' : String(url)).trim();
+  if (!raw) return null;
+  const noProto = raw.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '');
+  if (/^(m\.|mobile\.)?facebook\.com$/i.test(noProto)) return null;
+  try {
+    const u = new URL(raw);
+    const fbid = u.searchParams.get('story_fbid') || u.searchParams.get('fbid');
+    const path = u.pathname.replace(/\/+$/, '');
+    const postMatch = path.match(/\/(posts|permalink|videos|reel|p)\/([^/]+)/i);
+    if (postMatch) return (u.hostname.replace(/^www\./i, '') + path).toLowerCase();
+    if (fbid) return (u.hostname.replace(/^www\./i, '') + '/' + fbid).toLowerCase();
+    if (path && path !== '') return (u.hostname.replace(/^www\./i, '') + path).toLowerCase();
+    return null;
+  } catch (e) { return null; }
+}
+function intakeDedupeKey(input) {
+  const id = (input.postId == null ? '' : String(input.postId)).trim();
+  if (id) return 'id:' + id.toLowerCase();
+  const canon = intakeCanonicalizePostUrl(input.sourceUrl);
+  if (canon) return 'url:' + canon;
+  const author = (input.sourceAuthor == null ? '' : String(input.sourceAuthor)).trim().toLowerCase();
+  const content = (input.sourceContent == null ? '' : String(input.sourceContent)).replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 80);
+  if (content) return 'ac:' + author + '|' + content;
+  return null;
+}
 
 let cachedSecret = null;
 async function getBundleSocialSecret() {
@@ -132,7 +183,8 @@ async function saveLeadAndNotify(userId, lead) {
   const id = randomUUID();
   const now = new Date().toISOString();
 
-  // Check if we already saved this comment as a lead (deduplicate)
+  // Backward-compatible fast pre-check (UNCHANGED): skip if we already saved this comment
+  // in this path. Kept so existing scanner behavior + the sourceCommentId contract hold.
   const existing = await dynamo.send(new QueryCommand({
     TableName: TABLE_NAME,
     KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
@@ -149,40 +201,75 @@ async function saveLeadAndNotify(userId, lead) {
     return false; // Already saved
   }
 
-  // Save as opportunity.
-  // Writes the CANONICAL Opportunity fields (sourcePlatform/sourceAuthor/sourceContent/
-  // keywordId/sourceUrl/leadSource) used by the HTTP + extension path, while RETAINING
-  // the scanner compatibility fields (platform/authorName/postContent/matchedKeywords/
-  // source/sourceCommentId) so dedupe, the notification-sender stream, and team views
-  // keep working unchanged.
-  // D1: no fabricated author/content/url — sourceAuthor is null when none was captured,
-  // and sourceUrl stays empty (background scans have no post URL).
-  const canonicalAuthor = (lead.authorName && lead.authorName !== 'Unknown') ? lead.authorName : null;
-  await dynamo.send(new PutCommand({
-    TableName: TABLE_NAME,
-    Item: {
-      PK: `USER#${userId}`,
-      SK: `OPP#${now}#${id}`,
-      opportunityId: id,
-      // Dedupe + compatibility fields (unchanged):
-      sourceCommentId: lead.commentId,
-      platform: lead.platform.toLowerCase(),
-      authorName: lead.authorName,
-      postContent: lead.text,
-      matchedKeywords: lead.matchedKeywords,
-      source: 'background-scan',
-      // Canonical Opportunity fields (new, additive):
-      keywordId: 'extension-detected',
-      sourcePlatform: lead.platform.toLowerCase(),
-      sourceAuthor: canonicalAuthor,
-      sourceContent: lead.text,
-      sourceUrl: '',
-      leadSource: 'extension-detected',
-      status: 'new',
-      detectedAt: now,
-      createdAt: now,
-    },
-  }));
+  // Author quality: only persist a usable identity (junk UI labels/URLs → null).
+  const canonicalAuthor = isUsableAuthor(lead.authorName) ? String(lead.authorName).trim() : null;
+
+  // The opportunity item. Writes the CANONICAL fields used by the HTTP + extension path
+  // while RETAINING scanner compatibility fields (platform/authorName/postContent/
+  // matchedKeywords/source/sourceCommentId) so the notification-sender stream + team views
+  // keep working. Review-first: background-scan leads enter the Opportunity Inbox.
+  const oppItem = {
+    PK: `USER#${userId}`,
+    SK: `OPP#${now}#${id}`,
+    opportunityId: id,
+    sourceCommentId: lead.commentId,
+    platform: lead.platform.toLowerCase(),
+    authorName: lead.authorName,
+    postContent: lead.text,
+    matchedKeywords: lead.matchedKeywords,
+    source: 'background-scan',
+    keywordId: 'extension-detected',
+    sourcePlatform: lead.platform.toLowerCase(),
+    sourceAuthor: canonicalAuthor,
+    sourceContent: lead.text,
+    sourceUrl: '',
+    leadSource: 'extension-detected',
+    status: 'inbox',
+    detectedAt: now,
+    createdAt: now,
+  };
+
+  // CROSS-PATH dedupe: write the OPP item AND the SHARED per-user OPPDEDUPE# sentinel in
+  // ONE atomic transaction, using the SAME key logic as the opportunities-handler. Because
+  // both write paths now reserve the same sentinel namespace, the same post cannot be
+  // saved twice even if the extension and this background scan detect it (and the
+  // conditional write serializes concurrent attempts). The scanner's stable key is the
+  // comment id (→ 'id:<commentId>'), falling back to author+content. If no reliable key
+  // exists we fall back to a plain Put (never block blindly) — the Query pre-check above
+  // still guards the common case.
+  const dedupeKey = intakeDedupeKey({
+    postId: lead.commentId,
+    sourceUrl: '',
+    sourceAuthor: canonicalAuthor,
+    sourceContent: lead.text,
+  });
+
+  if (dedupeKey) {
+    try {
+      await dynamo.send(new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: TABLE_NAME,
+              Item: { PK: `USER#${userId}`, SK: `OPPDEDUPE#${dedupeKey}`, opportunityId: id, createdAt: now },
+              ConditionExpression: 'attribute_not_exists(SK)',
+            },
+          },
+          { Put: { TableName: TABLE_NAME, Item: oppItem } },
+        ],
+      }));
+    } catch (e) {
+      // Sentinel already reserved (by the extension path or a concurrent scan) → the whole
+      // txn rolls back (no OPP, no orphaned sentinel). Treat as an already-saved duplicate.
+      const name = e && (e.name || e.code);
+      if (name === 'TransactionCanceledException' || name === 'ConditionalCheckFailedException') {
+        return false;
+      }
+      throw e;
+    }
+  } else {
+    await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: oppItem }));
+  }
 
   // Send push notification via DynamoDB stream → notification-sender
   // The INSERT of an OPP# record triggers the notification-sender Lambda

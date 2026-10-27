@@ -184,6 +184,18 @@ describe('Status Helpers', () => {
       expect(isValidStatusTransition('new', 'dismissed')).toBe(true);
     });
 
+    it('allows inbox → new (Add to Pipeline)', () => {
+      expect(isValidStatusTransition('inbox', 'new')).toBe(true);
+    });
+
+    it('allows inbox → dismissed', () => {
+      expect(isValidStatusTransition('inbox', 'dismissed')).toBe(true);
+    });
+
+    it('disallows inbox → converted (cannot jump straight to Client)', () => {
+      expect(isValidStatusTransition('inbox', 'converted')).toBe(false);
+    });
+
     it('allows followed_up → converted', () => {
       expect(isValidStatusTransition('followed_up', 'converted')).toBe(true);
     });

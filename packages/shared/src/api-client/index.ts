@@ -291,6 +291,7 @@ export class ApiClient {
     const s = (res && res.stats) ? res.stats : (res || {});
     return {
       total: Number(s.total) || 0,
+      inbox: Number(s.inbox) || 0,
       new: Number(s.new) || 0,
       followedUp: Number(s.followedUp ?? s.followed_up) || 0,
       converted: Number(s.converted) || 0,

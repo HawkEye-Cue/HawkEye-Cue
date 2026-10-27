@@ -62,14 +62,73 @@ describe('lead-scanner — canonical schema + preserved dedupe (P0-1)', () => {
     expect(fnSlice).toMatch(/sourcePlatform:\s*lead\.platform\.toLowerCase\(\)/);
     expect(fnSlice).toMatch(/sourceContent:\s*lead\.text/);
     expect(fnSlice).toMatch(/leadSource:\s*'extension-detected'/);
-    // sourceAuthor is derived (maps 'Unknown' sentinel to null — D1, no fabrication).
+    // sourceAuthor is derived via the shared author-quality rule (junk UI labels / URLs
+    // → null; no fabrication). Keep in lockstep with opportunity-intake.isUsableAuthor.
     expect(fnSlice).toMatch(/sourceAuthor:\s*canonicalAuthor/);
-    expect(fnSlice).toMatch(/canonicalAuthor\s*=\s*\(lead\.authorName\s*&&\s*lead\.authorName\s*!==\s*'Unknown'\)/);
+    expect(fnSlice).toMatch(/canonicalAuthor\s*=\s*isUsableAuthor\(lead\.authorName\)/);
+  });
+
+  it('auto-detected background-scan leads enter the review-first Inbox (status inbox)', () => {
+    // Both automatic write paths must land in the Opportunity Inbox, not the pipeline.
+    expect(fnSlice).toMatch(/status:\s*'inbox'/);
+    expect(fnSlice).not.toMatch(/status:\s*'new'/);
+  });
+
+  it('applies author-quality rejection (shared isUsableAuthor is defined + used)', () => {
+    expect(src).toMatch(/function isUsableAuthor/);
+    expect(src).toContain('INTAKE_URL_OR_DOMAIN');
+  });
+
+  it('still dedupes on the stable sourceCommentId (server-side, unchanged)', () => {
+    expect(fnSlice).toMatch(/FilterExpression:\s*'sourceCommentId = :cid'/);
+    expect(fnSlice).toMatch(/length\s*>\s*0\)\s*\{[\s\S]*?return false/);
   });
 
   it('does NOT fabricate a sourceUrl (empty string)', () => {
     expect(fnSlice).toMatch(/sourceUrl:\s*''/);
     // Make sure we didn't invent a facebook.com-style default here.
     expect(fnSlice).not.toMatch(/sourceUrl:\s*['"]https?:/);
+  });
+});
+
+// ─── Cross-path + concurrency dedupe (shares the OPPDEDUPE# namespace) ───────────
+// The scanner now writes the OPP item + the SAME per-user OPPDEDUPE# sentinel the
+// opportunities-handler uses, in ONE atomic TransactWriteCommand with the identical key
+// logic. This closes the cross-path gap: a post captured by the extension cannot be
+// re-saved by the background scan (and vice-versa), and concurrent attempts serialize.
+describe('lead-scanner — cross-path + concurrency dedupe', () => {
+  it('defines the shared dedupe-key helper identical to the handler', () => {
+    expect(src).toMatch(/function intakeDedupeKey/);
+    expect(src).toMatch(/function intakeCanonicalizePostUrl/);
+    // comment id → 'id:' key (the scanner's stable per-post id).
+    expect(src).toMatch(/return 'id:' \+ id\.toLowerCase\(\)/);
+    // author+content fallback matches the handler's 80-char slice.
+    expect(src).toMatch(/slice\(0, 80\)/);
+  });
+
+  it('writes OPP + the shared OPPDEDUPE# sentinel in ONE atomic transaction', () => {
+    expect(fnSlice).toMatch(/new TransactWriteCommand\(/);
+    expect(fnSlice).toMatch(/SK:\s*`OPPDEDUPE#\$\{dedupeKey\}`/);
+    expect(fnSlice).toMatch(/ConditionExpression:\s*'attribute_not_exists\(SK\)'/);
+    // both the sentinel and the OPP item are in the same TransactItems array.
+    expect(fnSlice).toMatch(/TransactItems:\s*\[[\s\S]*Item:\s*oppItem/);
+  });
+
+  it('keys off the comment id so it matches the extension/handler key for the same post', () => {
+    expect(fnSlice).toMatch(/intakeDedupeKey\(\{[\s\S]*postId:\s*lead\.commentId/);
+  });
+
+  it('treats a cancelled transaction (sentinel already reserved) as an already-saved duplicate', () => {
+    expect(fnSlice).toMatch(/TransactionCanceledException'\s*\|\|\s*name === 'ConditionalCheckFailedException'/);
+    // On a dedupe cancel it returns false (skip) — not a thrown error.
+    expect(fnSlice).toMatch(/if \(name === 'TransactionCanceledException'[\s\S]*?return false/);
+  });
+
+  it('a non-dedupe transaction failure still propagates (not swallowed)', () => {
+    expect(fnSlice).toMatch(/throw e;/);
+  });
+
+  it('TransactWriteCommand is imported', () => {
+    expect(src).toMatch(/TransactWriteCommand/);
   });
 });

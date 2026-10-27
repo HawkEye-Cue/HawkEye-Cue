@@ -34,6 +34,29 @@
   // Manual lead detection, the hawk overlay, and manual saving do NOT depend on this.
   var TAKE_FLIGHT_ENABLED = !!(globalThis.HawkEyeFlags && globalThis.HawkEyeFlags.TAKE_FLIGHT_ENABLED);
 
+  // ─── Author quality (mirror of packages/shared opportunity-intake.ts) ───
+  // Reject UI labels ("Photos"/"Unnamed"), URLs/domains ("m.me", ad links) as authors so
+  // we never persist a fabricated identity. Legitimate business names are allowed.
+  // Junk → null; the web shows "Author unavailable". Keep in lockstep with the shared module.
+  var INTAKE_UI_LABELS = {
+    'unknown': 1, 'unnamed': 1, 'photos': 1, 'photo': 1, 'videos': 1, 'video': 1,
+    'reels': 1, 'reel': 1, 'see more': 1, 'see less': 1, 'like': 1, 'comment': 1,
+    'share': 1, 'follow': 1, 'following': 1, 'message': 1, 'sponsored': 1,
+    'suggested for you': 1, 'shared post': 1, 'facebook': 1, 'write a comment': 1,
+    'active': 1, 'admin': 1, 'top contributor': 1, 'author': 1,
+    'see what you’ve been waiting for': 1, "see what you've been waiting for": 1,
+  };
+  var INTAKE_URL_OR_DOMAIN = /(https?:\/\/|www\.|m\.me\b|\bfb\.me\b|@|\.com\b|\.net\b|\.org\b|\.io\b|\.co\b|\.lc\b|\.gov\b|\.edu\b|\.biz\b|\.info\b|\.us\b|\.ca\b|\.uk\b)/i;
+  function isUsableAuthor(author) {
+    var a = (author == null ? '' : String(author)).trim();
+    if (a.length < 2) return false;
+    if (INTAKE_UI_LABELS[a.toLowerCase()]) return false;
+    if (INTAKE_URL_OR_DOMAIN.test(a)) return false;
+    if (!/[a-z\u00c0-\u024f]/i.test(a)) return false;
+    if (a.length > 60) return false;
+    return true;
+  }
+
   function detectPlatform() {
     const host = window.location.hostname;
     if (host.includes('facebook.com')) return 'facebook';
@@ -162,7 +185,10 @@
       btn.textContent = 'Saving...';
       btn.style.opacity = '0.6';
 
-      const authorName = extractAuthorName(postElement) || 'Unknown';
+      // Author quality: only persist a usable identity; junk (UI labels / URLs) → null.
+      const rawAuthor = extractAuthorName(postElement);
+      const authorName = isUsableAuthor(rawAuthor) ? String(rawAuthor).trim() : null;
+      const authorLabel = authorName || 'Author unavailable';
       const { authToken } = await chrome.storage.local.get(['authToken']);
       if (!authToken) {
         status.textContent = 'Not signed in — open extension popup to log in';
@@ -177,8 +203,8 @@
 
       chrome.runtime.sendMessage({
         type: 'SAVE_LEAD',
-        // D1: send the real name only; never persist the 'Unknown' sentinel.
-        data: { authToken: authToken, platform: platform, authorName: (authorName && authorName !== 'Unknown') ? authorName : null, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
+        // Author already sanitized to null if it wasn't a real identity.
+        data: { authToken: authToken, platform: platform, authorName: authorName, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
       }, function(response) {
         if (chrome.runtime.lastError || !response || !response.success) {
           btn.textContent = '💼 Save as Lead';
@@ -190,11 +216,11 @@
           btn.textContent = '✓ Lead Saved!';
           btn.style.background = '#16a34a';
           btn.style.opacity = '1';
-          status.textContent = authorName + ' saved to Leads (' + platform + ')';
+          status.textContent = authorLabel + ' saved to Leads (' + platform + ')';
           status.style.display = 'block';
           status.style.color = '#4ade80';
           // Hawk Memory — remember we saved a lead from this person
-          if (authorName && authorName !== 'Unknown') {
+          if (authorName) {
             chrome.runtime.sendMessage({ type: 'SAVE_MEMORY', data: { personName: authorName, kind: 'saved', note: postText.slice(0, 120), platform: platform } });
           }
         }
@@ -408,35 +434,38 @@
 
   // ─── Take Flight: auto-score + auto-save a matched lead, hands-free ─────────
   function autoSaveLead(postElement, postText) {
-    var authorName = extractAuthorName(postElement) || 'Unknown';
-    // Don't save the same author twice in one flight session.
-    var dedupeKey = authorName + '|' + postText.slice(0, 40);
+    // Author quality: only a usable identity is kept; junk → null (never a fake name).
+    var rawAuthor = extractAuthorName(postElement);
+    var storedAuthor = isUsableAuthor(rawAuthor) ? String(rawAuthor).trim() : null;
+    // Don't save the same post twice in one flight session.
+    var dedupeKey = (storedAuthor || '') + '|' + postText.slice(0, 40);
     if (flightSavedAuthors.has(dedupeKey)) return;
     flightSavedAuthors.add(dedupeKey);
 
     chrome.storage.local.get(['authToken'], function(res) {
       if (!res.authToken) return;
       // Score first so we skip competitors / non-leads automatically.
-      chrome.runtime.sendMessage({ type: 'SCORE_POST', data: { postText: postText, group: '', authorName: authorName } }, function(scoreResp) {
+      chrome.runtime.sendMessage({ type: 'SCORE_POST', data: { postText: postText, group: '', authorName: storedAuthor || '' } }, function(scoreResp) {
         var r = scoreResp && scoreResp.success ? scoreResp.result : null;
         // Skip competitors and clear non-leads — only auto-save genuine leads.
         if (r && (r.isCompetitor === true || r.classification === 'competitor' || r.isLead === false)) {
-          if (authorName && authorName !== 'Unknown' && (r.isCompetitor || r.classification === 'competitor')) {
-            chrome.runtime.sendMessage({ type: 'SAVE_MEMORY', data: { personName: authorName, kind: 'competitor', note: 'Auto-flagged during flight', platform: platform } });
+          if (storedAuthor && (r.isCompetitor || r.classification === 'competitor')) {
+            chrome.runtime.sendMessage({ type: 'SAVE_MEMORY', data: { personName: storedAuthor, kind: 'competitor', note: 'Auto-flagged during flight', platform: platform } });
           }
           return;
         }
         chrome.runtime.sendMessage({
           type: 'SAVE_LEAD',
-          // D1: send the real name only; never persist the 'Unknown' sentinel.
-          data: { authToken: res.authToken, platform: platform, authorName: (authorName && authorName !== 'Unknown') ? authorName : null, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
+          // Author already sanitized to null if it wasn't a real identity. keywordId
+          // 'extension-detected' routes this to the review-first Inbox server-side.
+          data: { authToken: res.authToken, platform: platform, authorName: storedAuthor, postContent: postText.slice(0, 500), postUrl: extractPostUrl(postElement) || window.location.href },
         }, function(saveResp) {
           if (saveResp && saveResp.success) {
             // Bump the flight counter for the popup.
             chrome.storage.local.get(['flightLeadCount'], function(c) {
               chrome.storage.local.set({ flightLeadCount: (c.flightLeadCount || 0) + 1 });
             });
-            showToast('🦅 Lead saved: ' + authorName);
+            showToast('🦅 Opportunity captured' + (storedAuthor ? ': ' + storedAuthor : ' (review in Inbox)'));
           }
         });
       });

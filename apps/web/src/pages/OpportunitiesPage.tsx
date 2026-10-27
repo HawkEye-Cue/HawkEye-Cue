@@ -5,7 +5,7 @@ import { useTrade } from '../contexts/TradeContext';
 import { useCalendar } from '../contexts/CalendarContext';
 import { useMode } from '../contexts/ModeContext';
 import { useSearchParams } from 'react-router-dom';
-import { ApiClient, ApiError, displayCueAuthor } from '@social-lead-gen/shared';
+import { ApiClient, ApiError, displayCueAuthor, displayAuthorOrUnavailable } from '@social-lead-gen/shared';
 import type { Opportunity, OpportunityStatus, OpportunityStats, Deal } from '@social-lead-gen/shared';
 import { useTeamData, MEMBER_COLORS, MEMBER_TEXT_COLORS } from '../hooks/useTeamData';
 import LeadProfilePopup from '../components/LeadProfilePopup';
@@ -106,7 +106,11 @@ export default function OpportunitiesPage() {
   const [filter, setFilter] = useState<OpportunityStatus | 'all'>('all');
   const [groupBy, setGroupBy] = useState<'none' | 'platform' | 'keyword'>('none');
   const [leads, setLeads] = useState<Opportunity[]>([]);
-  const [stats, setStats] = useState<OpportunityStats>({ total: 0, new: 0, followedUp: 0, converted: 0 });
+  // Review-first Opportunity Inbox: auto-detected opportunities (status 'inbox') are kept
+  // OUT of `leads` so they never appear in the pipeline columns/counts. They surface in a
+  // dedicated Inbox panel until the user clicks "Add to Pipeline" (→ moves into `leads`).
+  const [inboxLeads, setInboxLeads] = useState<Opportunity[]>([]);
+  const [stats, setStats] = useState<OpportunityStats>({ total: 0, inbox: 0, new: 0, followedUp: 0, converted: 0 });
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [tier, setTier] = useState('free');
@@ -459,7 +463,9 @@ export default function OpportunitiesPage() {
       ]);
       // Handle both { items: [...] } and { opportunities: [...] } formats
       const items = leadsResult.items || (leadsResult as any).opportunities || [];
-      setLeads(items);
+      // Split the review-first Inbox (auto-detected) out of the pipeline list.
+      setLeads(items.filter((l: Opportunity) => l.status !== 'inbox'));
+      setInboxLeads(items.filter((l: Opportunity) => l.status === 'inbox'));
       setStats(statsResult);
     } catch { /* ignore */ }
     finally { setLoading(false); }
@@ -615,6 +621,32 @@ export default function OpportunitiesPage() {
       setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, status: 'converted' as any } : l));
       showToast('⭐ Moved to Clients');
     } catch { showToast('❌ Failed to move'); }
+  }
+
+  // Opportunity Inbox → Pipeline. An auto-detected opportunity sits in the review-first
+  // Inbox (status 'inbox') until the user explicitly adds it. This flips it to 'new' so it
+  // enters the New Leads column/count. This is NOT converting to a client (that's moveToWon).
+  async function addToPipeline(lead: Opportunity) {
+    try {
+      const client = await buildClient();
+      await client.request('PUT', `/opportunities/${lead.id}/status`, { status: 'new' });
+      // Move it out of the Inbox and into the pipeline list as a New lead.
+      setInboxLeads((prev) => prev.filter((l) => l.id !== lead.id));
+      setLeads((prev) => [{ ...lead, status: 'new' as any }, ...prev]);
+      setStats((prev) => ({ ...prev, inbox: Math.max(0, (prev.inbox || 0) - 1), new: prev.new + 1 }));
+      showToast('✅ Added to Pipeline');
+    } catch { showToast('❌ Failed to add to pipeline'); }
+  }
+
+  // Dismiss an inbox opportunity without adding it to the pipeline (status 'dismissed').
+  async function dismissInboxLead(lead: Opportunity) {
+    try {
+      const client = await buildClient();
+      await client.request('PUT', `/opportunities/${lead.id}/status`, { status: 'dismissed' });
+      setInboxLeads((prev) => prev.filter((l) => l.id !== lead.id));
+      setStats((prev) => ({ ...prev, inbox: Math.max(0, (prev.inbox || 0) - 1) }));
+      showToast('🗑️ Dismissed');
+    } catch { showToast('❌ Failed to dismiss'); }
   }
 
   // Map a Cue's platform to the Sales "leadSource" category (reuses the SalesPage mapping).
@@ -1217,6 +1249,46 @@ export default function OpportunitiesPage() {
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ─── Opportunity Inbox (review-first) ─────────────────────────────
+              Auto-detected opportunities land here, NOT in the pipeline, until the user
+              explicitly adds them. Keeps the New Leads column/count clean. */}
+          {inboxLeads.length > 0 && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📥</span>
+                  <h3 className="text-sm font-bold text-amber-200">Opportunity Inbox</h3>
+                  <span className="text-xs font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">{inboxLeads.length}</span>
+                </div>
+                <span className="text-[11px] text-slate-400">Auto-detected — review before they enter your pipeline</span>
+              </div>
+              <ul className="space-y-2">
+                {inboxLeads.map((lead) => (
+                  <li key={lead.id} className="flex items-center gap-3 rounded-lg bg-black/30 border border-white/10 p-2.5">
+                    <span className="text-base shrink-0">{platformIcons[lead.sourcePlatform] || '🌐'}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-white truncate">{displayAuthorOrUnavailable(lead.sourceAuthor)}</p>
+                      {lead.sourceContent && <p className="text-[11px] text-slate-400 truncate">{lead.sourceContent}</p>}
+                    </div>
+                    <button
+                      onClick={() => addToPipeline(lead)}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-black text-xs font-semibold transition-colors"
+                    >
+                      ➕ Add to Pipeline
+                    </button>
+                    <button
+                      onClick={() => dismissInboxLead(lead)}
+                      className="shrink-0 text-xs text-slate-400 hover:text-red-300 px-1"
+                      title="Dismiss — do not add to pipeline"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

@@ -90,3 +90,45 @@ describe('lead-scanner — canonical schema + preserved dedupe (P0-1)', () => {
     expect(fnSlice).not.toMatch(/sourceUrl:\s*['"]https?:/);
   });
 });
+
+// ─── Cross-path + concurrency dedupe (shares the OPPDEDUPE# namespace) ───────────
+// The scanner now writes the OPP item + the SAME per-user OPPDEDUPE# sentinel the
+// opportunities-handler uses, in ONE atomic TransactWriteCommand with the identical key
+// logic. This closes the cross-path gap: a post captured by the extension cannot be
+// re-saved by the background scan (and vice-versa), and concurrent attempts serialize.
+describe('lead-scanner — cross-path + concurrency dedupe', () => {
+  it('defines the shared dedupe-key helper identical to the handler', () => {
+    expect(src).toMatch(/function intakeDedupeKey/);
+    expect(src).toMatch(/function intakeCanonicalizePostUrl/);
+    // comment id → 'id:' key (the scanner's stable per-post id).
+    expect(src).toMatch(/return 'id:' \+ id\.toLowerCase\(\)/);
+    // author+content fallback matches the handler's 80-char slice.
+    expect(src).toMatch(/slice\(0, 80\)/);
+  });
+
+  it('writes OPP + the shared OPPDEDUPE# sentinel in ONE atomic transaction', () => {
+    expect(fnSlice).toMatch(/new TransactWriteCommand\(/);
+    expect(fnSlice).toMatch(/SK:\s*`OPPDEDUPE#\$\{dedupeKey\}`/);
+    expect(fnSlice).toMatch(/ConditionExpression:\s*'attribute_not_exists\(SK\)'/);
+    // both the sentinel and the OPP item are in the same TransactItems array.
+    expect(fnSlice).toMatch(/TransactItems:\s*\[[\s\S]*Item:\s*oppItem/);
+  });
+
+  it('keys off the comment id so it matches the extension/handler key for the same post', () => {
+    expect(fnSlice).toMatch(/intakeDedupeKey\(\{[\s\S]*postId:\s*lead\.commentId/);
+  });
+
+  it('treats a cancelled transaction (sentinel already reserved) as an already-saved duplicate', () => {
+    expect(fnSlice).toMatch(/TransactionCanceledException'\s*\|\|\s*name === 'ConditionalCheckFailedException'/);
+    // On a dedupe cancel it returns false (skip) — not a thrown error.
+    expect(fnSlice).toMatch(/if \(name === 'TransactionCanceledException'[\s\S]*?return false/);
+  });
+
+  it('a non-dedupe transaction failure still propagates (not swallowed)', () => {
+    expect(fnSlice).toMatch(/throw e;/);
+  });
+
+  it('TransactWriteCommand is imported', () => {
+    expect(src).toMatch(/TransactWriteCommand/);
+  });
+});

@@ -778,13 +778,16 @@ export default function ContentCreatorPage() {
       </div>
 
       <div className="glass-card">
-        <label className="block text-sm font-medium text-slate-300 mb-2">Post Type</label>
+        <label className="block text-sm font-medium text-slate-300 mb-2">Post Type <span className="text-xs font-normal text-slate-500">(optional)</span></label>
+        {/* Post Type is NEVER required. Leaving it on "Auto" lets generation pick a
+            sensible default ('Educational') — users are never blocked by a mandatory
+            selection when creating, saving, scheduling, or posting to groups. */}
         <select
           value={postType}
           onChange={(e) => setPostType(e.target.value)}
           className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
         >
-          <option value="">Select post type...</option>
+          <option value="">Auto (recommended)</option>
           {(currentTrade?.postTypes || []).map((pt) => (
             <option key={pt} value={pt}>{pt}</option>
           ))}
@@ -902,7 +905,9 @@ export default function ContentCreatorPage() {
 
       <button
         onClick={() => handleGenerate()}
-        disabled={loading || !postType || platforms.length === 0}
+        /* Post Type is no longer required to generate — handleGenerate resolves a safe
+           default when none is picked. Only platform selection is required. */
+        disabled={loading || platforms.length === 0}
         className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none btn-shimmer"
       >
         {loading ? '✨ Generating for each platform...' : '✨ Generate Content'}
@@ -1256,18 +1261,21 @@ export default function ContentCreatorPage() {
                 (full-width, large tap target). */}
             {platforms.includes('facebook') && platformContent && (
               <div className="pt-1">
+                {/* Prominent ORANGE primary CTA — Create Post → Start Flocking in one tap.
+                    Carries this prepared post + image straight into the existing Flocks
+                    Copy & Open workflow; no return to the Create dashboard, no reselecting
+                    the post. Today's scheduled flocks are preselected (still changeable). */}
                 <button
                   onClick={() => setShowMassFlock(true)}
-                  className="w-full p-4 bg-gradient-to-r from-amber-500/15 to-orange-500/10 border-2 border-amber-500/40 rounded-xl hover:border-amber-500/60 hover:bg-amber-500/20 transition-all active:scale-[0.99] flex items-center gap-3 text-left"
+                  className="w-full p-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-black rounded-xl shadow-lg shadow-orange-500/25 transition-all active:scale-[0.99] flex items-center gap-3 text-left"
                 >
                   <span className="text-2xl shrink-0">🦅</span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-white">Post to My Flocks</p>
-                    <p className="text-[11px] text-slate-300 mt-0.5">
-                      Pick your Facebook groups and Copy &amp; Open each one with this post — you post it yourself, nothing auto-posts.
+                    <p className="text-base font-extrabold">Post to Groups →</p>
+                    <p className="text-[11px] font-medium text-black/70 mt-0.5">
+                      Copy &amp; Open each Facebook group with this post — you post it yourself, nothing auto-posts.
                     </p>
                   </div>
-                  <span className="text-amber-300 text-lg shrink-0">→</span>
                 </button>
                 {savedGroupCount === 0 && (
                   <button
@@ -1808,6 +1816,19 @@ export default function ContentCreatorPage() {
           readyImageSrc={readyImageSrc}
           onDownloadImage={downloadReadyImage}
           safety={flockSafety}
+          preselectGroupIds={(() => {
+            // Preselect today's INCOMPLETE scheduled flocks: map today's flock calendar
+            // events → saved flock-group ids by link (fallback name). Still changeable in
+            // the select phase; empty match falls back to all valid groups in createSession.
+            try {
+              const saved = JSON.parse(localStorage.getItem(`hawkeye_flock_groups_${user?.sub}`) || '[]');
+              const todayFlocks = todayCalendarEvents.filter((e) => isFlockEvent(e) && !e.completed);
+              return saved
+                .filter((g: { link?: string; name?: string }) =>
+                  todayFlocks.some((e) => (e.link && g.link && e.link === g.link) || (e.title && g.name && e.title === g.name)))
+                .map((g: { id: string }) => g.id);
+            } catch { return []; }
+          })()}
         />
       )}
     </div>

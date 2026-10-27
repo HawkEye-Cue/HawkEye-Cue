@@ -666,6 +666,22 @@ export default function TeamPage() {
         <PillTabs tabs={summitSections.map((s) => ({ id: s.id, label: s.label }))} active={tab} onChange={jumpToSection} />
       </div>
 
+      {/* ── 💰 SALES TRACKER — SALES-FIRST centerpiece ────────────────────────────
+          Moved to the TOP of Summit HQ so the Net-New-Business sales performance graph
+          is the first thing an owner sees (no scrolling past team mgmt / leads / calendar).
+          Renders the exact standalone SalesDashboardPage (same data hooks, team/individual
+          production, folio-filtered Net New Business Premium, attribution) — no sales logic
+          duplicated or rewritten; permissions + team isolation unchanged. Everything else
+          (Scoreboard, Flight Path, Hawk Nests, Calendar, Team Management) now sits BELOW. */}
+      <div id="summit-sales" className="scroll-mt-20 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">💰</span>
+          <h2 className="text-lg font-bold text-white">Team Sales Performance</h2>
+          <span className="text-[11px] text-slate-500">Net New Business Premium · current folio</span>
+        </div>
+        <SalesDashboardPage />
+      </div>
+
       {/* ── 🏔️ SUMMIT SCOREBOARD — the team performance overview at a glance.
           Prominent metric tiles (revenue, sales, active leads, conversion) sit ABOVE the
           two-column workspace so the most important business numbers are immediately
@@ -1532,21 +1548,6 @@ export default function TeamPage() {
 
       </div>{/* end right column */}
 
-      {/* ── Sales & Revenue — the COMPLETE Sales experience embedded in Summit HQ ──
-          Renders the exact standalone SalesDashboardPage component (same data hooks,
-          same team/individual sales, revenue, attribution, reporting) so Summit HQ has
-          inherent feature parity with the standalone /sales page. Spans the full width
-          below the two team columns. Only the presentation location changes; no Sales
-          business logic is duplicated or rewritten. Permissions + team data isolation
-          are enforced by the same backend the standalone page uses. */}
-      <div id="summit-sales" className="lg:col-span-2 space-y-3">
-        <div className="flex items-center gap-2 pt-2">
-          <span className="text-xl">💰</span>
-          <h2 className="text-lg font-bold text-white">Sales Tracker</h2>
-          <span className="text-[11px] text-slate-500">Team &amp; individual production</span>
-        </div>
-        <SalesDashboardPage />
-      </div>
     </div>
 
     {/* 🪺 Hawk Nest workspace — a teammate's read-only pipeline slide-over, opened from a

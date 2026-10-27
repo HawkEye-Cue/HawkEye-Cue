@@ -39,6 +39,7 @@ export default function MassFlockPosting({
   readyImageSrc,
   onDownloadImage,
   safety,
+  preselectGroupIds,
 }: {
   onClose: () => void;
   // Returns the current prepared post text from the composer (empty string if none).
@@ -49,6 +50,10 @@ export default function MassFlockPosting({
   onDownloadImage: () => void;
   // Flock Safety Guard — shared cross-workflow activity log + pause state.
   safety: UseFlockSafety;
+  // Optional: preselect these group ids on a FRESH session (e.g. today's scheduled
+  // flocks). The user can still change the selection in the select phase. Ignored when
+  // resuming an in-progress session (resume preserves prior progress).
+  preselectGroupIds?: string[];
 }) {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -66,8 +71,9 @@ export default function MassFlockPosting({
 
   const { valid: validGroups, invalid: invalidGroups } = useMemo(() => partitionGroups(allGroups), [allGroups]);
 
-  // Resume an existing session if present, else start fresh (all valid groups selected).
-  const [session, setSession] = useState(() => loadSession(user?.sub) || createSession(allGroups));
+  // Resume an existing session if present, else start fresh. A fresh session preselects
+  // today's scheduled flocks (preselectGroupIds) when provided, else all valid groups.
+  const [session, setSession] = useState(() => loadSession(user?.sub) || createSession(allGroups, preselectGroupIds));
   const [phase, setPhase] = useState<'select' | 'run'>(() => (loadSession(user?.sub) ? 'run' : 'select'));
   const [acting, setActing] = useState(false); // guards against double-clicks
 

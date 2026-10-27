@@ -1,7 +1,7 @@
 'use strict';
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, QueryCommand, PutCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, QueryCommand, PutCommand, UpdateCommand, DeleteCommand, TransactWriteCommand } = require('@aws-sdk/lib-dynamodb');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const { randomUUID } = require('crypto');
 
@@ -453,16 +453,21 @@ async function handleCreateDeal(userId, body) {
 
   const dealId = randomUUID();
   const now = body.createdAt || new Date().toISOString();
+  // Optional idempotency key supplied by the client (one value per modal submission).
+  // Prevents accidental DUPLICATE submissions (double-click / retry) WITHOUT blocking
+  // legitimate additional sales for the same client (each new submission = new key).
+  const clientRequestId = (body.clientRequestId || '').toString().trim() || null;
 
   // For bundles, auto-sum the value from bundle items
   const dealValue = (policyType === 'Bundle' && Array.isArray(bundleItems))
     ? bundleItems.reduce((sum, i) => sum + (parseFloat(i.value) || 0), 0)
     : (value || 0);
 
-  // One logged Sale per originating Cue. Cue-originated deals use a deterministic SK
-  // so a conditional write cannot create a duplicate. Manual deals keep the
-  // timestamp-based SK (no dedupe needed, multiple allowed).
-  const sk = opportunityId ? `DEAL#CUE#${opportunityId}` : `DEAL#${now}#${dealId}`;
+  // Every Sale is its OWN record with a unique timestamp+uuid SK — so one Client can have
+  // MULTIPLE legitimate sales (each retains its own amount, date, folio, soldBy, and
+  // opportunityId). Accidental duplicates are prevented by the clientRequestId sentinel
+  // below, NOT by collapsing to one deal per Cue.
+  const sk = `DEAL#${now}#${dealId}`;
 
   const item = {
     PK: `USER#${userId}`,
@@ -489,29 +494,57 @@ async function handleCreateDeal(userId, body) {
     sourceUrl,
     sourceGroup,
     keyword,
+    clientRequestId,
   };
 
-  try {
-    await dynamo.send(new PutCommand({
-      TableName: TABLE_NAME,
-      Item: item,
-      // Idempotency guard for Cue-originated deals: fail if one already exists for
-      // this opportunity. Manual deals have a unique timestamp SK and never collide.
-      ...(opportunityId ? { ConditionExpression: 'attribute_not_exists(SK)' } : {}),
-    }));
-  } catch (e) {
-    if (opportunityId && e.name === 'ConditionalCheckFailedException') {
-      // A Sale was already logged for this Cue. Return the existing deal, do NOT
-      // create a duplicate and do NOT fire a second team notification.
-      const existing = await dynamo.send(new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND SK = :sk',
-        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': sk },
+  if (clientRequestId) {
+    // Atomic: write the Deal AND a per-user idempotency sentinel together. A retry/
+    // double-click reuses the same clientRequestId → the sentinel's attribute_not_exists
+    // condition cancels the whole transaction → we return the already-logged deal with NO
+    // duplicate and NO second team notification. A genuinely new sale uses a new
+    // clientRequestId, so additional sales for the same client are never blocked.
+    try {
+      await dynamo.send(new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: TABLE_NAME,
+              Item: { PK: `USER#${userId}`, SK: `SALEIDEM#${clientRequestId}`, dealId, dealSK: sk, createdAt: now },
+              ConditionExpression: 'attribute_not_exists(SK)',
+            },
+          },
+          { Put: { TableName: TABLE_NAME, Item: item } },
+        ],
       }));
-      const prior = (existing.Items || [])[0];
-      return ok({ ...(prior ? mapDealItem(prior) : { id: dealId, name: name.trim() }), alreadyLogged: true });
+    } catch (e) {
+      const nm = e && (e.name || e.code);
+      if (nm === 'TransactionCanceledException' || nm === 'ConditionalCheckFailedException') {
+        // Duplicate submission of the SAME sale. Return the prior deal, no new write.
+        let prior = null;
+        try {
+          const sentinel = await dynamo.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'PK = :pk AND SK = :sk',
+            ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': `SALEIDEM#${clientRequestId}` },
+          }));
+          const priorSK = (sentinel.Items || [])[0]?.dealSK;
+          if (priorSK) {
+            const d = await dynamo.send(new QueryCommand({
+              TableName: TABLE_NAME,
+              KeyConditionExpression: 'PK = :pk AND SK = :sk',
+              ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': priorSK },
+            }));
+            prior = (d.Items || [])[0] || null;
+          }
+        } catch (_) { /* best-effort */ }
+        return ok({ ...(prior ? mapDealItem(prior) : { id: dealId, name: name.trim() }), alreadyLogged: true });
+      }
+      throw e;
     }
-    throw e;
+  } else {
+    // No idempotency key (e.g. legacy/manual callers): plain Put. Unique SK → multiple
+    // sales allowed; behavior unchanged for callers that don't send clientRequestId.
+    await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
   }
 
   // If deal is created as 'won', notify team (only on a genuinely new deal).

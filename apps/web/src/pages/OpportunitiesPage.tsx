@@ -156,10 +156,17 @@ export default function OpportunitiesPage() {
   // "Sale logged" — no localStorage flags. We hold the set of opportunityIds that
   // already have a Deal, derived from GET /sales/deals.
   const [loggedSaleOppIds, setLoggedSaleOppIds] = useState<Set<string>>(new Set());
+  // Legacy won deals were logged WITHOUT an opportunityId (manual Sales entries), so an
+  // id-only match wrongly shows "No sale yet" for real clients. We also match by contact
+  // name (normalized) as a backward-compatible fallback. Name match is display-only.
+  const [loggedSaleNames, setLoggedSaleNames] = useState<Set<string>>(new Set());
   // The Client Cue currently being logged as a Sale (opens the Log Sale modal).
   const [logSaleLead, setLogSaleLead] = useState<Opportunity | null>(null);
   const [logSaleValue, setLogSaleValue] = useState('');
   const [logSaleDate, setLogSaleDate] = useState('');
+  // Per-submission idempotency key: minted once when the modal opens so a double-click or
+  // retry sends the SAME key (server dedupes), while each NEW sale gets a fresh key.
+  const [logSaleReqId, setLogSaleReqId] = useState('');
   const [loggingSale, setLoggingSale] = useState(false);
   const [flightProjectionEnabled, setFlightProjectionEnabled] = useState<boolean>(() => {
     return localStorage.getItem(`hawkeye_flight_enabled_${user?.sub}`) !== 'false';
@@ -480,10 +487,15 @@ export default function OpportunitiesPage() {
       const client = await buildClient();
       const { deals } = await client.getDeals();
       const linked = new Set<string>();
+      const names = new Set<string>();
       for (const d of deals || []) {
         if (d.opportunityId) linked.add(d.opportunityId);
+        // Only won deals count as a logged Sale for the "Sale logged" badge.
+        const nm = ((d as any).contactName || (d as any).name || '').trim().toLowerCase();
+        if (nm && (d.stage === 'won' || !(d as any).stage)) names.add(nm);
       }
       setLoggedSaleOppIds(linked);
+      setLoggedSaleNames(names);
     } catch { /* best-effort; cards fall back to "no sale logged" */ }
   }
 
@@ -660,10 +672,13 @@ export default function OpportunitiesPage() {
     return map[(platform || '').toLowerCase()] || 'extension-detected';
   }
 
-  // Open the Log Sale modal for a converted Client Cue, pre-filling what we know.
+  // Open the Log Sale modal for a Cue at ANY active stage, pre-filling what we know.
+  // On success the lead is auto-converted to Client (see submitLogSale).
   function openLogSale(lead: Opportunity) {
     setLogSaleLead(lead);
     setLogSaleValue('');
+    // Fresh idempotency key per opened sale → double-click/retry is deduped, a new sale is not.
+    setLogSaleReqId((globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`));
     const now = new Date();
     setLogSaleDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
   }
@@ -696,8 +711,15 @@ export default function OpportunitiesPage() {
         leadSourceNote: noteParts.join(' · '),
         soldBy: user?.email || '',
         createdAt: logSaleDate ? new Date(logSaleDate + 'T12:00:00').toISOString() : undefined,
-        // Durable attribution (D1: no sourceContent).
+        // Attribute production to the folio of the ACTUAL sale date (YYYY-MM), not the
+        // current month. Without this the server defaults folio to today, misattributing
+        // back-dated sales. Reuses the existing sale-date picker value.
+        folio: logSaleDate ? logSaleDate.slice(0, 7) : undefined,
+        // Durable attribution (D1: no sourceContent). opportunityId links every sale to
+        // the SAME client; multiple sales per client are allowed (each is its own deal).
         opportunityId: lead.id,
+        // Idempotency key: dedupes accidental duplicate submissions of THIS sale only.
+        clientRequestId: logSaleReqId || undefined,
         sourcePlatform: lead.sourcePlatform || null,
         sourceUrl: lead.sourceUrl || null,
         sourceGroup: group || null,
@@ -705,10 +727,26 @@ export default function OpportunitiesPage() {
       });
       // Source of truth: mark this Cue as having a logged Sale from the server response.
       setLoggedSaleOppIds((prev) => new Set(prev).add(lead.id));
+      // Auto-convert to Client ONLY after a successful sale (this line is unreachable if
+      // createDeal threw). A sale means the prospect is now a customer. Idempotent: if the
+      // lead is already converted we skip the status write. Never creates a duplicate client
+      // (same OPP record, status flip only) and never logs a second deal (server dedupes).
+      if (lead.status !== 'converted') {
+        try {
+          await client.request('PUT', `/opportunities/${lead.id}/status`, { status: 'converted' });
+          setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, status: 'converted' as any } : l));
+          setStats((prev) => ({
+            ...prev,
+            converted: prev.converted + 1,
+            new: Math.max(0, prev.new - (lead.status === 'new' ? 1 : 0)),
+            followedUp: Math.max(0, prev.followedUp - (lead.status === 'followed_up' ? 1 : 0)),
+          }));
+        } catch { /* sale saved; conversion can be retried via the board if it fails */ }
+      }
       if ((res as any).alreadyLogged) {
         showToast('✓ Sale already logged for this Cue');
       } else {
-        showToast('💵 Sale logged');
+        showToast('💵 Sale logged — moved to Clients');
       }
       setLogSaleLead(null);
     } catch {
@@ -1336,7 +1374,7 @@ export default function OpportunitiesPage() {
               onMoveToClient={moveToWon}
               onLogSale={openLogSale}
               onOpenDetail={(lead) => setSelectedLead(lead)}
-              hasLoggedSale={(lead) => loggedSaleOppIds.has(lead.id)}
+              hasLoggedSale={(lead) => loggedSaleOppIds.has(lead.id) || loggedSaleNames.has((lead.sourceAuthor || '').trim().toLowerCase())}
               onPersistStage={async (id, stage) => {
                 // Persist the CRM sub-stage server-side so it syncs across devices.
                 // Uses the existing opportunities status endpoint with an additive,

@@ -110,6 +110,8 @@ export default function OpportunitiesPage() {
   // OUT of `leads` so they never appear in the pipeline columns/counts. They surface in a
   // dedicated Inbox panel until the user clicks "Add to Pipeline" (→ moves into `leads`).
   const [inboxLeads, setInboxLeads] = useState<Opportunity[]>([]);
+  // Opportunity Inbox collapse state (persisted). Always rendered; collapsible to reduce clutter.
+  const [inboxCollapsed, setInboxCollapsed] = useState<boolean>(() => localStorage.getItem('hawkeye_inbox_collapsed') === 'true');
   const [stats, setStats] = useState<OpportunityStats>({ total: 0, inbox: 0, new: 0, followedUp: 0, converted: 0 });
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -1253,44 +1255,56 @@ export default function OpportunitiesPage() {
           )}
 
           {/* ─── Opportunity Inbox (review-first) ─────────────────────────────
-              Auto-detected opportunities land here, NOT in the pipeline, until the user
-              explicitly adds them. Keeps the New Leads column/count clean. */}
-          {inboxLeads.length > 0 && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 sm:p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">📥</span>
-                  <h3 className="text-sm font-bold text-amber-200">Opportunity Inbox</h3>
-                  <span className="text-xs font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">{inboxLeads.length}</span>
-                </div>
-                <span className="text-[11px] text-slate-400">Auto-detected — review before they enter your pipeline</span>
+              Always visible + collapsible. Auto-detected opportunities land here, NOT in
+              the pipeline, until the user explicitly adds them. Keeps New Leads clean. */}
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 sm:p-4">
+            <button
+              type="button"
+              onClick={() => { const next = !inboxCollapsed; setInboxCollapsed(next); localStorage.setItem('hawkeye_inbox_collapsed', String(next)); }}
+              className="w-full flex items-center justify-between gap-2"
+              aria-expanded={!inboxCollapsed}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-slate-400 text-xs">{inboxCollapsed ? '▸' : '▾'}</span>
+                <span className="text-lg">📥</span>
+                <h3 className="text-sm font-bold text-amber-200">Opportunity Inbox</h3>
+                <span className="text-xs font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">{inboxLeads.length}</span>
               </div>
-              <ul className="space-y-2">
-                {inboxLeads.map((lead) => (
-                  <li key={lead.id} className="flex items-center gap-3 rounded-lg bg-black/30 border border-white/10 p-2.5">
-                    <span className="text-base shrink-0">{platformIcons[lead.sourcePlatform] || '🌐'}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-white truncate">{displayAuthorOrUnavailable(lead.sourceAuthor)}</p>
-                      {lead.sourceContent && <p className="text-[11px] text-slate-400 truncate">{lead.sourceContent}</p>}
-                    </div>
-                    <button
-                      onClick={() => addToPipeline(lead)}
-                      className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-black text-xs font-semibold transition-colors"
-                    >
-                      ➕ Add to Pipeline
-                    </button>
-                    <button
-                      onClick={() => dismissInboxLead(lead)}
-                      className="shrink-0 text-xs text-slate-400 hover:text-red-300 px-1"
-                      title="Dismiss — do not add to pipeline"
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+              <span className="text-[11px] text-slate-400 hidden sm:inline">Auto-detected — review before they enter your pipeline</span>
+            </button>
+            {!inboxCollapsed && (
+              inboxLeads.length > 0 ? (
+                <ul className="space-y-2 mt-3">
+                  {inboxLeads.map((lead) => (
+                    <li key={lead.id} className="flex items-center gap-3 rounded-lg bg-black/30 border border-white/10 p-2.5">
+                      <span className="text-base shrink-0">{platformIcons[lead.sourcePlatform] || '🌐'}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate">{displayAuthorOrUnavailable(lead.sourceAuthor)}</p>
+                        {lead.sourceContent && <p className="text-[11px] text-slate-400 truncate">{lead.sourceContent}</p>}
+                      </div>
+                      <button
+                        onClick={() => addToPipeline(lead)}
+                        className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-black text-xs font-semibold transition-colors"
+                      >
+                        ➕ Add to Pipeline
+                      </button>
+                      <button
+                        onClick={() => dismissInboxLead(lead)}
+                        className="shrink-0 text-xs text-slate-400 hover:text-red-300 px-1"
+                        title="Dismiss — do not add to pipeline"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[13px] text-slate-400 mt-3 italic">
+                  Your next opportunity could be one scroll away. New discoveries will appear here for your review.
+                </p>
+              )
+            )}
+          </div>
 
           {/* CRM board vs classic view toggle */}
           <div className="flex items-center justify-end">

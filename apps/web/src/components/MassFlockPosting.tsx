@@ -40,6 +40,7 @@ export default function MassFlockPosting({
   onDownloadImage,
   safety,
   preselectGroupIds,
+  autoStart,
 }: {
   onClose: () => void;
   // Returns the current prepared post text from the composer (empty string if none).
@@ -54,6 +55,12 @@ export default function MassFlockPosting({
   // flocks). The user can still change the selection in the select phase. Ignored when
   // resuming an in-progress session (resume preserves prior progress).
   preselectGroupIds?: string[];
+  // Optional: skip the intermediate group-SELECT screen and land DIRECTLY on the first
+  // group (run phase) when a fresh session already has ≥1 valid selected group. Used by
+  // the Create "Start Today's Flocks" one-click flow. If no valid groups are selected we
+  // still fall back to the select screen (which surfaces the actionable empty/invalid
+  // state) rather than silently doing nothing.
+  autoStart?: boolean;
 }) {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -71,10 +78,33 @@ export default function MassFlockPosting({
 
   const { valid: validGroups, invalid: invalidGroups } = useMemo(() => partitionGroups(allGroups), [allGroups]);
 
-  // Resume an existing session if present, else start fresh. A fresh session preselects
-  // today's scheduled flocks (preselectGroupIds) when provided, else all valid groups.
-  const [session, setSession] = useState(() => loadSession(user?.sub) || createSession(allGroups, preselectGroupIds));
-  const [phase, setPhase] = useState<'select' | 'run'>(() => (loadSession(user?.sub) ? 'run' : 'select'));
+  // Today's matched scheduled groups = the preselect ids intersected with valid (linked)
+  // groups. For the one-click autoStart flow we use ONLY these — never a fall back to all
+  // saved groups — so "Start Today's Flocks" can never silently post to unrelated groups.
+  const todaysMatchedIds = useMemo(
+    () => (preselectGroupIds || []).filter((id) => validGroups.some((g) => g.id === id)),
+    [preselectGroupIds, validGroups],
+  );
+  const canAutoStart = !!autoStart && todaysMatchedIds.length > 0;
+
+  // Resume an existing session if present, else start fresh.
+  //  • autoStart with ≥1 matched today's group → a session scoped to EXACTLY those groups.
+  //  • otherwise → the normal fresh session (preselect-with-all-valid-fallback) shown on
+  //    the select screen so the user can choose manually.
+  const [session, setSession] = useState(() =>
+    loadSession(user?.sub)
+    || (canAutoStart
+        ? createSession(allGroups, todaysMatchedIds)   // strict: only today's matched groups
+        : createSession(allGroups, preselectGroupIds)), // select-screen default
+  );
+  const [phase, setPhase] = useState<'select' | 'run'>(() => {
+    if (loadSession(user?.sub)) return 'run'; // resume an in-progress session
+    // One-click Create flow: land on the first group ONLY when today's scheduled groups
+    // matched. If nothing matched, fall through to the select screen (actionable — the
+    // empty/invalid state is surfaced there), never a silent all-groups post.
+    if (canAutoStart) return 'run';
+    return 'select';
+  });
   const [acting, setActing] = useState(false); // guards against double-clicks
 
   // Persist session on every change (device-specific).
@@ -192,6 +222,15 @@ export default function MassFlockPosting({
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {/* Clear fallback when "Start Today's Flocks" found no scheduled groups for
+                today: tell the user and let them pick manually — never silently post to
+                all saved groups. */}
+            {autoStart && todaysMatchedIds.length === 0 && validGroups.length > 0 && (
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <p className="text-[11px] font-bold text-amber-300">No flocks scheduled for today</p>
+                <p className="text-[11px] text-slate-300 mt-0.5">Pick the groups you want to post to below, then start — or schedule today's flocks on your calendar.</p>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-white">{selectedCount} of {validGroups.length} groups selected</p>
               <div className="flex gap-2">

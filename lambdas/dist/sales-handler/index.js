@@ -657,6 +657,117 @@ async function handleGetStats(userId) {
   return ok({ stats });
 }
 
+// ─── Monthly sales goals ────────────────────────────────────────────────────
+// Goals are stored per USER + folio: PK=USER#<userId>, SK=SALEGOAL#<YYYY-MM>. One item
+// per user+folio (PutItem overwrites → no duplicates, repeated saves are safe). Folio
+// scoping guarantees editing one month never affects another. amount is a nonnegative
+// number. No invented defaults — a missing item means "no goal set".
+const FOLIO_RE = /^\d{4}-\d{2}$/;
+function validGoalAmount(v) {
+  if (v === null || v === undefined || v === '') return { ok: false };
+  const n = Number(v);
+  if (!isFinite(n) || n < 0) return { ok: false };
+  return { ok: true, value: Math.round(n) };
+}
+
+// Resolve the caller's team context: { teamId, isAdmin, members:[{userId,email}] }.
+// Reuses the existing TEAM_ADMIN / TEAM_MEMBER / TEAM#<id>/MEMBER# / INFO patterns.
+async function resolveTeamContext(userId) {
+  const { GetCommand } = require('@aws-sdk/lib-dynamodb');
+  let teamId = null; let isAdmin = false;
+  const adminRes = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME, KeyConditionExpression: 'PK = :pk AND SK = :sk',
+    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_ADMIN' },
+  }));
+  if ((adminRes.Items || [])[0]) { teamId = adminRes.Items[0].teamId; isAdmin = true; }
+  if (!teamId) {
+    const memRes = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME, KeyConditionExpression: 'PK = :pk AND SK = :sk',
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'TEAM_MEMBER' },
+    }));
+    if ((memRes.Items || [])[0]) teamId = memRes.Items[0].teamId;
+  }
+  if (!teamId) return { teamId: null, isAdmin: false, members: [] };
+  const membersRes = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME, KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: { ':pk': `TEAM#${teamId}`, ':sk': 'MEMBER#' },
+  }));
+  const members = (membersRes.Items || []).map((m) => ({ userId: m.userId, email: m.email || '' }));
+  // Owner-inclusion backfill (same as team-win): ensure the admin/owner is listed.
+  try {
+    const infoRes = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `TEAM#${teamId}`, SK: 'INFO' } }));
+    const ownerUserId = infoRes.Item?.adminUserId || null;
+    if (ownerUserId && !members.some((m) => m.userId === ownerUserId)) {
+      members.push({ userId: ownerUserId, email: infoRes.Item?.adminEmail || '' });
+    }
+  } catch (e) { /* non-fatal */ }
+  return { teamId, isAdmin, members };
+}
+
+async function getGoal(userId, folio) {
+  const { GetCommand } = require('@aws-sdk/lib-dynamodb');
+  const res = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: `SALEGOAL#${folio}` } }));
+  return res.Item ? { amount: res.Item.amount, folio, updatedAt: res.Item.updatedAt || null } : null;
+}
+
+// GET /sales/goal?folio=YYYY-MM — the caller's own goal for a folio.
+async function handleGetGoal(userId, folio) {
+  if (!FOLIO_RE.test(folio || '')) return err(400, 'INVALID_FOLIO', 'folio must be YYYY-MM');
+  const g = await getGoal(userId, folio);
+  return ok({ folio, amount: g ? g.amount : null });
+}
+
+// PUT /sales/goal { folio, amount } — set the caller's OWN goal.
+async function handleSetOwnGoal(userId, body) {
+  const folio = (body.folio || '').toString();
+  if (!FOLIO_RE.test(folio)) return err(400, 'INVALID_FOLIO', 'folio must be YYYY-MM');
+  const v = validGoalAmount(body.amount);
+  if (!v.ok) return err(400, 'INVALID_GOAL', 'amount must be a nonnegative number');
+  const now = new Date().toISOString();
+  await dynamo.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: { PK: `USER#${userId}`, SK: `SALEGOAL#${folio}`, amount: v.value, folio, setBy: userId, updatedAt: now },
+  }));
+  return ok({ folio, amount: v.value });
+}
+
+// GET /sales/team-goals?folio=YYYY-MM — every team member's goal for a folio + totals.
+async function handleGetTeamGoals(userId, folio) {
+  if (!FOLIO_RE.test(folio || '')) return err(400, 'INVALID_FOLIO', 'folio must be YYYY-MM');
+  const ctx = await resolveTeamContext(userId);
+  if (!ctx.teamId) return ok({ folio, members: [], teamGoal: 0, incompleteCount: 0, isAdmin: false });
+  const members = [];
+  let teamGoal = 0; let incompleteCount = 0;
+  for (const m of ctx.members) {
+    const g = await getGoal(m.userId, folio);
+    const amount = g ? g.amount : null;
+    if (amount === null) incompleteCount++; else teamGoal += amount;
+    members.push({ userId: m.userId, email: m.email, amount });
+  }
+  return ok({ folio, members, teamGoal, incompleteCount, isAdmin: ctx.isAdmin });
+}
+
+// PUT /sales/team-goals { targetUserId, folio, amount } — ADMIN-only: set a member's goal.
+async function handleSetTeamMemberGoal(userId, body) {
+  const folio = (body.folio || '').toString();
+  const targetUserId = (body.targetUserId || '').toString();
+  if (!FOLIO_RE.test(folio)) return err(400, 'INVALID_FOLIO', 'folio must be YYYY-MM');
+  if (!targetUserId) return err(400, 'INVALID_INPUT', 'targetUserId is required');
+  const v = validGoalAmount(body.amount);
+  if (!v.ok) return err(400, 'INVALID_GOAL', 'amount must be a nonnegative number');
+  const ctx = await resolveTeamContext(userId);
+  // Authorization: caller must be an admin of a team that CONTAINS the target member.
+  if (!ctx.isAdmin || !ctx.members.some((m) => m.userId === targetUserId)) {
+    return err(403, 'FORBIDDEN', 'Only a team admin can set goals for their team members');
+  }
+  const now = new Date().toISOString();
+  await dynamo.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: { PK: `USER#${targetUserId}`, SK: `SALEGOAL#${folio}`, amount: v.value, folio, setBy: userId, updatedAt: now },
+  }));
+  return ok({ folio, targetUserId, amount: v.value });
+}
+
 exports.handler = async (event) => {
   try {
     const method = event.requestContext?.http?.method ?? event.httpMethod;
@@ -676,6 +787,24 @@ exports.handler = async (event) => {
       return handleCreateDeal(userId, body);
     }
     if (method === 'GET' && path === '/sales/stats') return handleGetStats(userId);
+
+    // ─── Monthly sales goals ──────────────────────────────────────────────
+    if (method === 'GET' && path === '/sales/goal') {
+      const folio = event.queryStringParameters?.folio || '';
+      return handleGetGoal(userId, folio);
+    }
+    if (method === 'PUT' && path === '/sales/goal') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      return handleSetOwnGoal(userId, body);
+    }
+    if (method === 'GET' && path === '/sales/team-goals') {
+      const folio = event.queryStringParameters?.folio || '';
+      return handleGetTeamGoals(userId, folio);
+    }
+    if (method === 'PUT' && path === '/sales/team-goals') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      return handleSetTeamMemberGoal(userId, body);
+    }
 
     // GET /sales/team-emails
     if (method === 'GET' && path === '/sales/team-emails') {

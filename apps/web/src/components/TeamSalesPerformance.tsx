@@ -13,6 +13,7 @@ export interface TeamSalesRow {
   sales: number;          // completed (won) revenue in the selected folio
   deals: number;          // completed deal count in the selected folio
   goal?: number | null;   // monthly goal for this folio (optional)
+  userId?: string;        // optional stable id used by goal-edit callbacks
 }
 
 export interface TeamSalesPerformanceProps {

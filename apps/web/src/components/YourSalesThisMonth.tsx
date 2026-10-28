@@ -31,20 +31,44 @@ function folioLabel(key: string): string {
 
 export default function YourSalesThisMonth({ getToken, onOpenTeam, showTeamShortcut }: Props) {
   const [deals, setDeals] = useState<Deal[] | null>(null);
+  const [goal, setGoal] = useState<number | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [goalInput, setGoalInput] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [goalErr, setGoalErr] = useState('');
   const folio = currentFolioKey();
+
+  function makeClient(token: string | null) {
+    return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+  }
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const token = await getToken();
-        const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-        const { deals: d } = await client.getDeals();
-        if (alive) setDeals(d || []);
-      } catch { if (alive) setDeals([]); }
+        const client = makeClient(token);
+        const [dealsRes, goalRes] = await Promise.all([
+          client.getDeals().catch(() => ({ deals: [] as Deal[] })),
+          client.getSalesGoal(folio).catch(() => ({ folio, amount: null })),
+        ]);
+        if (alive) { setDeals(dealsRes.deals || []); setGoal(goalRes.amount); }
+      } catch { if (alive) { setDeals([]); setGoal(null); } }
     })();
     return () => { alive = false; };
-  }, [getToken]);
+  }, [getToken, folio]);
+
+  async function saveGoal() {
+    const n = Number(goalInput);
+    if (goalInput.trim() === '' || !isFinite(n) || n < 0) { setGoalErr('Enter a nonnegative number'); return; }
+    setSaving(true); setGoalErr('');
+    try {
+      const token = await getToken();
+      const res = await makeClient(token).setSalesGoal(folio, n);
+      setGoal(res.amount); setEditing(false);
+    } catch { setGoalErr('Could not save goal'); }
+    finally { setSaving(false); }
+  }
 
   const { total, count, dailyCumulative, daysInMonth } = useMemo(() => {
     const now = new Date();
@@ -89,21 +113,54 @@ export default function YourSalesThisMonth({ getToken, onOpenTeam, showTeamShort
         <p className="text-xs text-slate-500 py-6 text-center">Loading your sales…</p>
       ) : (
         <>
-          <div className="flex items-end justify-between gap-3 mb-3">
+          <div className="flex items-end justify-between gap-3 mb-2">
             <div>
               <p className="text-2xl font-extrabold text-amber-300 leading-none">{money(total)}</p>
               <p className="text-[11px] text-slate-400 mt-1">{count} completed deal{count === 1 ? '' : 's'}</p>
             </div>
-            {/* Goal: Phase 2 (server-persisted). No invented default; no fake percentage. */}
-            <button
-              className="text-[11px] text-amber-300 hover:text-amber-200 underline shrink-0"
-              title="Monthly goals arrive in the next update"
-              disabled
-              style={{ opacity: 0.7, cursor: 'default' }}
-            >
-              Set Your Monthly Goal
-            </button>
+            {!editing && (
+              goal && goal > 0 ? (
+                <button onClick={() => { setGoalInput(String(goal)); setEditing(true); }} className="text-[11px] text-amber-300 hover:text-amber-200 underline shrink-0">Edit goal</button>
+              ) : (
+                <button onClick={() => { setGoalInput(''); setEditing(true); }} className="text-[11px] text-amber-300 hover:text-amber-200 underline shrink-0">Set Your Monthly Goal</button>
+              )
+            )}
           </div>
+
+          {/* Goal editor */}
+          {editing && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs text-slate-400">$</span>
+              <input
+                type="number" min={0} inputMode="numeric" value={goalInput}
+                onChange={(e) => setGoalInput(e.target.value)}
+                placeholder="Monthly goal"
+                className="w-28 px-2 py-1 bg-white/5 border border-white/15 rounded-lg text-white text-sm focus:border-amber-500/60 focus:outline-none"
+              />
+              <button onClick={saveGoal} disabled={saving} className="px-2.5 py-1 rounded-md bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
+              <button onClick={() => { setEditing(false); setGoalErr(''); }} className="text-xs text-slate-400 hover:text-white">Cancel</button>
+              {goalErr && <span className="text-[10px] text-red-400">{goalErr}</span>}
+            </div>
+          )}
+
+          {/* Goal progress — only when a goal > 0 is set (no fake percentages). */}
+          {goal && goal > 0 && (() => {
+            const pct = Math.round((total / goal) * 100);
+            const exceeded = total >= goal;
+            const remaining = Math.max(goal - total, 0);
+            const barPct = Math.min(100, Math.max(total > 0 ? 2 : 0, (total / goal) * 100));
+            return (
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] text-slate-400">Goal {money(goal)} · <span className={exceeded ? 'text-green-400 font-bold' : 'text-amber-300 font-bold'}>{pct}%</span></span>
+                  <span className="text-[11px] text-slate-400">{exceeded ? '🎯 Goal Exceeded' : `${money(remaining)} to go`}</span>
+                </div>
+                <div className="h-2.5 rounded-full bg-black/40 overflow-hidden">
+                  <div className={`h-full rounded-full ${exceeded ? 'bg-green-500' : 'bg-gradient-to-r from-amber-500 to-amber-400'}`} style={{ width: `${barPct}%` }} />
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Cumulative sales mini chart (month-to-date). Clearly labeled, mobile-friendly. */}
           <div>

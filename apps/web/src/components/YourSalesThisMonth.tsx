@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Deal } from '@social-lead-gen/shared';
+import { useTeamData } from '../hooks/useTeamData';
 
 interface Props {
   getToken: () => Promise<string | null>;
@@ -96,6 +97,79 @@ export default function YourSalesThisMonth({ getToken, onOpenTeam, showTeamShort
 
   const maxCum = Math.max(1, ...dailyCumulative);
   const todayDay = new Date().getDate();
+
+  // ─── Agency mode (Summit team users with team reporting access) ────────────
+  // Authorized team users see AGENCY totals by default, using the SAME authoritative
+  // team analytics + goals as Summit HQ (so totals match for the same month). Non-team
+  // users never enter this branch (permissions unchanged).
+  const { isInTeam, teamAnalytics, fetchAnalytics } = useTeamData();
+  const [teamGoalTotal, setTeamGoalTotal] = useState<number | null>(null);
+  const [teamIncomplete, setTeamIncomplete] = useState(0);
+
+  // Current calendar month range (agency card is always "this month").
+  const monthRange = useMemo(() => {
+    const n = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    return { start: iso(new Date(n.getFullYear(), n.getMonth(), 1)), end: iso(new Date(n.getFullYear(), n.getMonth() + 1, 0)) };
+  }, []);
+
+  useEffect(() => {
+    if (!isInTeam) return;
+    fetchAnalytics(monthRange.start, monthRange.end);
+    (async () => {
+      try {
+        const token = await getToken();
+        const g = await makeClient(token).getTeamGoals(folio);
+        setTeamGoalTotal(g.teamGoal); setTeamIncomplete(g.incompleteCount);
+      } catch { setTeamGoalTotal(null); }
+    })();
+  }, [isInTeam, monthRange.start, monthRange.end, folio]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── AGENCY CARD (team users) ──────────────────────────────────────────────
+  if (isInTeam) {
+    const agTotal = teamAnalytics?.totalRevenue ?? 0;
+    const agDeals = teamAnalytics?.wonDeals ?? 0;
+    const g = teamGoalTotal ?? 0;
+    const pct = g > 0 ? Math.round((agTotal / g) * 100) : null;
+    const exceeded = g > 0 && agTotal >= g;
+    const remaining = Math.max(g - agTotal, 0);
+    const barPct = Math.min(100, Math.max(agTotal > 0 ? 2 : 0, g > 0 ? (agTotal / g) * 100 : 0));
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-slate-900 to-black p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-bold text-white">Agency Sales This Month</h3>
+            <p className="text-[11px] text-slate-400">{folioLabel(folio)}</p>
+          </div>
+          {onOpenTeam && <button onClick={onOpenTeam} className="text-[11px] text-amber-300 hover:text-amber-200 underline shrink-0">Summit HQ →</button>}
+        </div>
+        <div className="flex items-end justify-between gap-3 mb-2">
+          <div>
+            <p className="text-2xl font-extrabold text-amber-300 leading-none">{money(agTotal)}</p>
+            <p className="text-[11px] text-slate-400 mt-1">{agDeals} completed deal{agDeals === 1 ? '' : 's'} · whole team</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-bold text-white">{g > 0 ? money(g) : '—'}</p>
+            <p className="text-[10px] text-slate-400">Combined goal</p>
+          </div>
+        </div>
+        {g > 0 ? (
+          <>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] text-slate-400"><span className={exceeded ? 'text-green-400 font-bold' : 'text-amber-300 font-bold'}>{pct}%</span> of goal</span>
+              <span className="text-[11px] text-slate-400">{exceeded ? '🎯 Goal Exceeded' : `${money(remaining)} to go`}</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-black/40 overflow-hidden">
+              <div className={`h-full rounded-full ${exceeded ? 'bg-green-500' : 'bg-gradient-to-r from-amber-500 to-amber-400'}`} style={{ width: `${barPct}%` }} />
+            </div>
+          </>
+        ) : (
+          <p className="text-[11px] text-slate-400">Set team goals in Summit HQ to track combined progress.</p>
+        )}
+        <p className="text-[10px] text-slate-500 mt-2">{teamIncomplete > 0 ? `⚠️ ${teamIncomplete} member${teamIncomplete === 1 ? '' : 's'} without a goal (agency goal is incomplete) · ` : ''}Manage goals in Summit HQ.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-slate-900 to-black p-4">

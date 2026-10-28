@@ -46,7 +46,12 @@ export default function SalesDashboardPage() {
   const [trackingMode, setTrackingMode] = useState<'folio' | 'calendar' | 'fiscal'>('folio');
   const [fiscalStart, setFiscalStart] = useState<number>(1); // 1-12
   // The selected timeline window. 'all' | 'month' | 'quarter' | 'annual' | a folio index 'folio:N'
-  const [period, setPeriod] = useState<string>('all');
+  // Default is the CURRENT sales period (current folio in folio mode, else this month),
+  // set once after prefs/folios load — NOT All Time. Users can still pick All Time/history.
+  const [period, setPeriod] = useState<string>('current');
+  const [periodDefaulted, setPeriodDefaulted] = useState(false);
+  // Monthly goals for the selected period's month (YYYY-MM). null = not loaded / All Time.
+  const [goals, setGoals] = useState<{ members: { userId: string; email: string; amount: number | null }[]; teamGoal: number; incompleteCount: number; isAdmin: boolean } | null>(null);
 
   async function buildClient() {
     const token = await getToken();
@@ -100,6 +105,12 @@ export default function SalesDashboardPage() {
   function resolveRange(sel: string): { start?: string; end?: string } {
     const now = new Date();
     const iso = (d: Date) => d.toISOString().slice(0, 10);
+    // 'current' = the current sales period: the newest saved folio in folio mode, else
+    // the current calendar month. Keeps Sales Tracker defaulting to "this month/folio".
+    if (sel === 'current') {
+      if (trackingMode === 'folio' && savedFolios[0]) return { start: savedFolios[0].start, end: savedFolios[0].end };
+      return { start: iso(new Date(now.getFullYear(), now.getMonth(), 1)), end: iso(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
+    }
     // Month is always the current calendar month.
     if (sel === 'month') return { start: iso(new Date(now.getFullYear(), now.getMonth(), 1)), end: iso(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
 
@@ -127,9 +138,23 @@ export default function SalesDashboardPage() {
     return {}; // 'all'
   }
 
+  // Resolve the 'current' default to a concrete dropdown option once prefs/folios load:
+  // the newest folio (folio mode) or 'This Month'. Runs once so manual selections stick.
+  useEffect(() => {
+    if (periodDefaulted || period !== 'current') return;
+    if (loading) return; // wait for prefs/folios
+    if (trackingMode === 'folio') {
+      setPeriod(savedFolios.length > 0 ? 'folio:0' : 'all');
+    } else {
+      setPeriod('month');
+    }
+    setPeriodDefaulted(true);
+  }, [loading, trackingMode, savedFolios.length, period, periodDefaulted]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // If the tracking mode changed and the current selection no longer applies
   // (e.g. a folio index while in calendar mode), fall back to All Time.
   useEffect(() => {
+    if (!periodDefaulted) return; // don't fight the initial default resolution
     const isFolioSel = period.startsWith('folio:');
     if (trackingMode === 'folio' && (period === 'month' || period === 'quarter' || period === 'annual')) setPeriod('all');
     if (trackingMode !== 'folio' && isFolioSel) setPeriod('all');
@@ -141,6 +166,34 @@ export default function SalesDashboardPage() {
     const { start, end } = resolveRange(period);
     fetchAnalytics(start, end);
   }, [isInTeam, period, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch monthly goals for the selected period's month (skip All Time — goals are monthly).
+  useEffect(() => {
+    if (!isInTeam) { setGoals(null); return; }
+    const { start } = resolveRange(period);
+    const folioMonth = period === 'all' || !start ? null : start.slice(0, 7);
+    if (!folioMonth) { setGoals(null); return; }
+    (async () => {
+      try {
+        const client = await buildClient();
+        setGoals(await client.getTeamGoals(folioMonth));
+      } catch { setGoals(null); }
+    })();
+  }, [isInTeam, period, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Admin: set/edit a member's goal for the selected month.
+  async function editMemberGoal(targetUserId: string | undefined, folioMonth: string | null) {
+    if (!targetUserId || !folioMonth) return;
+    const raw = window.prompt('Set monthly sales goal ($) for this member:');
+    if (raw === null) return;
+    const n = Number(raw);
+    if (!isFinite(n) || n < 0) { window.alert('Enter a nonnegative number'); return; }
+    try {
+      const client = await buildClient();
+      await client.setTeamMemberGoal(targetUserId, folioMonth, Math.round(n));
+      setGoals(await client.getTeamGoals(folioMonth));
+    } catch { window.alert('Could not set goal (admins only)'); }
+  }
 
   // ── Personal metrics (solo users / fallback) ─────────────────────────────
   const personal = useMemo(() => {
@@ -251,8 +304,32 @@ export default function SalesDashboardPage() {
           <StatCard icon="📈" label="Win Rate" value={winRate + '%'} />
         </StatGrid>
 
-        {/* Leaderboard — who's producing */}
-        <Panel title="🏆 Team Leaderboard" className="border-amber-500/30">
+        {/* Team Monthly Goal — combined goal = sum of member goals (current folio only). */}
+        {goals && period !== 'all' && (() => {
+          const teamGoal = goals.teamGoal || 0;
+          const pct = teamGoal > 0 ? Math.round((totalRevenue / teamGoal) * 100) : null;
+          const remaining = Math.max(teamGoal - totalRevenue, 0);
+          const exceeded = teamGoal > 0 && totalRevenue >= teamGoal;
+          return (
+            <Panel title="🎯 Team Monthly Goal" className="border-amber-500/30">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                <div><p className="text-base font-bold text-amber-300">{money(totalRevenue)}</p><p className="text-[10px] text-slate-400">Team sales</p></div>
+                <div><p className="text-base font-bold text-white">{teamGoal > 0 ? money(teamGoal) : '—'}</p><p className="text-[10px] text-slate-400">Combined goal</p></div>
+                <div><p className={`text-base font-bold ${exceeded ? 'text-green-400' : 'text-amber-300'}`}>{pct !== null ? `${pct}%` : '—'}</p><p className="text-[10px] text-slate-400">Achieved</p></div>
+                <div><p className="text-base font-bold text-white">{teamGoal > 0 ? money(remaining) : '—'}</p><p className="text-[10px] text-slate-400">Remaining</p></div>
+              </div>
+              {teamGoal > 0 && (
+                <div className="h-2.5 rounded-full bg-black/40 overflow-hidden mt-3">
+                  <div className={`h-full rounded-full ${exceeded ? 'bg-green-500' : 'bg-gradient-to-r from-amber-500 to-amber-400'}`} style={{ width: `${Math.min(100, Math.max(totalRevenue > 0 ? 2 : 0, teamGoal > 0 ? (totalRevenue / teamGoal) * 100 : 0))}%` }} />
+                </div>
+              )}
+              <p className="text-[10px] text-slate-500 text-center mt-2">{wonDeals} completed deal{wonDeals === 1 ? '' : 's'}{goals.incompleteCount > 0 ? ` · ⚠️ ${goals.incompleteCount} member${goals.incompleteCount === 1 ? '' : 's'} without a goal (team goal is incomplete)` : ''}</p>
+            </Panel>
+          );
+        })()}
+
+        {/* Team Sales Performance — per-member completed sales + goal progress. */}
+        <Panel title="🏆 Team Sales Performance" className="border-amber-500/30">
           {members.length === 0 ? (
             <p className="text-xs text-slate-500">No team sales recorded in this period.</p>
           ) : (
@@ -260,33 +337,38 @@ export default function SalesDashboardPage() {
               {members.map((mem, i) => {
                 const uid = userIdByEmail(mem.email);
                 const name = mem.email.split('@')[0];
+                const goalRow = goals?.members.find((g) => g.email === mem.email || (uid && g.userId === uid));
+                const goal = period !== 'all' ? (goalRow?.amount ?? null) : null;
+                const gpct = goal && goal > 0 ? Math.round((mem.revenue / goal) * 100) : null;
+                const gExceeded = !!(goal && goal > 0 && mem.revenue >= goal);
+                const folioMonth = (() => { const { start } = resolveRange(period); return period === 'all' || !start ? null : start.slice(0, 7); })();
                 return (
-                  <button
-                    key={mem.email}
-                    onClick={() => uid && setOpenMember({ userId: uid, name })}
-                    disabled={!uid}
-                    className="w-full text-left group disabled:cursor-default"
-                  >
-                    <DataBar
-                      label={<span className="truncate group-hover:text-white">{i === 0 ? '👑 ' : ''}{name}{uid && <span className="text-amber-400/70 text-[10px] ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity">view →</span>}</span>}
-                      value={mem.revenue}
-                      max={memberMax}
-                      color={BAR_COLORS[i % BAR_COLORS.length]}
-                      suffix={<span>{money(mem.revenue)} · {mem.wonDeals} won</span>}
-                    />
-                  </button>
+                  <div key={mem.email}>
+                    <button
+                      onClick={() => uid && setOpenMember({ userId: uid, name })}
+                      disabled={!uid}
+                      className="w-full text-left group disabled:cursor-default"
+                    >
+                      <DataBar
+                        label={<span className="truncate group-hover:text-white">{i === 0 ? '👑 ' : ''}{name}{uid && <span className="text-amber-400/70 text-[10px] ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity">view →</span>}</span>}
+                        value={mem.revenue}
+                        max={memberMax}
+                        color={BAR_COLORS[i % BAR_COLORS.length]}
+                        suffix={<span>{money(mem.revenue)}{goal && goal > 0 ? <span className="text-slate-500"> / {money(goal)} <span className={gExceeded ? 'text-green-400 font-bold' : 'text-amber-300 font-bold'}>{gpct}%</span></span> : null} · {mem.wonDeals} won</span>}
+                      />
+                    </button>
+                    {period !== 'all' && goals?.isAdmin && (
+                      <div className="flex justify-end mt-0.5">
+                        <button onClick={() => editMemberGoal(uid, folioMonth)} className="text-[10px] text-amber-300 hover:text-amber-200 underline">{goal && goal > 0 ? 'Edit goal' : 'Set Your Monthly Goal'}</button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
           )}
           <p className="text-[10px] text-slate-500 mt-2">Tap a teammate to see their pipeline and clients sold.</p>
         </Panel>
-
-        {timeline.length > 0 && (
-          <Panel title="Team Sales Over Time">
-            <ComboChart points={timeline} />
-          </Panel>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {bySource.length > 0 && (

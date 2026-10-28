@@ -9,6 +9,7 @@ import { peekInvite } from '../lib/pendingInvite';
 import FlightPlan from '../components/FlightPlan';
 import type { FlightTask } from '../components/FlightPlan';
 import SetupProgress from '../components/SetupProgress';
+import YourSalesThisMonth from '../components/YourSalesThisMonth';
 
 interface TodayCounts {
   newOpps: number;
@@ -223,6 +224,9 @@ export default function TodayPage() {
       </div>
 
       <SetupProgress />
+
+      {/* Your Sales This Month — personal completed-sales summary (own data only). */}
+      <YourSalesThisMonth getToken={getToken} showTeamShortcut onOpenTeam={() => navigate('/team')} />
 
       {/* Metrics — KPI card family. Brightest layer in the page's contrast
           hierarchy (lighter than hero + section panels) so numbers pop. */}

@@ -9,6 +9,7 @@ import { HeroHeader, PillTabs, BoldStat, StatGrid, Panel } from '../components/u
 import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
 import HawkPerch from '../components/HawkPerch';
+import TeamSalesPerformance from '../components/TeamSalesPerformance';
 import TeamMemberPipeline from '../components/TeamMemberPipeline';
 import { folioDisplayName } from '../utils/folioName';
 import { consumeInvite } from '../lib/pendingInvite';
@@ -1086,10 +1087,10 @@ export default function TeamPage() {
             <option value="all">All Time</option>
           </select>
           <button
-            onClick={() => { setShowFolioGraph(!showFolioGraph); if (!showFolioGraph && monthlyHistory.length === 0) fetchHistory(); }}
-            className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${showFolioGraph ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+            onClick={() => { setShowFolioGraph(!showFolioGraph); }}
+            className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${showFolioGraph ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
           >
-            📊 Trends
+            📊 Team Sales
           </button>
         </div>
 
@@ -1105,40 +1106,25 @@ export default function TeamPage() {
           />
         )}
 
-        {/* Rolling-13 Production Graph */}
-        {showFolioGraph && (
-          <div className="p-3 bg-slate-800 border border-white/10 rounded-xl">
-            <p className="text-xs font-semibold text-white text-center mb-1">Rolling-13 Premium (Agency)</p>
-            <p className="text-[10px] text-slate-500 text-center mb-3">Monthly production — helps predict future folios</p>
-            {monthlyHistory.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">Loading production history…</p>
-            ) : (
-              (() => {
-                const maxPremium = Math.max(...monthlyHistory.map((m) => m.premium), 1);
-                return (
-                  <div className="flex items-end justify-between gap-1 h-48">
-                    {monthlyHistory.map((m) => {
-                      const heightPct = (m.premium / maxPremium) * 100;
-                      return (
-                        <div key={m.key} className="flex-1 flex flex-col items-center justify-end h-full group relative">
-                          {/* Tooltip */}
-                          <div className="absolute -top-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 border border-white/20 rounded px-1.5 py-0.5 text-[9px] text-white whitespace-nowrap z-10 pointer-events-none">
-                            ${m.premium.toLocaleString()}
-                          </div>
-                          <div
-                            className="w-full bg-blue-500 hover:bg-blue-400 rounded-t transition-all"
-                            style={{ height: `${Math.max(heightPct, 1)}%`, minHeight: m.premium > 0 ? '2px' : '0' }}
-                          />
-                          <span className="text-[7px] text-slate-500 mt-1 -rotate-45 origin-center whitespace-nowrap">{m.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()
-            )}
-          </div>
-        )}
+        {/* Team Sales Performance — horizontal bars of each member's COMPLETED (won) sales
+            for the selected folio. Replaces the old rolling-13 "over time" graph. Goals are
+            hidden for All Time (monthly goals don't apply) and in Phase 1 (goal persistence
+            lands in Phase 2 — until then no misleading percentages are shown). */}
+        {showFolioGraph && stats && (() => {
+          let nameMap: Record<string, string> = {};
+          try { nameMap = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); } catch { /* ignore */ }
+          return (
+            <TeamSalesPerformance
+              hideGoals
+              rows={(stats.members || []).map((m) => ({
+                key: m.userId || m.email,
+                name: nameMap[m.email] || m.email.split('@')[0],
+                sales: m.wonValue || 0,
+                deals: m.wonDeals || 0,
+              }))}
+            />
+          );
+        })()}
         {leadsLoading ? (
           <p className="text-xs text-slate-500">Loading...</p>
         ) : (

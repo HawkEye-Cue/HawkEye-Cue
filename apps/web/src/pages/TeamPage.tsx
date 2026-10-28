@@ -9,6 +9,7 @@ import { HeroHeader, PillTabs, BoldStat, StatGrid, Panel } from '../components/u
 import { ApiClient } from '@social-lead-gen/shared';
 import FolioManager from '../components/FolioManager';
 import HawkPerch from '../components/HawkPerch';
+import TeamSalesPerformance from '../components/TeamSalesPerformance';
 import TeamMemberPipeline from '../components/TeamMemberPipeline';
 import { folioDisplayName } from '../utils/folioName';
 import { consumeInvite } from '../lib/pendingInvite';
@@ -140,6 +141,9 @@ export default function TeamPage() {
   const [teamName, setTeamName] = useState('');
   const [creating, setCreating] = useState(false);
   const [stats, setStats] = useState<{ members: MemberStat[]; totalWonValue: number } | null>(null);
+  // Monthly sales goals for the selected folio (Phase 2). Keyed by userId. null amount =
+  // not set. teamGoals.isAdmin gates editing. Fetched for the current-folio month only.
+  const [teamGoals, setTeamGoals] = useState<{ members: { userId: string; email: string; amount: number | null }[]; teamGoal: number; incompleteCount: number; isAdmin: boolean } | null>(null);
   const [inviteCode, setInviteCode] = useState('');
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState('');
@@ -212,6 +216,31 @@ export default function TeamPage() {
       const statsResult = await client.request<{ members: MemberStat[]; totalWonValue: number }>('GET', url);
       setStats(statsResult);
     } catch { /* ignore */ }
+  }
+
+  // Fetch per-member monthly goals for a folio month (YYYY-MM). Goals are monthly, so we
+  // key off the folio's start month. Skipped for All Time (goals don't apply).
+  async function fetchTeamGoals(folioMonth: string | null) {
+    if (!folioMonth) { setTeamGoals(null); return; }
+    try {
+      const client = await buildClient();
+      const res = await client.getTeamGoals(folioMonth);
+      setTeamGoals(res);
+    } catch { setTeamGoals(null); }
+  }
+
+  // Admin: set/edit a team member's monthly goal for the selected folio month.
+  async function setMemberGoal(targetUserId: string, folioMonth: string) {
+    const raw = window.prompt('Set monthly sales goal ($) for this member:');
+    if (raw === null) return;
+    const n = Number(raw);
+    if (!isFinite(n) || n < 0) { showToast('Enter a nonnegative number'); return; }
+    try {
+      const client = await buildClient();
+      await client.setTeamMemberGoal(targetUserId, folioMonth, Math.round(n));
+      await fetchTeamGoals(folioMonth);
+      showToast('🎯 Goal updated');
+    } catch { showToast('❌ Could not set goal (admins only)'); }
   }
 
   // Fetch the rolling-13 monthly production history
@@ -372,6 +401,13 @@ export default function TeamPage() {
     if (!team) return;
     fetchTeamCalendar();
   }, [teamCalMonth, teamCalYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load monthly goals for the selected folio month (skip for All Time).
+  useEffect(() => {
+    if (!team) return;
+    const folioMonth = selectedFolio === 'all' ? null : (currentFolio ? currentFolio.start.slice(0, 7) : null);
+    fetchTeamGoals(folioMonth);
+  }, [team, selectedFolio, currentFolio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchTeamCalendar() {
     setCalendarLoading(true);
@@ -1086,10 +1122,10 @@ export default function TeamPage() {
             <option value="all">All Time</option>
           </select>
           <button
-            onClick={() => { setShowFolioGraph(!showFolioGraph); if (!showFolioGraph && monthlyHistory.length === 0) fetchHistory(); }}
-            className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${showFolioGraph ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+            onClick={() => { setShowFolioGraph(!showFolioGraph); }}
+            className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${showFolioGraph ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
           >
-            📊 Trends
+            📊 Team Sales
           </button>
         </div>
 
@@ -1105,40 +1141,59 @@ export default function TeamPage() {
           />
         )}
 
-        {/* Rolling-13 Production Graph */}
-        {showFolioGraph && (
-          <div className="p-3 bg-slate-800 border border-white/10 rounded-xl">
-            <p className="text-xs font-semibold text-white text-center mb-1">Rolling-13 Premium (Agency)</p>
-            <p className="text-[10px] text-slate-500 text-center mb-3">Monthly production — helps predict future folios</p>
-            {monthlyHistory.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">Loading production history…</p>
-            ) : (
-              (() => {
-                const maxPremium = Math.max(...monthlyHistory.map((m) => m.premium), 1);
-                return (
-                  <div className="flex items-end justify-between gap-1 h-48">
-                    {monthlyHistory.map((m) => {
-                      const heightPct = (m.premium / maxPremium) * 100;
-                      return (
-                        <div key={m.key} className="flex-1 flex flex-col items-center justify-end h-full group relative">
-                          {/* Tooltip */}
-                          <div className="absolute -top-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 border border-white/20 rounded px-1.5 py-0.5 text-[9px] text-white whitespace-nowrap z-10 pointer-events-none">
-                            ${m.premium.toLocaleString()}
-                          </div>
-                          <div
-                            className="w-full bg-blue-500 hover:bg-blue-400 rounded-t transition-all"
-                            style={{ height: `${Math.max(heightPct, 1)}%`, minHeight: m.premium > 0 ? '2px' : '0' }}
-                          />
-                          <span className="text-[7px] text-slate-500 mt-1 -rotate-45 origin-center whitespace-nowrap">{m.label}</span>
-                        </div>
-                      );
-                    })}
+        {/* Team Sales Performance — horizontal bars of each member's COMPLETED (won) sales
+            for the selected folio. Replaces the old rolling-13 "over time" graph. Goals are
+            hidden for All Time (monthly goals don't apply) and in Phase 1 (goal persistence
+            lands in Phase 2 — until then no misleading percentages are shown). */}
+        {showFolioGraph && stats && (() => {
+          let nameMap: Record<string, string> = {};
+          try { nameMap = JSON.parse(localStorage.getItem('hawkeye_display_names') || '{}'); } catch { /* ignore */ }
+          const isAllTime = selectedFolio === 'all';
+          const folioMonth = currentFolio ? currentFolio.start.slice(0, 7) : null;
+          const goalByUser: Record<string, number | null> = {};
+          if (!isAllTime && teamGoals) for (const g of teamGoals.members) goalByUser[g.userId] = g.amount;
+          const rows = (stats.members || []).map((m) => ({
+            key: m.userId || m.email,
+            name: nameMap[m.email] || m.email.split('@')[0],
+            sales: m.wonValue || 0,
+            deals: m.wonDeals || 0,
+            goal: isAllTime ? null : goalByUser[m.userId] ?? null,
+            userId: m.userId,
+          }));
+          const canEdit = !isAllTime && !!teamGoals?.isAdmin && !!folioMonth;
+          // Team Monthly Goal summary (sum of individual member goals).
+          const teamGoalTotal = teamGoals?.teamGoal || 0;
+          const incomplete = teamGoals?.incompleteCount || 0;
+          const teamSales = stats.totalWonValue || 0;
+          const teamDeals = (stats.members || []).reduce((s, m) => s + (m.wonDeals || 0), 0);
+          const teamPct = teamGoalTotal > 0 ? Math.round((teamSales / teamGoalTotal) * 100) : null;
+          const teamRemaining = Math.max(teamGoalTotal - teamSales, 0);
+          return (
+            <div className="space-y-3">
+              {!isAllTime && teamGoals && (
+                <div className="p-3 sm:p-4 bg-slate-900 border border-amber-500/30 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-bold text-amber-200">Team Monthly Goal</h3>
+                    <span className="text-[11px] text-slate-400">{currentFolio ? folioDisplayName(`${currentFolio.start} to ${currentFolio.end}`) : folioMonth}</span>
                   </div>
-                );
-              })()
-            )}
-          </div>
-        )}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div><p className="text-base font-bold text-amber-300">${teamSales.toLocaleString()}</p><p className="text-[10px] text-slate-400">Team sales</p></div>
+                    <div><p className="text-base font-bold text-white">{teamGoalTotal > 0 ? `$${teamGoalTotal.toLocaleString()}` : '—'}</p><p className="text-[10px] text-slate-400">Combined goal</p></div>
+                    <div><p className={`text-base font-bold ${teamPct !== null && teamPct >= 100 ? 'text-green-400' : 'text-amber-300'}`}>{teamPct !== null ? `${teamPct}%` : '—'}</p><p className="text-[10px] text-slate-400">Achieved</p></div>
+                    <div><p className="text-base font-bold text-white">{teamGoalTotal > 0 ? `$${teamRemaining.toLocaleString()}` : '—'}</p><p className="text-[10px] text-slate-400">Remaining</p></div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 text-center mt-2">{teamDeals} completed deal{teamDeals === 1 ? '' : 's'}{incomplete > 0 ? ` · ⚠️ ${incomplete} member${incomplete === 1 ? '' : 's'} without a goal (team goal is incomplete)` : ''}</p>
+                </div>
+              )}
+              <TeamSalesPerformance
+                hideGoals={isAllTime}
+                canEditGoals={canEdit}
+                onEditGoal={canEdit && folioMonth ? (r) => setMemberGoal((r as any).userId, folioMonth) : undefined}
+                rows={rows}
+              />
+            </div>
+          );
+        })()}
         {leadsLoading ? (
           <p className="text-xs text-slate-500">Loading...</p>
         ) : (

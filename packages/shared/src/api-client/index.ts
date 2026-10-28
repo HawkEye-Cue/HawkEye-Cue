@@ -507,4 +507,22 @@ export class ApiClient {
   async createDeal(input: CreateDealInput): Promise<Deal & { alreadyLogged?: boolean }> {
     return this.request<Deal & { alreadyLogged?: boolean }>('POST', '/sales/deals', input);
   }
+
+  // ── Monthly sales goals (per user + folio YYYY-MM) ──────────────────────────
+  /** The caller's own goal for a folio. amount is null when no goal is set. */
+  async getSalesGoal(folio: string): Promise<{ folio: string; amount: number | null }> {
+    return this.request('GET', `/sales/goal?folio=${encodeURIComponent(folio)}`);
+  }
+  /** Set the caller's own goal for a folio (nonnegative). */
+  async setSalesGoal(folio: string, amount: number): Promise<{ folio: string; amount: number }> {
+    return this.request('PUT', '/sales/goal', { folio, amount });
+  }
+  /** Team members' goals + totals for a folio (admin flag included). */
+  async getTeamGoals(folio: string): Promise<{ folio: string; members: { userId: string; email: string; amount: number | null }[]; teamGoal: number; incompleteCount: number; isAdmin: boolean }> {
+    return this.request('GET', `/sales/team-goals?folio=${encodeURIComponent(folio)}`);
+  }
+  /** Admin-only: set a team member's goal for a folio. */
+  async setTeamMemberGoal(targetUserId: string, folio: string, amount: number): Promise<{ folio: string; targetUserId: string; amount: number }> {
+    return this.request('PUT', '/sales/team-goals', { targetUserId, folio, amount });
+  }
 }

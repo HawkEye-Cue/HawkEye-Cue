@@ -1218,6 +1218,20 @@ export class ApiStack extends cdk.Stack {
       integration: salesIntegration,
       authorizer,
     });
+    // Monthly sales goals (per user + folio). Own goal GET/PUT + team-goals GET/PUT
+    // (admin-authorized inside the handler). Reuses the sales Lambda + table.
+    this.httpApi.addRoutes({
+      path: '/sales/goal',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
+      integration: salesIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/sales/team-goals',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
+      integration: salesIntegration,
+      authorizer,
+    });
     this.httpApi.addRoutes({
       path: '/sales/notify',
       methods: [apigatewayv2.HttpMethod.POST],

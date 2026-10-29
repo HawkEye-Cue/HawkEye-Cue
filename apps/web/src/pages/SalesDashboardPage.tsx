@@ -184,15 +184,23 @@ export default function SalesDashboardPage() {
   }, [trackingMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch team analytics for the selected window whenever it (or team state) changes.
+  // IMPORTANT: wait until the default period has been RESOLVED to a concrete selection
+  // (periodDefaulted && period !== 'current'). Fetching while period is still the
+  // placeholder 'current' fired an early request for the wrong/empty range; if that
+  // stale response resolved AFTER the correct one it overwrote it with $0 (the "shows
+  // $0 until refresh" bug). Gating here means only the correct folio range is ever
+  // requested, and the page shows its loading state until then.
   useEffect(() => {
     if (!isInTeam) return;
+    if (!periodDefaulted || period === 'current') return;
     const { start, end } = resolveRange(period);
     fetchAnalytics(start, end);
-  }, [isInTeam, period, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isInTeam, period, periodDefaulted, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch monthly goals for the selected period's month (skip All Time — goals are monthly).
   useEffect(() => {
     if (!isInTeam) { setGoals(null); return; }
+    if (!periodDefaulted || period === 'current') return; // wait for the resolved folio
     const { start } = resolveRange(period);
     const folioMonth = period === 'all' || !start ? null : start.slice(0, 7);
     if (!folioMonth) { setGoals(null); return; }
@@ -202,7 +210,7 @@ export default function SalesDashboardPage() {
         setGoals(await client.getTeamGoals(folioMonth));
       } catch { setGoals(null); }
     })();
-  }, [isInTeam, period, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isInTeam, period, periodDefaulted, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Admin: set/edit a member's goal for the selected month.
   async function editMemberGoal(targetUserId: string | undefined, folioMonth: string | null) {
@@ -270,7 +278,9 @@ export default function SalesDashboardPage() {
     return { totalRevenue, salesCount, clientCount, avgDeal, winRate, stage, timeline };
   }, [leads, deals, period, savedFolios.length, trackingMode, fiscalStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (loading || (isInTeam && teamLoading)) {
+  // For team users, also wait until the default folio is RESOLVED (periodDefaulted) so we
+  // never flash misleading $0 team metrics before the correct folio's data has loaded.
+  if (loading || (isInTeam && (teamLoading || !periodDefaulted))) {
     return <div className="text-center py-16 text-slate-400 text-sm">Loading sales…</div>;
   }
 

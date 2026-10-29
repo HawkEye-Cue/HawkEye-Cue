@@ -30,6 +30,21 @@ function monthLabel(ym: string): string {
   return MONTHS[mi] || ym;
 }
 
+// Local-date YYYY-MM-DD (no UTC shift — uses the user's calendar day).
+export function localTodayISO(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Index of the folio whose range CONTAINS today (start <= today <= end), or -1 if none.
+// Matches the Today agency card's current-folio definition. Does NOT assume newest/index 0.
+export function currentFolioIndex(folios: { start: string; end: string }[], today: string = localTodayISO()): number {
+  for (let i = 0; i < folios.length; i++) {
+    const f = folios[i];
+    if (f.start && f.end && f.start <= today && today <= f.end) return i;
+  }
+  return -1;
+}
+
 export default function SalesDashboardPage() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
@@ -149,7 +164,10 @@ export default function SalesDashboardPage() {
     if (periodDefaulted || period !== 'current') return;
     if (!folioConfigLoaded) return; // wait until folio-config + prefs actually loaded
     if (trackingMode === 'folio') {
-      setPeriod(savedFolios.length > 0 ? 'folio:0' : 'all');
+      // Select the folio whose date range CONTAINS today's LOCAL date (start <= today <=
+      // end) — NOT the newest (savedFolios is sorted newest-first, so future folios lead).
+      const idx = currentFolioIndex(savedFolios);
+      setPeriod(idx >= 0 ? `folio:${idx}` : 'all'); // documented fallback: All Time if none contains today
     } else {
       setPeriod('month');
     }

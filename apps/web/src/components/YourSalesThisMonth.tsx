@@ -106,24 +106,41 @@ export default function YourSalesThisMonth({ getToken, onOpenTeam, showTeamShort
   const [teamGoalTotal, setTeamGoalTotal] = useState<number | null>(null);
   const [teamIncomplete, setTeamIncomplete] = useState(0);
 
-  // Current calendar month range (agency card is always "this month").
-  const monthRange = useMemo(() => {
-    const n = new Date();
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
-    return { start: iso(new Date(n.getFullYear(), n.getMonth(), 1)), end: iso(new Date(n.getFullYear(), n.getMonth() + 1, 0)) };
-  }, []);
+  // AUTHORITATIVE current folio range — the SAME definition Summit HQ uses: the agency's
+  // folio from /sales/folio-config (NOT the calendar month). This keeps Today's agency
+  // totals identical to Summit HQ's Current Folio. Falls back to the current calendar
+  // month only when no folio is configured. null until resolved.
+  const [folioRange, setFolioRange] = useState<{ start: string; end: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!isInTeam) return;
-    fetchAnalytics(monthRange.start, monthRange.end);
+    let alive = true;
     (async () => {
+      const token = await getToken();
+      const client = makeClient(token);
+      // Resolve the current folio exactly like Summit HQ (folio-config, else calendar month).
+      let range: { start: string; end: string; name: string };
       try {
-        const token = await getToken();
-        const g = await makeClient(token).getTeamGoals(folio);
-        setTeamGoalTotal(g.teamGoal); setTeamIncomplete(g.incompleteCount);
-      } catch { setTeamGoalTotal(null); }
+        const cfg: any = await client.request('GET', '/sales/folio-config');
+        if (cfg.folioStart && cfg.folioEnd) {
+          range = { start: cfg.folioStart, end: cfg.folioEnd, name: (cfg.folioName || 'Current Folio').trim() };
+        } else { throw new Error('no folio'); }
+      } catch {
+        const n = new Date();
+        const iso = (d: Date) => d.toISOString().slice(0, 10);
+        range = { start: iso(new Date(n.getFullYear(), n.getMonth(), 1)), end: iso(new Date(n.getFullYear(), n.getMonth() + 1, 0)), name: folioLabel(folio) };
+      }
+      if (!alive) return;
+      setFolioRange(range);
+      fetchAnalytics(range.start, range.end);
+      // Goals are keyed by the folio's START month (same convention as Summit HQ).
+      try {
+        const g = await client.getTeamGoals(range.start.slice(0, 7));
+        if (alive) { setTeamGoalTotal(g.teamGoal); setTeamIncomplete(g.incompleteCount); }
+      } catch { if (alive) setTeamGoalTotal(null); }
     })();
-  }, [isInTeam, monthRange.start, monthRange.end, folio]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { alive = false; };
+  }, [isInTeam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── AGENCY CARD (team users) ──────────────────────────────────────────────
   if (isInTeam) {
@@ -138,8 +155,8 @@ export default function YourSalesThisMonth({ getToken, onOpenTeam, showTeamShort
       <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-slate-900 to-black p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="text-sm font-bold text-white">Agency Sales This Month</h3>
-            <p className="text-[11px] text-slate-400">{folioLabel(folio)}</p>
+            <h3 className="text-sm font-bold text-white">Agency Sales This Folio</h3>
+            <p className="text-[11px] text-slate-400">{folioRange ? (folioRange.name || `${folioRange.start} → ${folioRange.end}`) : folioLabel(folio)}</p>
           </div>
           {onOpenTeam && <button onClick={onOpenTeam} className="text-[11px] text-amber-300 hover:text-amber-200 underline shrink-0">Summit HQ →</button>}
         </div>

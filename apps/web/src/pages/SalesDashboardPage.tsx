@@ -50,6 +50,10 @@ export default function SalesDashboardPage() {
   // set once after prefs/folios load — NOT All Time. Users can still pick All Time/history.
   const [period, setPeriod] = useState<string>('current');
   const [periodDefaulted, setPeriodDefaulted] = useState(false);
+  // True once /sales/folio-config + prefs have finished loading. The default-period
+  // resolver must wait for THIS (not just `loading`), otherwise it runs before folios
+  // arrive and prematurely falls back to All Time (latching the wrong default).
+  const [folioConfigLoaded, setFolioConfigLoaded] = useState(false);
   // Monthly goals for the selected period's month (YYYY-MM). null = not loaded / All Time.
   const [goals, setGoals] = useState<{ members: { userId: string; email: string; amount: number | null }[]; teamGoal: number; incompleteCount: number; isAdmin: boolean } | null>(null);
 
@@ -97,6 +101,7 @@ export default function SalesDashboardPage() {
         list.sort((a, b) => (b.start || '').localeCompare(a.start || ''));
         setSavedFolios(list);
       } catch { /* no folios */ }
+      finally { setFolioConfigLoaded(true); }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -142,14 +147,14 @@ export default function SalesDashboardPage() {
   // the newest folio (folio mode) or 'This Month'. Runs once so manual selections stick.
   useEffect(() => {
     if (periodDefaulted || period !== 'current') return;
-    if (loading) return; // wait for prefs/folios
+    if (!folioConfigLoaded) return; // wait until folio-config + prefs actually loaded
     if (trackingMode === 'folio') {
       setPeriod(savedFolios.length > 0 ? 'folio:0' : 'all');
     } else {
       setPeriod('month');
     }
     setPeriodDefaulted(true);
-  }, [loading, trackingMode, savedFolios.length, period, periodDefaulted]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [folioConfigLoaded, trackingMode, savedFolios.length, period, periodDefaulted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // If the tracking mode changed and the current selection no longer applies
   // (e.g. a folio index while in calendar mode), fall back to All Time.

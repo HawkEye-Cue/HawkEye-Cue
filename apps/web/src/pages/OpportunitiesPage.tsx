@@ -160,6 +160,9 @@ export default function OpportunitiesPage() {
   // id-only match wrongly shows "No sale yet" for real clients. We also match by contact
   // name (normalized) as a backward-compatible fallback. Name match is display-only.
   const [loggedSaleNames, setLoggedSaleNames] = useState<Set<string>>(new Set());
+  // opportunityId → its won Deal id, so a Client card can VOID the exact linked sale
+  // (correcting an incorrectly-entered sale without deleting the client).
+  const [dealIdByOppId, setDealIdByOppId] = useState<Record<string, string>>({});
   // The Client Cue currently being logged as a Sale (opens the Log Sale modal).
   const [logSaleLead, setLogSaleLead] = useState<Opportunity | null>(null);
   const [logSaleValue, setLogSaleValue] = useState('');
@@ -488,14 +491,17 @@ export default function OpportunitiesPage() {
       const { deals } = await client.getDeals();
       const linked = new Set<string>();
       const names = new Set<string>();
+      const idMap: Record<string, string> = {};
       for (const d of deals || []) {
-        if (d.opportunityId) linked.add(d.opportunityId);
-        // Only won deals count as a logged Sale for the "Sale logged" badge.
+        // Only WON deals count as a logged Sale (voided/lost don't inflate production).
+        const isWon = d.stage === 'won' || !(d as any).stage;
+        if (d.opportunityId && isWon) { linked.add(d.opportunityId); idMap[d.opportunityId] = d.id; }
         const nm = ((d as any).contactName || (d as any).name || '').trim().toLowerCase();
-        if (nm && (d.stage === 'won' || !(d as any).stage)) names.add(nm);
+        if (nm && isWon) names.add(nm);
       }
       setLoggedSaleOppIds(linked);
       setLoggedSaleNames(names);
+      setDealIdByOppId(idMap);
     } catch { /* best-effort; cards fall back to "no sale logged" */ }
   }
 
@@ -593,6 +599,21 @@ export default function OpportunitiesPage() {
     const deleted = leads.find((l) => l.id === id);
     if (!deleted) return;
 
+    // Data integrity: if this Client has a logged Sale, deleting it will VOID that sale
+    // (remove it from production totals while preserving the record for audit). Require an
+    // explicit confirmation so a delete can never SILENTLY leave or drop production revenue.
+    // (Previously deleting a client orphaned its won Deal, inflating agency totals.)
+    const hasLinkedSale = loggedSaleOppIds.has(id) || loggedSaleNames.has((deleted.sourceAuthor || '').trim().toLowerCase());
+    if (hasLinkedSale) {
+      const ok = window.confirm(
+        `${deleted.sourceAuthor || 'This client'} has a logged sale.\n\n` +
+        'Deleting the client will VOID the linked sale — its premium will be removed from your ' +
+        'production totals (agency, producer, team, and charts), but the record is kept for audit.\n\n' +
+        'Continue?'
+      );
+      if (!ok) return;
+    }
+
     // Optimistic remove from UI immediately
     setLeads((prev) => prev.filter((l) => l.id !== id));
 
@@ -608,8 +629,17 @@ export default function OpportunitiesPage() {
       if (undone) return; // user undid — don't delete on server
       try {
         const client = await buildClient();
-        await client.deleteOpportunity(id);
+        // The delete endpoint auto-voids any linked won Deal and returns the voided list,
+        // so no orphaned premium is left behind. We surface that so the user sees the
+        // correction happened.
+        const resp = await client.request<{ voidedDeals?: { id: string }[] }>('DELETE', `/opportunities/${id}`);
         if (deleted.sourceAuthor) removeAllByTitle(deleted.sourceAuthor);
+        // The linked sale (if any) is now voided — stop treating this client as "sale logged".
+        if (hasLinkedSale) {
+          setLoggedSaleOppIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+        }
+        const voidedCount = resp?.voidedDeals?.length || 0;
+        if (voidedCount > 0) showToast(`🗑️ Client deleted · ${voidedCount} linked sale${voidedCount === 1 ? '' : 's'} voided`);
         setStats((prev) => {
           const updated = { ...prev, total: prev.total - 1 };
           if (deleted.status === 'new') updated.new--;
@@ -624,6 +654,30 @@ export default function OpportunitiesPage() {
         showToast('❌ Failed to delete');
       }
     }, 5000);
+  }
+
+  // Void the logged Sale for a Client (correction workflow). The client card stays; the
+  // sale is excluded from ALL production totals (agency/producer/team/charts) but kept for
+  // audit. Confirm-gated. Works for both solo and Summit team tracking (totals recompute
+  // from won Deals server-side, so the void propagates everywhere).
+  async function voidSaleForClient(lead: Opportunity) {
+    const dealId = dealIdByOppId[lead.id];
+    if (!dealId) { showToast('No logged sale to void'); return; }
+    const ok = window.confirm(
+      `Void the logged sale for ${lead.sourceAuthor || 'this client'}?\n\n` +
+      'The premium will be removed from your production totals (agency, producer, team, and ' +
+      'charts). The client stays and the sale is preserved for audit. You can re-log a correct ' +
+      'sale afterward.'
+    );
+    if (!ok) return;
+    try {
+      const client = await buildClient();
+      await client.voidDeal(dealId, 'Voided from Pipeline (sale correction)');
+      // No longer a logged sale → card flips back to "Log Sale".
+      setLoggedSaleOppIds((prev) => { const next = new Set(prev); next.delete(lead.id); return next; });
+      setDealIdByOppId((prev) => { const next = { ...prev }; delete next[lead.id]; return next; });
+      showToast('✓ Sale voided — production totals updated');
+    } catch { showToast('❌ Could not void sale'); }
   }
 
   // Move a lead into the Won nest (marks it converted = Client). This does NOT log a
@@ -1767,8 +1821,17 @@ export default function OpportunitiesPage() {
                           (opportunityId) is the source of truth for "Sale logged". */}
                       {lead.status === 'converted' && (
                         loggedSaleOppIds.has(lead.id) ? (
-                          <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-green-300 font-semibold">
-                            <span>✓ Sale Logged</span>
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <span className="text-[11px] text-green-300 font-semibold flex-1 min-w-0">✓ Sale Logged</span>
+                            {dealIdByOppId[lead.id] && (
+                              <button
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); voidSaleForClient(lead); }}
+                                className="px-2.5 py-1.5 rounded-lg border border-red-500/30 text-red-300 hover:bg-red-500/10 text-[11px] font-semibold transition-all active:scale-95 shrink-0"
+                                title="Remove this sale from production totals (kept for audit)"
+                              >
+                                Void sale
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 pt-0.5">

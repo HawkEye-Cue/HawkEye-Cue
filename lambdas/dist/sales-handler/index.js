@@ -104,7 +104,9 @@ async function requirePaidFeature(userId, feature) {
   return null;
 }
 
-const STAGES = ['prospect', 'contacted', 'quoted', 'closing', 'won', 'lost'];
+// 'voided' = a sale kept for audit history but EXCLUDED from all production totals.
+// Every revenue aggregation filters stage === 'won', so a voided deal never counts.
+const STAGES = ['prospect', 'contacted', 'quoted', 'closing', 'won', 'lost', 'voided'];
 
 // ─── Team Deal Won Notification ───────────────────────────────────────────────
 // ─── Email idempotency: recoverable pending → sent lease ────────────────────
@@ -635,6 +637,44 @@ async function handleDeleteDeal(userId, dealId) {
   return ok({ deleted: true });
 }
 
+// POST /sales/deals/{id}/void — mark a sale as 'voided': excluded from ALL production
+// totals (aggregations count only stage === 'won') while the record is PRESERVED for
+// audit (priorStage/voidedAt/voidedReason). Reversible via PUT stage back to its prior
+// value. Removes any team win notification for the deal. Idempotent (voiding a voided
+// deal just returns it).
+async function handleVoidDeal(userId, dealId, body) {
+  const queryResult = await dynamo.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    FilterExpression: 'dealId = :did',
+    ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'DEAL#', ':did': dealId },
+  }));
+  const item = (queryResult.Items || [])[0];
+  if (!item) return err(404, 'NOT_FOUND', 'Deal not found');
+  if (item.stage === 'voided') return ok({ id: dealId, stage: 'voided', alreadyVoided: true });
+
+  const now = new Date().toISOString();
+  await dynamo.send(new UpdateCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: item.PK, SK: item.SK },
+    UpdateExpression: 'SET #st = :voided, priorStage = :prior, voidedAt = :now, voidedReason = :reason, updatedAt = :now',
+    ConditionExpression: 'attribute_exists(SK)',
+    ExpressionAttributeNames: { '#st': 'stage' },
+    ExpressionAttributeValues: {
+      ':voided': 'voided',
+      ':prior': item.stage || 'won',
+      ':now': now,
+      ':reason': (body && typeof body.reason === 'string' && body.reason.trim()) ? body.reason.trim().slice(0, 500) : 'Voided by user',
+    },
+  }));
+
+  // If it was a won deal, remove the team win notification so the void is consistent.
+  if (item.stage === 'won') {
+    try { await removeTeamDealNotifications(userId, item.dealName); } catch (e) { /* non-fatal */ }
+  }
+  return ok({ id: dealId, stage: 'voided', priorStage: item.stage || 'won', voidedAt: now });
+}
+
 // GET /sales/stats
 async function handleGetStats(userId) {
   const result = await dynamo.send(new QueryCommand({
@@ -1143,6 +1183,13 @@ exports.handler = async (event) => {
         console.error('Failed to send Sale-Cue emails:', e);
         return err(500, 'EMAIL_FAILED', 'Failed to send notification emails');
       }
+    }
+
+    // POST /sales/deals/{id}/void — void a sale (excluded from totals; history kept).
+    const voidMatch = path.match(/^\/sales\/deals\/([^/]+)\/void$/);
+    if (method === 'POST' && voidMatch) {
+      const body = event.body ? JSON.parse(event.body) : {};
+      return handleVoidDeal(userId, voidMatch[1], body);
     }
 
     const idMatch = path.match(/^\/sales\/deals\/([^/]+)$/);

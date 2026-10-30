@@ -1212,6 +1212,13 @@ export class ApiStack extends cdk.Stack {
       integration: salesIntegration,
       authorizer,
     });
+    // Void a sale (excluded from production totals; history preserved).
+    this.httpApi.addRoutes({
+      path: '/sales/deals/{id}/void',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: salesIntegration,
+      authorizer,
+    });
     this.httpApi.addRoutes({
       path: '/sales/stats',
       methods: [apigatewayv2.HttpMethod.GET],

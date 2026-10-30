@@ -641,11 +641,41 @@ async function handleDeleteOpportunity(userId, opportunityId) {
   const item = (queryResult.Items || [])[0];
   if (!item) return respond(404, { error: { code: 'NOT_FOUND', message: 'Opportunity not found' } });
 
+  // Data integrity: deleting a client card must NOT leave an orphaned won Sale that keeps
+  // inflating production. Find any linked DEAL# (by opportunityId) and VOID it (stage →
+  // 'voided', preserved for audit) so its premium stops counting. Revenue aggregations
+  // count only stage === 'won', so a voided deal is excluded everywhere. Best-effort: a
+  // deal-void failure must not block the opportunity delete.
+  let voidedDealIds = [];
+  try {
+    const dealsRes = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      FilterExpression: 'opportunityId = :oppId',
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'DEAL#', ':oppId': opportunityId },
+    }));
+    const now = new Date().toISOString();
+    for (const deal of (dealsRes.Items || [])) {
+      if (deal.stage === 'voided') continue;
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: deal.PK, SK: deal.SK },
+        UpdateExpression: 'SET #st = :voided, priorStage = :prior, voidedAt = :now, voidedReason = :reason, updatedAt = :now',
+        ExpressionAttributeNames: { '#st': 'stage' },
+        ExpressionAttributeValues: {
+          ':voided': 'voided', ':prior': deal.stage || 'won', ':now': now,
+          ':reason': 'Client card deleted — linked sale auto-voided to keep production accurate',
+        },
+      }));
+      voidedDealIds.push(deal.dealId || deal.SK);
+    }
+  } catch (e) { console.error('Linked-deal void on opportunity delete failed (non-fatal):', e && e.message); }
+
   await dynamo.send(
     new DeleteCommand({ TableName: TABLE_NAME, Key: { PK: item.PK, SK: item.SK } })
   );
 
-  return respond(200, { deleted: true });
+  return respond(200, { deleted: true, voidedDeals: voidedDealIds });
 }
 
 // GET /opportunities/stats

@@ -508,6 +508,16 @@ export class ApiClient {
     return this.request<Deal & { alreadyLogged?: boolean }>('POST', '/sales/deals', input);
   }
 
+  /** Edit an existing Sale (amount, date/folio, etc.). Reuses PUT /sales/deals/{id}. */
+  async updateDeal(dealId: string, input: Partial<CreateDealInput> & { stage?: string }): Promise<unknown> {
+    return this.request('PUT', `/sales/deals/${encodeURIComponent(dealId)}`, input);
+  }
+
+  /** Void a Sale — excluded from ALL production totals, record preserved for audit. */
+  async voidDeal(dealId: string, reason?: string): Promise<{ id: string; stage: string; priorStage?: string }> {
+    return this.request('POST', `/sales/deals/${encodeURIComponent(dealId)}/void`, { reason });
+  }
+
   // ── Monthly sales goals (per user + folio YYYY-MM) ──────────────────────────
   /** The caller's own goal for a folio. amount is null when no goal is set. */
   async getSalesGoal(folio: string): Promise<{ folio: string; amount: number | null }> {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { PageHeader } from '../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,6 +16,10 @@ import CreateLauncher, { type CreateLaunchChoice } from '../components/CreateLau
 import { notifyPostScheduled } from '../lib/scheduledPostsRefresh';
 import FlockSafetyBar from '../components/FlockSafetyBar';
 import { useFlockSafety } from '../hooks/useFlockSafety';
+import ImageSuggestions from '../components/ImageSuggestions';
+import DesignStudio from '../components/DesignStudio';
+import { suggestTemplates, type ScoredTemplate, type DesignTemplate } from '../lib/designTemplates';
+import { loadBrandKit, type BrandKit } from '../lib/brandKit';
 
 // Which Create workflow is in view. 'home' shows the welcoming three-choice launcher
 // (default); the others reveal existing sections. Smallest-safe restructuring: this
@@ -99,6 +103,68 @@ export default function ContentCreatorPage() {
   // user clicks Create (no extra click to reveal the editor). Auto-expands on generate.
   const [showCreator, setShowCreator] = useState(true);
   const [showReturnBanner, setShowReturnBanner] = useState(false);
+
+  // ── Design Studio + Image Suggestions (Phase 1) ───────────────────────────
+  const [imageSuggestions, setImageSuggestions] = useState<ScoredTemplate[]>([]);
+  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
+  const [studioTemplate, setStudioTemplate] = useState<DesignTemplate | null>(null);
+  const [brandKit, setBrandKit] = useState<BrandKit>(() => loadBrandKit(user?.sub));
+  const suggestionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reload brand kit when user identity resolves
+  useEffect(() => {
+    if (user?.sub) setBrandKit(loadBrandKit(user.sub));
+  }, [user?.sub]);
+
+  // Recompute suggestions after the user stops typing (debounce) or after AI generation.
+  // Only fires when view==='post' and there is meaningful text.
+  const recomputeSuggestions = useCallback(
+    (text: string, trade: Trade | null) => {
+      if (suggestionDebounceRef.current) clearTimeout(suggestionDebounceRef.current);
+      if (!text.trim() || !trade) { setImageSuggestions([]); setSuggestionsVisible(false); return; }
+      suggestionDebounceRef.current = setTimeout(() => {
+        const results = suggestTemplates({
+          postText: text,
+          tradeId: trade.id,
+          tradeKeywords: trade.defaultKeywords,
+          max: 3,
+        });
+        setImageSuggestions(results);
+        setSuggestionsVisible(true);
+      }, 800);
+    },
+    []
+  );
+
+  // Watch post text changes for suggestions
+  useEffect(() => {
+    const text = composeMode === 'write' ? ownContent : baseText;
+    recomputeSuggestions(text, currentTrade ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownContent, baseText, composeMode]);
+
+  // Also show suggestions immediately after AI content generation (platformContent change)
+  useEffect(() => {
+    if (platformContent) {
+      const text = Object.values(platformContent)[0] || '';
+      recomputeSuggestions(text, currentTrade ?? null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platformContent]);
+
+  function openStudio(template: DesignTemplate, _customize = false) {
+    setStudioTemplate(template);
+    setStudioOpen(true);
+  }
+
+  function handleStudioUseInPost(dataUrl: string) {
+    // Route the exported PNG into the same state the existing flow uses — readyImageSrc
+    // derives from aiPhotoUrl, so setting this automatically attaches the design to the post,
+    // Flocks Copy & Open, scheduling, and Mass Flock without any other changes.
+    setAiPhotoUrl(dataUrl);
+    showToast('✓ Design attached to your post!');
+  }
 
   // Post history — tracks which content was posted to which groups and when
   interface PostRecord {
@@ -708,6 +774,19 @@ export default function ContentCreatorPage() {
         loading={loading || aiPhotoLoading}
         error={error}
       />
+
+      {/* ── Image Suggestions — shown after user writes/generates a post ──────
+          Template-matching only; no AI cost to show previews. Debounced 800ms. */}
+      {view === 'post' && suggestionsVisible && imageSuggestions.length > 0 && (
+        <ImageSuggestions
+          suggestions={imageSuggestions}
+          onOpenStudio={openStudio}
+          onGenerateAiImage={handleCreateAiImageFromComposer}
+          onUploadPhoto={(file) => { setImageFile(file); setImagePreview(URL.createObjectURL(file)); setAiPhotoUrl(null); setSuggestionsVisible(false); }}
+          onDismiss={() => setSuggestionsVisible(false)}
+          canUseAiImage={isPro}
+        />
+      )}
 
       {/* Ideas panel — shown in Get Ideas mode */}
       {composeMode === 'ideas' && showIdeas && ideas.length > 0 && (
@@ -1836,6 +1915,21 @@ export default function ContentCreatorPage() {
           /* One-click "Start Today's Flocks": skip the group-select screen and land
              directly on the first group when today's valid groups are known. */
           autoStart
+        />
+      )}
+
+      {/* ── Design Studio Modal ──────────────────────────────────────────────
+          Opens as a full-screen overlay when the user clicks "Use Design" or
+          "Customize" on a suggested template. The exported PNG flows back into
+          readyImageSrc via setAiPhotoUrl, so it auto-attaches to the post,
+          scheduling, and Flocks without any other plumbing changes. */}
+      {studioOpen && studioTemplate && (
+        <DesignStudio
+          template={studioTemplate}
+          brandKit={brandKit}
+          postText={composeMode === 'write' ? ownContent : (baseText || (platformContent ? Object.values(platformContent)[0] : '') || '')}
+          onUseInPost={handleStudioUseInPost}
+          onClose={() => { setStudioOpen(false); setStudioTemplate(null); }}
         />
       )}
     </div>

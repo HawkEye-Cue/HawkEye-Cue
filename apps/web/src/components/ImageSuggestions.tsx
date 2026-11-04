@@ -13,6 +13,7 @@
  * This component is purely presentational.
  */
 
+import { useRef } from 'react';
 import type { ScoredTemplate, DesignTemplate } from '../lib/designTemplates';
 
 interface ImageSuggestionsProps {
@@ -32,9 +33,12 @@ export default function ImageSuggestions({
   onDismiss,
   canUseAiImage,
 }: ImageSuggestionsProps) {
-  if (suggestions.length === 0) return null;
+  // FIX: this was a plain object recreated on every render (not useRef), so the "Upload My Own
+  // Photo" button could call .click() on a stale/null element. It must be a real ref, and it
+  // must be declared BEFORE the early return to satisfy the Rules of Hooks.
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const fileRef = { current: null as HTMLInputElement | null };
+  if (suggestions.length === 0) return null;
 
   return (
     <div className="glass-card space-y-3 relative" role="region" aria-label="Suggested images for your post">
@@ -115,7 +119,7 @@ export default function ImageSuggestions({
           onClick={() => fileRef.current?.click()}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 text-xs rounded-lg hover:bg-white/10 transition-colors"
         >
-          🖼️ Upload My Own Photo
+          🖼️ Upload &amp; Edit My Photo
         </button>
 
         <input

@@ -71,3 +71,6 @@ Old/
 
 # Local-only sandbox extension (test harness; never shipped/committed)
 apps/extension-sandbox/
+
+# Real-browser Design Studio validation output (scripts/validate-studio.mjs)
+studio-validation/

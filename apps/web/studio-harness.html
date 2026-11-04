@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Design Studio — browser validation harness (dev only)</title>
+  </head>
+  <body>
+    <!-- DEV-ONLY: mounts the real DesignStudio in isolation (no auth/Cognito) so it can be
+         exercised in a real browser. Not part of the production build (only index.html is). -->
+    <div id="root"></div>
+    <script type="module" src="/src/dev/studioHarness.tsx"></script>
+  </body>
+</html>

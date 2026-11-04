@@ -18,8 +18,10 @@ import FlockSafetyBar from '../components/FlockSafetyBar';
 import { useFlockSafety } from '../hooks/useFlockSafety';
 import ImageSuggestions from '../components/ImageSuggestions';
 import DesignStudio from '../components/DesignStudio';
-import { suggestTemplates, type ScoredTemplate, type DesignTemplate } from '../lib/designTemplates';
+import { suggestTemplates, TEMPLATES, type ScoredTemplate, type DesignTemplate } from '../lib/designTemplates';
+import { listDesigns, type DesignDocument } from '../lib/designDocument';
 import { loadBrandKit, type BrandKit } from '../lib/brandKit';
+import { canUseAiImageForTier } from '../lib/aiImageAccess';
 
 // Which Create workflow is in view. 'home' shows the welcoming three-choice launcher
 // (default); the others reveal existing sections. Smallest-safe restructuring: this
@@ -109,13 +111,42 @@ export default function ContentCreatorPage() {
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
   const [studioTemplate, setStudioTemplate] = useState<DesignTemplate | null>(null);
+  // A saved design being reopened (Workflow D). null = start fresh from studioTemplate.
+  const [studioDesign, setStudioDesign] = useState<DesignDocument | null>(null);
+  const [savedDesigns, setSavedDesigns] = useState<DesignDocument[]>(() => listDesigns(user?.sub));
+  // A photo the user uploaded to edit in the studio (Workflow C).
+  const [studioPhoto, setStudioPhoto] = useState<string | null>(null);
   const [brandKit, setBrandKit] = useState<BrandKit>(() => loadBrandKit(user?.sub));
   const suggestionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reload brand kit when user identity resolves
+  // Reload brand kit + saved designs when user identity resolves (account-scoped).
   useEffect(() => {
-    if (user?.sub) setBrandKit(loadBrandKit(user.sub));
+    if (user?.sub) { setBrandKit(loadBrandKit(user.sub)); setSavedDesigns(listDesigns(user.sub)); }
   }, [user?.sub]);
+
+  // Phase 2: AI photo edit via the server (paid plans enforced server-side).
+  async function handleStudioEditPhoto(image: string, instruction: string): Promise<string> {
+    const token = await getToken();
+    const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+    try {
+      const res = await client.editImage({ image, instruction });
+      return res.dataUrl;
+    } catch (e) {
+      // Translate server codes into plain-language guidance.
+      const code = (e as { code?: string })?.code;
+      if (code === 'AI_IMAGE_REQUIRES_PAID_PLAN') throw new Error('AI photo editing is included with Soar and Summit plans.');
+      if (code === 'AI_IMAGE_LIMIT_REACHED') throw new Error("You've used all your AI images this month. Canvas edits are still free.");
+      if (code === 'EDIT_BLOCKED') throw new Error('That edit was blocked by a safety check. Try rewording it.');
+      throw e instanceof Error ? e : new Error('The photo edit failed. Please try again.');
+    }
+  }
+
+  function reopenDesign(doc: DesignDocument) {
+    const tpl = TEMPLATES.find((t) => t.id === doc.templateId) || TEMPLATES[0];
+    setStudioTemplate(tpl);
+    setStudioDesign(doc);
+    setStudioOpen(true);
+  }
 
   // Recompute suggestions after the user stops typing (debounce) or after AI generation.
   // Only fires when view==='post' and there is meaningful text.
@@ -154,8 +185,26 @@ export default function ContentCreatorPage() {
   }, [platformContent]);
 
   function openStudio(template: DesignTemplate, _customize = false) {
+    setStudioDesign(null); // fresh design from the template
+    setStudioPhoto(null);
     setStudioTemplate(template);
     setStudioOpen(true);
+  }
+
+  // Workflow C: upload a photo → open it in the studio to AI-edit and customize.
+  function openStudioWithPhoto(file: File) {
+    if (!file.type.startsWith('image/')) { showToast('Please choose an image file.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const tpl = TEMPLATES.find((t) => t.id === 'branded-1') || TEMPLATES[0];
+      setStudioDesign(null);
+      setStudioTemplate(tpl);
+      setStudioPhoto(reader.result as string);
+      setStudioOpen(true);
+      setSuggestionsVisible(false);
+    };
+    reader.onerror = () => showToast('Could not read that photo.');
+    reader.readAsDataURL(file);
   }
 
   function handleStudioUseInPost(dataUrl: string) {
@@ -273,6 +322,11 @@ export default function ContentCreatorPage() {
 
   // The image currently ready to attach to a post (AI-generated or uploaded).
   const readyImageSrc = aiPhotoUrl || imagePreview || null;
+
+  // AI image access follows the SUBSCRIPTION (userTier from GET /subscription), NOT the
+  // Guided/Pro UI mode. Previously this used `isPro` (UI mode), which wrongly blocked paying
+  // Soar/Summit users in Guided mode and wrongly allowed free users who toggled to Pro.
+  const canUseAiImage = canUseAiImageForTier(userTier);
 
   // Copy the ready image to the clipboard so the user can paste it straight into
   // the Facebook composer (desktop). Falls back to downloading on mobile / browsers
@@ -765,7 +819,7 @@ export default function ContentCreatorPage() {
         onAddPhoto={(file) => { setImageFile(file); setImagePreview(URL.createObjectURL(file)); setAiPhotoUrl(null); }}
         onCreateAiImage={handleCreateAiImageFromComposer}
         onRemoveImage={() => { setImageFile(null); setImagePreview(null); setAiPhotoUrl(null); }}
-        canUseAiImage={isPro}
+        canUseAiImage={canUseAiImage}
         platforms={platforms}
         togglePlatform={togglePlatform}
         onPrimary={handleComposerPrimary}
@@ -782,10 +836,34 @@ export default function ContentCreatorPage() {
           suggestions={imageSuggestions}
           onOpenStudio={openStudio}
           onGenerateAiImage={handleCreateAiImageFromComposer}
-          onUploadPhoto={(file) => { setImageFile(file); setImagePreview(URL.createObjectURL(file)); setAiPhotoUrl(null); setSuggestionsVisible(false); }}
+          onUploadPhoto={openStudioWithPhoto}
           onDismiss={() => setSuggestionsVisible(false)}
-          canUseAiImage={isPro}
+          canUseAiImage={canUseAiImage}
         />
+      )}
+
+      {/* ── My Designs — reopen a saved, still-editable design (Workflow D) ── */}
+      {view === 'post' && savedDesigns.length > 0 && (
+        <div className="glass-card space-y-2" aria-label="My saved designs">
+          <p className="text-sm font-bold text-white">🎨 My Designs</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {savedDesigns.slice(0, 8).map((d) => (
+              <button
+                key={d.id}
+                onClick={() => reopenDesign(d)}
+                className="shrink-0 w-24 text-left group"
+                title={`Reopen “${d.name}”`}
+              >
+                <div className="w-24 h-24 rounded-lg overflow-hidden border border-white/10 group-hover:border-amber-500/60 bg-black">
+                  {d.thumbnail
+                    ? <img src={d.thumbnail} alt="" className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-2xl">🎨</div>}
+                </div>
+                <p className="text-[10px] text-slate-300 mt-1 truncate">{d.name}</p>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Ideas panel — shown in Get Ideas mode */}
@@ -1927,9 +2005,14 @@ export default function ContentCreatorPage() {
         <DesignStudio
           template={studioTemplate}
           brandKit={brandKit}
-          postText={composeMode === 'write' ? ownContent : (baseText || (platformContent ? Object.values(platformContent)[0] : '') || '')}
+          sub={user?.sub}
+          initialDesign={studioDesign}
+          initialPhoto={studioPhoto}
+          canUseAiImage={canUseAiImage}
+          onEditPhoto={handleStudioEditPhoto}
           onUseInPost={handleStudioUseInPost}
-          onClose={() => { setStudioOpen(false); setStudioTemplate(null); }}
+          onBrandKitChange={setBrandKit}
+          onClose={() => { setStudioOpen(false); setStudioTemplate(null); setStudioDesign(null); setStudioPhoto(null); setSavedDesigns(listDesigns(user?.sub)); }}
         />
       )}
     </div>

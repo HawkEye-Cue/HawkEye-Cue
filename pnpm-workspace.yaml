@@ -6,3 +6,11 @@ allowBuilds:
   esbuild: true
 onlyBuiltDependencies:
   - esbuild
+# Pin a single React runtime across the workspace. Without this, react@19.0.0 was hoisted
+# at the root while apps/web carried react@19.2.7, and react-dom bound to the wrong react —
+# breaking every renderToStaticMarkup component test with
+# "Cannot read properties of null (reading 'useState')". Pinning react and react-dom to the
+# same version guarantees a single hoisted runtime.
+overrides:
+  react: 19.0.0
+  react-dom: 19.0.0

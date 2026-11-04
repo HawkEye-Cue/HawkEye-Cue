@@ -479,12 +479,15 @@ describe('ApiClient', () => {
       );
     });
 
-    it('getOpportunityStats calls GET /opportunities/stats', async () => {
-      const stats = { total: 10, new: 5, followedUp: 3, converted: 2 };
-      mockFetch.mockResolvedValue(mockResponse(200, stats));
+    it('getOpportunityStats calls GET /opportunities/stats and normalizes the response', async () => {
+      // The implementation normalizes the response: adds inbox:0 default and coerces to Number.
+      // The mock returns a flat object (no wrapper) — the implementation handles both shapes.
+      const rawStats = { total: 10, new: 5, followedUp: 3, converted: 2 };
+      mockFetch.mockResolvedValue(mockResponse(200, rawStats));
 
       const result = await client.getOpportunityStats();
-      expect(result).toEqual(stats);
+      // Implementation adds inbox (defaults to 0 when absent), coerces numbers.
+      expect(result).toEqual({ total: 10, inbox: 0, new: 5, followedUp: 3, converted: 2 });
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/opportunities/stats',
         expect.objectContaining({ method: 'GET' }),

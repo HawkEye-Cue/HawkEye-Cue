@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "setup": "bash scripts/setup.sh",
+    "postinstall": "node scripts/remove-native-canvas.mjs",
     "dev": "pnpm --filter @social-lead-gen/web run dev",
     "build": "pnpm -r run build",
     "test": "vitest run",

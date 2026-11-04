@@ -208,6 +208,89 @@ async function getOpenAiKey() {
   return openAiKey;
 }
 
+// ─── Server-side AI image entitlement ──────────────────────────────────────────
+// SECURITY: previously /content/generate-image had NO tier check, so any authenticated user
+// (including free Nest) could call it directly and incur real OpenAI cost. The web UI gate is
+// UX only. This is the authoritative check, shared by text-to-image and AI photo editing.
+//
+// Tier normalization mirrors packages/shared normalizeTier (summit→team, legacy
+// base/growth/flight/pro→soar, nest/none/expired/''/unknown→free). An expired trial is free.
+// AI images are a PAID feature (Soar / Summit). Image calls are metered on a SEPARATE monthly
+// counter (aiImagesUsed + aiImagesMonth) so image spend is bounded independently of text.
+const AI_IMAGE_MONTHLY_LIMITS = { soar: 40, team: 100 };
+
+function normalizeTierServer(raw, profile) {
+  const t = (raw ?? 'free').toString().toLowerCase();
+  // An active trial whose end has passed is treated as free.
+  if (profile && profile.subscriptionStatus === 'trial' && profile.trialEndsAt &&
+      new Date(profile.trialEndsAt).getTime() < Date.now()) return 'free';
+  if (t === 'summit') return 'team';
+  if (t === 'base' || t === 'growth' || t === 'flight' || t === 'pro') return 'soar';
+  if (t === 'soar' || t === 'team') return t;
+  return 'free';
+}
+
+function currentMonthKey() {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// Returns { ok: true, tier, used, limit } or { ok: false, response }.
+async function checkAiImageEntitlement(userId) {
+  let profile;
+  try {
+    const r = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND SK = :sk',
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'PROFILE' },
+      Limit: 1,
+    }));
+    profile = (r.Items || [])[0] || {};
+  } catch (e) {
+    // Fail CLOSED: if we cannot read the entitlement we must not spend on AI.
+    console.error('[ai-image] entitlement read failed (denying):', e.message);
+    return { ok: false, response: respond(503, { error: { code: 'ENTITLEMENT_UNAVAILABLE', message: 'Could not verify your plan. Please try again.' } }) };
+  }
+  const tier = normalizeTierServer(profile.subscriptionTier, profile);
+  if (tier === 'free') {
+    return { ok: false, response: respond(403, { error: { code: 'AI_IMAGE_REQUIRES_PAID_PLAN', message: 'AI images are included with Soar and Summit plans.' } }) };
+  }
+  const limit = AI_IMAGE_MONTHLY_LIMITS[tier];
+  const month = currentMonthKey();
+  const used = profile.aiImagesMonth === month ? (profile.aiImagesUsed || 0) : 0;
+  if (used >= limit) {
+    return { ok: false, response: respond(403, { error: { code: 'AI_IMAGE_LIMIT_REACHED', message: `You've used all ${limit} AI images this month on your plan.`, limit, used } }) };
+  }
+  return { ok: true, tier, used, limit, month };
+}
+
+// Increment the monthly image counter, resetting it when the month rolls over.
+async function recordAiImageUse(userId, month) {
+  try {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      // If the stored month differs, start the count fresh at 1; otherwise increment.
+      UpdateExpression: 'SET aiImagesUsed = if_not_exists(aiImagesUsed, :zero) + :one, aiImagesMonth = :m',
+      ConditionExpression: 'attribute_not_exists(aiImagesMonth) OR aiImagesMonth = :m',
+      ExpressionAttributeValues: { ':zero': 0, ':one': 1, ':m': month },
+    }));
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') {
+      // New month — reset the counter to 1.
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+        UpdateExpression: 'SET aiImagesUsed = :one, aiImagesMonth = :m',
+        ExpressionAttributeValues: { ':one': 1, ':m': month },
+      }));
+    } else {
+      // Metering failure must not fail the user's already-generated image; log it.
+      console.error('[ai-image] usage record failed:', e.message);
+    }
+  }
+}
+
 // POST /content/generate-image — text-to-image via OpenAI gpt-image-1
 async function handleGenerateImage(userId, body) {
   const rawPrompt = (body && body.prompt) || '';
@@ -216,6 +299,11 @@ async function handleGenerateImage(userId, body) {
   if (!rawPrompt.trim()) {
     return respond(400, { error: { code: 'VALIDATION_ERROR', message: 'A prompt is required' } });
   }
+
+  // Authoritative server-side entitlement (paid plans only, monthly cap). Checked BEFORE any
+  // OpenAI call so a free/over-limit user never incurs cost.
+  const ent = await checkAiImageEntitlement(userId);
+  if (!ent.ok) return ent.response;
 
   // Enrich the prompt for better marketing-quality output
   const styleHint = {
@@ -253,6 +341,7 @@ async function handleGenerateImage(userId, body) {
     base64Image = data?.data?.[0]?.b64_json;
     // Some responses return a URL instead of base64
     if (!base64Image && data?.data?.[0]?.url) {
+      await recordAiImageUse(userId, ent.month); // meter only successful images
       return respond(200, { url: data.data[0].url });
     }
   } catch (e) {
@@ -263,6 +352,9 @@ async function handleGenerateImage(userId, body) {
   if (!base64Image) {
     return respond(500, { error: { code: 'IMAGE_FAILED', message: 'No image returned. Try again.' } });
   }
+
+  // Meter only successful generations (failed/empty calls above are not counted).
+  await recordAiImageUse(userId, ent.month);
 
   // Return the image inline as a data URL so it renders immediately in the browser
   // (no dependency on the media bucket being publicly readable). Also upload to S3
@@ -282,6 +374,104 @@ async function handleGenerateImage(userId, body) {
     console.error('[gen-image] S3 upload failed (returning inline image):', e.message);
     return respond(200, { dataUrl });
   }
+}
+
+// ─── POST /content/edit-image — AI photo editing (Phase 2) ──────────────────────
+// Natural-language edits to a user's photo: add / remove / replace / modify objects,
+// background removal, lighting changes. Uses OpenAI gpt-image-1 /v1/images/edits.
+//
+// Design rules (per product spec):
+//   • Only ACTUAL photo changes come here. Text, logos, and layout stay as editable canvas
+//     layers on the client and never hit this endpoint (no wasted AI cost, exact typography).
+//   • The ORIGINAL is never overwritten — the client keeps it and stores each edit as a new
+//     revision; this endpoint is stateless and simply returns a new image.
+//   • Same server-side entitlement + monthly cap as text-to-image (paid plans only, fail
+//     closed), checked BEFORE the OpenAI call so free/over-limit users incur no cost.
+const MAX_EDIT_IMAGE_BYTES = 4 * 1024 * 1024; // OpenAI edits limit for PNG inputs
+const MAX_INSTRUCTION_CHARS = 1000;
+
+function parseImageDataUrl(dataUrl) {
+  const m = /^data:(image\/(png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+  if (!m) return null;
+  const mime = m[1] === 'image/jpg' ? 'image/jpeg' : m[1];
+  return { mime, buffer: Buffer.from(m[3], 'base64') };
+}
+
+async function handleEditImage(userId, body) {
+  const instruction = String((body && body.instruction) || '').trim();
+  if (!instruction) {
+    return respond(400, { error: { code: 'VALIDATION_ERROR', message: 'Tell Wingman what to change.' } });
+  }
+  if (instruction.length > MAX_INSTRUCTION_CHARS) {
+    return respond(400, { error: { code: 'VALIDATION_ERROR', message: `Keep the instruction under ${MAX_INSTRUCTION_CHARS} characters.` } });
+  }
+  const parsed = parseImageDataUrl(body && body.image);
+  if (!parsed) {
+    return respond(400, { error: { code: 'VALIDATION_ERROR', message: 'Upload a PNG, JPG, or WEBP photo to edit.' } });
+  }
+  if (parsed.buffer.length > MAX_EDIT_IMAGE_BYTES) {
+    return respond(413, { error: { code: 'IMAGE_TOO_LARGE', message: 'That photo is too large to edit (max 4 MB). Try a smaller one.' } });
+  }
+
+  const ent = await checkAiImageEntitlement(userId);
+  if (!ent.ok) return ent.response;
+
+  // Keep the photo realistic and preserve everything not explicitly mentioned. We also ask the
+  // model NOT to add text — exact text/phone numbers belong in editable canvas layers.
+  const prompt = `${instruction}\n\nKeep everything else in the photo exactly the same — same subject, composition, perspective, and lighting unless the instruction says otherwise. Keep it photorealistic. Do not add any text, words, letters, or numbers to the image.`;
+
+  let base64Image = null;
+  try {
+    const apiKey = await getOpenAiKey();
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', prompt.slice(0, 4000));
+    form.append('n', '1');
+    form.append('size', '1024x1024');
+    form.append('quality', 'medium');
+    const ext = parsed.mime === 'image/jpeg' ? 'jpg' : parsed.mime.split('/')[1];
+    form.append('image', new Blob([parsed.buffer], { type: parsed.mime }), `source.${ext}`);
+
+    const res = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}` }, // FormData sets its own multipart boundary
+      body: form,
+      signal: AbortSignal.timeout(27000), // return before the API Gateway 29s cap
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[edit-image] OpenAI error:', JSON.stringify(data));
+      const code = data?.error?.code === 'moderation_blocked' ? 'EDIT_BLOCKED' : 'EDIT_FAILED';
+      const msg = code === 'EDIT_BLOCKED'
+        ? 'That edit was blocked by a safety check. Try rewording it.'
+        : (data?.error?.message || 'Photo edit failed. Try again.');
+      return respond(code === 'EDIT_BLOCKED' ? 422 : 502, { error: { code, message: msg } });
+    }
+    base64Image = data?.data?.[0]?.b64_json || null;
+  } catch (e) {
+    const timedOut = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    console.error('[edit-image] request failed:', e.message);
+    return respond(504, { error: { code: timedOut ? 'EDIT_TIMEOUT' : 'EDIT_FAILED', message: timedOut ? 'The edit took too long. Try a simpler change.' : 'Could not reach the photo editor. Try again.' } });
+  }
+
+  if (!base64Image) {
+    return respond(502, { error: { code: 'EDIT_FAILED', message: 'No edited image came back. Try again.' } });
+  }
+
+  // Meter only successful edits.
+  await recordAiImageUse(userId, ent.month);
+
+  const dataUrl = `data:image/png;base64,${base64Image}`;
+  // Best-effort persistent copy as a NEW object (never overwrites the user's original).
+  let key;
+  try {
+    key = `ai-edits/${userId}/${randomUUID()}.png`;
+    await s3.send(new PutObjectCommand({ Bucket: MEDIA_BUCKET, Key: key, Body: Buffer.from(base64Image, 'base64'), ContentType: 'image/png' }));
+  } catch (e) {
+    console.error('[edit-image] S3 copy failed (returning inline image):', e.message);
+    key = undefined;
+  }
+  return respond(200, { dataUrl, ...(key ? { key } : {}), imagesUsed: ent.used + 1, imagesLimit: ent.limit });
 }
 
 // POST /content/generate
@@ -477,6 +667,11 @@ exports.handler = async (event) => {
     if (method === 'POST' && path === '/content/generate-image') {
       const body = event.body ? JSON.parse(event.body) : {};
       return handleGenerateImage(userId, body);
+    }
+
+    if (method === 'POST' && path === '/content/edit-image') {
+      const body = event.body ? JSON.parse(event.body) : {};
+      return handleEditImage(userId, body);
     }
 
     if (method === 'GET' && path === '/content/history') {

@@ -156,6 +156,18 @@ export class ApiClient {
     return this.request<GeneratedContent[]>('GET', '/content/history');
   }
 
+  // --- AI photo editing (Phase 2) ---
+  // Natural-language edits to a photo (add / remove / replace / modify objects). Paid plans
+  // only — enforced server-side. Returns a NEW image; the caller keeps the original.
+  async editImage(req: { image: string; instruction: string }): Promise<{
+    dataUrl: string;
+    key?: string;
+    imagesUsed?: number;
+    imagesLimit?: number;
+  }> {
+    return this.request('POST', '/content/edit-image', req);
+  }
+
   async getUploadUrl(
     filename: string,
     contentType: string,

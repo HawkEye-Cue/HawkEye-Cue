@@ -495,6 +495,32 @@ describe('ApiClient', () => {
     });
   });
 
+  describe('AI photo editing (Phase 2)', () => {
+    it('editImage POSTs the image + instruction to /content/edit-image', async () => {
+      const out = { dataUrl: 'data:image/png;base64,AAA', imagesUsed: 1, imagesLimit: 40 };
+      mockFetch.mockResolvedValue(mockResponse(200, out));
+      const result = await client.editImage({ image: 'data:image/png;base64,SRC', instruction: 'remove the car' });
+      expect(result).toEqual(out);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.example.com/content/edit-image',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ image: 'data:image/png;base64,SRC', instruction: 'remove the car' }),
+        }),
+      );
+    });
+
+    it('editImage surfaces the server entitlement error code', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false, status: 403,
+        json: vi.fn().mockResolvedValue({ error: { code: 'AI_IMAGE_REQUIRES_PAID_PLAN', message: 'AI images are included with Soar and Summit plans.' } }),
+      });
+      await expect(client.editImage({ image: 'data:x', instruction: 'x' })).rejects.toMatchObject({
+        status: 403, code: 'AI_IMAGE_REQUIRES_PAID_PLAN',
+      });
+    });
+  });
+
   describe('Subscription endpoints', () => {
     it('getSubscription calls GET /subscription', async () => {
       const sub = { tier: 'free', aiGenerationsUsed: 5, aiGenerationsLimit: 10 };

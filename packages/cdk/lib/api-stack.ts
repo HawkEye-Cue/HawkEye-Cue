@@ -838,6 +838,14 @@ export class ApiStack extends cdk.Stack {
       integration: contentIntegration,
       authorizer,
     });
+    // Phase 2: AI photo editing (natural-language add/remove/replace/modify). Same JWT
+    // authorizer + server-side paid-plan entitlement as generate-image.
+    this.httpApi.addRoutes({
+      path: '/content/edit-image',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: contentIntegration,
+      authorizer,
+    });
     this.httpApi.addRoutes({
       path: '/content/history',
       methods: [apigatewayv2.HttpMethod.GET],

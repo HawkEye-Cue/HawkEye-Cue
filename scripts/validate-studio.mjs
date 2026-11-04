@@ -212,10 +212,13 @@ async function run(vpName, viewport, isMobile) {
   // ── 10. Save → reopen (Workflow D) ──
   await page.locator('input[aria-label="Design name"]').fill('Storm Validation Design');
   await page.getByRole('button', { name: /Save/ }).first().click();
-  await page.waitForTimeout(400);
+  await page.waitForFunction(() => window.__studio.cloudSaves.length > 0, null, { timeout: 10000 }).catch(() => {});
+  const cloudSaves = await page.evaluate(() => window.__studio.cloudSaves);
+  check(vpName, 'Save persists to the ACCOUNT (cloud), not just localStorage', cloudSaves.some((s) => s.name === 'Storm Validation Design'), JSON.stringify(cloudSaves));
+  // The editable document + role tags are verified via the local mirror the harness writes.
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('hawkeye_designs_harness-user') || '[]'));
   const savedDesign = saved.find((d) => d.name === 'Storm Validation Design');
-  check(vpName, 'design saves with editable layer data', !!savedDesign && Array.isArray(savedDesign.canvasJson?.objects) && savedDesign.canvasJson.objects.length > 0,
+  check(vpName, 'saved design carries editable layer data', !!savedDesign && Array.isArray(savedDesign.canvasJson?.objects) && savedDesign.canvasJson.objects.length > 0,
     savedDesign ? `${savedDesign.canvasJson.objects.length} layers` : 'not found');
   const taggedCount = savedDesign ? savedDesign.canvasJson.objects.filter((o) => o.data && (o.data.isHeadline || o.data.isPhoneSlot || o.data.isBrandSlot)).length : 0;
   check(vpName, 'saved design preserves role tags (headline/phone/brand) for later editing', taggedCount > 0, `${taggedCount} tagged layers`);

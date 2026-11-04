@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { PageHeader } from '../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,11 +17,15 @@ import { notifyPostScheduled } from '../lib/scheduledPostsRefresh';
 import FlockSafetyBar from '../components/FlockSafetyBar';
 import { useFlockSafety } from '../hooks/useFlockSafety';
 import ImageSuggestions from '../components/ImageSuggestions';
-import DesignStudio from '../components/DesignStudio';
+// The Design Studio (and its ~90KB Fabric.js dependency) loads ONLY when the user opens it.
+// React.lazy puts DesignStudio + Fabric into a separate chunk kept out of the main bundle.
+const DesignStudio = lazy(() => import('../components/DesignStudio'));
 import { suggestTemplates, TEMPLATES, type ScoredTemplate, type DesignTemplate } from '../lib/designTemplates';
 import { listDesigns, type DesignDocument } from '../lib/designDocument';
 import { loadBrandKit, type BrandKit } from '../lib/brandKit';
 import { canUseAiImageForTier } from '../lib/aiImageAccess';
+import { migrateLocalToCloud, fetchBrandKit, listCloudDesigns, fetchDesignDocument } from '../lib/designStore';
+import type { CloudDesignMeta } from '@social-lead-gen/shared';
 
 // Which Create workflow is in view. 'home' shows the welcoming three-choice launcher
 // (default); the others reveal existing sections. Smallest-safe restructuring: this
@@ -114,14 +118,41 @@ export default function ContentCreatorPage() {
   // A saved design being reopened (Workflow D). null = start fresh from studioTemplate.
   const [studioDesign, setStudioDesign] = useState<DesignDocument | null>(null);
   const [savedDesigns, setSavedDesigns] = useState<DesignDocument[]>(() => listDesigns(user?.sub));
+  // Authoritative account-backed designs (cross-device). Shown once loaded; falls back to the
+  // local list above until the cloud responds.
+  const [cloudDesigns, setCloudDesigns] = useState<CloudDesignMeta[] | null>(null);
   // A photo the user uploaded to edit in the studio (Workflow C).
   const [studioPhoto, setStudioPhoto] = useState<string | null>(null);
   const [brandKit, setBrandKit] = useState<BrandKit>(() => loadBrandKit(user?.sub));
   const suggestionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reload brand kit + saved designs when user identity resolves (account-scoped).
+  // Brand kit + designs are account-backed (cross-device). On login we: show the local copy
+  // instantly (fast first paint, offline fallback), then migrate any local-only work to the
+  // cloud (idempotent, non-destructive), then load the authoritative cloud copies.
   useEffect(() => {
-    if (user?.sub) { setBrandKit(loadBrandKit(user.sub)); setSavedDesigns(listDesigns(user.sub)); }
+    if (!user?.sub) return;
+    let cancelled = false;
+    // 1) instant local paint
+    setBrandKit(loadBrandKit(user.sub));
+    setSavedDesigns(listDesigns(user.sub));
+    (async () => {
+      try {
+        const token = await getToken();
+        const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+        // 2) migrate local → cloud (never deletes local; safe to repeat)
+        await migrateLocalToCloud(client, user.sub, loadBrandKit(user.sub));
+        if (cancelled) return;
+        // 3) load authoritative cloud copies
+        const [kit, designs] = await Promise.all([fetchBrandKit(client), listCloudDesigns(client)]);
+        if (cancelled) return;
+        setBrandKit(kit);
+        setCloudDesigns(designs);
+      } catch {
+        // Offline / API error — keep the local copies already shown.
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.sub]);
 
   // Phase 2: AI photo edit via the server (paid plans enforced server-side).
@@ -141,11 +172,66 @@ export default function ContentCreatorPage() {
     }
   }
 
+  // Upload whatever media is ready for the post and return its hosted URL(s). Covers all three
+  // sources in priority order: an uploaded video, an uploaded image File, or a data-URL image
+  // (AI-generated OR a Design Studio export). Previously the schedule/post paths only uploaded
+  // `imageFile`/`videoFile`, so an AI image or a finished design (both data URLs in aiPhotoUrl)
+  // was SILENTLY DROPPED from scheduled posts and Flocks. This fixes that.
+  const mediaBase = () => (import.meta.env.VITE_MEDIA_BUCKET_URL as string) || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com';
+  async function uploadReadyMedia(client: ApiClient): Promise<string[]> {
+    if (videoFile) {
+      const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
+      await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
+      return [`${mediaBase()}/${key}`];
+    }
+    if (imageFile) {
+      const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
+      await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
+      return [`${mediaBase()}/${key}`];
+    }
+    // AI image / Design Studio export — a data URL held in aiPhotoUrl. Decode → upload so the
+    // scheduled post / Flock carries the graphic (data URLs cannot be stored as a post mediaUrl).
+    if (aiPhotoUrl && aiPhotoUrl.startsWith('data:')) {
+      const m = /^data:([^;]+);base64,(.*)$/.exec(aiPhotoUrl);
+      if (m) {
+        const contentType = m[1];
+        const bin = atob(m[2]);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const ext = contentType.split('/')[1] || 'png';
+        const { url, key } = await client.getUploadUrl(`design-${Date.now()}.${ext}`, contentType);
+        await fetch(url, { method: 'PUT', body: new Blob([bytes], { type: contentType }), headers: { 'Content-Type': contentType } });
+        return [`${mediaBase()}/${key}`];
+      }
+    }
+    // Already-hosted image (e.g. aiPhotoUrl returned as an https URL).
+    if (aiPhotoUrl && /^https?:/.test(aiPhotoUrl)) return [aiPhotoUrl];
+    return [];
+  }
+
+  // Reopen a LOCAL design doc (fallback path when the cloud list isn't loaded).
   function reopenDesign(doc: DesignDocument) {
     const tpl = TEMPLATES.find((t) => t.id === doc.templateId) || TEMPLATES[0];
-    setStudioTemplate(tpl);
     setStudioDesign(doc);
+    setStudioPhoto(null);
+    setStudioTemplate(tpl);
     setStudioOpen(true);
+  }
+
+  // Reopen a CLOUD design: fetch its editable document via a presigned URL, then open the studio.
+  async function reopenCloudDesign(meta: CloudDesignMeta) {
+    const tpl = TEMPLATES.find((t) => t.id === meta.templateId) || TEMPLATES[0];
+    try {
+      const token = await getToken();
+      const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+      const { canvasJson } = await fetchDesignDocument(client, meta.id);
+      setStudioDesign({ id: meta.id, name: meta.name, templateId: meta.templateId, width: meta.width, height: meta.height, canvasJson, createdAt: meta.createdAt, updatedAt: meta.updatedAt });
+      setStudioPhoto(null);
+      setStudioTemplate(tpl);
+      setStudioOpen(true);
+    } catch {
+      showToast('Could not open that design. Please try again.');
+    }
   }
 
   // Recompute suggestions after the user stops typing (debounce) or after AI generation.
@@ -205,6 +291,32 @@ export default function ContentCreatorPage() {
     };
     reader.onerror = () => showToast('Could not read that photo.');
     reader.readAsDataURL(file);
+  }
+
+  // Persist Brand Kit edits made inside the studio to the account (cross-device). The studio
+  // calls this (debounced on explicit save/apply); we also keep a local mirror for fast paint.
+  async function handleStudioBrandKitChange(kit: BrandKit): Promise<void> {
+    setBrandKit(kit);
+    try {
+      const token = await getToken();
+      const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+      const { saveBrandKitCloud } = await import('../lib/designStore');
+      const saved = await saveBrandKitCloud(client, kit);
+      setBrandKit(saved); // reflect the server's canonical logo URL
+    } catch {
+      // Offline — keep the in-memory kit; next studio open will reconcile from the cloud.
+    }
+  }
+
+  // Persist a design to the account (cross-device). Returns true on success so the studio can
+  // confirm the save and the page can refresh the My Designs strip.
+  async function handleStudioCloudSave(args: { id: string; name: string; templateId: string; width: number; height: number; canvasJson: unknown; thumbnailDataUrl?: string | null; createdAt?: number }): Promise<boolean> {
+    const token = await getToken();
+    const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+    const { saveDesignCloud } = await import('../lib/designStore');
+    await saveDesignCloud(client, args);
+    try { setCloudDesigns(await listCloudDesigns(client)); } catch { /* list refresh is best-effort */ }
+    return true;
   }
 
   function handleStudioUseInPost(dataUrl: string) {
@@ -842,26 +954,33 @@ export default function ContentCreatorPage() {
         />
       )}
 
-      {/* ── My Designs — reopen a saved, still-editable design (Workflow D) ── */}
-      {view === 'post' && savedDesigns.length > 0 && (
+      {/* ── My Designs — reopen a saved, still-editable design (Workflow D) ──
+          Prefers the account-backed (cross-device) list once loaded; falls back to local. */}
+      {view === 'post' && ((cloudDesigns && cloudDesigns.length > 0) || (!cloudDesigns && savedDesigns.length > 0)) && (
         <div className="glass-card space-y-2" aria-label="My saved designs">
-          <p className="text-sm font-bold text-white">🎨 My Designs</p>
+          <p className="text-sm font-bold text-white">🎨 My Designs <span className="text-[10px] font-normal text-slate-500">· synced to your account</span></p>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {savedDesigns.slice(0, 8).map((d) => (
-              <button
-                key={d.id}
-                onClick={() => reopenDesign(d)}
-                className="shrink-0 w-24 text-left group"
-                title={`Reopen “${d.name}”`}
-              >
-                <div className="w-24 h-24 rounded-lg overflow-hidden border border-white/10 group-hover:border-amber-500/60 bg-black">
-                  {d.thumbnail
-                    ? <img src={d.thumbnail} alt="" className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center text-2xl">🎨</div>}
-                </div>
-                <p className="text-[10px] text-slate-300 mt-1 truncate">{d.name}</p>
-              </button>
-            ))}
+            {cloudDesigns
+              ? cloudDesigns.slice(0, 12).map((d) => (
+                <button key={d.id} onClick={() => reopenCloudDesign(d)} className="shrink-0 w-24 text-left group" title={`Reopen “${d.name}”`}>
+                  <div className="w-24 h-24 rounded-lg overflow-hidden border border-white/10 group-hover:border-amber-500/60 bg-black">
+                    {d.thumbnailUrl
+                      ? <img src={d.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-2xl">🎨</div>}
+                  </div>
+                  <p className="text-[10px] text-slate-300 mt-1 truncate">{d.name}</p>
+                </button>
+              ))
+              : savedDesigns.slice(0, 8).map((d) => (
+                <button key={d.id} onClick={() => reopenDesign(d)} className="shrink-0 w-24 text-left group" title={`Reopen “${d.name}”`}>
+                  <div className="w-24 h-24 rounded-lg overflow-hidden border border-white/10 group-hover:border-amber-500/60 bg-black">
+                    {d.thumbnail
+                      ? <img src={d.thumbnail} alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-2xl">🎨</div>}
+                  </div>
+                  <p className="text-[10px] text-slate-300 mt-1 truncate">{d.name}</p>
+                </button>
+              ))}
           </div>
         </div>
       )}
@@ -1294,17 +1413,8 @@ export default function ContentCreatorPage() {
                       getToken: async () => token,
                     });
 
-                    // Upload image if provided
-                    let mediaUrls: string[] = [];
-                    if (imageFile) {
-                      const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
-                      await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
-                      mediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
-                    } else if (videoFile) {
-                      const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
-                      await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
-                      mediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
-                    }
+                    // Upload whatever is ready (file, AI image, or finished design).
+                    const mediaUrls = await uploadReadyMedia(client);
 
                     const scheduledAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
                     const content = Object.values(platformContent)[0] || '';
@@ -1372,17 +1482,8 @@ export default function ContentCreatorPage() {
                       getToken: async () => token,
                     });
 
-                    // Upload media if provided
-                    let schedMediaUrls: string[] = [];
-                    if (imageFile) {
-                      const { url, key } = await client.getUploadUrl(imageFile.name, imageFile.type);
-                      await fetch(url, { method: 'PUT', body: imageFile, headers: { 'Content-Type': imageFile.type } });
-                      schedMediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
-                    } else if (videoFile) {
-                      const { url, key } = await client.getUploadUrl(videoFile.name, videoFile.type);
-                      await fetch(url, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
-                      schedMediaUrls = [`${import.meta.env.VITE_MEDIA_BUCKET_URL || 'https://socialleadgen-storage-mediauploadsbucketbce0cf0b-zkbwwljnyurz.s3.amazonaws.com'}/${key}`];
-                    }
+                    // Upload whatever is ready (file, AI image, or finished design).
+                    const schedMediaUrls = await uploadReadyMedia(client);
 
                     const scheduledAt = new Date(input.value).toISOString();
                     const content = Object.values(platformContent)[0] || '';
@@ -2002,18 +2103,26 @@ export default function ContentCreatorPage() {
           readyImageSrc via setAiPhotoUrl, so it auto-attaches to the post,
           scheduling, and Flocks without any other plumbing changes. */}
       {studioOpen && studioTemplate && (
-        <DesignStudio
-          template={studioTemplate}
-          brandKit={brandKit}
-          sub={user?.sub}
-          initialDesign={studioDesign}
-          initialPhoto={studioPhoto}
-          canUseAiImage={canUseAiImage}
-          onEditPhoto={handleStudioEditPhoto}
-          onUseInPost={handleStudioUseInPost}
-          onBrandKitChange={setBrandKit}
-          onClose={() => { setStudioOpen(false); setStudioTemplate(null); setStudioDesign(null); setStudioPhoto(null); setSavedDesigns(listDesigns(user?.sub)); }}
-        />
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-zinc-950 text-slate-300">
+            <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm">Opening Design Studio…</p>
+          </div>
+        }>
+          <DesignStudio
+            template={studioTemplate}
+            brandKit={brandKit}
+            sub={user?.sub}
+            initialDesign={studioDesign}
+            initialPhoto={studioPhoto}
+            canUseAiImage={canUseAiImage}
+            onEditPhoto={handleStudioEditPhoto}
+            onCloudSave={handleStudioCloudSave}
+            onUseInPost={handleStudioUseInPost}
+            onBrandKitChange={handleStudioBrandKitChange}
+            onClose={() => { setStudioOpen(false); setStudioTemplate(null); setStudioDesign(null); setStudioPhoto(null); }}
+          />
+        </Suspense>
       )}
     </div>
   );

@@ -21,6 +21,7 @@ import Module from 'node:module';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { evalCondition, applyUpdate, ccf } from './ddbExpr';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const handlerPath = resolve(here, '../../../../lambdas/dist/content-handler/index.js');
@@ -34,6 +35,8 @@ let updates: any[];
 let s3Puts: any[];
 let openAiCalls: { url: string; init: any }[];
 let openAiResponse: { ok: boolean; status: number; body: any } | 'throw-timeout';
+let bedrockCalls = 0;
+let bedrockFails = false;
 
 // A tiny valid PNG data URL (1x1) used as the "photo" to edit.
 const PNG_1x1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -54,21 +57,12 @@ function sdkStubs() {
               return { Items: profile ? [profile] : [] };
             }
             if (c.__name === 'UpdateCommand') {
-              // Model the month-rollover ConditionExpression used by recordAiImageUse.
-              const cond = c.input.ConditionExpression || '';
-              if (cond.includes('aiImagesMonth = :m')) {
-                const m = c.input.ExpressionAttributeValues[':m'];
-                if (profile.aiImagesMonth && profile.aiImagesMonth !== m) {
-                  const e: any = new Error('cond'); e.name = 'ConditionalCheckFailedException'; throw e;
-                }
-                profile.aiImagesUsed = (profile.aiImagesUsed || 0) + 1;
-                profile.aiImagesMonth = m;
-              } else if ((c.input.UpdateExpression || '').includes('aiImagesUsed = :one')) {
-                profile.aiImagesUsed = 1;
-                profile.aiImagesMonth = c.input.ExpressionAttributeValues[':m'];
-              }
+              // Faithful conditional write: evaluate the real ConditionExpression, then apply.
+              const { ConditionExpression, UpdateExpression, ExpressionAttributeValues: v, ExpressionAttributeNames: n } = c.input;
+              if (!evalCondition(ConditionExpression, profile, v, n)) throw ccf();
+              profile = applyUpdate(profile, UpdateExpression, v, n);
               updates.push(c.input);
-              return {};
+              return { Attributes: profile };
             }
             return {};
           },
@@ -84,7 +78,18 @@ function sdkStubs() {
       PutObjectCommand: cmd('PutObjectCommand'),
     },
     '@aws-sdk/s3-request-presigner': { getSignedUrl: async () => 'https://signed' },
-    '@aws-sdk/client-bedrock-runtime': { BedrockRuntimeClient: class {}, InvokeModelCommand: cmd('InvokeModelCommand') },
+    '@aws-sdk/client-bedrock-runtime': {
+      BedrockRuntimeClient: class {
+        async send() {
+          bedrockCalls++;
+          await new Promise((r) => setTimeout(r, 5)); // let concurrent requests interleave
+          if (bedrockFails) throw new Error('bedrock down');
+          const text = JSON.stringify({ facebook: 'Storm season is here.' });
+          return { body: new TextEncoder().encode(JSON.stringify({ output: { message: { content: [{ text }] } } })) };
+        }
+      },
+      InvokeModelCommand: cmd('InvokeModelCommand'),
+    },
     '@aws-sdk/client-secrets-manager': {
       SecretsManagerClient: class { async send() { return { SecretString: JSON.stringify({ OPENAI_API_KEY: 'sk-test' }) }; } },
       GetSecretValueCommand: cmd('GetSecretValueCommand'),
@@ -119,9 +124,12 @@ beforeEach(() => {
   updates = [];
   s3Puts = [];
   openAiCalls = [];
+  bedrockCalls = 0;
+  bedrockFails = false;
   openAiResponse = { ok: true, status: 200, body: { data: [{ b64_json: 'RURJVEVE' }] } };
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: any) => {
     openAiCalls.push({ url, init });
+    await new Promise((r) => setTimeout(r, 5)); // let concurrent requests interleave realistically
     if (openAiResponse === 'throw-timeout') { const e: any = new Error('timed out'); e.name = 'TimeoutError'; throw e; }
     const r = openAiResponse;
     return { ok: r.ok, status: r.status, json: async () => r.body } as any;
@@ -192,12 +200,22 @@ describe('AI image entitlement — server-side (both endpoints)', () => {
       expect(profile.aiImagesMonth).toBe(thisMonth);
     });
 
-    it(`${path}: meters ONLY successful images (an OpenAI failure is not counted)`, async () => {
+    it(`${path}: an OpenAI failure is REFUNDED (reserve then refund → net usage unchanged)`, async () => {
+      profile.aiImagesUsed = 7;
+      profile.aiImagesMonth = thisMonth;
       openAiResponse = { ok: false, status: 500, body: { error: { message: 'boom' } } };
       const res = await loadHandler()(ev(path, body));
       expect(res.statusCode).toBeGreaterThanOrEqual(500);
-      expect(updates).toHaveLength(0);
-      expect(profile.aiImagesUsed).toBeUndefined();
+      expect(profile.aiImagesUsed).toBe(7); // slot was reserved, then given back
+    });
+
+    it(`${path}: an OpenAI network error / timeout is refunded`, async () => {
+      profile.aiImagesUsed = 3;
+      profile.aiImagesMonth = thisMonth;
+      openAiResponse = 'throw-timeout';
+      const res = await loadHandler()(ev(path, body));
+      expect(res.statusCode).toBeGreaterThanOrEqual(500);
+      expect(profile.aiImagesUsed).toBe(3);
     });
 
     it(`${path}: a successful image increments the monthly counter by exactly 1`, async () => {
@@ -274,7 +292,7 @@ describe('/content/edit-image — AI photo editing', () => {
     const res = await loadHandler()(ev('/content/edit-image', { instruction: 'x', image: PNG_1x1 }));
     expect(res.statusCode).toBe(422);
     expect(JSON.parse(res.body).error.code).toBe('EDIT_BLOCKED');
-    expect(updates).toHaveLength(0);
+    expect(profile.aiImagesUsed ?? 0).toBe(0); // reserved then refunded — net usage unchanged
   });
 
   it('surfaces a timeout as a clean 504 (and does not meter it)', async () => {
@@ -282,11 +300,66 @@ describe('/content/edit-image — AI photo editing', () => {
     const res = await loadHandler()(ev('/content/edit-image', { instruction: 'x', image: PNG_1x1 }));
     expect(res.statusCode).toBe(504);
     expect(JSON.parse(res.body).error.code).toBe('EDIT_TIMEOUT');
-    expect(updates).toHaveLength(0);
+    expect(profile.aiImagesUsed ?? 0).toBe(0); // reserved then refunded — net usage unchanged
   });
 
   it('rejects unauthenticated requests (401)', async () => {
     const res = await loadHandler()({ requestContext: { http: { method: 'POST', path: '/content/edit-image' } }, body: '{}' });
     expect(res.statusCode).toBe(401);
+  });
+});
+
+// ─── Concurrency: quotas cannot be bypassed by parallel requests (item 8) ────────
+// The stub's UpdateCommand evaluates the REAL ConditionExpression and applies it
+// synchronously per call, exactly like DynamoDB's atomic conditional write — so these
+// tests genuinely exercise the reservation logic under interleaved requests.
+describe('AI image quota — concurrency safety', () => {
+  it('N parallel image requests at the cap boundary admit EXACTLY the remaining slots', async () => {
+    // 38 used, cap 40 → only 2 of 10 simultaneous requests may succeed.
+    profile.aiImagesUsed = 38;
+    profile.aiImagesMonth = thisMonth;
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => loadHandler()(ev('/content/generate-image', { prompt: 'a roof' }))),
+    );
+    const ok = results.filter((r) => r.statusCode === 200).length;
+    const capped = results.filter((r) => r.statusCode === 403).length;
+    expect(ok).toBe(2);
+    expect(capped).toBe(8);
+    expect(profile.aiImagesUsed).toBe(40); // never exceeds the cap
+    expect(openAiCalls).toHaveLength(2);   // only admitted requests reach OpenAI (cost bounded)
+  });
+
+  it('parallel requests from a FRESH account (no counter yet) still respect the cap', async () => {
+    delete profile.aiImagesUsed;
+    delete profile.aiImagesMonth;
+    // team cap = 100; fire 5 — all should succeed and the counter lands exactly at 5.
+    profile.subscriptionTier = 'team';
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => loadHandler()(ev('/content/edit-image', { instruction: 'remove the car', image: PNG_1x1 }))),
+    );
+    expect(results.every((r) => r.statusCode === 200)).toBe(true);
+    expect(profile.aiImagesUsed).toBe(5);
+    expect(profile.aiImagesMonth).toBe(thisMonth);
+  });
+
+  it('text generation: N parallel requests at the cap admit exactly the remaining slots', async () => {
+    // free tier text cap = 2; 1 used → only 1 of 6 parallel may succeed.
+    profile.subscriptionTier = 'free';
+    profile.aiGenerationsUsed = 1;
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () => loadHandler()(ev('/content/generate', { tone: 'professional', postType: 'Educational', platforms: ['facebook'] }))),
+    );
+    const ok = results.filter((r) => r.statusCode === 201).length;
+    expect(ok).toBe(1);
+    expect(profile.aiGenerationsUsed).toBe(2); // exactly at the cap, never over
+  });
+
+  it('a failed text generation refunds its reserved slot', async () => {
+    profile.subscriptionTier = 'free';
+    profile.aiGenerationsUsed = 0;
+    bedrockFails = true;
+    const res = await loadHandler()(ev('/content/generate', { tone: 'professional', postType: 'Educational', platforms: ['facebook'] }));
+    expect(res.statusCode).toBe(500);
+    expect(profile.aiGenerationsUsed).toBe(0); // reserved, generation failed, refunded
   });
 });

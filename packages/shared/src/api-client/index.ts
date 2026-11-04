@@ -53,6 +53,52 @@ export interface DeviceRegistrationInput {
   pushToken: string;
 }
 
+// --- Brand Kit + Design storage (account-backed, cross-device) ---
+
+export interface CloudBrandKit {
+  companyName: string;
+  phone: string;
+  website: string;
+  tagline: string;
+  primaryColor: string;
+  accentColor: string;
+  /** short-lived presigned GET URL for the logo, or null */
+  logoUrl: string | null;
+  updatedAt: string | null;
+}
+
+export interface BrandKitInput {
+  companyName?: string;
+  phone?: string;
+  website?: string;
+  tagline?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  /** undefined = keep current logo · null = remove · "<rev>" = use an uploaded logo */
+  logoRev?: string | null;
+}
+
+export interface CloudDesignMeta {
+  id: string;
+  name: string;
+  templateId: string;
+  width: number;
+  height: number;
+  createdAt: number;
+  updatedAt: number;
+  /** short-lived presigned GET URL for the thumbnail, or null */
+  thumbnailUrl: string | null;
+}
+
+export interface DesignCommitInput {
+  rev: string;
+  name: string;
+  templateId: string;
+  width: number;
+  height: number;
+  createdAt?: number;
+}
+
 // --- API Client Config ---
 
 export interface ApiClientConfig {
@@ -166,6 +212,34 @@ export class ApiClient {
     imagesLimit?: number;
   }> {
     return this.request('POST', '/content/edit-image', req);
+  }
+
+  // --- Brand Kit (account-backed, cross-device) ---
+  async getBrandKit(): Promise<{ brandKit: CloudBrandKit | null }> {
+    return this.request('GET', '/brand-kit');
+  }
+  async putBrandKit(req: BrandKitInput): Promise<{ brandKit: CloudBrandKit }> {
+    return this.request('PUT', '/brand-kit', req);
+  }
+  async createBrandLogoUpload(contentType: string): Promise<{ rev: string; uploadUrl: string }> {
+    return this.request('POST', '/brand-kit/logo-upload', { contentType });
+  }
+
+  // --- Designs (account-backed, cross-device) ---
+  async listDesigns(): Promise<{ designs: CloudDesignMeta[] }> {
+    return this.request('GET', '/designs');
+  }
+  async getDesign(id: string): Promise<{ design: CloudDesignMeta & { documentUrl: string } }> {
+    return this.request('GET', `/designs/${encodeURIComponent(id)}`);
+  }
+  async createDesignUpload(id: string): Promise<{ rev: string; documentUploadUrl: string; thumbnailUploadUrl: string }> {
+    return this.request('POST', `/designs/${encodeURIComponent(id)}/upload`, {});
+  }
+  async commitDesign(id: string, req: DesignCommitInput): Promise<{ design: CloudDesignMeta }> {
+    return this.request('PUT', `/designs/${encodeURIComponent(id)}`, req);
+  }
+  async deleteDesign(id: string): Promise<{ deleted: boolean }> {
+    return this.request('DELETE', `/designs/${encodeURIComponent(id)}`);
   }
 
   async getUploadUrl(

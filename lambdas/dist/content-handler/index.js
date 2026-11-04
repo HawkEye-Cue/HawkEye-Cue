@@ -7,8 +7,9 @@ const {
   QueryCommand,
   DeleteCommand,
   UpdateCommand,
+  GetCommand,
 } = require('@aws-sdk/lib-dynamodb');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 const { randomUUID } = require('crypto');
@@ -203,7 +204,9 @@ async function getOpenAiKey() {
   if (openAiKey) return openAiKey;
   const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
   const sm = new SecretsManagerClient({ region: 'us-east-1' });
-  const result = await sm.send(new GetSecretValueCommand({ SecretId: 'SocialLeadGen/OpenAI' }));
+  // Overridable so the isolated sandbox reads its OWN key (SocialLeadGen/sandbox/OpenAI) and can
+  // never read the production secret. Defaults to the production id — prod behavior unchanged.
+  const result = await sm.send(new GetSecretValueCommand({ SecretId: process.env.OPENAI_SECRET_ID || 'SocialLeadGen/OpenAI' }));
   openAiKey = JSON.parse(result.SecretString).OPENAI_API_KEY;
   return openAiKey;
 }
@@ -235,7 +238,14 @@ function currentMonthKey() {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-// Returns { ok: true, tier, used, limit } or { ok: false, response }.
+// Checks the plan, then ATOMICALLY RESERVES one image from the monthly quota BEFORE any OpenAI
+// call. Returns { ok: true, tier, used, limit, month } (used = count INCLUDING this reservation)
+// or { ok: false, response }. Callers MUST call refundAiImage() if the image is not delivered.
+//
+// CONCURRENCY: the old flow was read-usage → check → generate → increment, so N simultaneous
+// requests at 39/40 all passed the check and the cap was exceeded. Reservation is a single
+// conditional DynamoDB write (`aiImagesUsed < :limit`), so DynamoDB serializes it: exactly
+// (limit - used) concurrent requests win and the rest get AI_IMAGE_LIMIT_REACHED, no cost.
 async function checkAiImageEntitlement(userId) {
   let profile;
   try {
@@ -257,37 +267,63 @@ async function checkAiImageEntitlement(userId) {
   }
   const limit = AI_IMAGE_MONTHLY_LIMITS[tier];
   const month = currentMonthKey();
-  const used = profile.aiImagesMonth === month ? (profile.aiImagesUsed || 0) : 0;
-  if (used >= limit) {
-    return { ok: false, response: respond(403, { error: { code: 'AI_IMAGE_LIMIT_REACHED', message: `You've used all ${limit} AI images this month on your plan.`, limit, used } }) };
+  const limitResponse = () => respond(403, { error: { code: 'AI_IMAGE_LIMIT_REACHED', message: `You've used all ${limit} AI images this month on your plan.`, limit, used: limit } });
+  let reserved;
+  try {
+    reserved = await reserveAiImage(userId, limit, month);
+  } catch (e) {
+    console.error('[ai-image] reservation failed (denying):', e.message);
+    return { ok: false, response: respond(503, { error: { code: 'ENTITLEMENT_UNAVAILABLE', message: 'Could not verify your plan. Please try again.' } }) };
   }
-  return { ok: true, tier, used, limit, month };
+  if (!reserved.ok) return { ok: false, response: limitResponse() };
+  return { ok: true, tier, used: reserved.used, limit, month };
 }
 
-// Increment the monthly image counter, resetting it when the month rolls over.
-async function recordAiImageUse(userId, month) {
+const isCCF = (e) => e && e.name === 'ConditionalCheckFailedException';
+
+// Atomically claim one image slot for `month`. Returns { ok, used } (used after the claim).
+async function reserveAiImage(userId, limit, month) {
+  const key = { PK: `USER#${userId}`, SK: 'PROFILE' };
+  const incrementSameMonth = () => dynamo.send(new UpdateCommand({
+    TableName: TABLE_NAME, Key: key,
+    UpdateExpression: 'SET aiImagesUsed = aiImagesUsed + :one',
+    ConditionExpression: 'aiImagesMonth = :m AND aiImagesUsed < :limit',
+    ExpressionAttributeValues: { ':one': 1, ':m': month, ':limit': limit },
+    ReturnValues: 'UPDATED_NEW',
+  }));
+  // 1) Same month and under the cap → increment.
+  try { const r = await incrementSameMonth(); return { ok: true, used: r.Attributes?.aiImagesUsed }; }
+  catch (e) { if (!isCCF(e)) throw e; }
+  // 2) First image ever, or first of a new month → start this month at 1.
   try {
     await dynamo.send(new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
-      // If the stored month differs, start the count fresh at 1; otherwise increment.
-      UpdateExpression: 'SET aiImagesUsed = if_not_exists(aiImagesUsed, :zero) + :one, aiImagesMonth = :m',
-      ConditionExpression: 'attribute_not_exists(aiImagesMonth) OR aiImagesMonth = :m',
-      ExpressionAttributeValues: { ':zero': 0, ':one': 1, ':m': month },
+      TableName: TABLE_NAME, Key: key,
+      UpdateExpression: 'SET aiImagesUsed = :one, aiImagesMonth = :m',
+      ConditionExpression: 'attribute_not_exists(aiImagesMonth) OR aiImagesMonth <> :m',
+      ExpressionAttributeValues: { ':one': 1, ':m': month },
+    }));
+    return { ok: true, used: 1 };
+  } catch (e) { if (!isCCF(e)) throw e; }
+  // 3) A concurrent request just started the month (step 2 lost the race) → try once more.
+  try { const r = await incrementSameMonth(); return { ok: true, used: r.Attributes?.aiImagesUsed }; }
+  catch (e) { if (!isCCF(e)) throw e; }
+  return { ok: false }; // genuinely at the cap
+}
+
+// Return a reserved slot when the image was NOT delivered (OpenAI error, moderation block,
+// timeout, empty response). Never drops below zero; best-effort (logged, never throws).
+// NOTE: on OUR-side timeout OpenAI may still have completed and billed the call — we refund the
+// user's quota anyway (we never delivered an image), so that cost is absorbed by the platform.
+async function refundAiImage(userId, month) {
+  try {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME, Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      UpdateExpression: 'SET aiImagesUsed = aiImagesUsed - :one',
+      ConditionExpression: 'aiImagesMonth = :m AND aiImagesUsed > :zero',
+      ExpressionAttributeValues: { ':one': 1, ':zero': 0, ':m': month },
     }));
   } catch (e) {
-    if (e.name === 'ConditionalCheckFailedException') {
-      // New month — reset the counter to 1.
-      await dynamo.send(new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
-        UpdateExpression: 'SET aiImagesUsed = :one, aiImagesMonth = :m',
-        ExpressionAttributeValues: { ':one': 1, ':m': month },
-      }));
-    } else {
-      // Metering failure must not fail the user's already-generated image; log it.
-      console.error('[ai-image] usage record failed:', e.message);
-    }
+    if (!isCCF(e)) console.error('[ai-image] refund failed:', e.message);
   }
 }
 
@@ -304,6 +340,11 @@ async function handleGenerateImage(userId, body) {
   // OpenAI call so a free/over-limit user never incurs cost.
   const ent = await checkAiImageEntitlement(userId);
   if (!ent.ok) return ent.response;
+
+  // The quota slot is now RESERVED. Every exit below that does not deliver an image refunds it
+  // (finally block), so failures never consume the user's monthly allowance.
+  let delivered = false;
+  try {
 
   // Enrich the prompt for better marketing-quality output
   const styleHint = {
@@ -339,9 +380,10 @@ async function handleGenerateImage(userId, body) {
       return respond(500, { error: { code: 'IMAGE_FAILED', message: msg } });
     }
     base64Image = data?.data?.[0]?.b64_json;
+    console.log('[gen-image] openai usage', JSON.stringify({ usage: data?.usage || null }));
     // Some responses return a URL instead of base64
     if (!base64Image && data?.data?.[0]?.url) {
-      await recordAiImageUse(userId, ent.month); // meter only successful images
+      delivered = true; // the reserved slot is consumed only by a delivered image
       return respond(200, { url: data.data[0].url });
     }
   } catch (e) {
@@ -353,8 +395,8 @@ async function handleGenerateImage(userId, body) {
     return respond(500, { error: { code: 'IMAGE_FAILED', message: 'No image returned. Try again.' } });
   }
 
-  // Meter only successful generations (failed/empty calls above are not counted).
-  await recordAiImageUse(userId, ent.month);
+  // Image delivered — keep the reserved slot (failed/empty calls above are refunded).
+  delivered = true;
 
   // Return the image inline as a data URL so it renders immediately in the browser
   // (no dependency on the media bucket being publicly readable). Also upload to S3
@@ -373,6 +415,10 @@ async function handleGenerateImage(userId, body) {
   } catch (e) {
     console.error('[gen-image] S3 upload failed (returning inline image):', e.message);
     return respond(200, { dataUrl });
+  }
+
+  } finally {
+    if (!delivered) await refundAiImage(userId, ent.month);
   }
 }
 
@@ -416,11 +462,16 @@ async function handleEditImage(userId, body) {
   const ent = await checkAiImageEntitlement(userId);
   if (!ent.ok) return ent.response;
 
+  // Quota slot RESERVED — refunded in `finally` unless an edited image is delivered.
+  let delivered = false;
+  try {
+
   // Keep the photo realistic and preserve everything not explicitly mentioned. We also ask the
   // model NOT to add text — exact text/phone numbers belong in editable canvas layers.
   const prompt = `${instruction}\n\nKeep everything else in the photo exactly the same — same subject, composition, perspective, and lighting unless the instruction says otherwise. Keep it photorealistic. Do not add any text, words, letters, or numbers to the image.`;
 
   let base64Image = null;
+  const startedAt = Date.now();
   try {
     const apiKey = await getOpenAiKey();
     const form = new FormData();
@@ -448,6 +499,8 @@ async function handleEditImage(userId, body) {
       return respond(code === 'EDIT_BLOCKED' ? 422 : 502, { error: { code, message: msg } });
     }
     base64Image = data?.data?.[0]?.b64_json || null;
+    // Actual provider usage (token counts) + latency, for cost verification. No user content logged.
+    console.log('[edit-image] openai usage', JSON.stringify({ ms: Date.now() - startedAt, inputBytes: parsed.buffer.length, usage: data?.usage || null }));
   } catch (e) {
     const timedOut = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
     console.error('[edit-image] request failed:', e.message);
@@ -458,8 +511,8 @@ async function handleEditImage(userId, body) {
     return respond(502, { error: { code: 'EDIT_FAILED', message: 'No edited image came back. Try again.' } });
   }
 
-  // Meter only successful edits.
-  await recordAiImageUse(userId, ent.month);
+  // Edited image delivered — keep the reserved slot.
+  delivered = true;
 
   const dataUrl = `data:image/png;base64,${base64Image}`;
   // Best-effort persistent copy as a NEW object (never overwrites the user's original).
@@ -471,7 +524,240 @@ async function handleEditImage(userId, body) {
     console.error('[edit-image] S3 copy failed (returning inline image):', e.message);
     key = undefined;
   }
-  return respond(200, { dataUrl, ...(key ? { key } : {}), imagesUsed: ent.used + 1, imagesLimit: ent.limit });
+  // ent.used already INCLUDES this reservation.
+  return respond(200, { dataUrl, ...(key ? { key } : {}), imagesUsed: ent.used, imagesLimit: ent.limit });
+
+  } finally {
+    if (!delivered) await refundAiImage(userId, ent.month);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// Account-backed Brand Kit + editable Designs (cross-device)
+// ════════════════════════════════════════════════════════════════════════════════
+// Storage layout (per user, keyed ONLY by the JWT `sub` — never by client input):
+//   DynamoDB  PK USER#<sub>  SK BRAND_KIT        brand fields + logoKey
+//   DynamoDB  PK USER#<sub>  SK DESIGN#<id>      design metadata + S3 object keys
+//   S3 (private bucket, block-all-public)        brand/<sub>/logo-<rev>
+//                                                designs/<sub>/<id>/<rev>.json      (editable layers)
+//                                                designs/<sub>/<id>/<rev>-thumb.jpg (preview)
+// The browser reads/writes S3 objects ONLY through short-lived presigned URLs minted here
+// after authorization, so one user can never read or overwrite another user's objects.
+// Design documents go browser→S3 directly (they embed photos and can exceed Lambda's 6 MB
+// payload limit). A save is a two-step COMMIT: upload to a fresh server-minted revision key,
+// then PUT the metadata — the server verifies the upload exists and is within size limits
+// before pointing the design at it, so a failed upload never corrupts an existing design.
+
+const DESIGN_ID_RE = /^dsn_[a-z0-9_]{1,48}$/;
+const REV_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+const MAX_DESIGNS_PER_USER = 100;
+const MAX_DESIGN_DOC_BYTES = 15 * 1024 * 1024;
+const MAX_THUMB_BYTES = 512 * 1024;
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+const URL_TTL = 3600; // presigned GET lifetime (s)
+const UPLOAD_TTL = 600; // presigned PUT lifetime (s)
+
+const docKeyFor = (sub, id, rev) => `designs/${sub}/${id}/${rev}.json`;
+const thumbKeyFor = (sub, id, rev) => `designs/${sub}/${id}/${rev}-thumb.jpg`;
+const logoKeyFor = (sub, rev) => `brand/${sub}/logo-${rev}`;
+
+const presignGet = (Key) => getSignedUrl(s3, new GetObjectCommand({ Bucket: MEDIA_BUCKET, Key }), { expiresIn: URL_TTL });
+const presignPut = (Key, ContentType) => getSignedUrl(s3, new PutObjectCommand({ Bucket: MEDIA_BUCKET, Key, ContentType }), { expiresIn: UPLOAD_TTL });
+
+async function headObject(Key) {
+  try {
+    const h = await s3.send(new HeadObjectCommand({ Bucket: MEDIA_BUCKET, Key }));
+    return { exists: true, size: h.ContentLength || 0, contentType: h.ContentType || '' };
+  } catch (e) {
+    if (e?.$metadata?.httpStatusCode === 404 || e.name === 'NotFound' || e.name === 'NoSuchKey') return { exists: false };
+    throw e;
+  }
+}
+async function deleteObjectQuiet(Key) {
+  if (!Key) return;
+  try { await s3.send(new DeleteObjectCommand({ Bucket: MEDIA_BUCKET, Key })); }
+  catch (e) { console.error('[storage] delete failed (orphan left):', e.message); }
+}
+const strField = (v, max) => (v === undefined || v === null ? '' : String(v).slice(0, max));
+const badRequest = (message) => respond(400, { error: { code: 'VALIDATION_ERROR', message } });
+
+// ── Brand Kit ────────────────────────────────────────────────────────────────
+async function getBrandKitItem(sub) {
+  const r = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${sub}`, SK: 'BRAND_KIT' } }));
+  return r.Item || null;
+}
+
+// GET /brand-kit
+async function handleGetBrandKit(sub) {
+  const item = await getBrandKitItem(sub);
+  if (!item) return respond(200, { brandKit: null });
+  return respond(200, {
+    brandKit: {
+      companyName: item.companyName || '', phone: item.phone || '', website: item.website || '',
+      tagline: item.tagline || '', primaryColor: item.primaryColor || '#f97316', accentColor: item.accentColor || '#ffffff',
+      logoUrl: item.logoKey ? await presignGet(item.logoKey) : null,
+      updatedAt: item.updatedAt || null,
+    },
+  });
+}
+
+// POST /brand-kit/logo-upload { contentType } → { uploadUrl, rev }
+async function handleBrandLogoUpload(sub, body) {
+  const contentType = String((body && body.contentType) || '');
+  if (!LOGO_TYPES.includes(contentType)) return badRequest('Logo must be PNG, JPG, WEBP, or SVG.');
+  const rev = randomUUID();
+  return respond(200, { rev, uploadUrl: await presignPut(logoKeyFor(sub, rev), contentType) });
+}
+
+// PUT /brand-kit { companyName, phone, website, tagline, primaryColor, accentColor, logoRev? }
+//   logoRev: undefined → keep current logo · null → remove · "<uuid>" → use the uploaded logo
+async function handlePutBrandKit(sub, body) {
+  if (!body || typeof body !== 'object') return badRequest('Brand Kit is required.');
+  for (const c of ['primaryColor', 'accentColor']) {
+    if (body[c] !== undefined && !HEX_RE.test(String(body[c]))) return badRequest(`${c} must be a #rrggbb color.`);
+  }
+  const existing = await getBrandKitItem(sub);
+  let logoKey = existing?.logoKey || null;
+  let oldLogoToDelete = null;
+  if (body.logoRev === null) {
+    oldLogoToDelete = logoKey; logoKey = null;
+  } else if (body.logoRev !== undefined) {
+    if (!REV_RE.test(String(body.logoRev))) return badRequest('Invalid logo reference.');
+    const key = logoKeyFor(sub, body.logoRev);
+    const h = await headObject(key);
+    if (!h.exists) return badRequest('Logo upload not found. Please upload it again.');
+    if (h.size > MAX_LOGO_BYTES) { await deleteObjectQuiet(key); return badRequest('Logo is too large (max 2 MB).'); }
+    if (!LOGO_TYPES.includes(h.contentType)) { await deleteObjectQuiet(key); return badRequest('Logo must be PNG, JPG, WEBP, or SVG.'); }
+    if (logoKey && logoKey !== key) oldLogoToDelete = logoKey;
+    logoKey = key;
+  }
+  const now = new Date().toISOString();
+  await dynamo.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      PK: `USER#${sub}`, SK: 'BRAND_KIT',
+      companyName: strField(body.companyName, 120), phone: strField(body.phone, 40),
+      website: strField(body.website, 200), tagline: strField(body.tagline, 200),
+      primaryColor: body.primaryColor || existing?.primaryColor || '#f97316',
+      accentColor: body.accentColor || existing?.accentColor || '#ffffff',
+      logoKey, updatedAt: now,
+    },
+  }));
+  await deleteObjectQuiet(oldLogoToDelete);
+  return handleGetBrandKit(sub);
+}
+
+// ── Designs ──────────────────────────────────────────────────────────────────
+async function getDesignItem(sub, id) {
+  const r = await dynamo.send(new GetCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${sub}`, SK: `DESIGN#${id}` } }));
+  return r.Item || null;
+}
+async function designMeta(item, { withDocument = false } = {}) {
+  return {
+    id: item.designId, name: item.name, templateId: item.templateId, width: item.width, height: item.height,
+    createdAt: item.createdAt, updatedAt: item.updatedAt,
+    thumbnailUrl: item.thumbKey ? await presignGet(item.thumbKey) : null,
+    ...(withDocument ? { documentUrl: await presignGet(item.docKey) } : {}),
+  };
+}
+
+// GET /designs → newest first
+async function handleListDesigns(sub) {
+  const items = [];
+  let ExclusiveStartKey;
+  do {
+    const r = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      ExpressionAttributeValues: { ':pk': `USER#${sub}`, ':sk': 'DESIGN#' },
+      ExclusiveStartKey,
+    }));
+    items.push(...(r.Items || []));
+    ExclusiveStartKey = r.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  return respond(200, { designs: await Promise.all(items.map((i) => designMeta(i))) });
+}
+
+// GET /designs/{id} → metadata + presigned document URL
+async function handleGetDesign(sub, id) {
+  const item = await getDesignItem(sub, id);
+  if (!item) return respond(404, { error: { code: 'NOT_FOUND', message: 'Design not found.' } });
+  return respond(200, { design: await designMeta(item, { withDocument: true }) });
+}
+
+// POST /designs/{id}/upload → fresh revision + presigned PUTs for the document + thumbnail
+async function handleDesignUpload(sub, id) {
+  const rev = randomUUID();
+  return respond(200, {
+    rev,
+    documentUploadUrl: await presignPut(docKeyFor(sub, id, rev), 'application/json'),
+    thumbnailUploadUrl: await presignPut(thumbKeyFor(sub, id, rev), 'image/jpeg'),
+  });
+}
+
+// PUT /designs/{id} { rev, name, templateId, width, height, createdAt? } → commit
+async function handlePutDesign(sub, id, body) {
+  if (!body || typeof body !== 'object') return badRequest('Design is required.');
+  if (!REV_RE.test(String(body.rev || ''))) return badRequest('Invalid design revision.');
+  const name = strField(body.name, 120).trim() || 'Untitled design';
+  const templateId = strField(body.templateId, 64);
+  if (!/^[a-z0-9-]{1,64}$/.test(templateId)) return badRequest('Invalid template.');
+  const width = Number(body.width), height = Number(body.height);
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 100 || height < 100 || width > 4000 || height > 4000) {
+    return badRequest('Invalid design size.');
+  }
+
+  const docKey = docKeyFor(sub, id, body.rev);
+  const thumbKey = thumbKeyFor(sub, id, body.rev);
+  const doc = await headObject(docKey);
+  if (!doc.exists) return badRequest('Design upload not found. Please save again.');
+  if (doc.size > MAX_DESIGN_DOC_BYTES) {
+    await deleteObjectQuiet(docKey); await deleteObjectQuiet(thumbKey);
+    return respond(413, { error: { code: 'DESIGN_TOO_LARGE', message: 'This design is too large to save (max 15 MB). Try a smaller photo.' } });
+  }
+  const thumb = await headObject(thumbKey);
+  const keepThumb = thumb.exists && thumb.size <= MAX_THUMB_BYTES;
+  if (thumb.exists && !keepThumb) await deleteObjectQuiet(thumbKey);
+
+  const existing = await getDesignItem(sub, id);
+  if (!existing) {
+    const count = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME, Select: 'COUNT',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      ExpressionAttributeValues: { ':pk': `USER#${sub}`, ':sk': 'DESIGN#' },
+    }));
+    if ((count.Count || 0) >= MAX_DESIGNS_PER_USER) {
+      await deleteObjectQuiet(docKey); await deleteObjectQuiet(thumbKey);
+      return respond(409, { error: { code: 'DESIGN_LIMIT_REACHED', message: `You can keep up to ${MAX_DESIGNS_PER_USER} saved designs. Delete an older one to save more.` } });
+    }
+  }
+
+  const now = Date.now();
+  const createdAt = existing?.createdAt || (Number.isFinite(Number(body.createdAt)) ? Number(body.createdAt) : now);
+  const item = {
+    PK: `USER#${sub}`, SK: `DESIGN#${id}`, designId: id, name, templateId, width, height,
+    docKey, thumbKey: keepThumb ? thumbKey : null, docBytes: doc.size, createdAt, updatedAt: now,
+  };
+  await dynamo.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+  // The previous revision is now unreferenced — clean it up (best-effort).
+  if (existing && existing.docKey !== docKey) {
+    await deleteObjectQuiet(existing.docKey);
+    if (existing.thumbKey && existing.thumbKey !== item.thumbKey) await deleteObjectQuiet(existing.thumbKey);
+  }
+  return respond(200, { design: await designMeta(item) });
+}
+
+// DELETE /designs/{id}
+async function handleDeleteDesign(sub, id) {
+  const existing = await getDesignItem(sub, id);
+  if (!existing) return respond(404, { error: { code: 'NOT_FOUND', message: 'Design not found.' } });
+  await dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { PK: `USER#${sub}`, SK: `DESIGN#${id}` } }));
+  await deleteObjectQuiet(existing.docKey);
+  await deleteObjectQuiet(existing.thumbKey);
+  return respond(200, { deleted: true });
 }
 
 // POST /content/generate
@@ -496,17 +782,44 @@ async function handleGenerate(userId, body) {
   const limit = LIMITS[tier] ?? 5;
   const used = profile.aiGenerationsUsed || 0;
 
-  if (used >= limit) {
-    return respond(403, {
-      error: {
-        code: 'TIER_LIMIT_REACHED',
-        message: `You've used all ${limit} AI generations on the ${tier} plan. Upgrade for more.`,
-        limit,
-        used,
-        tier,
-      },
-    });
+  const limitReached = () => respond(403, {
+    error: {
+      code: 'TIER_LIMIT_REACHED',
+      message: `You've used all ${limit} AI generations on the ${tier} plan. Upgrade for more.`,
+      limit,
+      used: Math.max(used, Number.isFinite(limit) ? limit : used),
+      tier,
+    },
+  });
+  if (used >= limit) return limitReached();
+
+  // CONCURRENCY: atomically RESERVE one generation before calling the model. Previously the
+  // count was read, checked, then incremented AFTER generation, so parallel requests could all
+  // pass the check and exceed the limit. Limits themselves are UNCHANGED.
+  const genKey = { PK: `USER#${userId}`, SK: 'PROFILE' };
+  const finiteLimit = Number.isFinite(limit);
+  try {
+    await dynamo.send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: genKey,
+      UpdateExpression: 'SET aiGenerationsUsed = if_not_exists(aiGenerationsUsed, :zero) + :one',
+      ...(finiteLimit ? { ConditionExpression: 'attribute_not_exists(aiGenerationsUsed) OR aiGenerationsUsed < :limit' } : {}),
+      ExpressionAttributeValues: { ':zero': 0, ':one': 1, ...(finiteLimit ? { ':limit': limit } : {}) },
+    }));
+  } catch (e) {
+    if (isCCF(e)) return limitReached();
+    throw e;
   }
+  const refundGeneration = async () => {
+    try {
+      await dynamo.send(new UpdateCommand({
+        TableName: TABLE_NAME, Key: genKey,
+        UpdateExpression: 'SET aiGenerationsUsed = aiGenerationsUsed - :one',
+        ConditionExpression: 'aiGenerationsUsed > :zero',
+        ExpressionAttributeValues: { ':one': 1, ':zero': 0 },
+      }));
+    } catch (err) { if (!isCCF(err)) console.error('[generate] refund failed:', err.message); }
+  };
 
   const contentId = randomUUID();
   const now = new Date().toISOString();
@@ -524,6 +837,7 @@ async function handleGenerate(userId, body) {
     );
   } catch (e) {
     console.error('AI generation failed:', e);
+    await refundGeneration(); // a failed generation must not consume the user's allowance
     return respond(500, {
       error: { code: 'AI_GENERATION_FAILED', message: 'Failed to generate content. Please try again.' },
     });
@@ -547,15 +861,7 @@ async function handleGenerate(userId, body) {
     })
   );
 
-  // Increment AI generations counter
-  await dynamo.send(
-    new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: 'PROFILE' },
-      UpdateExpression: 'SET aiGenerationsUsed = if_not_exists(aiGenerationsUsed, :zero) + :one',
-      ExpressionAttributeValues: { ':zero': 0, ':one': 1 },
-    })
-  );
+  // (Usage was already counted by the atomic reservation above.)
 
   return respond(201, {
     id: contentId,
@@ -681,6 +987,29 @@ exports.handler = async (event) => {
     if (method === 'POST' && path === '/content/upload-url') {
       const body = event.body ? JSON.parse(event.body) : {};
       return handleUploadUrl(userId, body);
+    }
+
+    // ── Brand Kit + Designs (account-backed, cross-device) ──
+    const parseBody = () => { try { return event.body ? JSON.parse(event.body) : {}; } catch { return null; } };
+    if (path === '/brand-kit') {
+      if (method === 'GET') return handleGetBrandKit(userId);
+      if (method === 'PUT') { const b = parseBody(); return b ? handlePutBrandKit(userId, b) : badRequest('Invalid JSON.'); }
+    }
+    if (method === 'POST' && path === '/brand-kit/logo-upload') {
+      const b = parseBody(); return b ? handleBrandLogoUpload(userId, b) : badRequest('Invalid JSON.');
+    }
+    if (method === 'GET' && path === '/designs') return handleListDesigns(userId);
+    const designMatch = path.match(/^\/designs\/([^/]+)(\/upload)?$/);
+    if (designMatch) {
+      const id = designMatch[1];
+      if (!DESIGN_ID_RE.test(id)) return badRequest('Invalid design id.');
+      if (designMatch[2]) {
+        if (method === 'POST') return handleDesignUpload(userId, id);
+      } else {
+        if (method === 'GET') return handleGetDesign(userId, id);
+        if (method === 'PUT') { const b = parseBody(); return b ? handlePutDesign(userId, id, b) : badRequest('Invalid JSON.'); }
+        if (method === 'DELETE') return handleDeleteDesign(userId, id);
+      }
     }
 
     const deleteMatch = path.match(/^\/content\/([^/]+)$/);

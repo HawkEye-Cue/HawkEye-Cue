@@ -18,7 +18,7 @@ import '../index.css';
 import DesignStudio from '../components/DesignStudio';
 import { TEMPLATES } from '../lib/designTemplates';
 import { BRAND_KIT_DEFAULTS, type BrandKit } from '../lib/brandKit';
-import { listDesigns } from '../lib/designDocument';
+import { listDesigns, saveDesign } from '../lib/designDocument';
 
 const params = new URLSearchParams(location.search);
 const SUB = 'harness-user';
@@ -28,10 +28,16 @@ const reopen = params.get('reopen') === '1' ? listDesigns(SUB)[0] || null : null
 
 declare global {
   interface Window {
-    __studio: { usedInPost: string | null; editCalls: { instruction: string; inputBytes: number }[]; closed: boolean };
+    __studio: {
+      usedInPost: string | null;
+      editCalls: { instruction: string; inputBytes: number }[];
+      cloudSaves: { id: string; name: string }[];
+      brandSaves: string[];
+      closed: boolean;
+    };
   }
 }
-window.__studio = { usedInPost: null, editCalls: [], closed: false };
+window.__studio = { usedInPost: null, editCalls: [], cloudSaves: [], brandSaves: [], closed: false };
 
 // Mock AI edit: tint the photo so the result is visibly different from the original.
 async function mockEditPhoto(image: string, instruction: string): Promise<string> {
@@ -61,8 +67,16 @@ function Harness() {
       initialDesign={reopen}
       canUseAiImage={paid}
       onEditPhoto={mockEditPhoto}
+      // Mock cloud save: record the call so the validator can assert account-backed saving,
+      // and mirror into the harness's local list so ?reopen=1 works without a backend.
+      onCloudSave={async (args) => {
+        window.__studio.cloudSaves.push({ id: args.id, name: args.name });
+        // Mirror to local so ?reopen=1 (which reads the local list) can reopen it in the harness.
+        saveDesign(SUB, { id: args.id, name: args.name, templateId: args.templateId, width: args.width, height: args.height, canvasJson: args.canvasJson, thumbnail: args.thumbnailDataUrl || undefined, createdAt: args.createdAt || Date.now(), updatedAt: Date.now() });
+        return true;
+      }}
       onUseInPost={(url) => { window.__studio.usedInPost = url; }}
-      onBrandKitChange={setKit}
+      onBrandKitChange={async (k) => { window.__studio.brandSaves.push(k.companyName); setKit(k); }}
       onClose={() => { window.__studio.closed = true; setOpen(false); }}
     />
   );

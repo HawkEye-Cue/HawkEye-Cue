@@ -198,6 +198,14 @@ export class SandboxStack extends cdk.Stack {
     });
     table.grantReadWriteData(webhookFn);
     webhookFn.addToRolePolicy(stripeSecretPolicy);
+    // The webhook's resolveTier() maps the purchased Price ID → tier using these SAME
+    // env vars the checkout uses. Without them every price is unrecognized, so a portal
+    // upgrade to Summit can't resolve to 'team'. Reuse the identical props values as
+    // subscriptionFn (no hardcoding, no new config).
+    webhookFn.addEnvironment('STRIPE_PRICE_BASE', props.soarTestPriceId);
+    webhookFn.addEnvironment('STRIPE_PRICE_GROWTH', props.soarTestPriceId);
+    webhookFn.addEnvironment('STRIPE_PRICE_SOAR', props.soarTestPriceId);
+    webhookFn.addEnvironment('STRIPE_PRICE_TEAM', props.summitTestPriceId);
 
     // ─── Team handler (Summit invites/permissions/5-cap; emails via sandbox Resend) ──
     const teamFn = new lambda.Function(this, 'SandboxTeamFn', {
@@ -228,6 +236,135 @@ export class SandboxStack extends cdk.Stack {
       description: 'Sandbox: Pipeline opportunities/leads (Add Cue, status, promote, follow-ups)',
     });
     table.grantReadWriteData(opportunitiesFn);
+
+    // ─── Launch-readiness handlers (Batch 1 + Batch 2) ───────────────────
+    // Each reuses the SAME compiled asset as prod and is scoped to the ISOLATED
+    // sandbox table only. These close the sandbox 404 gaps the frontend hits for
+    // Sales/Folio, Profile/Trade, Calendar, Keywords, Appreciations, Network, and
+    // Daily Cues. No production resource is referenced; email side-effects use the
+    // sandbox TEST Resend secret only.
+
+    // ─── Sandbox EMAIL SUPPRESSION (hard guarantee) ──────────────────────
+    // The sales/trade/calendar handlers hardcode SecretId 'SocialLeadGen/Resend'
+    // (PRODUCTION Resend) and FROM_EMAIL notifications@hawkeyecue.com — they do NOT
+    // honor RESEND_SECRET_ID/EMAIL_ALLOWLIST env. To guarantee sandbox test activity
+    // can NEVER email a real recipient, we grant these functions NO Secrets Manager
+    // access at all. getResendKey() therefore fails with AccessDenied, which every
+    // email call site already catches/returns cleanly:
+    //   • POST /sales/deals — deal is written FIRST; the "won" team-win email is a
+    //     best-effort try/catch AFTER the write, so the sale still persists.
+    //   • POST /sales/notify — wrapped; returns 500 EMAIL_FAILED (no send, no crash).
+    //   • POST /sales/linked/invite, POST /profile/suggestion — wrapped (log only).
+    //   • POST /calendar/.../invite — wrapped (meeting invite simply not sent).
+    // No prod secret is granted and no prod email behavior is modified. The email
+    // side-effect routes are intentionally non-functional in the sandbox and remain
+    // NOT TESTED on the launch checklist.
+
+    // Batch 1 ─ Sales / Folio handler. All /sales/* routes are gated server-side to
+    // Soar+ inside the handler (requirePaidFeature 'revenue'); a Nest caller gets
+    // 403 UPGRADE_REQUIRED (not weakened here). Table RW ONLY — no secrets, so no
+    // Sale-Cue email can be sent (see EMAIL SUPPRESSION note above).
+    const salesFn = new lambda.Function(this, 'SandboxSalesFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-SalesHandler',
+      handler: 'index.handler',
+      code: existingCode('sales-handler'),
+      description: 'Sandbox: sales/deals, stats, folio-config, team-emails, linked (Soar+ gated; email suppressed)',
+    });
+    table.grantReadWriteData(salesFn);
+
+    // Batch 1 ─ Trade / Profile handler. Serves /trade/* and /profile/*. USER_POOL_ID
+    // is pinned to the SANDBOX pool so /profile/delete can only ever target the
+    // sandbox pool (the handler deletes Username = caller's own JWT sub). The
+    // AdminDeleteUser grant below is scoped to the sandbox pool ARN only.
+    const tradeFn = new lambda.Function(this, 'SandboxTradeFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-TradeHandler',
+      handler: 'index.handler',
+      code: existingCode('trade-handler'),
+      description: 'Sandbox: trade selection + profile/preferences/engagement/export/delete',
+      environment: {
+        ...lambdaDefaults.environment,
+        USER_POOL_ID: userPool.userPoolId,
+      },
+    });
+    table.grantReadWriteData(tradeFn);
+    // NO Resend grant → /profile/suggestion email is suppressed (wrapped; log only).
+    // NO Stripe grant → /profile/delete's optional "cancel subscription" step hits
+    // getStripe() which is wrapped (if (stripe) + try/catch): on AccessDenied it
+    // simply skips the Stripe cancel and proceeds to delete the sandbox table rows +
+    // the sandbox Cognito user. This CANNOT touch the production Stripe account.
+    // Account deletion — scoped to the SANDBOX user pool ONLY (never the prod pool).
+    tradeFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['cognito-idp:AdminDeleteUser'],
+        resources: [userPool.userPoolArn],
+      }),
+    );
+
+    // Batch 1 ─ Calendar handler. Events CRUD + meeting invites. Table RW + sandbox
+    // Resend for invite emails. The public /calendar/invite/confirm route (no
+    // authorizer, token = randomUUID looked up by exact PK) mirrors prod and only
+    // touches the isolated sandbox table.
+    const calendarFn = new lambda.Function(this, 'SandboxCalendarFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-CalendarHandler',
+      handler: 'index.handler',
+      code: existingCode('calendar-handler'),
+      description: 'Sandbox: calendar events CRUD + engagement log (meeting-invite email suppressed)',
+    });
+    table.grantReadWriteData(calendarFn);
+    // NO Resend grant → meeting-invite emails are suppressed (wrapped; event still
+    // saves, invite just is not emailed). Calendar CRUD is pure DynamoDB.
+
+    // Batch 2 ─ Keywords handler (table only).
+    const keywordsFn = new lambda.Function(this, 'SandboxKeywordsFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-KeywordsHandler',
+      handler: 'index.handler',
+      code: existingCode('keywords-handler'),
+      description: 'Sandbox: keywords CRUD + defaults',
+    });
+    table.grantReadWriteData(keywordsFn);
+
+    // Batch 2 ─ Appreciations handler. Table RW + Bedrock Nova Lite (AI reply draft) +
+    // sandbox Resend. No Bundle.social secret granted, so it cannot post externally.
+    const appreciationsFn = new lambda.Function(this, 'SandboxAppreciationsFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-AppreciationsHandler',
+      handler: 'index.handler',
+      code: existingCode('appreciations-handler'),
+      description: 'Sandbox: appreciations/mentions, settings, AI reply draft (Nova Lite)',
+    });
+    table.grantReadWriteData(appreciationsFn);
+    appreciationsFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [`arn:aws:bedrock:${this.region}::foundation-model/amazon.nova-lite-v1:0`],
+      }),
+    );
+
+    // Batch 2 ─ Network / Wingman handler (table only).
+    const networkFn = new lambda.Function(this, 'SandboxNetworkFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-NetworkHandler',
+      handler: 'index.handler',
+      code: existingCode('network-handler'),
+      description: 'Sandbox: network posts/contacts/region',
+    });
+    table.grantReadWriteData(networkFn);
+
+    // Batch 2 ─ Daily Cues handler (table only).
+    const cuesFn = new lambda.Function(this, 'SandboxCuesFn', {
+      ...lambdaDefaults,
+      functionName: 'SocialLeadGen-Sandbox-DailyCuesHandler',
+      handler: 'index.handler',
+      code: existingCode('daily-cues-handler'),
+      description: 'Sandbox: daily cues list + complete',
+    });
+    table.grantReadWriteData(cuesFn);
 
     // ─── Folio recap (on-demand only; NO EventBridge schedule in the sandbox) ──
     const folioRecapFn = new lambda.Function(this, 'SandboxFolioRecapFn', {
@@ -273,26 +410,68 @@ export class SandboxStack extends cdk.Stack {
       }),
     );
 
-    // ─── NEW: Content handler (AI text draft + ideas) ─────────────────────
-    // Reuses the SAME compiled asset as prod. For the sandbox we ONLY expose the
-    // text endpoints (/content/generate, /content/ideas), which need Bedrock Nova
-    // Lite + the sandbox table. We deliberately do NOT grant S3 or the OpenAI secret
-    // (image generation is out of scope here), so no AI request can reach a prod
-    // bucket or key. Table access is the ISOLATED sandbox table only.
+    // ─── Sandbox media bucket (isolated; block all public access) ─────────
+    // Design Studio stores large payloads (design JSON with embedded photos,
+    // logos, thumbnails) in private S3 via short-lived presigned URLs. The
+    // sandbox gets its OWN bucket so no request can ever touch the prod bucket.
+    const sandboxMediaBucket = new s3.Bucket(this, 'SandboxMediaBucket', {
+      bucketName: `socialleadgen-sandbox-media-${this.account}`,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      // Presigned PUTs come from the browser on a different origin.
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.HEAD],
+          allowedOrigins: ['*'],
+          allowedHeaders: ['*'],
+          maxAge: 3000,
+        },
+      ],
+      // Sandbox data is disposable — tear down cleanly with the stack.
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    // ─── Content handler (AI text + AI images + Design Studio storage) ────
+    // Reuses the SAME compiled asset as prod. The sandbox now exercises the
+    // FULL content surface so QA can validate AI photo editing and account-
+    // backed Brand Kit / Designs end to end. Everything is ISOLATED:
+    //   • table  → sandbox table only (table-scoped grant)
+    //   • S3     → sandbox media bucket only (bucket-scoped grant)
+    //   • OpenAI → SANDBOX secret (SocialLeadGen/sandbox/OpenAI), never prod
+    // So no sandbox AI/storage request can reach a prod bucket, key, or table.
+    const SANDBOX_OPENAI_SECRET_ID = 'SocialLeadGen/sandbox/OpenAI';
     const contentFn = new lambda.Function(this, 'SandboxContentFn', {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-Sandbox-ContentHandler',
       handler: 'index.handler',
       code: lambda.Code.fromAsset('../../lambdas/dist/content-handler'),
-      description: 'Sandbox: AI content generation (text draft + ideas; Nova Lite)',
+      description: 'Sandbox: AI content (text + images), AI photo edit, Design Studio storage',
       timeout: cdk.Duration.seconds(30),
+      environment: {
+        ...(lambdaDefaults.environment ?? {}),
+        MEDIA_BUCKET: sandboxMediaBucket.bucketName,
+        OPENAI_SECRET_ID: SANDBOX_OPENAI_SECRET_ID,
+      },
     });
     table.grantReadWriteData(contentFn); // sandbox table ONLY (grant is table-scoped)
+    sandboxMediaBucket.grantReadWrite(contentFn); // sandbox bucket ONLY
     contentFn.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['bedrock:InvokeModel'],
         resources: [`arn:aws:bedrock:${this.region}::foundation-model/amazon.nova-lite-v1:0`],
+      }),
+    );
+    // Read ONLY the sandbox OpenAI secret (never the prod SocialLeadGen/OpenAI).
+    contentFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${SANDBOX_OPENAI_SECRET_ID}*`,
+        ],
       }),
     );
 
@@ -434,13 +613,98 @@ export class SandboxStack extends cdk.Stack {
     httpApi.addRoutes({ path: '/opportunities/{id}/followups/{stepIdx}', methods: [apigatewayv2.HttpMethod.PUT], integration: oppInt, authorizer });
     httpApi.addRoutes({ path: '/opportunities/{id}/protocol', methods: [apigatewayv2.HttpMethod.PUT], integration: oppInt, authorizer });
 
+    // ─── Batch 1: Sales / Folio routes (authenticated; Soar+ gated in handler) ──
+    const salesInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxSalesInt', salesFn);
+    httpApi.addRoutes({ path: '/sales/deals', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/deals/{id}', methods: [apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/stats', methods: [apigatewayv2.HttpMethod.GET], integration: salesInt, authorizer });
+    // Monthly sales goals (per user + folio) — mirror of prod api-stack. Same sales Lambda + table.
+    httpApi.addRoutes({ path: '/sales/goal', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/team-goals', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/notify', methods: [apigatewayv2.HttpMethod.POST], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/team-emails', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/folio-config', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/linked', methods: [apigatewayv2.HttpMethod.GET], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/linked/invite', methods: [apigatewayv2.HttpMethod.POST], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/linked/accept', methods: [apigatewayv2.HttpMethod.POST], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/linked/{id}', methods: [apigatewayv2.HttpMethod.DELETE], integration: salesInt, authorizer });
+    httpApi.addRoutes({ path: '/sales/linked/deals', methods: [apigatewayv2.HttpMethod.GET], integration: salesInt, authorizer });
+
+    // ─── Batch 1: Trade / Profile routes (authenticated) ──────────────────
+    const tradeInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxTradeInt', tradeFn);
+    httpApi.addRoutes({ path: '/trade/list', methods: [apigatewayv2.HttpMethod.GET], integration: tradeInt, authorizer });
+    httpApi.addRoutes({ path: '/trade/select', methods: [apigatewayv2.HttpMethod.PUT], integration: tradeInt, authorizer });
+    httpApi.addRoutes({ path: '/profile', methods: [apigatewayv2.HttpMethod.GET], integration: tradeInt, authorizer });
+    httpApi.addRoutes({ path: '/profile/preferences', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: tradeInt, authorizer });
+    httpApi.addRoutes({ path: '/profile/engagement', methods: [apigatewayv2.HttpMethod.GET], integration: tradeInt, authorizer });
+    httpApi.addRoutes({ path: '/profile/suggestion', methods: [apigatewayv2.HttpMethod.POST], integration: tradeInt, authorizer });
+    httpApi.addRoutes({ path: '/profile/mfa', methods: [apigatewayv2.HttpMethod.PUT], integration: tradeInt, authorizer });
+    httpApi.addRoutes({ path: '/profile/delete', methods: [apigatewayv2.HttpMethod.DELETE], integration: tradeInt, authorizer });
+    httpApi.addRoutes({ path: '/profile/export', methods: [apigatewayv2.HttpMethod.GET], integration: tradeInt, authorizer });
+
+    // ─── Batch 1: Calendar routes (authenticated; confirm is public like prod) ──
+    const calendarInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxCalendarInt', calendarFn);
+    httpApi.addRoutes({ path: '/calendar/events', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: calendarInt, authorizer });
+    httpApi.addRoutes({ path: '/calendar/events/bulk', methods: [apigatewayv2.HttpMethod.DELETE], integration: calendarInt, authorizer });
+    httpApi.addRoutes({ path: '/calendar/events/{id}', methods: [apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE], integration: calendarInt, authorizer });
+    httpApi.addRoutes({ path: '/calendar/events/{id}/toggle', methods: [apigatewayv2.HttpMethod.PUT], integration: calendarInt, authorizer });
+    httpApi.addRoutes({ path: '/calendar/events/{id}/notes', methods: [apigatewayv2.HttpMethod.PUT], integration: calendarInt, authorizer });
+    httpApi.addRoutes({ path: '/calendar/events/{id}/invite', methods: [apigatewayv2.HttpMethod.POST], integration: calendarInt, authorizer });
+    httpApi.addRoutes({ path: '/calendar/engagement', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: calendarInt, authorizer });
+    httpApi.addRoutes({ path: '/calendar/invite', methods: [apigatewayv2.HttpMethod.POST], integration: calendarInt, authorizer });
+    // NOTE: the public (no-auth) GET /calendar/invite/confirm route is DELIBERATELY
+    // EXCLUDED from this batch. The handler's confirm path has no token TTL/expiration
+    // and no replay guard (a valid token stays confirmable and re-confirmable). Rather
+    // than expose an unauthenticated endpoint with those gaps in the sandbox, we omit
+    // it. Meeting-invite emails are suppressed anyway (no Resend grant), so no
+    // confirmation links are generated during sandbox testing. Revisit with a tested
+    // expiration + single-use fix before enabling.
+
+    // ─── Batch 2: Keywords routes ─────────────────────────────────────────
+    const keywordsInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxKeywordsInt', keywordsFn);
+    httpApi.addRoutes({ path: '/keywords', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: keywordsInt, authorizer });
+    httpApi.addRoutes({ path: '/keywords/{id}', methods: [apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE], integration: keywordsInt, authorizer });
+    httpApi.addRoutes({ path: '/keywords/defaults', methods: [apigatewayv2.HttpMethod.GET], integration: keywordsInt, authorizer });
+
+    // ─── Batch 2: Appreciations routes ────────────────────────────────────
+    const apprInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxApprInt', appreciationsFn);
+    httpApi.addRoutes({ path: '/appreciations', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: apprInt, authorizer });
+    httpApi.addRoutes({ path: '/appreciations/settings', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: apprInt, authorizer });
+    httpApi.addRoutes({ path: '/appreciations/{id}/thank', methods: [apigatewayv2.HttpMethod.PUT], integration: apprInt, authorizer });
+    httpApi.addRoutes({ path: '/appreciations/{id}', methods: [apigatewayv2.HttpMethod.DELETE], integration: apprInt, authorizer });
+    httpApi.addRoutes({ path: '/appreciations/generate-reply', methods: [apigatewayv2.HttpMethod.POST], integration: apprInt, authorizer });
+
+    // ─── Batch 2: Network / Wingman routes ────────────────────────────────
+    const networkInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxNetworkInt', networkFn);
+    httpApi.addRoutes({ path: '/network/posts', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: networkInt, authorizer });
+    httpApi.addRoutes({ path: '/network/posts/{id}', methods: [apigatewayv2.HttpMethod.DELETE], integration: networkInt, authorizer });
+    httpApi.addRoutes({ path: '/network/posts/{id}/reply', methods: [apigatewayv2.HttpMethod.POST], integration: networkInt, authorizer });
+    httpApi.addRoutes({ path: '/network/contacts', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.POST], integration: networkInt, authorizer });
+    httpApi.addRoutes({ path: '/network/contacts/{id}', methods: [apigatewayv2.HttpMethod.DELETE], integration: networkInt, authorizer });
+    httpApi.addRoutes({ path: '/network/region', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: networkInt, authorizer });
+
+    // ─── Batch 2: Daily Cues routes ───────────────────────────────────────
+    const cuesInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxCuesInt', cuesFn);
+    httpApi.addRoutes({ path: '/cues', methods: [apigatewayv2.HttpMethod.GET], integration: cuesInt, authorizer });
+    httpApi.addRoutes({ path: '/cues/{id}/complete', methods: [apigatewayv2.HttpMethod.PUT], integration: cuesInt, authorizer });
+
     // ─── NEW: AI routes (authenticated, same Cognito authorizer) ──────────
     const flockImportInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxFlockImportInt', flockImportFn);
     httpApi.addRoutes({ path: '/flock/import', methods: [apigatewayv2.HttpMethod.POST], integration: flockImportInt, authorizer });
 
     const contentInt = new apigatewayv2Integrations.HttpLambdaIntegration('SandboxContentInt', contentFn);
+    // AI text
     httpApi.addRoutes({ path: '/content/generate', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
     httpApi.addRoutes({ path: '/content/ideas', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
+    // AI images (gpt-image-1): generation + natural-language photo editing
+    httpApi.addRoutes({ path: '/content/generate-image', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
+    httpApi.addRoutes({ path: '/content/edit-image', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
+    // Design Studio: account-backed Brand Kit + saved Designs (each path explicit)
+    httpApi.addRoutes({ path: '/brand-kit', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: contentInt, authorizer });
+    httpApi.addRoutes({ path: '/brand-kit/logo-upload', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
+    httpApi.addRoutes({ path: '/designs', methods: [apigatewayv2.HttpMethod.GET], integration: contentInt, authorizer });
+    httpApi.addRoutes({ path: '/designs/{id}', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT, apigatewayv2.HttpMethod.DELETE], integration: contentInt, authorizer });
+    httpApi.addRoutes({ path: '/designs/{id}/upload', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
 
     // NEW: Scheduled-posts CRUD routes (authenticated). /posts/{id}/publish returns
     // 501 in the handler (no immediate publish), so it is harmless to expose.

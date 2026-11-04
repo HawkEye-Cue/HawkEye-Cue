@@ -865,6 +865,47 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
 
+    // ─── Design Studio: account-backed Brand Kit + saved Designs ──────────
+    // Cross-device cloud storage. Metadata lives in DynamoDB; large payloads
+    // (design JSON with embedded photos, logos) move browser↔private S3 via
+    // short-lived presigned URLs the handler mints after JWT auth. Each path
+    // must be registered explicitly — HTTP API v2 has no catch-all here and
+    // the handler routes on requestContext.http.path.
+    this.httpApi.addRoutes({
+      path: '/brand-kit',
+      methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT],
+      integration: contentIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/brand-kit/logo-upload',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: contentIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/designs',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: contentIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/designs/{id}',
+      methods: [
+        apigatewayv2.HttpMethod.GET,
+        apigatewayv2.HttpMethod.PUT,
+        apigatewayv2.HttpMethod.DELETE,
+      ],
+      integration: contentIntegration,
+      authorizer,
+    });
+    this.httpApi.addRoutes({
+      path: '/designs/{id}/upload',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: contentIntegration,
+      authorizer,
+    });
+
     // Posts routes
     const postsIntegration = new apigatewayv2Integrations.HttpLambdaIntegration(
       'PostsIntegration',

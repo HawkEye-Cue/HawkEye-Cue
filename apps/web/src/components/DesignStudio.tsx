@@ -44,8 +44,12 @@ interface DesignStudioProps {
   canUseAiImage: boolean;
   /** performs the AI photo edit; returns the edited image data URL */
   onEditPhoto: (image: string, instruction: string) => Promise<string>;
+  /** persist the design to the account (cross-device). Resolves true on success. If omitted,
+   *  the studio falls back to local save. */
+  onCloudSave?: (args: { id: string; name: string; templateId: string; width: number; height: number; canvasJson: unknown; thumbnailDataUrl?: string | null; createdAt?: number }) => Promise<boolean>;
   onUseInPost: (dataUrl: string) => void;
-  onBrandKitChange: (kit: BrandKit) => void;
+  /** persist Brand Kit edits (cloud). May be async. */
+  onBrandKitChange: (kit: BrandKit) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -59,7 +63,7 @@ function appliedText(layer: { text?: string; isBrandSlot?: boolean; isPhoneSlot?
 }
 
 export default function DesignStudio({
-  template, brandKit, sub, initialDesign, initialPhoto, canUseAiImage, onEditPhoto, onUseInPost,
+  template, brandKit, sub, initialDesign, initialPhoto, canUseAiImage, onEditPhoto, onCloudSave, onUseInPost,
   onBrandKitChange, onClose,
 }: DesignStudioProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -78,6 +82,8 @@ export default function DesignStudio({
   const [designId, setDesignId] = useState<string>(initialDesign?.id || newDesignId());
   const [designName, setDesignName] = useState<string>(initialDesign?.name || template.name);
   const [pendingPhotoEdit, setPendingPhotoEdit] = useState<string | null>(null);
+  const [savingDesign, setSavingDesign] = useState(false);
+  const brandSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Undo/redo for CANVAS edits (separate from AI photo revisions) ──────────────
   const history = useRef<string[]>([]);
@@ -408,22 +414,50 @@ export default function DesignStudio({
     };
   }
 
-  function handleSave() {
-    if (!fabricRef.current) return;
-    const r = saveDesign(sub, buildDoc(designId, designName.trim() || template.name));
-    setStatus(r.ok
-      ? { kind: 'ok', text: 'Design saved. Reopen it anytime from My Designs.' }
-      : { kind: 'error', text: r.reason === 'quota'
-          ? 'Not enough browser storage to save this design (photos are large). Download it instead, or delete older designs.'
-          : 'Could not save this design.' });
+  // Save to the ACCOUNT (cross-device) when onCloudSave is provided; fall back to local storage
+  // if it's absent or the cloud save fails (so work is never lost even offline).
+  async function persist(doc: DesignDocument): Promise<boolean> {
+    if (onCloudSave) {
+      try {
+        await onCloudSave({
+          id: doc.id, name: doc.name, templateId: doc.templateId, width: doc.width, height: doc.height,
+          canvasJson: doc.canvasJson, thumbnailDataUrl: doc.thumbnail, createdAt: doc.createdAt,
+        });
+        // Mirror locally too, as an offline fallback.
+        saveDesign(sub, doc);
+        return true;
+      } catch (e) {
+        const local = saveDesign(sub, doc);
+        setStatus({ kind: local.ok ? 'info' : 'error', text: local.ok
+          ? 'Saved on this device — could not reach the cloud. It will sync next time you open Create online.'
+          : (e instanceof Error ? e.message : 'Could not save this design.') });
+        return local.ok;
+      }
+    }
+    const r = saveDesign(sub, doc);
+    if (!r.ok) setStatus({ kind: 'error', text: r.reason === 'quota'
+      ? 'Not enough browser storage to save this design (photos are large). Download it instead, or delete older designs.'
+      : 'Could not save this design.' });
+    return r.ok;
   }
 
-  function handleDuplicate() {
-    if (!fabricRef.current) return;
-    const copy = duplicateDesign(buildDoc(designId, designName));
-    const r = saveDesign(sub, copy);
-    if (r.ok) { setDesignId(copy.id); setDesignName(copy.name); setStatus({ kind: 'ok', text: `Saved a copy: ${copy.name}` }); }
-    else setStatus({ kind: 'error', text: 'Could not save the copy (storage full).' });
+  async function handleSave() {
+    if (!fabricRef.current || savingDesign) return;
+    setSavingDesign(true);
+    try {
+      const ok = await persist(buildDoc(designId, designName.trim() || template.name));
+      if (ok) setStatus({ kind: 'ok', text: 'Design saved to your account. Reopen it on any device from My Designs.' });
+    } finally { setSavingDesign(false); }
+  }
+
+  async function handleDuplicate() {
+    if (!fabricRef.current || savingDesign) return;
+    setSavingDesign(true);
+    try {
+      const copy = duplicateDesign(buildDoc(designId, designName));
+      const ok = await persist(copy);
+      if (ok) { setDesignId(copy.id); setDesignName(copy.name); setStatus({ kind: 'ok', text: `Saved a copy: ${copy.name}` }); }
+    } finally { setSavingDesign(false); }
   }
 
   // Export at full logical resolution regardless of on-screen zoom.
@@ -472,8 +506,14 @@ export default function DesignStudio({
   function updateKit(patch: Partial<BrandKit>) {
     const next = { ...kit, ...patch };
     setKit(next);
-    saveBrandKit(sub, next);         // FIX (defect 4): fields actually persist
-    onBrandKitChange(next);
+    saveBrandKit(sub, next); // local mirror (instant, offline fallback)
+    // Persist to the account, debounced so typing doesn't fire a request per keystroke. A logo
+    // change (data URL) flushes immediately since it's a single deliberate action.
+    const isLogoChange = 'logoDataUrl' in patch;
+    if (brandSaveTimer.current) clearTimeout(brandSaveTimer.current);
+    const flush = () => { Promise.resolve(onBrandKitChange(next)).catch(() => { /* offline — local mirror kept */ }); };
+    if (isLogoChange) flush();
+    else brandSaveTimer.current = setTimeout(flush, 800);
   }
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -496,8 +536,8 @@ export default function DesignStudio({
         <button onClick={undo} disabled={!ready} aria-label="Undo" className="px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-40">↩ Undo</button>
         <button onClick={redo} disabled={!ready} aria-label="Redo" className="px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-40">↪ Redo</button>
         <div className="flex-1" />
-        <button onClick={handleSave} disabled={!ready} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-40">💾 Save</button>
-        <button onClick={handleDuplicate} disabled={!ready} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-40">⧉ Duplicate</button>
+        <button onClick={handleSave} disabled={!ready || savingDesign} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-40">{savingDesign ? '💾 Saving…' : '💾 Save'}</button>
+        <button onClick={handleDuplicate} disabled={!ready || savingDesign} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-40">⧉ Duplicate</button>
         <button onClick={() => handleDownload('png')} disabled={!ready} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-40">⬇ PNG</button>
         <button onClick={() => handleDownload('jpeg')} disabled={!ready} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-40">⬇ JPG</button>
         <button onClick={handleUseInPost} disabled={!ready || busy} className="px-4 py-1.5 text-xs font-bold bg-amber-500 text-black rounded hover:opacity-90 disabled:opacity-40">✓ Use in Post</button>
@@ -662,7 +702,7 @@ export default function DesignStudio({
                       e.target.value = '';
                     }} />
                 </div>
-                <button onClick={() => applyBrand(kit)} disabled={!ready}
+                <button onClick={() => { applyBrand(kit); if (brandSaveTimer.current) clearTimeout(brandSaveTimer.current); Promise.resolve(onBrandKitChange(kit)).catch(() => {}); }} disabled={!ready}
                   className="w-full py-2 text-xs font-bold bg-amber-500 text-black rounded-lg hover:opacity-90 disabled:opacity-40">✓ Apply My Brand</button>
                 <p className="text-[10px] text-slate-500">We only fill in details you've saved — we never invent business information.</p>
               </div>

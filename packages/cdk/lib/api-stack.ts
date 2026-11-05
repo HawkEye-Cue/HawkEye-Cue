@@ -50,6 +50,12 @@ export class ApiStack extends cdk.Stack {
     const DEPLOYED_DRIFT_KEYS: Record<string, string> = {
       'email-oauth-handler': 'e7f188a0ac3d5d40b0b1f7ed66ab6a46dbaf7222638ef8b15cddb910b37bf96f.zip',
       'cadence-email-sender': 'd6ba25a7f91b4ce0d0458d7a02fb33b9cbb457f25af375eb9a3d948288b15d4c.zip',
+      // The branch's opportunities-handler dist is NEWER than what is live in prod (prod was
+      // deployed from an earlier point; live asset 047323d7… , 2026-10-27). That change is NOT
+      // part of Design Studio, so for THIS deploy we pin the opportunities handler to its live
+      // asset too — keeping the deploy limited to ContentHandlerFn + the new routes. Ship the
+      // updated opportunities handler in its own, separately reviewed deploy.
+      'opportunities-handler': '047323d770d8ae30badc293b5d61c68dae0cefec12c4fe694edb186ba107ab0e.zip',
     };
     // Code for a drift-pinned function: the live S3 object when the flag is on, else
     // the normal local bundle (default behavior unchanged when the flag is absent).
@@ -302,7 +308,7 @@ export class ApiStack extends cdk.Stack {
       ...lambdaDefaults,
       functionName: 'SocialLeadGen-OpportunitiesHandler',
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../../lambdas/dist/opportunities-handler'),
+      code: pinnedOrAsset('opportunities-handler'),
       description: 'Handles CRUD for opportunities and stats',
     } as lambda.FunctionProps);
 
@@ -1262,12 +1268,17 @@ export class ApiStack extends cdk.Stack {
       authorizer,
     });
     // Void a sale (excluded from production totals; history preserved).
-    this.httpApi.addRoutes({
-      path: '/sales/deals/{id}/void',
-      methods: [apigatewayv2.HttpMethod.POST],
-      integration: salesIntegration,
-      authorizer,
-    });
+    // TEMPORARILY DISABLED for the Design Studio deploy (2026): the LIVE SalesHandlerFn code
+    // does NOT yet contain the void handler, and this Api deploy does not update the sales
+    // Lambda (CloudFormation sees its asset as unchanged). Wiring the route now would point
+    // at a handler that can't serve it. Re-enable in a dedicated sales deploy that also ships
+    // the updated sales-handler asset. Verified live sales Lambda lacks /void (2026-10-28).
+    // this.httpApi.addRoutes({
+    //   path: '/sales/deals/{id}/void',
+    //   methods: [apigatewayv2.HttpMethod.POST],
+    //   integration: salesIntegration,
+    //   authorizer,
+    // });
     this.httpApi.addRoutes({
       path: '/sales/stats',
       methods: [apigatewayv2.HttpMethod.GET],

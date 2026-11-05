@@ -227,6 +227,12 @@ const AI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5';
 // base/growth/flight/pro→soar, nest/none/expired/''/unknown→free). An expired trial is free.
 // AI images are a PAID feature (Soar / Summit). Image calls are metered on a SEPARATE monthly
 // counter (aiImagesUsed + aiImagesMonth) so image spend is bounded independently of text.
+// FINALIZED monthly AI image limits (generations OR edits, counted the same):
+//   Nest (free): no paid AI image access (absent from this map → denied)
+//   Soar:   40 / month
+//   Summit: 100 / month (normalizes to 'team')
+// Manual template editing, uploads, resizing, text changes, and Brand Kit usage are NOT
+// metered here — they never call this handler, so they never consume an image credit.
 const AI_IMAGE_MONTHLY_LIMITS = { soar: 40, team: 100 };
 
 function normalizeTierServer(raw, profile) {

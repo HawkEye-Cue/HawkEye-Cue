@@ -699,9 +699,13 @@ export class SandboxStack extends cdk.Stack {
     // AI text
     httpApi.addRoutes({ path: '/content/generate', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
     httpApi.addRoutes({ path: '/content/ideas', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
-    // AI images (gpt-image-1): generation + natural-language photo editing
+    // AI images (GPT Image): generation + natural-language photo editing
     httpApi.addRoutes({ path: '/content/generate-image', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
     httpApi.addRoutes({ path: '/content/edit-image', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
+    // Media upload presign — used by the Create/Flocks flow to attach a finished design or
+    // AI image to a scheduled post (uploadReadyMedia → getUploadUrl). Writes to the sandbox
+    // media bucket only. Needed to validate real media attachment end to end.
+    httpApi.addRoutes({ path: '/content/upload-url', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
     // Design Studio: account-backed Brand Kit + saved Designs (each path explicit)
     httpApi.addRoutes({ path: '/brand-kit', methods: [apigatewayv2.HttpMethod.GET, apigatewayv2.HttpMethod.PUT], integration: contentInt, authorizer });
     httpApi.addRoutes({ path: '/brand-kit/logo-upload', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });

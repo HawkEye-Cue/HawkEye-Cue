@@ -453,6 +453,9 @@ export class SandboxStack extends cdk.Stack {
         ...(lambdaDefaults.environment ?? {}),
         MEDIA_BUCKET: sandboxMediaBucket.bucketName,
         OPENAI_SECRET_ID: SANDBOX_OPENAI_SECRET_ID,
+        // gpt-image-1 was retired by OpenAI; this org exposes gpt-image-1.5 (quality) and
+        // gpt-image-1-mini. Pin the sandbox to the quality model for photo-edit validation.
+        OPENAI_IMAGE_MODEL: 'gpt-image-1.5',
       },
     });
     table.grantReadWriteData(contentFn); // sandbox table ONLY (grant is table-scoped)

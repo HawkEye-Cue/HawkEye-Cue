@@ -211,6 +211,13 @@ async function getOpenAiKey() {
   return openAiKey;
 }
 
+// OpenAI image model for BOTH text-to-image (/v1/images/generations) and photo editing
+// (/v1/images/edits). The original gpt-image-1 was retired by OpenAI; the current GPT Image
+// family (gpt-image-1.5 for quality, gpt-image-1-mini for cheap/fast) uses the SAME endpoints
+// and the same b64_json response contract, so swapping the id is sufficient. Overridable per
+// environment via OPENAI_IMAGE_MODEL; defaults to the quality model.
+const AI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5';
+
 // ─── Server-side AI image entitlement ──────────────────────────────────────────
 // SECURITY: previously /content/generate-image had NO tier check, so any authenticated user
 // (including free Nest) could call it directly and incur real OpenAI cost. The web UI gate is
@@ -327,7 +334,7 @@ async function refundAiImage(userId, month) {
   }
 }
 
-// POST /content/generate-image — text-to-image via OpenAI gpt-image-1
+// POST /content/generate-image — text-to-image via OpenAI GPT Image (AI_IMAGE_MODEL)
 async function handleGenerateImage(userId, body) {
   const rawPrompt = (body && body.prompt) || '';
   const tradeName = (body && body.tradeName) || '';
@@ -361,11 +368,11 @@ async function handleGenerateImage(userId, body) {
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      // This account has gpt-image-1 (not dall-e-3). Measured timings:
-      // low ~13-16s, medium ~19s, high ~39s. 'high' exceeds the 29s API Gateway
-      // cap, so 'medium' is the best quality that still returns in time.
+      // GPT Image family. Measured gpt-image-1 timings were low ~13-16s, medium ~19s,
+      // high ~39s; 'high' exceeds the 29s API Gateway cap, so 'medium' is the best quality
+      // that still returns in time. gpt-image-1.5 is comparable or faster.
       body: JSON.stringify({
-        model: 'gpt-image-1',
+        model: AI_IMAGE_MODEL,
         prompt: fullPrompt.slice(0, 4000),
         n: 1,
         size: '1024x1024',
@@ -424,7 +431,7 @@ async function handleGenerateImage(userId, body) {
 
 // ─── POST /content/edit-image — AI photo editing (Phase 2) ──────────────────────
 // Natural-language edits to a user's photo: add / remove / replace / modify objects,
-// background removal, lighting changes. Uses OpenAI gpt-image-1 /v1/images/edits.
+// background removal, lighting changes. Uses OpenAI GPT Image (AI_IMAGE_MODEL) /v1/images/edits.
 //
 // Design rules (per product spec):
 //   • Only ACTUAL photo changes come here. Text, logos, and layout stay as editable canvas
@@ -475,7 +482,7 @@ async function handleEditImage(userId, body) {
   try {
     const apiKey = await getOpenAiKey();
     const form = new FormData();
-    form.append('model', 'gpt-image-1');
+    form.append('model', AI_IMAGE_MODEL);
     form.append('prompt', prompt.slice(0, 4000));
     form.append('n', '1');
     form.append('size', '1024x1024');

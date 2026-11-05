@@ -235,7 +235,9 @@ describe('/content/edit-image — AI photo editing', () => {
     expect(openAiCalls[0].url).toBe('https://api.openai.com/v1/images/edits');
     const form = openAiCalls[0].init.body as FormData;
     expect(form).toBeInstanceOf(FormData);
-    expect(form.get('model')).toBe('gpt-image-1');
+    // Model id is configurable (OPENAI_IMAGE_MODEL) and defaults to the current GPT Image
+    // model. gpt-image-1 was retired by OpenAI; assert the family, not a pinned version.
+    expect(String(form.get('model'))).toMatch(/^gpt-image-/);
     expect(String(form.get('prompt'))).toContain('remove the trash cans');
     expect(form.get('image')).toBeTruthy();
   });

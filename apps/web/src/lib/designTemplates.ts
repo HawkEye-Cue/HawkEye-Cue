@@ -46,6 +46,21 @@ export interface DesignLayer {
   isBrandSlot?: boolean;     // auto-filled from BrandKit
   isLogoSlot?: boolean;
   isPhoneSlot?: boolean;
+  /** typographic / decorative polish (all optional) */
+  opacity?: number;
+  /** letter spacing in 1/1000 em (Fabric charSpacing) */
+  charSpacing?: number;
+  fontStyle?: 'normal' | 'italic';
+  /** headline treatment: render the composed text in capitals */
+  uppercase?: boolean;
+  /** small label above a headline, filled from the user's trade name (never invented) */
+  isKicker?: boolean;
+  /** topic emoji icon, chosen from the trade / caption */
+  isIcon?: boolean;
+  /** layer is dropped unless the Brand Kit / caption provides this (so no empty frames remain) */
+  requires?: 'company' | 'phone' | 'contact' | 'kicker';
+  /** decorative element shown only when the caption gives no supporting line (fills a sparse design) */
+  sparseOnly?: boolean;
 }
 
 /**
@@ -58,7 +73,9 @@ export interface DesignLayer {
  *   quote     — large quotation / testimonial layout
  *   stat      — oversized number/word as the focal point
  */
-export type LayoutFamily = 'hero' | 'split' | 'banner' | 'badge' | 'quote' | 'stat';
+export type LayoutFamily =
+  | 'hero' | 'split' | 'banner' | 'badge' | 'quote' | 'stat'
+  | 'poster' | 'editorial' | 'colorblock' | 'spotlight' | 'frame' | 'stripe';
 
 export interface DesignTemplate {
   id: string;
@@ -67,6 +84,12 @@ export interface DesignTemplate {
   /** Keyword hits required before this template is offered (default 1). Templates whose copy is
    *  about one specific thing (before/after, testimonial) need 2 so a stray word can't trigger them. */
   minKeywordHits?: number;
+  /** A universal creative DIRECTION (never contains topic-specific claims). */
+  direction?: boolean;
+  /** Superseded layout kept only so saved designs / photo uploads can still open it. */
+  legacy?: boolean;
+  /** Takes the trade's color palette when the user has not chosen a Brand Kit color. */
+  tradeAccent?: boolean;
   /** Distinct visual layout family (ensures varied suggestions). */
   layoutFamily?: LayoutFamily;
   format: TemplateFormat;
@@ -118,9 +141,9 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'cta-text', type: 'text', text: 'CALL US TODAY', left: 104, top: 742, width: 412, textAlign: 'center',
         fontFamily: 'Arial Black', fontSize: 34, fontWeight: '900', fill: '#000000',
         isEditable: true },
-      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 80, top: 860,
+      { id: 'phone', type: 'text', text: '', left: 80, top: 860,
         fontFamily: 'Arial', fontSize: 48, fill: '#f97316', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Company Name', left: 80, top: 960,
+      { id: 'brand', type: 'text', text: '', left: 80, top: 960,
         fontFamily: 'Arial', fontSize: 32, fill: '#64748b', isBrandSlot: true, isEditable: true },
     ],
   },
@@ -150,7 +173,7 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'sub', type: 'text', text: 'Get a professional inspection before\nhidden damage costs you thousands.',
         left: 80, top: 700, fontFamily: 'Arial', fontSize: 42, fill: '#e2e8f0',
         isSubtext: true, isEditable: true },
-      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 80, top: 900,
+      { id: 'phone', type: 'text', text: '', left: 80, top: 900,
         fontFamily: 'Arial Black', fontSize: 56, fill: '#fbbf24',
         isPhoneSlot: true, isBrandSlot: true, isEditable: true },
     ],
@@ -171,11 +194,8 @@ export const TEMPLATES: DesignTemplate[] = [
     description: 'Insurance rates decreased announcement',
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#0d1b2a' },
-      { id: 'tag', type: 'rect', left: 80, top: 80, width: 340, height: 56, backgroundColor: '#22c55e' },
-      { id: 'tag-text', type: 'text', text: 'RATE UPDATE', left: 110, top: 92,
-        fontFamily: 'Arial Black', fontSize: 28, fill: '#000000' },
-      { id: 'down-arrow', type: 'text', text: '\u2193', left: 860, top: 60, fontFamily: 'Arial', fontSize: 150, fill: '#22c55e' },
-      { id: 'headline', type: 'text', text: 'HOMEOWNERS\nRATES HAVE\nDROPPED', left: 80, top: 220, width: 760,
+      { id: 'kicker', type: 'text', text: '', left: 80, top: 96, width: 800, fontFamily: 'Arial Black', fontSize: 28, fontWeight: '900', fill: '#22c55e', charSpacing: 260, isKicker: true, isEditable: true },
+      { id: 'headline', type: 'text', text: 'HEADLINE', left: 80, top: 220, width: 760,
         fontFamily: 'Arial Black', fontSize: 108, fontWeight: '900', fill: '#ffffff',
         isHeadline: true, isEditable: true },
       { id: 'sub', type: 'text', text: 'Now may be a great time to\nreview your coverage and save.',
@@ -183,7 +203,7 @@ export const TEMPLATES: DesignTemplate[] = [
         isSubtext: true, isEditable: true },
       { id: 'cta', type: 'text', text: 'Get a Free Quote Today →', left: 80, top: 860,
         fontFamily: 'Arial Black', fontSize: 48, fill: '#22c55e', isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Name · License #000000', left: 80, top: 960,
+      { id: 'brand', type: 'text', text: '', left: 80, top: 960,
         fontFamily: 'Arial', fontSize: 30, fill: '#475569', isBrandSlot: true, isEditable: true },
     ],
   },
@@ -198,7 +218,8 @@ export const TEMPLATES: DesignTemplate[] = [
     background: '#1e1b4b',
     previewColors: ['#1e1b4b', '#818cf8'],
     trades: ['insurance-agent', 'health-insurance-agent', 'insurance-producer', 'mortgage-lender'],
-    keywords: ['quote', 'free', 'insurance', 'coverage', 'protect', 'home', 'auto', 'life'],
+    keywords: ['free quote', 'free estimate', 'free', 'quote', 'estimate'],
+    minKeywordHits: 3,
     description: 'Free insurance quote promotional graphic',
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#1e1b4b' },
@@ -210,7 +231,7 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'sub', type: 'text', text: 'No obligation. Just clarity on what\nyour coverage actually costs.',
         left: 80, top: 780, fontFamily: 'Arial', fontSize: 44, fill: '#c7d2fe', textAlign: 'center',
         isSubtext: true, isEditable: true },
-      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 240, top: 920, width: 600, textAlign: 'center',
+      { id: 'phone', type: 'text', text: '', left: 240, top: 920, width: 600, textAlign: 'center',
         fontFamily: 'Arial Black', fontSize: 52, fill: '#818cf8',
         isPhoneSlot: true, isBrandSlot: true, isEditable: true },
     ],
@@ -227,7 +248,7 @@ export const TEMPLATES: DesignTemplate[] = [
     background: '#ffffff',
     previewColors: ['#1e3a5f', '#ffffff'],
     trades: ['real-estate-agent'],
-    keywords: ['listed', 'listing', 'home', 'house', 'property', 'sale', 'buying', 'sold', 'open house', 'real estate'],
+    keywords: ['just listed', 'new listing', 'listed', 'listing', 'open house'],
     description: 'Just Listed real estate announcement',
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 566, backgroundColor: '#1e3a5f' },
@@ -243,7 +264,7 @@ export const TEMPLATES: DesignTemplate[] = [
         fontFamily: 'Arial', fontSize: 30, fill: '#cbd5e1', isSubtext: true, isEditable: true },
       { id: 'cta-link', type: 'text', text: 'SCHEDULE A SHOWING', left: 600, top: 446, width: 440,
         fontFamily: 'Arial Black', fontSize: 28, fontWeight: '900', fill: '#f97316', isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Name \u00b7 Agency', left: 600, top: 505, width: 440,
+      { id: 'brand', type: 'text', text: '', left: 600, top: 505, width: 440,
         fontFamily: 'Arial', fontSize: 24, fill: '#94a3b8', isBrandSlot: true, isEditable: true },
     ],
   },
@@ -258,7 +279,7 @@ export const TEMPLATES: DesignTemplate[] = [
     background: '#14532d',
     previewColors: ['#14532d', '#4ade80'],
     trades: ['real-estate-agent'],
-    keywords: ['sold', 'closed', 'sale', 'home', 'house', 'buyer', 'seller'],
+    keywords: ['just sold', 'sold', 'closed on'],
     description: 'Just Sold real estate celebration graphic',
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#14532d' },
@@ -272,7 +293,7 @@ export const TEMPLATES: DesignTemplate[] = [
         backgroundColor: '#166534', isPlaceholder: true },
       { id: 'photo-hint-icon', type: 'text', text: '\u{1F511}', left: 640, top: 270, width: 340, textAlign: 'center',
         fontFamily: 'Arial', fontSize: 170, fill: '#bbf7d0' },
-      { id: 'brand', type: 'text', text: 'Your Name · Agency', left: 80, top: 900,
+      { id: 'brand', type: 'text', text: '', left: 80, top: 900,
         fontFamily: 'Arial', fontSize: 40, fill: '#4ade80', isBrandSlot: true, isEditable: true },
     ],
   },
@@ -300,10 +321,10 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'sub', type: 'text', text: "Schedule your seasonal tune-up\nbefore the rush begins.",
         left: 80, top: 720, fontFamily: 'Arial', fontSize: 46, fill: '#bae6fd',
         isSubtext: true, isEditable: true },
-      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 80, top: 880,
+      { id: 'phone', type: 'text', text: '', left: 80, top: 880,
         fontFamily: 'Arial Black', fontSize: 56, fill: '#38bdf8',
         isPhoneSlot: true, isBrandSlot: true, isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Company Name', left: 80, top: 980,
+      { id: 'brand', type: 'text', text: '', left: 80, top: 980,
         fontFamily: 'Arial', fontSize: 36, fill: '#475569', isBrandSlot: true, isEditable: true },
     ],
   },
@@ -332,10 +353,10 @@ export const TEMPLATES: DesignTemplate[] = [
         fontFamily: 'Arial Black', fontSize: 40, fill: '#ffffff' },
       { id: 'after-label', type: 'text', text: 'AFTER', left: 580, top: 20,
         fontFamily: 'Arial Black', fontSize: 40, fill: '#f97316' },
-      { id: 'headline', type: 'text', text: 'See The Difference', left: 200, top: 460,
+      { id: 'headline', type: 'text', text: 'See The Difference', left: 40, top: 466, width: 560,
         fontFamily: 'Arial Black', fontSize: 52, fill: '#ffffff',
         isHeadline: true, isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Company Name', left: 750, top: 500,
+      { id: 'brand', type: 'text', text: '', left: 620, top: 496, width: 420, textAlign: 'right',
         fontFamily: 'Arial', fontSize: 28, fill: '#f97316', isBrandSlot: true, isEditable: true },
     ],
   },
@@ -357,14 +378,10 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#18181b' },
       { id: 'quote-mark', type: 'text', text: '"', left: 60, top: 60,
         fontFamily: 'Georgia', fontSize: 280, fill: '#fbbf24' },
-      { id: 'quote', type: 'text', text: 'Add your customer quote here.\nDouble-click to edit this text.',
+      { id: 'quote', type: 'text', text: 'Quote',
         left: 80, top: 300, fontFamily: 'Georgia', fontSize: 56, fill: '#f1f5f9',
         isHeadline: true, isEditable: true },
-      { id: 'stars', type: 'text', text: '★★★★★', left: 80, top: 700,
-        fontFamily: 'Arial', fontSize: 72, fill: '#fbbf24' },
-      { id: 'customer', type: 'text', text: '— Customer Name', left: 80, top: 820,
-        fontFamily: 'Arial', fontSize: 44, fill: '#94a3b8', isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Company Name', left: 80, top: 940,
+      { id: 'brand', type: 'text', text: '', left: 80, top: 940,
         fontFamily: 'Arial Black', fontSize: 40, fill: '#fbbf24', isBrandSlot: true, isEditable: true },
     ],
   },
@@ -391,7 +408,9 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'sub', type: 'text', text: 'We are grateful for every customer\nwho has trusted us.',
         left: 80, top: 620, fontFamily: 'Arial', fontSize: 52, fill: '#c084fc',
         isSubtext: true, isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Company Name', left: 80, top: 900,
+      { id: 'kicker-rule', type: 'rect', left: 80, top: 820, width: 90, height: 6, backgroundColor: '#c084fc', requires: 'kicker' },
+      { id: 'kicker', type: 'text', text: '', left: 80, top: 846, width: 640, fontFamily: 'Arial', fontSize: 28, fontWeight: 'bold', fill: '#c084fc', charSpacing: 300, isKicker: true, isEditable: true },
+      { id: 'brand', type: 'text', text: '', left: 80, top: 930,
         fontFamily: 'Arial', fontSize: 40, fill: '#7c3aed', isBrandSlot: true, isEditable: true },
     ],
   },
@@ -400,6 +419,7 @@ export const TEMPLATES: DesignTemplate[] = [
   {
     id: 'branded-1',
     name: 'Branded Announcement',
+    legacy: true,
     category: 'brand',
     layoutFamily: 'banner',
     format: 'square',
@@ -423,101 +443,236 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'sub', type: 'text', text: 'Add your message here. Tell your\ncustomers what you want them to know.',
         left: 80, top: 660, fontFamily: 'Arial', fontSize: 48, fill: '#94a3b8',
         isSubtext: true, isEditable: true },
-      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 80, top: 880,
+      { id: 'phone', type: 'text', text: '', left: 80, top: 880,
         fontFamily: 'Arial Black', fontSize: 56, fill: '#f97316',
         isPhoneSlot: true, isBrandSlot: true, isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Company Name', left: 80, top: 980,
+      { id: 'brand', type: 'text', text: '', left: 80, top: 980,
         fontFamily: 'Arial', fontSize: 36, fill: '#64748b', isBrandSlot: true, isEditable: true },
     ],
   },
 
-  // ── Universal polished archetypes (distinct layout families, always eligible) ──
+  // ══ Universal creative DIRECTIONS ═════════════════════════════════════════════════
+  // Six genuinely different art directions (headline treatment, layout, typography, accent
+  // shapes and palette all differ). None contains topic copy: every word on the finished
+  // graphic comes from the caption, the user's trade name, or their Brand Kit. Empty Brand
+  // Kit slots render nothing, and decorative frames tied to them (`requires`) are dropped,
+  // so each direction looks complete with or without business details.
 
-  // HERO — big left-aligned headline on a clean two-tone field + accent underline.
+  // 1 · POSTER — dark, huge uppercase headline, glow + edge bar, pill CTA.
   {
-    id: 'u-hero-bold',
-    name: 'Bold Statement',
-    category: 'brand',
-    layoutFamily: 'hero',
+    id: 'u-poster',
+    name: 'Bold Poster',
+    category: 'brand', direction: true, tradeAccent: true,
+    layoutFamily: 'poster',
+    format: 'square',
+    width: 1080, height: 1080,
+    background: '#0b1220',
+    previewColors: ['#0b1220', '#f97316'],
+    trades: [],
+    keywords: [],
+    description: 'Dark poster with a huge uppercase headline and pill call-to-action',
+    layers: [
+      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#0b1220' },
+      { id: 'edge', type: 'rect', left: 1024, top: 0, width: 56, height: 1080, backgroundColor: '#f97316' },
+      { id: 'kicker-bar', type: 'rect', left: 80, top: 92, width: 56, height: 8, backgroundColor: '#f97316' },
+      { id: 'kicker', type: 'text', text: '', left: 80, top: 118, width: 800, fontFamily: 'Arial Black', fontSize: 28, fontWeight: '900',
+        fill: '#f97316', charSpacing: 260, isKicker: true, isEditable: true },
+      { id: 'headline', type: 'text', text: 'HEADLINE', left: 80, top: 210, width: 880, fontFamily: 'Arial Black', fontSize: 120, fontWeight: '900',
+        fill: '#ffffff', uppercase: true, isHeadline: true, isEditable: true },
+      { id: 'sub', type: 'text', text: '', left: 80, top: 640, width: 820, fontFamily: 'Arial', fontSize: 42, fill: '#cbd5e1',
+        isSubtext: true, isEditable: true },
+      { id: 'sparse-disc', type: 'rect', left: 690, top: 600, width: 270, height: 270, radius: 135, backgroundColor: '#f97316', opacity: 0.18, sparseOnly: true },
+      { id: 'sparse-icon', type: 'text', text: '\u2B50', left: 690, top: 655, width: 270, textAlign: 'center', fontFamily: 'Arial', fontSize: 140, isIcon: true, sparseOnly: true },
+      { id: 'cta', type: 'rect', left: 80, top: 800, width: 520, height: 88, radius: 44, backgroundColor: '#f97316' },
+      { id: 'cta-text', type: 'text', text: 'LEARN MORE', left: 104, top: 825, width: 472, textAlign: 'center', fontFamily: 'Arial Black',
+        fontSize: 34, fontWeight: '900', fill: '#0b1220', isEditable: true },
+      { id: 'rule', type: 'rect', left: 80, top: 930, width: 864, height: 2, backgroundColor: '#ffffff', opacity: 0.18, requires: 'contact' },
+      { id: 'brand', type: 'text', text: '', left: 80, top: 960, width: 520, fontFamily: 'Arial Black', fontSize: 36, fontWeight: '900',
+        fill: '#ffffff', isBrandSlot: true, isEditable: true },
+      { id: 'phone', type: 'text', text: '', left: 560, top: 960, width: 384, textAlign: 'right', fontFamily: 'Arial Black', fontSize: 36,
+        fontWeight: '900', fill: '#f97316', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
+    ],
+  },
+
+  // 2 · EDITORIAL — warm paper, serif headline, vertical accent rule, dark footer band.
+  {
+    id: 'u-editorial',
+    name: 'Editorial',
+    category: 'brand', direction: true, tradeAccent: true,
+    layoutFamily: 'editorial',
+    format: 'square',
+    width: 1080, height: 1080,
+    background: '#f6f0e4',
+    previewColors: ['#f6f0e4', '#b45309'],
+    trades: [],
+    keywords: [],
+    description: 'Warm paper-white magazine layout with a serif headline',
+    layers: [
+      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#f6f0e4' },
+      { id: 'bar', type: 'rect', left: 80, top: 90, width: 12, height: 780, backgroundColor: '#b45309' },
+      { id: 'kicker', type: 'text', text: '', left: 130, top: 96, width: 800, fontFamily: 'Arial', fontSize: 28, fontWeight: 'bold',
+        fill: '#b45309', charSpacing: 320, isKicker: true, isEditable: true },
+      { id: 'headline', type: 'text', text: 'Headline', left: 130, top: 170, width: 820, fontFamily: 'Georgia', fontSize: 104, fontWeight: 'bold',
+        fill: '#1c1917', isHeadline: true, isEditable: true },
+      { id: 'rule', type: 'rect', left: 130, top: 640, width: 140, height: 6, backgroundColor: '#b45309' },
+      { id: 'sub', type: 'text', text: '', left: 130, top: 676, width: 820, fontFamily: 'Arial', fontSize: 40, fill: '#44403c',
+        isSubtext: true, isEditable: true },
+      { id: 'sparse-disc', type: 'rect', left: 720, top: 640, width: 240, height: 240, radius: 120, backgroundColor: '#b45309', opacity: 0.14, sparseOnly: true },
+      { id: 'sparse-icon', type: 'text', text: '\u2B50', left: 720, top: 692, width: 240, textAlign: 'center', fontFamily: 'Arial', fontSize: 120, isIcon: true, sparseOnly: true },
+      { id: 'cta-text', type: 'text', text: 'LEARN MORE', left: 130, top: 830, width: 820, fontFamily: 'Arial Black', fontSize: 32,
+        fontWeight: '900', fill: '#b45309', charSpacing: 120, isEditable: true },
+      { id: 'footer', type: 'rect', left: 0, top: 936, width: 1080, height: 144, backgroundColor: '#1c1917', requires: 'contact' },
+      { id: 'foot-accent', type: 'rect', left: 0, top: 1062, width: 1080, height: 18, backgroundColor: '#b45309' },
+      { id: 'brand', type: 'text', text: '', left: 80, top: 976, width: 540, fontFamily: 'Arial Black', fontSize: 36, fontWeight: '900',
+        fill: '#f6f0e4', isBrandSlot: true, isEditable: true },
+      { id: 'phone', type: 'text', text: '', left: 600, top: 978, width: 400, textAlign: 'right', fontFamily: 'Arial', fontSize: 34,
+        fontWeight: 'bold', fill: '#fcd34d', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
+    ],
+  },
+
+  // 3 · COLOR BLOCK — bold color column with a big topic icon; text on clean white.
+  {
+    id: 'u-colorblock',
+    name: 'Color Block',
+    category: 'brand', direction: true,
+    layoutFamily: 'colorblock',
+    format: 'square',
+    width: 1080, height: 1080,
+    background: '#ffffff',
+    previewColors: ['#4f46e5', '#ffffff'],
+    trades: [],
+    keywords: [],
+    description: 'Bold color column with a topic icon beside the message',
+    layers: [
+      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#ffffff' },
+      { id: 'panel', type: 'rect', left: 0, top: 0, width: 400, height: 1080, backgroundColor: '#4f46e5' },
+      { id: 'ring', type: 'rect', left: 60, top: 300, width: 280, height: 280, radius: 140, backgroundColor: '#ffffff', opacity: 0.16 },
+      { id: 'ring2', type: 'rect', left: 100, top: 340, width: 200, height: 200, radius: 100, backgroundColor: '#ffffff', opacity: 0.2 },
+      { id: 'icon', type: 'text', text: '\u2B50', left: 0, top: 368, width: 400, textAlign: 'center', fontFamily: 'Arial', fontSize: 120, isIcon: true },
+      { id: 'kicker-rule', type: 'rect', left: 40, top: 930, width: 60, height: 5, backgroundColor: '#ffffff', requires: 'kicker' },
+      { id: 'kicker', type: 'text', text: '', left: 40, top: 950, width: 320, fontFamily: 'Arial', fontSize: 24, fontWeight: 'bold',
+        fill: '#ffffff', charSpacing: 240, isKicker: true, isEditable: true },
+      { id: 'headline', type: 'text', text: 'Headline', left: 460, top: 150, width: 560, fontFamily: 'Arial Black', fontSize: 92, fontWeight: '900',
+        fill: '#0f172a', isHeadline: true, isEditable: true },
+      { id: 'rule', type: 'rect', left: 460, top: 600, width: 120, height: 8, backgroundColor: '#4f46e5' },
+      { id: 'sub', type: 'text', text: '', left: 460, top: 636, width: 560, fontFamily: 'Arial', fontSize: 38, fill: '#475569',
+        isSubtext: true, isEditable: true },
+      { id: 'cta', type: 'rect', left: 460, top: 800, width: 500, height: 84, radius: 14, backgroundColor: '#0f172a' },
+      { id: 'cta-text', type: 'text', text: 'LEARN MORE', left: 484, top: 823, width: 452, textAlign: 'center', fontFamily: 'Arial Black',
+        fontSize: 32, fontWeight: '900', fill: '#ffffff', isEditable: true },
+      { id: 'brand', type: 'text', text: '', left: 460, top: 930, width: 560, fontFamily: 'Arial Black', fontSize: 34, fontWeight: '900',
+        fill: '#0f172a', isBrandSlot: true, isEditable: true },
+      { id: 'phone', type: 'text', text: '', left: 460, top: 978, width: 560, fontFamily: 'Arial', fontSize: 34, fontWeight: 'bold',
+        fill: '#4f46e5', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
+    ],
+  },
+
+  // 4 · SPOTLIGHT — centered icon disc with a halo, centered type stack, pill CTA.
+  {
+    id: 'u-spotlight',
+    name: 'Spotlight',
+    category: 'brand', direction: true,
+    layoutFamily: 'spotlight',
+    format: 'square',
+    width: 1080, height: 1080,
+    background: '#0f2a2e',
+    previewColors: ['#0f2a2e', '#2dd4bf'],
+    trades: [],
+    keywords: [],
+    description: 'Centered icon disc with a soft halo and a clean type stack',
+    layers: [
+      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#0f2a2e' },
+      { id: 'halo', type: 'rect', left: 310, top: 20, width: 460, height: 460, radius: 230, backgroundColor: '#2dd4bf', opacity: 0.14 },
+      { id: 'disc', type: 'rect', left: 370, top: 80, width: 340, height: 340, radius: 170, backgroundColor: '#2dd4bf' },
+      { id: 'icon', type: 'text', text: '\u2B50', left: 370, top: 140, width: 340, textAlign: 'center', fontFamily: 'Arial', fontSize: 170, isIcon: true },
+      { id: 'kicker', type: 'text', text: '', left: 90, top: 450, width: 900, textAlign: 'center', fontFamily: 'Arial', fontSize: 28,
+        fontWeight: 'bold', fill: '#2dd4bf', charSpacing: 300, isKicker: true, isEditable: true },
+      { id: 'headline', type: 'text', text: 'Headline', left: 90, top: 500, width: 900, textAlign: 'center', fontFamily: 'Arial Black',
+        fontSize: 84, fontWeight: '900', fill: '#ffffff', isHeadline: true, isEditable: true },
+      { id: 'sub', type: 'text', text: '', left: 110, top: 726, width: 860, textAlign: 'center', fontFamily: 'Arial', fontSize: 40,
+        fill: '#b6e3df', isSubtext: true, isEditable: true },
+      { id: 'cta', type: 'rect', left: 310, top: 866, width: 460, height: 72, radius: 36, backgroundColor: '#2dd4bf' },
+      { id: 'cta-text', type: 'text', text: 'LEARN MORE', left: 334, top: 884, width: 412, textAlign: 'center', fontFamily: 'Arial Black',
+        fontSize: 30, fontWeight: '900', fill: '#0f2a2e', isEditable: true },
+      { id: 'brand', type: 'text', text: '', left: 90, top: 962, width: 900, textAlign: 'center', fontFamily: 'Arial Black', fontSize: 30,
+        fontWeight: '900', fill: '#ffffff', isBrandSlot: true, isEditable: true },
+      { id: 'phone', type: 'text', text: '', left: 90, top: 1004, width: 900, textAlign: 'center', fontFamily: 'Arial', fontSize: 30,
+        fontWeight: 'bold', fill: '#2dd4bf', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
+    ],
+  },
+
+  // 5 · FRAME — navy with a fine gold frame and corner studs, centered italic serif.
+  {
+    id: 'u-frame',
+    name: 'Gold Frame',
+    category: 'brand', direction: true,
+    layoutFamily: 'frame',
+    format: 'square',
+    width: 1080, height: 1080,
+    background: '#0e2238',
+    previewColors: ['#0e2238', '#d4a64a'],
+    trades: [],
+    keywords: [],
+    description: 'Elegant framed layout with a centered italic serif headline',
+    layers: [
+      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#0e2238' },
+      { id: 'f-top', type: 'rect', left: 48, top: 48, width: 984, height: 4, backgroundColor: '#d4a64a' },
+      { id: 'f-bot', type: 'rect', left: 48, top: 1028, width: 984, height: 4, backgroundColor: '#d4a64a' },
+      { id: 'f-left', type: 'rect', left: 48, top: 48, width: 4, height: 984, backgroundColor: '#d4a64a' },
+      { id: 'f-right', type: 'rect', left: 1028, top: 48, width: 4, height: 984, backgroundColor: '#d4a64a' },
+      { id: 'c1', type: 'rect', left: 36, top: 36, width: 28, height: 28, backgroundColor: '#d4a64a' },
+      { id: 'c2', type: 'rect', left: 1016, top: 36, width: 28, height: 28, backgroundColor: '#d4a64a' },
+      { id: 'c3', type: 'rect', left: 36, top: 1016, width: 28, height: 28, backgroundColor: '#d4a64a' },
+      { id: 'c4', type: 'rect', left: 1016, top: 1016, width: 28, height: 28, backgroundColor: '#d4a64a' },
+      { id: 'icon', type: 'text', text: '\u2B50', left: 340, top: 110, width: 400, textAlign: 'center', fontFamily: 'Arial', fontSize: 96, isIcon: true },
+      { id: 'kicker', type: 'text', text: '', left: 140, top: 240, width: 800, textAlign: 'center', fontFamily: 'Arial', fontSize: 26,
+        fontWeight: 'bold', fill: '#d4a64a', charSpacing: 400, isKicker: true, isEditable: true },
+      { id: 'headline', type: 'text', text: 'Headline', left: 140, top: 300, width: 800, textAlign: 'center', fontFamily: 'Georgia',
+        fontSize: 96, fontWeight: 'bold', fontStyle: 'italic', fill: '#ffffff', isHeadline: true, isEditable: true },
+      { id: 'orn-l', type: 'rect', left: 380, top: 700, width: 120, height: 3, backgroundColor: '#d4a64a' },
+      { id: 'orn-m', type: 'rect', left: 531, top: 692, width: 18, height: 18, backgroundColor: '#d4a64a' },
+      { id: 'orn-r', type: 'rect', left: 580, top: 700, width: 120, height: 3, backgroundColor: '#d4a64a' },
+      { id: 'sub', type: 'text', text: '', left: 190, top: 740, width: 700, textAlign: 'center', fontFamily: 'Arial', fontSize: 36,
+        fill: '#cbd5e1', isSubtext: true, isEditable: true },
+      { id: 'cta-text', type: 'text', text: 'LEARN MORE', left: 140, top: 870, width: 800, textAlign: 'center', fontFamily: 'Arial Black',
+        fontSize: 30, fontWeight: '900', fill: '#d4a64a', charSpacing: 160, isEditable: true },
+      { id: 'brand', type: 'text', text: '', left: 140, top: 930, width: 800, textAlign: 'center', fontFamily: 'Arial', fontSize: 30,
+        fontWeight: 'bold', fill: '#ffffff', isBrandSlot: true, isEditable: true },
+      { id: 'phone', type: 'text', text: '', left: 140, top: 972, width: 800, textAlign: 'center', fontFamily: 'Arial', fontSize: 30,
+        fontWeight: 'bold', fill: '#d4a64a', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
+    ],
+  },
+
+  // 6 · STRIPE — a full-width color slab holds a giant uppercase headline; dark info strip below.
+  {
+    id: 'u-stripe',
+    name: 'Color Slab',
+    category: 'brand', direction: true, tradeAccent: true,
+    layoutFamily: 'stripe',
     format: 'square',
     width: 1080, height: 1080,
     background: '#111827',
-    previewColors: ['#111827', '#f97316'],
+    previewColors: ['#facc15', '#111827'],
     trades: [],
     keywords: [],
-    description: 'Big bold headline with an accent underline — clean and modern',
+    description: 'Full-width color slab with a giant headline and a dark info strip',
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#111827' },
-      { id: 'panel', type: 'rect', left: 0, top: 0, width: 1080, height: 300, backgroundColor: '#0b1220' },
-      { id: 'headline', type: 'text', text: 'Your Message\nGoes Here', left: 90, top: 360,
-        fontFamily: 'Arial Black', fontSize: 120, fontWeight: '900', fill: '#ffffff', isHeadline: true, isEditable: true },
-      { id: 'accent', type: 'rect', left: 92, top: 640, width: 300, height: 16, backgroundColor: '#f97316' },
-      { id: 'sub', type: 'text', text: 'Add a short supporting line that explains the offer.',
-        left: 92, top: 700, fontFamily: 'Arial', fontSize: 46, fill: '#94a3b8', isSubtext: true, isEditable: true },
-      { id: 'cta-text', type: 'text', text: 'LEARN MORE', left: 92, top: 860,
-        fontFamily: 'Arial Black', fontSize: 40, fontWeight: '900', fill: '#f97316', isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Company Name', left: 92, top: 108, width: 896,
-        fontFamily: 'Arial Black', fontSize: 52, fontWeight: '900', fill: '#f97316', isBrandSlot: true, isEditable: true },
-      { id: 'brand-rule', type: 'rect', left: 92, top: 200, width: 120, height: 6, backgroundColor: '#f97316' },
-      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 92, top: 955, width: 896,
-        fontFamily: 'Arial Black', fontSize: 46, fontWeight: '900', fill: '#ffffff', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
-    ],
-  },
-
-  // BANNER — centered headline framed by top & bottom color bands + a thin accent rule.
-  {
-    id: 'u-banner-center',
-    name: 'Centered Banner',
-    category: 'announcement',
-    layoutFamily: 'banner',
-    format: 'square',
-    width: 1080, height: 1080,
-    background: '#f8fafc',
-    previewColors: ['#0f172a', '#f8fafc'],
-    trades: [],
-    keywords: [],
-    description: 'Light, editorial layout with framing bands — looks premium and clean',
-    layers: [
-      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#f8fafc' },
-      { id: 'top-band', type: 'rect', left: 0, top: 0, width: 1080, height: 150, backgroundColor: '#0f172a' },
-      { id: 'bot-band', type: 'rect', left: 0, top: 930, width: 1080, height: 150, backgroundColor: '#0f172a' },
-      { id: 'kicker', type: 'text', text: 'ANNOUNCEMENT', left: 0, top: 55,
-        fontFamily: 'Arial', fontSize: 40, fontWeight: 'bold', fill: '#f8fafc', textAlign: 'center', width: 1080, isEditable: true },
-      { id: 'headline', type: 'text', text: 'Your Headline\nGoes Here', left: 90, top: 420,
-        fontFamily: 'Georgia', fontSize: 104, fontWeight: 'bold', fill: '#0f172a', textAlign: 'center', width: 900, isHeadline: true, isEditable: true },
-      { id: 'accent', type: 'rect', left: 440, top: 680, width: 200, height: 8, backgroundColor: '#f97316' },
-      { id: 'sub', type: 'text', text: 'A short supporting sentence for your audience.',
-        left: 90, top: 730, fontFamily: 'Arial', fontSize: 44, fill: '#475569', textAlign: 'center', width: 900, isSubtext: true, isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Company Name', left: 0, top: 985,
-        fontFamily: 'Arial', fontSize: 36, fontWeight: 'bold', fill: '#f8fafc', textAlign: 'center', width: 1080, isBrandSlot: true, isEditable: true },
-    ],
-  },
-
-  // BADGE — circular focal badge with the CTA, headline beneath. Distinct from hero/banner.
-  {
-    id: 'u-badge-promo',
-    name: 'Badge Spotlight',
-    category: 'promotion',
-    layoutFamily: 'badge',
-    format: 'square',
-    width: 1080, height: 1080,
-    background: '#0f766e',
-    previewColors: ['#0f766e', '#fde68a'],
-    trades: [],
-    keywords: [],
-    description: 'Circular badge focal point with headline — eye-catching promo style',
-    layers: [
-      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#0f766e' },
-      { id: 'badge-ring', type: 'rect', left: 300, top: 110, width: 480, height: 480, radius: 240, backgroundColor: '#0b5a53' },
-      { id: 'badge', type: 'rect', left: 330, top: 140, width: 420, height: 420, radius: 210, backgroundColor: '#fde68a' },
-      { id: 'cta-text', type: 'text', text: 'SPECIAL\nOFFER', left: 390, top: 280,
-        fontFamily: 'Arial Black', fontSize: 60, fontWeight: '900', fill: '#0f766e', textAlign: 'center', width: 300, isEditable: true },
-      { id: 'headline', type: 'text', text: 'Your Message Here', left: 90, top: 680,
-        fontFamily: 'Arial Black', fontSize: 84, fontWeight: '900', fill: '#ffffff', textAlign: 'center', width: 900, isHeadline: true, isEditable: true },
-      { id: 'sub', type: 'text', text: 'Supporting detail for your offer.',
-        left: 90, top: 830, fontFamily: 'Arial', fontSize: 42, fill: '#99f6e4', textAlign: 'center', width: 900, isSubtext: true, isEditable: true },
-      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 0, top: 960,
-        fontFamily: 'Arial Black', fontSize: 48, fill: '#fde68a', textAlign: 'center', width: 1080, isPhoneSlot: true, isBrandSlot: true, isEditable: true },
+      { id: 'panel', type: 'rect', left: 0, top: 0, width: 1080, height: 640, backgroundColor: '#facc15' },
+      { id: 'tab', type: 'rect', left: 80, top: 640, width: 420, height: 60, backgroundColor: '#facc15', requires: 'kicker' },
+      { id: 'kicker', type: 'text', text: '', left: 96, top: 656, width: 388, textAlign: 'center', fontFamily: 'Arial Black', fontSize: 24,
+        fontWeight: '900', fill: '#111827', charSpacing: 120, isKicker: true, isEditable: true },
+      { id: 'headline', type: 'text', text: 'HEADLINE', left: 80, top: 90, width: 920, fontFamily: 'Arial Black', fontSize: 132, fontWeight: '900',
+        fill: '#111827', uppercase: true, isHeadline: true, isEditable: true },
+      { id: 'sub', type: 'text', text: '', left: 80, top: 740, width: 920, fontFamily: 'Arial', fontSize: 42, fill: '#e5e7eb',
+        isSubtext: true, isEditable: true },
+      { id: 'cta', type: 'rect', left: 80, top: 880, width: 420, height: 80, radius: 10, backgroundColor: '#facc15' },
+      { id: 'cta-text', type: 'text', text: 'LEARN MORE', left: 100, top: 902, width: 380, textAlign: 'center', fontFamily: 'Arial Black',
+        fontSize: 32, fontWeight: '900', fill: '#111827', isEditable: true },
+      { id: 'brand', type: 'text', text: '', left: 540, top: 884, width: 460, textAlign: 'right', fontFamily: 'Arial Black', fontSize: 34,
+        fontWeight: '900', fill: '#ffffff', isBrandSlot: true, isEditable: true },
+      { id: 'phone', type: 'text', text: '', left: 540, top: 930, width: 460, textAlign: 'right', fontFamily: 'Arial', fontSize: 34,
+        fontWeight: 'bold', fill: '#facc15', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
     ],
   },
 ];
@@ -588,9 +743,35 @@ export interface ScoredTemplate {
   score: number;
 }
 
+/** Directions on a LIGHT background. Every set of three contains exactly one, alternating
+ *  between them by topic so no single light design dominates. */
+const LIGHT_DIRECTIONS = ['u-editorial', 'u-colorblock'];
+/** Dark directions, in rotation order. */
+const DARK_DIRECTIONS = ['u-poster', 'u-spotlight', 'u-frame', 'u-stripe'];
+/** Directions that read too much like a given topic layout family to sit beside it. */
+const LOOKS_LIKE: Record<string, string[]> = {
+  hero: ['poster'],         // big dark left-aligned headline
+  stat: ['poster', 'stripe'],
+  badge: ['spotlight'],     // centred focal shape
+};
+
+/** The first few meaningful words: stable while the user types the rest of the caption. */
+function cleanTopic(t: string): string {
+  return t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 3).slice(0, 4).join(' ');
+}
+
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return Math.abs(h);
+}
+
 /**
- * Return up to `max` templates ranked by relevance.
- * Always includes at least one universal branded template as a fallback.
+ * Return up to `max` templates (default 3):
+ *   1. at most ONE topic-specific design (the best relevant match), then
+ *   2. universal creative DIRECTIONS: exactly one light design plus dark ones, never a direction
+ *      in the same layout family as (or visually close to) the topic design.
+ * The pick is deterministic per trade + topic, so the cards never flicker while the user types.
  */
 export function suggestTemplates(opts: {
   postText: string;
@@ -601,55 +782,41 @@ export function suggestTemplates(opts: {
   const { postText, tradeId, tradeKeywords, max = 3 } = opts;
 
   const scored = TEMPLATES
-    .filter((tpl) => isEligible(tpl, postText, tradeId))
-    .map((tpl) => ({
-      template: tpl,
-      score: scoreTemplate(tpl, postText, tradeId, tradeKeywords),
-    }));
-
-  // Sort descending; break ties by putting trade-specific templates first
+    .filter((tpl) => !tpl.direction && !tpl.legacy && isEligible(tpl, postText, tradeId))
+    .map((tpl) => ({ template: tpl, score: scoreTemplate(tpl, postText, tradeId, tradeKeywords) }))
+    .filter((s) => s.score > 0);
   scored.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
-    const aSpec = a.template.trades.includes(tradeId) ? 1 : 0;
-    const bSpec = b.template.trades.includes(tradeId) ? 1 : 0;
-    return bSpec - aSpec;
+    return (b.template.trades.includes(tradeId) ? 1 : 0) - (a.template.trades.includes(tradeId) ? 1 : 0);
   });
 
-  // ── Enforce LAYOUT-FAMILY DIVERSITY ──────────────────────────────────────────
-  // The 3 auto-suggestions must look genuinely different — not three recolors of the same
-  // layout. Walk the ranked list and take at most ONE template per layout family. Then, if
-  // we still have fewer than `max`, backfill from the universal archetypes (each a distinct
-  // family) so the user always gets `max` varied, polished designs.
-  const UNIVERSAL_IDS = ['u-hero-bold', 'u-banner-center', 'u-badge-promo'];
   const picked: ScoredTemplate[] = [];
-  const usedFamilies = new Set<string>();
-  const usedIds = new Set<string>();
-
-  const tryAdd = (st: ScoredTemplate) => {
-    if (picked.length >= max) return;
-    const fam = st.template.layoutFamily || st.template.category;
-    if (usedFamilies.has(fam) || usedIds.has(st.template.id)) return;
-    picked.push(st);
-    usedFamilies.add(fam);
-    usedIds.add(st.template.id);
-  };
-
-  // 1) Prefer relevant, scored templates (distinct families).
-  for (const st of scored) {
-    if (st.score <= 0) break; // ranked desc; nothing relevant beyond here
-    tryAdd(st);
-  }
-  // 2) Backfill with universal archetypes (distinct families, polished, always eligible).
-  for (const id of UNIVERSAL_IDS) {
-    if (picked.length >= max) break;
-    const tpl = TEMPLATES.find((t) => t.id === id);
-    if (tpl) tryAdd({ template: tpl, score: 0 });
-  }
-  // 3) Last resort: fill any remaining slots ignoring the family constraint.
-  for (const st of scored) {
-    if (picked.length >= max) break;
-    if (!usedIds.has(st.template.id)) { picked.push(st); usedIds.add(st.template.id); }
+  const blocked = new Set<string>();
+  if (scored[0] && max > 1) {
+    picked.push(scored[0]);
+    const fam = scored[0].template.layoutFamily || scored[0].template.category;
+    blocked.add(fam);
+    for (const f of LOOKS_LIKE[fam] || []) blocked.add(f);
   }
 
+  const seed = hashStr(`${tradeId}|${picked[0]?.template.id ?? ''}|${cleanTopic(postText)}`);
+  const byId = (id: string) => TEMPLATES.find((t) => t.id === id)!;
+  const ok = (t: DesignTemplate) => !blocked.has(t.layoutFamily || '');
+
+  const lights = LIGHT_DIRECTIONS.map(byId).filter(ok);
+  const light = lights.length ? lights[hashStr(`light|${cleanTopic(postText)}|${tradeId}`) % lights.length] : null;
+  const darkAll = DARK_DIRECTIONS.map(byId).filter(ok);
+  const start = darkAll.length ? (seed >>> 3) % darkAll.length : 0;
+  const darks = [...darkAll.slice(start), ...darkAll.slice(0, start)];
+
+  const slots = max - picked.length;
+  const dirPicks: DesignTemplate[] = [];
+  if (light && slots > 0) dirPicks.push(light);
+  for (const d of darks) { if (dirPicks.length >= slots) break; dirPicks.push(d); }
+  // Visual rhythm: dark, light, dark when there is no topic design; otherwise topic, dark, light.
+  if (picked.length === 0 && dirPicks.length === 3) dirPicks.splice(0, 2, dirPicks[1], dirPicks[0]);
+  else if (dirPicks.length === 2) dirPicks.reverse();
+
+  for (const d of dirPicks) picked.push({ template: d, score: 0 });
   return picked.slice(0, max);
 }

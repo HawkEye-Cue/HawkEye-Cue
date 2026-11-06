@@ -92,3 +92,46 @@ describe('Priority 2 — draft preservation across Create', () => {
     expect(src).toContain("readDraft('platformContent', user?.sub)");
   });
 });
+
+// Every paid AI image request in the app goes through ONE gate. These assertions fail if a new
+// button or code path calls the paid endpoints without the confirmation first.
+describe('paid AI image requests cannot bypass the confirmation', () => {
+  const body = (name: string) => {
+    const start = src.includes(`async function ${name}(`) ? src.indexOf(`async function ${name}(`) : src.indexOf(`function ${name}(`);
+    expect(start, name).toBeGreaterThan(-1);
+    const next = src.indexOf('\n  async function ', start + 10);
+    const next2 = src.indexOf('\n  function ', start + 10);
+    const end = Math.min(...[next, next2].filter((i) => i > 0));
+    return src.slice(start, end);
+  };
+
+  it('the paid endpoints are called from exactly two functions on the page', () => {
+    expect(src.match(/'\/content\/generate-image'/g)).toHaveLength(1);
+    expect(src.match(/\.editImage\(/g)).toHaveLength(1);
+    expect(body('generateAiPhoto')).toContain("'/content/generate-image'");
+    expect(body('handleStudioEditPhoto')).toContain('.editImage(');
+  });
+
+  it('text-to-image: confirmation comes BEFORE the request; cancel returns without calling it', () => {
+    const fn = body('generateAiPhoto');
+    const gate = fn.indexOf("await confirmAiImage('generate')");
+    expect(gate).toBeGreaterThan(-1);
+    expect(gate).toBeLessThan(fn.indexOf("'/content/generate-image'"));
+    expect(fn).toMatch(/if \(!\(await confirmAiImage\('generate'\)\)\) \{[^}]*return; \}/);
+  });
+
+  it('AI photo edit (studio): confirmation comes BEFORE the request; cancel throws before it', () => {
+    const fn = body('handleStudioEditPhoto');
+    const gate = fn.indexOf("await confirmAiImage('edit')");
+    expect(gate).toBeGreaterThan(-1);
+    expect(gate).toBeLessThan(fn.indexOf('.editImage('));
+    expect(fn).toMatch(/if \(!\(await confirmAiImage\('edit'\)\)\) throw new Error/);
+  });
+
+  it('every AI image button funnels into generateAiPhoto (composer, suggestions strip, regenerate)', () => {
+    expect(src).toContain('onCreateAiImage={handleCreateAiImageFromComposer}');
+    expect(src).toContain('onGenerateAiImage={handleCreateAiImageFromComposer}');
+    expect(body('handleCreateAiImageFromComposer')).toContain('generateAiPhoto(seed)');
+    expect(src).toContain('{confirmDialog}');
+  });
+});

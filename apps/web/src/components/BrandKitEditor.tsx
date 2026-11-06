@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef } from 'react';
-import { type BrandKit, saveBrandKit, readFileAsDataUrl, BRAND_KIT_DEFAULTS } from '../lib/brandKit';
+import { type BrandKit, recordBrandKitEdit, readFileAsDataUrl, BRAND_KIT_DEFAULTS } from '../lib/brandKit';
 
 interface BrandKitEditorProps {
   brandKit: BrandKit;
@@ -31,7 +31,7 @@ export default function BrandKitEditor({ brandKit, sub, onChange }: BrandKitEdit
 
   const handleSave = () => {
     setSaving(true);
-    saveBrandKit(sub, brandKit);
+    recordBrandKitEdit(sub, brandKit);
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

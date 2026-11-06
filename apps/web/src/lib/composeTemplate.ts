@@ -137,7 +137,9 @@ export const LINE_H = 1.32;         // Fabric's REAL line pitch: lineHeight 1.16
 function glyphW(layer: DesignLayer): number {
   const wt = String(layer.fontWeight || '');
   const fam = String(layer.fontFamily || '');
-  return (wt === '900' || wt === 'bold' || /black/i.test(fam)) ? GLYPH_W_BOLD : GLYPH_W;
+  const base = (wt === '900' || wt === 'bold' || /black/i.test(fam)) ? GLYPH_W_BOLD : GLYPH_W;
+  // Letter spacing (1/1000 em) widens every glyph; capitals run ~12% wider than mixed case.
+  return base + (layer.charSpacing ?? 0) / 1000 + (layer.uppercase ? 0.08 : 0);
 }
 
 function wrapToLines(text: string, boxWidth: number, size: number, maxLines: number, perGlyph: number): { lines: string[]; truncated: boolean } {
@@ -163,7 +165,7 @@ function wrapToLines(text: string, boxWidth: number, size: number, maxLines: num
  * template's size) before it ever truncates; as a last resort it ends with an ellipsis.
  */
 export function fitText(opts: {
-  text: string; layer: DesignLayer; templateWidth: number; maxLines?: number; maxHeight?: number; boxWidth?: number;
+  text: string; layer: DesignLayer; templateWidth: number; maxLines?: number; maxHeight?: number; boxWidth?: number; minSize?: number;
 }): { text: string; fontSize: number } {
   const { text, layer, templateWidth } = opts;
   const baseSize = layer.fontSize ?? 40;
@@ -174,7 +176,7 @@ export function fitText(opts: {
   const pg = glyphW(layer);
   // Smallest size we will shrink to: never below 26px on the 1080 grid (legible), but a huge
   // display size (e.g. 148) may shrink to 35% so a whole short sentence fits instead of truncating.
-  const floor = Math.min(baseSize, Math.max(26, Math.round(baseSize * 0.35)));
+  const floor = Math.min(baseSize, opts.minSize ?? Math.max(26, Math.round(baseSize * 0.35)));
   const step = Math.max(2, Math.round(baseSize * 0.04));
 
   for (let size = baseSize; size >= floor; size -= step) {
@@ -193,8 +195,9 @@ export function fitText(opts: {
 
 // ─── Geometry helpers ──────────────────────────────────────────────────────────
 
+// Backdrops and translucent decoration (glows, halos) never constrain text or act as buttons.
 const isBackdrop = (l: DesignLayer, t: DesignTemplate) =>
-  l.id === 'bg' || ((l.width ?? 0) >= t.width * 0.9 && (l.height ?? 0) >= t.height * 0.9);
+  l.id === 'bg' || (l.opacity ?? 1) < 0.5 || ((l.width ?? 0) >= t.width * 0.9 && (l.height ?? 0) >= t.height * 0.9);
 
 const layerWidth = (l: DesignLayer, t: DesignTemplate) =>
   l.width ?? (l.type === 'text' ? t.width - (l.left ?? 0) * 2 : t.width);
@@ -245,12 +248,13 @@ const readableOn = (bg: string) => ((luminance(bg) ?? 0) > 0.45 ? '#000000' : '#
 
 /** The accent color each template is designed around (what a Brand Kit color should replace). */
 const TEMPLATE_ACCENT: Record<string, string> = {
-  // (a design may use a second, darker shade of its accent � see EXTRA_ACCENT)
+  // (a design may use a second, darker shade of its accent - see EXTRA_ACCENT)
   'roof-storm-1': '#f97316', 'roof-inspect-1': '#fbbf24', 'ins-rate-drop-1': '#22c55e',
   'ins-free-quote-1': '#818cf8', 're-just-listed-1': '#f97316', 're-just-sold-1': '#4ade80',
   'hvac-seasonal-1': '#38bdf8', 'before-after-1': '#f97316', 'testimonial-1': '#fbbf24',
-  'appreciation-1': '#c084fc', 'branded-1': '#f97316', 'u-hero-bold': '#f97316',
-  'u-banner-center': '#f97316', 'u-badge-promo': '#fde68a',
+  'appreciation-1': '#c084fc', 'branded-1': '#f97316',
+  'u-poster': '#f97316', 'u-editorial': '#b45309', 'u-colorblock': '#4f46e5',
+  'u-spotlight': '#2dd4bf', 'u-frame': '#d4a64a', 'u-stripe': '#facc15',
 };
 
 // ─── Composition ───────────────────────────────────────────────────────────────
@@ -258,80 +262,153 @@ const TEMPLATE_ACCENT: Record<string, string> = {
 /** Additional shades of a design's accent that should follow the Brand Kit color too. */
 const EXTRA_ACCENT: Record<string, string[]> = { 'appreciation-1': ['#7c3aed'] };
 
+/** A trade's signature color, used by `tradeAccent` directions when no Brand Kit color is set. */
+export function tradeAccentColor(tradeName?: string): string | null {
+  const t = (tradeName || '').toLowerCase();
+  if (/roof/.test(t)) return '#ea580c';
+  if (/insur/.test(t)) return '#2563eb';
+  if (/real estate|realtor|realty/.test(t)) return '#059669';
+  if (/mortgage|lend/.test(t)) return '#4f46e5';
+  if (/hvac|heating|cooling|air/.test(t)) return '#0284c7';
+  if (/plumb/.test(t)) return '#0891b2';
+  if (/electric/.test(t)) return '#eab308';
+  if (/landscap|lawn|tree|garden/.test(t)) return '#16a34a';
+  if (/paint/.test(t)) return '#db2777';
+  return null;
+}
+
+/** A topic emoji for icon slots: from the caption first, then the trade. Never decorative text. */
+export function topicIcon(postText: string, tradeName?: string): string {
+  const s = `${postText} ${tradeName || ''}`.toLowerCase();
+  const rules: [RegExp, string][] = [
+    [/\b(thank|grateful|appreciat)/, '\u2764\uFE0F'],
+    [/\b(storm|hail|wind)/, '\u26C8\uFE0F'],
+    [/\b(sold|keys|closing|closed on)/, '\u{1F511}'],
+    [/\b(listed|listing|open house|home for sale)/, '\u{1F3E1}'],
+    [/\b(insur|coverage|policy|protect)/, '\u{1F6E1}\uFE0F'],
+    [/\b(mortgage|refinanc|loan)/, '\u{1F3E6}'],
+    [/\b(ac|cool|summer|air condition)/, '\u2744\uFE0F'],
+    [/\b(heat|furnace|winter)/, '\u{1F525}'],
+    [/\b(plumb|pipe|leak|drain|water heater)/, '\u{1F4A7}'],
+    [/\b(electric|wiring|panel|power)/, '\u26A1'],
+    [/\b(lawn|garden|landscap|tree)/, '\u{1F33F}'],
+    [/\b(roof|shingle|gutter)/, '\u{1F3E0}'],
+    [/\b(paint)/, '\u{1F3A8}'],
+    [/\b(car|auto|vehicle)/, '\u{1F697}'],
+  ];
+  for (const [re, icon] of rules) if (re.test(s)) return icon;
+  return '\u2B50';
+}
+
 /**
  * Return a new template whose editable text layers reflect the caption + brand kit.
  * Pure: does not mutate the input template or its layers.
  *
- * Generic layouts (no template-specific copy) never show placeholder text: a supporting-line
- * slot with nothing real to say is filled from the Brand Kit tagline or removed, and a CTA with
- * no intent in the caption is removed. Specific designs keep their meaningful default copy.
+ * Finished designs never show placeholder or invented copy:
+ *  - Brand / phone slots are filled from the Brand Kit, or the layer is REMOVED when the kit has
+ *    no value (along with any frame that only exists for them: `requires`).
+ *  - The supporting line comes from the caption or the Brand Kit tagline, never from template
+ *    marketing copy (which could make claims the user never made).
+ *  - The CTA comes from a real intent in the caption, or the CTA and its button are removed.
+ *  - The kicker label is the user's trade name, or it is removed.
  */
 export function composeTemplate(input: ComposeInput): DesignTemplate {
   const { template, postText, tradeName, brandKit } = input;
-  const generic = template.keywords.length === 0;
   const hasCaption = cleanCaption(postText).length > 0;
+  const company = (brandKit.companyName || '').trim();
+  const phone = (brandKit.phone || '').trim();
+  const kicker = (tradeName || '').trim().toUpperCase();
 
   const fallbackHeadline = template.layers.find((l) => l.isHeadline)?.text || template.name;
-  // A generic design's own placeholder sentence is never shown: use the tagline or nothing.
-  const fallbackSubtext = generic ? (brandKit.tagline || '') : (template.layers.find((l) => l.isSubtext)?.text || '');
+  const fallbackSubtext = (brandKit.tagline || '').trim();
   const { headline, subtext, cta, ctaFromIntent } = deriveCopy({ postText, tradeName, fallbackHeadline, fallbackSubtext });
 
-  // Layers to drop entirely (generic designs only, and only when there IS a caption to compose).
+  // Layers to drop entirely so nothing empty, fake or orphaned remains.
   const drop = new Set<string>();
-  if (hasCaption && generic) {
+  for (const l of template.layers) {
+    if (l.isPhoneSlot && !phone) drop.add(l.id);
+    else if (l.isBrandSlot && !l.isPhoneSlot && !company) drop.add(l.id);
+    if (l.requires === 'company' && !company) drop.add(l.id);
+    if (l.requires === 'phone' && !phone) drop.add(l.id);
+    if (l.requires === 'contact' && !company && !phone) drop.add(l.id);
+    if ((l.isKicker || l.requires === 'kicker') && !kicker) drop.add(l.id);
+  }
+  if (hasCaption) {
     for (const l of template.layers) {
       if (l.isSubtext && !subtext) drop.add(l.id);
-      if (l.type === 'text' && /cta/i.test(l.id) && !ctaFromIntent && !containingShape(l, template.layers, template)) drop.add(l.id);
+      if (l.sparseOnly && subtext) drop.add(l.id); // decoration only fills designs without a supporting line
+      if (l.type === 'text' && /cta/i.test(l.id) && !ctaFromIntent) {
+        drop.add(l.id);
+        const shape = containingShape(l, template.layers, template);
+        if (shape && /cta/i.test(shape.id)) drop.add(shape.id); // the empty button goes too
+      }
     }
   }
   const src = template.layers.filter((l) => !drop.has(l.id));
 
-  // Brand color: only when the user actually customized it and it is readable on this design.
+  // Accent color: a customized Brand Kit color wins; otherwise `tradeAccent` directions take the
+  // trade's palette. Either is applied only when it stays readable on the design's background.
   const primary = brandKit.primaryColor;
   const customized = !!primary && primary.toLowerCase() !== BRAND_KIT_DEFAULTS.primaryColor.toLowerCase();
+  const target = customized ? primary : (template.tradeAccent ? tradeAccentColor(tradeName) : null);
   const accent = TEMPLATE_ACCENT[template.id];
-  const recolor = customized && !!accent && contrastRatio(primary, template.background) >= 3;
+  const recolor = !!target && !!accent && contrastRatio(target, template.background) >= 3;
   const accents = [accent, ...(EXTRA_ACCENT[template.id] || [])].filter(Boolean).map((a) => a.toLowerCase());
-  const swap = (c0?: string) => (recolor && c0 && accents.includes(c0.toLowerCase()) ? primary : c0);
+  const swap = (c0?: string) => (recolor && c0 && accents.includes(c0.toLowerCase()) ? (target as string) : c0);
 
   const layers: DesignLayer[] = src.map((layer) => {
     let out: DesignLayer = { ...layer };
 
-    // Brand slots: fill ONLY when the kit has the value (never invent) and FIT it to its box.
+    // Brand slots: fill ONLY from the kit (empty ones were dropped above) and FIT to the box.
     if (layer.isPhoneSlot || layer.isBrandSlot) {
-      const value = layer.isPhoneSlot ? brandKit.phone : brandKit.companyName;
-      if (value) {
-        const f = fitText({ text: value, layer, templateWidth: template.width, maxLines: 1 });
-        out = { ...out, text: f.text, fontSize: f.fontSize };
-      }
+      const value = layer.isPhoneSlot ? phone : company;
+      // Business names are never cut off: small print may go down to 20px on the 1080 grid.
+      const f = fitText({ text: value, layer, templateWidth: template.width, maxLines: 1, minSize: 20 });
+      out = { ...out, text: f.text, fontSize: f.fontSize };
+    } else if (layer.isKicker) {
+      // Inside a tab / label shape the kicker must stay on ONE line (it may shrink to 16px).
+      const inShape = !!containingShape(layer, template.layers, template);
+      const f = fitText({ text: kicker, layer, templateWidth: template.width, maxLines: inShape ? 1 : 2, minSize: inShape ? 16 : undefined });
+      out = { ...out, text: f.text, fontSize: f.fontSize };
+    } else if (layer.isIcon) {
+      out = { ...out, text: topicIcon(postText, tradeName) };
     } else if (hasCaption && layer.type === 'text') {
       if (layer.keepText) {
-        // fixed focal word (e.g. SOLD!) — the caption never overwrites it
+        // fixed focal word (e.g. SOLD!) - the caption never overwrites it
       } else if (layer.isHeadline) {
         // Up to 3 lines: the fitter picks the LARGEST font that fits the width AND the vertical room.
-        const f = fitText({ text: headline, layer, templateWidth: template.width, maxLines: 3, maxHeight: verticalRoom(layer, src, template) });
+        const text = layer.uppercase ? headline.toUpperCase() : headline;
+        // Narrow columns (e.g. Color Block) may use up to 5 lines so the headline stays large.
+        const lines = (layer.width ?? template.width) < 640 ? 5 : 3;
+        const f = fitText({ text, layer, templateWidth: template.width, maxLines: lines, maxHeight: verticalRoom(layer, src, template) });
         out = { ...out, text: f.text, fontSize: f.fontSize };
       } else if (layer.isSubtext && subtext) {
-        const f = fitText({ text: subtext, layer, templateWidth: template.width, maxLines: 3, maxHeight: verticalRoom(layer, src, template) });
+        // Readability first: the supporting line never shrinks below ~80% of its design size; if it
+        // cannot fit, it ends with an ellipsis (the full caption is still in the post itself).
+        const minSize = Math.max(28, Math.round((layer.fontSize ?? 40) * 0.8));
+        const f = fitText({ text: subtext, layer, templateWidth: template.width, maxLines: 3, maxHeight: verticalRoom(layer, src, template), minSize });
         out = { ...out, text: f.text, fontSize: f.fontSize };
       } else if (/cta/i.test(layer.id) && ctaFromIntent) {
         // CTA copy lives INSIDE a button / badge shape: fit it to that shape and centre it.
         const shape = containingShape(layer, src, template);
-        const round = !!shape && (shape.radius ?? 0) >= Math.min(shape.width ?? 0, shape.height ?? 0) / 2 - 1;
+        // A CIRCLE badge (not a pill) leaves less usable width for text.
+        const sw = shape?.width ?? 0, sh = shape?.height ?? 0;
+        const round = !!shape && Math.abs(sw - sh) < 8 && (shape.radius ?? 0) >= Math.min(sw, sh) / 2 - 1;
         const boxW = shape ? Math.round((shape.width ?? 400) * (round ? 0.68 : 1) - (round ? 0 : 48)) : (layer.width ?? 460);
         const tplLines = Math.max(1, String(layer.text || '').split('\n').length);
         const f = fitText({ text: cta.toUpperCase(), layer, templateWidth: template.width, maxLines: tplLines, boxWidth: boxW,
           maxHeight: shape ? (shape.height ?? 80) - 12 : undefined });
         const lines = f.text.split('\n').length;
-        out = { ...out, text: f.text, fontSize: f.fontSize, textAlign: 'center', width: boxW };
+        out = { ...out, text: f.text, fontSize: f.fontSize, width: boxW };
         if (shape) {
+          out.textAlign = 'center';
           out.left = Math.round((shape.left ?? 0) + ((shape.width ?? boxW) - boxW) / 2);
           out.top = Math.round((shape.top ?? 0) + ((shape.height ?? 80) - lines * f.fontSize * LINE_H) / 2);
         }
       }
     }
 
-    // Brand color on this design's accent (shapes AND accent-colored text).
+    // Accent color on this design's accent (shapes AND accent-colored text).
     if (recolor) {
       if (out.backgroundColor) out.backgroundColor = swap(out.backgroundColor);
       if (out.fill) out.fill = swap(out.fill);
@@ -344,12 +421,52 @@ export function composeTemplate(input: ComposeInput): DesignTemplate {
     ? layers.map((l) => {
         if (l.type !== 'text') return l;
         const shape = containingShape(l, layers, template);
-        if (shape && shape.backgroundColor && shape.backgroundColor.toLowerCase() === primary.toLowerCase()) return { ...l, fill: readableOn(primary) };
+        if (shape && shape.backgroundColor && shape.backgroundColor.toLowerCase() === (target as string).toLowerCase()) return { ...l, fill: readableOn(target as string) };
         return l;
       })
     : layers;
 
-  return { ...template, layers: finalLayers };
+  return { ...template, layers: rebalance(finalLayers, template) };
+}
+
+/** Estimated rendered height of a layer (text: its wrapped lines; shapes: their height). */
+function layerHeight(l: DesignLayer): number {
+  if (l.type === 'text') return String(l.text || '').split('\n').length * (l.fontSize ?? 40) * LINE_H;
+  return l.height ?? 0;
+}
+
+/**
+ * When optional elements were removed (no subtext, CTA, or contact details), the remaining
+ * message stack would sit at the top with a large empty area below it. Shift that stack down
+ * so the design looks intentionally composed. Only square/portrait designs whose headline is
+ * not inside a color slab are adjusted; backdrops, side columns, frames and brand details stay.
+ */
+function rebalance(layers: DesignLayer[], t: DesignTemplate): DesignLayer[] {
+  if (t.height < 900) return layers;
+  const head = layers.find((l) => l.isHeadline);
+  if (!head || containingShape(head, layers, t)) return layers;
+  const hl = head.left ?? 0, ht = head.top ?? 0;
+  const movable = (l: DesignLayer) =>
+    !isBackdrop(l, t) && !l.isBrandSlot && !l.requires && !l.isIcon &&
+    (l.left ?? 0) >= hl - 60 && (l.top ?? 0) >= ht - 130 && (l.height ?? 0) < 400 && (l.width ?? 0) < t.width * 0.9;
+  const stack = layers.filter(movable);
+  if (stack.length === 0) return layers;
+  const stackBottom = Math.max(...stack.map((l) => (l.top ?? 0) + layerHeight(l)));
+  const x0 = Math.min(...stack.map((l) => l.left ?? 0));
+  const x1 = Math.max(...stack.map((l) => (l.left ?? 0) + (l.width ?? t.width - (l.left ?? 0) * 2)));
+  let floor = t.height - 90;
+  for (const o of layers) {
+    if (stack.includes(o) || isBackdrop(o, t)) continue;
+    const ot = o.top ?? 0;
+    if (ot <= stackBottom) continue;
+    const ox0 = o.left ?? 0, ox1 = ox0 + (o.width ?? t.width);
+    if (ox1 <= x0 || ox0 >= x1) continue;
+    floor = Math.min(floor, ot - 40);
+  }
+  const gap = floor - stackBottom;
+  if (gap < 140) return layers;
+  const shift = Math.round(gap * 0.45);
+  return layers.map((l) => (stack.includes(l) ? { ...l, top: (l.top ?? 0) + shift } : l));
 }
 
 /**
@@ -361,6 +478,6 @@ export function compositionSignature(opts: { postText: string; tradeId: string; 
   const clean = cleanCaption(opts.postText).toLowerCase();
   const words = clean.split(/\s+/).filter((w) => w.length > 3).slice(0, 12).sort().join(',');
   const lenBucket = Math.floor(clean.length / 40); // changes every ~40 chars
-  const brand = `${opts.brandKit.companyName}|${opts.brandKit.phone}|${opts.brandKit.primaryColor}|${opts.brandKit.logoDataUrl ? 'logo' : 'nologo'}`;
+  const brand = `${opts.brandKit.companyName}|${opts.brandKit.phone}|${opts.brandKit.tagline}|${opts.brandKit.primaryColor}|${opts.brandKit.logoDataUrl ? 'logo' : 'nologo'}`;
   return `${opts.tradeId}::${lenBucket}::${words}::${brand}`;
 }

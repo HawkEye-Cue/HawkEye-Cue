@@ -18,7 +18,10 @@
 
 import type { ApiClient, CloudDesignMeta, BrandKitInput } from '@social-lead-gen/shared';
 import type { BrandKit } from './brandKit';
-import { BRAND_KIT_DEFAULTS } from './brandKit';
+import {
+  BRAND_KIT_DEFAULTS, loadBrandKit, saveBrandKit, hasBrandDetails,
+  loadPendingBrandEdit, clearPendingBrandEdit, saveCloudBase,
+} from './brandKit';
 import { listDesigns as listLocalDesigns, type DesignDocument } from './designDocument';
 
 // ─── Brand Kit ──────────────────────────────────────────────────────────────
@@ -62,6 +65,71 @@ export async function saveBrandKitCloud(api: ApiClient, kit: BrandKit): Promise<
     input.logoRev = rev;
   } // else: existing https logo unchanged → leave logoRev undefined
   return fetchBrandKitFromResult(await api.putBrandKit(input));
+}
+
+/**
+ * Account-safe Brand Kit sync, run on every authenticated load of Create.
+ *
+ *   • An unsynced local EDIT (recorded with the cloud version it was based on) is pushed only if
+ *     the cloud is still at that version — the whole kit, deletions included. If the cloud moved on
+ *     (edited on another device) the cloud wins and the stale local edit is discarded.
+ *   • Otherwise the cloud copy is authoritative, field by field: a field that is empty in the
+ *     cloud stays empty, so a detail the user deleted is never restored from an old local mirror.
+ *   • If the account has NEVER saved a Brand Kit, the user's own (per-account) local copy is
+ *     uploaded once, so nothing they entered before cloud sync existed is lost.
+ * Everything is keyed by the user's id; nothing is ever read from another account's keys.
+ */
+export async function syncBrandKit(api: ApiClient, sub: string): Promise<BrandKit> {
+  const pending = loadPendingBrandEdit(sub);
+  const { brandKit: cloud } = await api.getBrandKit();
+  const cloudAt = (cloud as { updatedAt?: string | null } | null)?.updatedAt ?? null;
+
+  if (pending && (pending.base ?? null) === (cloud ? cloudAt : null)) {
+    return saveBrandKitForUser(api, sub, pending.kit);
+  }
+  if (pending) clearPendingBrandEdit(sub); // the cloud changed since this edit: cloud wins
+
+  if (cloud) {
+    const kit = mapCloudKit(cloud);
+    saveBrandKit(sub, kit);
+    saveCloudBase(sub, cloudAt);
+    return kit;
+  }
+  // Never saved to the account: migrate this account's own local copy once (if it has details).
+  const local = loadBrandKit(sub);
+  if (hasBrandDetails(local)) return saveBrandKitForUser(api, sub, local);
+  return local;
+}
+
+/** Save the user's kit to the account; on success the local mirror + version are updated and
+ *  the pending edit is cleared. On failure the pending edit stays for the next sync. */
+export async function saveBrandKitForUser(api: ApiClient, sub: string, kit: BrandKit): Promise<BrandKit> {
+  const { kit: saved, updatedAt } = await saveBrandKitCloudWithMeta(api, kit);
+  saveBrandKit(sub, saved);
+  saveCloudBase(sub, updatedAt);
+  clearPendingBrandEdit(sub);
+  return saved;
+}
+
+async function saveBrandKitCloudWithMeta(api: ApiClient, kit: BrandKit): Promise<{ kit: BrandKit; updatedAt: string | null }> {
+  const input: BrandKitInput = {
+    companyName: kit.companyName, phone: kit.phone, website: kit.website, tagline: kit.tagline,
+    primaryColor: kit.primaryColor, accentColor: kit.accentColor,
+  };
+  if (kit.logoDataUrl === null) {
+    input.logoRev = null;
+  } else if (kit.logoDataUrl.startsWith('data:')) {
+    const { contentType, blob } = dataUrlToBlob(kit.logoDataUrl);
+    const { rev, uploadUrl } = await api.createBrandLogoUpload(contentType);
+    await putToPresigned(uploadUrl, blob, contentType);
+    input.logoRev = rev;
+  }
+  const res = await api.putBrandKit(input);
+  return { kit: fetchBrandKitFromResult(res), updatedAt: (res.brandKit as { updatedAt?: string | null }).updatedAt ?? null };
+}
+
+function mapCloudKit(b: { companyName: string; phone: string; website: string; tagline: string; primaryColor: string; accentColor: string; logoUrl: string | null }): BrandKit {
+  return fetchBrandKitFromResult({ brandKit: b });
 }
 
 function fetchBrandKitFromResult(res: { brandKit: { companyName: string; phone: string; website: string; tagline: string; primaryColor: string; accentColor: string; logoUrl: string | null } }): BrandKit {
@@ -139,8 +207,9 @@ export async function migrateLocalToCloud(
     const hasLocalBrand = !!(localBrandKit.companyName || localBrandKit.phone || localBrandKit.website || localBrandKit.tagline || localBrandKit.logoDataUrl);
     if (hasLocalBrand) {
       const { brandKit: cloud } = await api.getBrandKit();
-      const cloudEmpty = !cloud || (!cloud.companyName && !cloud.phone && !cloud.website && !cloud.tagline && !cloud.logoUrl);
-      if (cloudEmpty) {
+      // Only when the account has NEVER saved a Brand Kit. A saved kit with empty fields means
+      // the user cleared them; filling them back from an old local copy would undo a deletion.
+      if (!cloud) {
         await saveBrandKitCloud(api, localBrandKit);
         result.migratedBrandKit = true;
       } else {

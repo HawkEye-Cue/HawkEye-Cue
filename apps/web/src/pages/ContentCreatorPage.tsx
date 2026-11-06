@@ -16,6 +16,7 @@ import CreateLauncher, { type CreateLaunchChoice } from '../components/CreateLau
 import { notifyPostScheduled } from '../lib/scheduledPostsRefresh';
 import FlockSafetyBar from '../components/FlockSafetyBar';
 import { useFlockSafety } from '../hooks/useFlockSafety';
+import { useAiImageConfirm } from '../hooks/useAiImageConfirm';
 import ImageSuggestions from '../components/ImageSuggestions';
 // The Design Studio (and its ~90KB Fabric.js dependency) loads ONLY when the user opens it.
 // React.lazy puts DesignStudio + Fabric into a separate chunk kept out of the main bundle.
@@ -26,7 +27,7 @@ import { readDraft, writeDraft } from '../lib/draftStore';
 import { listDesigns, type DesignDocument } from '../lib/designDocument';
 import { loadBrandKit, type BrandKit } from '../lib/brandKit';
 import { canUseAiImageForTier } from '../lib/aiImageAccess';
-import { migrateLocalToCloud, fetchBrandKit, listCloudDesigns, fetchDesignDocument } from '../lib/designStore';
+import { migrateLocalToCloud, syncBrandKit, saveBrandKitForUser, listCloudDesigns, fetchDesignDocument } from '../lib/designStore';
 import type { CloudDesignMeta } from '@social-lead-gen/shared';
 
 // Which Create workflow is in view. 'home' shows the welcoming three-choice launcher
@@ -46,6 +47,12 @@ const PLATFORM_ICONS: Record<string, string> = {
 
 export default function ContentCreatorPage() {
   const { getToken, user } = useAuth();
+  // Single gate in front of EVERY paid AI image request (generate + photo edit, all buttons).
+  const getApiClient = useCallback(async () => {
+    const token = await getToken();
+    return new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
+  }, [getToken]);
+  const { confirmAiImage, confirmDialog } = useAiImageConfirm(getApiClient);
   const navigate = useNavigate();
   const { selectedTrade, selectedTrades } = useTrade();
   // NOTE: `removeEvent` is intentionally NOT destructured here. The Create page no longer
@@ -147,6 +154,8 @@ export default function ContentCreatorPage() {
   const [cloudDesigns, setCloudDesigns] = useState<CloudDesignMeta[] | null>(null);
   // A photo the user uploaded to edit in the studio (Workflow C).
   const [studioPhoto, setStudioPhoto] = useState<string | null>(null);
+  // Which studio panel opens first ('brand' when the user taps Personalize with your Brand Kit).
+  const [studioPanel, setStudioPanel] = useState<'wingman' | 'brand' | 'layers'>('wingman');
   const [brandKit, setBrandKit] = useState<BrandKit>(() => loadBrandKit(user?.sub));
   const suggestionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -166,8 +175,9 @@ export default function ContentCreatorPage() {
         // 2) migrate local → cloud (never deletes local; safe to repeat)
         await migrateLocalToCloud(client, user.sub, loadBrandKit(user.sub));
         if (cancelled) return;
-        // 3) load authoritative cloud copies
-        const [kit, designs] = await Promise.all([fetchBrandKit(client), listCloudDesigns(client)]);
+        // 3) account-safe Brand Kit sync (pushes this user's unsynced edit only if the cloud
+        //    has not changed since; never restores a deleted detail) + cloud designs
+        const [kit, designs] = await Promise.all([syncBrandKit(client, user.sub), listCloudDesigns(client)]);
         if (cancelled) return;
         setBrandKit(kit);
         setCloudDesigns(designs);
@@ -181,6 +191,8 @@ export default function ContentCreatorPage() {
 
   // Phase 2: AI photo edit via the server (paid plans enforced server-side).
   async function handleStudioEditPhoto(image: string, instruction: string): Promise<string> {
+    // Paid: confirm cost + balance first. Cancel = no request, no credit.
+    if (!(await confirmAiImage('edit'))) throw new Error('Cancelled. No AI credit was used.');
     const token = await getToken();
     const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
     try {
@@ -358,11 +370,12 @@ export default function ContentCreatorPage() {
     try {
       const token = await getToken();
       const client = new ApiClient({ baseUrl: import.meta.env.VITE_API_URL as string, getToken: async () => token });
-      const { saveBrandKitCloud } = await import('../lib/designStore');
-      const saved = await saveBrandKitCloud(client, kit);
+      if (!user?.sub) return;
+      const saved = await saveBrandKitForUser(client, user.sub, kit);
       setBrandKit(saved); // reflect the server's canonical logo URL
     } catch {
-      // Offline — keep the in-memory kit; next studio open will reconcile from the cloud.
+      // Offline: the studio already recorded this edit as pending; the next sync pushes it
+      // (only if the account copy has not changed elsewhere in the meantime).
     }
   }
 
@@ -549,6 +562,8 @@ export default function ContentCreatorPage() {
   async function generateAiPhoto(promptOverride?: string) {
     const prompt = (promptOverride ?? aiPhotoPrompt).trim();
     if (!prompt) { showToast('Describe the photo you want'); return; }
+    // Paid: confirm cost + balance first. Every AI image button funnels through here.
+    if (!(await confirmAiImage('generate'))) { showToast('Cancelled. No AI credit was used.'); return; }
     setAiPhotoLoading(true);
     setAiPhotoUrl(null);
     try {
@@ -697,7 +712,7 @@ export default function ContentCreatorPage() {
     setShowAiPhoto(true);
     // Generate immediately if we have a description; otherwise reveal the field.
     if (seed) { generateAiPhoto(seed); }
-    else { showToast('Type what the photo should show, then tap Create AI Image'); }
+    else { showToast('Type what the photo should show, then tap AI image again'); }
   }
 
   // Fetch today's posts from API
@@ -1028,6 +1043,8 @@ export default function ContentCreatorPage() {
             setSuggestionsVisible(false);
           }}
           onDismiss={() => setSuggestionsVisible(false)}
+          onPersonalize={(template) => { setStudioPanel('brand'); openStudio(template, true); }}
+          brandComplete={!!(brandKit.companyName.trim() && brandKit.phone.trim())}
           canUseAiImage={canUseAiImage}
         />
       )}
@@ -2218,10 +2235,12 @@ export default function ContentCreatorPage() {
             onCloudSave={handleStudioCloudSave}
             onUseInPost={handleStudioUseInPost}
             onBrandKitChange={handleStudioBrandKitChange}
-            onClose={() => { setStudioOpen(false); setStudioTemplate(null); setStudioDesign(null); setStudioPhoto(null); }}
+            initialPanel={studioPanel}
+            onClose={() => { setStudioOpen(false); setStudioTemplate(null); setStudioDesign(null); setStudioPhoto(null); setStudioPanel('wingman'); }}
           />
         </Suspense>
       )}
+      {confirmDialog}
     </div>
   );
 }

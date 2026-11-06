@@ -50,6 +50,7 @@ export async function renderTemplateToDataUrl(
           width: layer.width ?? template.width, height: layer.height ?? 40,
           rx: layer.radius ?? 0, ry: layer.radius ?? 0,
           fill: layer.backgroundColor ?? layer.fill ?? '#000000',
+          opacity: layer.opacity ?? 1,
         } as any));
       } else if (layer.type === 'text') {
         fc.add(new Textbox(layer.text || '', {
@@ -57,7 +58,8 @@ export async function renderTemplateToDataUrl(
           width: layer.width ?? template.width - (layer.left ?? 80) * 2,
           fontFamily: layer.fontFamily ?? 'Arial', fontSize: layer.fontSize ?? 40,
           fontWeight: layer.fontWeight ?? 'normal', fill: layer.fill ?? '#ffffff',
-          textAlign: layer.textAlign ?? 'left',
+          fontStyle: layer.fontStyle ?? 'normal', charSpacing: layer.charSpacing ?? 0,
+          textAlign: layer.textAlign ?? 'left', opacity: layer.opacity ?? 1,
         } as any));
       } else if (layer.type === 'image' && layer.src) {
         try {
@@ -102,7 +104,8 @@ export function renderTemplateToSvg(template: DesignTemplate, brandKit: BrandKit
   for (const layer of template.layers) {
     if (layer.type === 'rect') {
       const r = layer.radius ?? 0;
-      parts.push(`<rect x="${layer.left ?? 0}" y="${layer.top ?? 0}" width="${layer.width ?? width}" height="${layer.height ?? 40}"${r ? ` rx="${r}" ry="${r}"` : ''} fill="${esc(layer.backgroundColor ?? layer.fill ?? '#000')}"/>`);
+      const op = layer.opacity != null && layer.opacity < 1 ? ` opacity="${layer.opacity}"` : '';
+      parts.push(`<rect x="${layer.left ?? 0}" y="${layer.top ?? 0}" width="${layer.width ?? width}" height="${layer.height ?? 40}"${r ? ` rx="${r}" ry="${r}"` : ''}${op} fill="${esc(layer.backgroundColor ?? layer.fill ?? '#000')}"/>`);
     } else if (layer.type === 'text') {
       const lines = String(layer.text || '').split('\n');
       const size = layer.fontSize ?? 40;
@@ -110,7 +113,9 @@ export function renderTemplateToSvg(template: DesignTemplate, brandKit: BrandKit
       const anchor = layer.textAlign === 'center' ? 'middle' : layer.textAlign === 'right' ? 'end' : 'start';
       const x = anchor === 'middle' ? (layer.left ?? 0) + (layer.width ?? width) / 2 : (layer.left ?? 0);
       lines.forEach((line, i) => {
-        parts.push(`<text x="${x}" y="${(layer.top ?? 0) + size + i * size * 1.1}" font-family="${esc(layer.fontFamily ?? 'Arial, sans-serif')}" font-size="${size}" font-weight="${esc(weight)}" fill="${esc(layer.fill ?? '#fff')}" text-anchor="${anchor}">${esc(line)}</text>`);
+        const ls = layer.charSpacing ? ` letter-spacing="${((layer.charSpacing / 1000) * size).toFixed(1)}"` : '';
+        const it = layer.fontStyle === 'italic' ? ' font-style="italic"' : '';
+        parts.push(`<text x="${x}" y="${(layer.top ?? 0) + size + i * size * 1.32}" font-family="${esc(layer.fontFamily ?? 'Arial, sans-serif')}" font-size="${size}" font-weight="${esc(weight)}"${it}${ls} fill="${esc(layer.fill ?? '#fff')}" text-anchor="${anchor}">${esc(line)}</text>`);
       });
     } else if (layer.type === 'image' && layer.isLogoSlot && brandKit.logoDataUrl) {
       parts.push(`<image href="${esc(brandKit.logoDataUrl)}" x="${layer.left ?? 0}" y="${layer.top ?? 0}" width="${layer.width ?? 180}" height="${layer.height ?? 180}"/>`);

@@ -9,6 +9,7 @@
  *   ?caption=<text>   the post caption to compose designs from
  *   ?trade=<name>     the trade name
  *   ?svg=1            force the SVG fallback path (mobile)
+ *   ?width=<px>       max width of the Create column (default 680)
  */
 import React, { useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
@@ -24,13 +25,14 @@ declare global {
       opened: { id: string; customize: boolean }[];
       noImage: number;
       generateAi: number;
+      personalize: number;
       networkCalls: string[]; // any fetch/XHR during suggestions = credit-safety violation
     };
   }
 }
 
 // Trip-wire: record ANY network call so the validator can assert zero (credit safety).
-window.__sugg = { opened: [], noImage: 0, generateAi: 0, networkCalls: [] };
+window.__sugg = { opened: [], noImage: 0, generateAi: 0, personalize: 0, networkCalls: [] };
 const origFetch = window.fetch;
 window.fetch = (...args: Parameters<typeof fetch>) => {
   window.__sugg.networkCalls.push(String(args[0]));
@@ -48,7 +50,7 @@ function Harness() {
   const suggestions = useMemo(() => suggestTemplates({ postText: caption, tradeId: 'roofing', tradeKeywords: ['roof', 'storm', 'inspection'], max: 3 }), []);
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: 16 }}>
+    <div style={{ maxWidth: Number(params.get('width') || 680), margin: '0 auto', padding: 16 }}>
       {/* The original caption is shown ABOVE and must stay intact throughout. */}
       <div className="glass-card" data-testid="caption-box" style={{ marginBottom: 12 }}>
         <p className="text-xs text-slate-400">Your post (stays intact)</p>
@@ -67,6 +69,8 @@ function Harness() {
           onNoImage={() => { window.__sugg.noImage++; setVisible(false); }}
           onDismiss={() => setVisible(false)}
           canUseAiImage={true}
+          onPersonalize={() => { window.__sugg.personalize++; }}
+          brandComplete={false}
         />
       )}
     </div>

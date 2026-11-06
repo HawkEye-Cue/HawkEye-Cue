@@ -68,6 +68,42 @@ async function run(vp, viewport, forceSvg) {
     // 6) No Image option exists.
     check(vp, 'a No Image option is offered', (await page.locator('[data-testid=no-image]').count()) === 1);
 
+    // 6b) Layout: 3-column grid when it fits, snap-scroll row otherwise; never a visible scrollbar.
+    const lay = await page.evaluate(() => {
+      const ul = document.querySelector('[data-testid=design-suggestions]');
+      const cs = getComputedStyle(ul);
+      const cards = [...ul.children].map((c) => c.getBoundingClientRect());
+      const r = ul.getBoundingClientRect();
+      return {
+        layout: ul.getAttribute('data-layout'),
+        overflow: ul.scrollWidth - ul.clientWidth,
+        scrollbarPx: ul.offsetHeight - ul.clientHeight,
+        scrollbarWidthCss: cs.scrollbarWidth,
+        allVisible: cards.every((c) => c.left >= r.left - 1 && c.right <= r.right + 1),
+        minCardW: Math.min(...cards.map((c) => c.width)),
+        focusable: ul.tabIndex >= 0,
+      };
+    });
+    if (vp === 'desktop') {
+      check(vp, 'desktop: clean 3-column grid, all cards fully visible, no horizontal scroll', lay.layout === 'grid' && lay.overflow <= 1 && lay.allVisible, JSON.stringify(lay));
+    } else {
+      check(vp, 'mobile: swipeable row with usable card sizes (>= 200px)', lay.layout === 'scroll' && lay.minCardW >= 200, JSON.stringify(lay));
+      check(vp, 'mobile: scrollbar hidden but row stays keyboard-scrollable', lay.scrollbarPx === 0 && lay.focusable, JSON.stringify(lay));
+    }
+    check(vp, 'no visible scrollbar on the design row', lay.scrollbarPx === 0, `${lay.scrollbarPx}px`);
+
+    // 6c) Personalize link opens the Brand Kit; the paid AI option is a quiet, cost-labelled link.
+    await page.locator('[data-testid=personalize-brand]').click();
+    check(vp, '"Personalize with your Brand Kit" link is offered and works', (await page.evaluate(() => window.__sugg.personalize)) === 1);
+    const weights = await page.evaluate(() => {
+      const ai = document.querySelector('[data-testid=suggestions-ai-image]');
+      const use = [...document.querySelectorAll('button')].find((b) => /Use This Design/.test(b.textContent || ''));
+      const bg = (e) => getComputedStyle(e).backgroundColor;
+      return { aiText: ai.textContent, aiBg: bg(ai), useBg: bg(use) };
+    });
+    check(vp, 'AI image is secondary: plain cost-labelled link, free designs are the primary buttons',
+      /1 credit/.test(weights.aiText) && /rgba\(0, 0, 0, 0\)|transparent/.test(weights.aiBg) && !/rgba\(0, 0, 0, 0\)/.test(weights.useBg), JSON.stringify(weights));
+
     // 7) Original caption stays intact.
     const captionText = await page.locator('[data-testid=caption-text]').innerText();
     check(vp, 'the original caption stays intact', captionText === CAPTION, captionText.slice(0, 40) + '…');
@@ -95,6 +131,40 @@ async function run(vp, viewport, forceSvg) {
 
 await run('desktop', { width: 1366, height: 900 }, false);
 await run('mobile', { width: 390, height: 844 }, true);
+await narrowColumn();
+
+// A desktop window whose Create column is too narrow for 3 columns (next to the calendar)
+// falls back to the swipeable row — still no visible scrollbar, cards stay a usable size.
+async function narrowColumn() {
+  const vp = 'narrow-column';
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+  try {
+    await page.goto(`${BASE}/suggestions-harness.html?caption=${encodeURIComponent(CAPTION)}&trade=Roofing&width=460`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-testid=design-preview]', { timeout: 15000 });
+    const lay = await page.evaluate(() => {
+      const ul = document.querySelector('[data-testid=design-suggestions]');
+      return { layout: ul.getAttribute('data-layout'), scrollbarPx: ul.offsetHeight - ul.clientHeight,
+        minCardW: Math.min(...[...ul.children].map((c) => c.getBoundingClientRect().width)) };
+    });
+    check(vp, 'narrow column: swipeable row, usable cards, no visible scrollbar', lay.layout === 'scroll' && lay.scrollbarPx === 0 && lay.minCardW >= 200, JSON.stringify(lay));
+    // The real Create column on a 1366px laptop (~520px next to the calendar) still gets 3 columns.
+    await page.goto(`${BASE}/suggestions-harness.html?caption=${encodeURIComponent(CAPTION)}&trade=Roofing&width=560`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('[data-testid=design-preview]', { timeout: 15000 });
+    const lay2 = await page.evaluate(() => {
+      const ul = document.querySelector('[data-testid=design-suggestions]');
+      const r = ul.getBoundingClientRect();
+      const cards = [...ul.children].map((c) => c.getBoundingClientRect());
+      const btns = [...ul.querySelectorAll('button')].map((b) => ({ fits: b.scrollWidth <= b.clientWidth + 1 }));
+      return { layout: ul.getAttribute('data-layout'), overflow: ul.scrollWidth - ul.clientWidth,
+        allVisible: cards.every((c) => c.left >= r.left - 1 && c.right <= r.right + 1), buttonsFit: btns.every((b) => b.fits) };
+    });
+    check(vp, 'laptop-width Create column (~520px): 3 columns, all visible, buttons fit', lay2.layout === 'grid' && lay2.overflow <= 1 && lay2.allVisible && lay2.buttonsFit, JSON.stringify(lay2));
+    await page.screenshot({ path: `${OUT}/laptop-column-templates.png`, fullPage: true });
+  } catch (e) {
+    fail(vp, 'narrow column', String(e).slice(0, 160));
+  } finally { await browser.close(); }
+}
 
 const passed = results.filter((r) => r.ok).length;
 const failed = results.filter((r) => !r.ok).length;

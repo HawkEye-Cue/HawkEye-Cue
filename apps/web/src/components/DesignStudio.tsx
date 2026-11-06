@@ -23,8 +23,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
-import type { DesignTemplate } from '../lib/designTemplates';
-import { type BrandKit, saveBrandKit } from '../lib/brandKit';
+import { TEMPLATES, type DesignTemplate, type DesignLayer } from '../lib/designTemplates';
+import { type BrandKit, recordBrandKitEdit } from '../lib/brandKit';
 import { EXTRA_PROPS, saveDesign, duplicateDesign, newDesignId, type DesignDocument } from '../lib/designDocument';
 import { classifyEditIntent, type CanvasAction } from '../lib/wingmanEditIntent';
 import {
@@ -53,6 +53,8 @@ interface DesignStudioProps {
   /** persist Brand Kit edits (cloud). May be async. */
   onBrandKitChange: (kit: BrandKit) => void | Promise<void>;
   onClose: () => void;
+  /** which side panel opens first (default: Wingman) */
+  initialPanel?: 'wingman' | 'brand' | 'layers';
 }
 
 // Only the photo layer is replaced by AI edits; every other layer stays an editable vector.
@@ -66,7 +68,7 @@ function appliedText(layer: { text?: string; isBrandSlot?: boolean; isPhoneSlot?
 
 export default function DesignStudio({
   template, brandKit, sub, initialDesign, initialPhoto, canUseAiImage, onEditPhoto, onCloudSave, onUseInPost,
-  onBrandKitChange, onClose,
+  onBrandKitChange, onClose, initialPanel = 'wingman',
 }: DesignStudioProps): ReactNode {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -78,7 +80,7 @@ export default function DesignStudio({
   const [status, setStatus] = useState<{ kind: 'info' | 'ok' | 'error'; text: string } | null>(null);
   const [bgColor, setBgColor] = useState(template.background);
   const [kit, setKit] = useState<BrandKit>(brandKit);
-  const [panel, setPanel] = useState<'wingman' | 'brand' | 'layers'>('wingman');
+  const [panel, setPanel] = useState<'wingman' | 'brand' | 'layers'>(initialPanel);
   const [instruction, setInstruction] = useState('');
   const [revisions, setRevisions] = useState<RevisionState | null>(null);
   const [designId, setDesignId] = useState<string>(initialDesign?.id || newDesignId());
@@ -172,16 +174,23 @@ export default function DesignStudio({
               width: layer.width ?? template.width, height: layer.height ?? 40,
               rx: layer.radius ?? 0, ry: layer.radius ?? 0,
               fill: layer.backgroundColor ?? layer.fill ?? '#000000',
+              opacity: layer.opacity ?? 1,
               selectable: !layer.isPlaceholder, hasControls: !layer.isPlaceholder,
               data: { id: layer.id, isPlaceholder: !!layer.isPlaceholder, isLogoSlot: !!layer.isLogoSlot },
             } as any));
           } else if (layer.type === 'text') {
             const editable = layer.isEditable !== false;
-            fc.add(new Textbox(appliedText(layer, brandKit), {
+            const text = appliedText(layer, brandKit);
+            // An empty brand/phone slot is never added as an invisible box (no fake details);
+            // "Apply brand" adds it back once the Brand Kit has the value.
+            if (!text) continue;
+            fc.add(new Textbox(text, {
               left: layer.left ?? 0, top: layer.top ?? 0,
               width: layer.width ?? template.width - (layer.left ?? 80) * 2,
               fontFamily: layer.fontFamily ?? 'Arial', fontSize: layer.fontSize ?? 40,
               fontWeight: layer.fontWeight ?? 'normal', fill: layer.fill ?? '#ffffff',
+              fontStyle: layer.fontStyle ?? 'normal', charSpacing: layer.charSpacing ?? 0,
+              opacity: layer.opacity ?? 1,
               textAlign: layer.textAlign ?? 'left',
               selectable: editable, editable,
               data: {
@@ -359,14 +368,44 @@ export default function DesignStudio({
     snapshot();
   }
 
-  function applyBrand(k: BrandKit) {
+  async function applyBrand(k: BrandKit) {
     const fc = fabricRef.current;
     if (!fc) return;
     let changed = 0;
+    let hasPhone = false, hasCompany = false;
     objs().forEach((o) => {
-      if (o.data?.isPhoneSlot && k.phone) { o.set('text', k.phone); changed++; }
-      else if (o.data?.isBrandSlot && !o.data?.isPhoneSlot && k.companyName) { o.set('text', k.companyName); changed++; }
+      if (o.data?.isPhoneSlot) { hasPhone = true; if (k.phone) { o.set('text', k.phone); changed++; } }
+      else if (o.data?.isBrandSlot) { hasCompany = true; if (k.companyName) { o.set('text', k.companyName); changed++; } }
     });
+    // Slots left out of the design because the Brand Kit was empty are added back now that it
+    // has the value — at the template's own position and style (plus any frame that holds them).
+    const base = TEMPLATES.find((t) => t.id === template.id);
+    const need = (l: DesignLayer) =>
+      (l.isPhoneSlot && !hasPhone && !!k.phone) || (l.isBrandSlot && !l.isPhoneSlot && !hasCompany && !!k.companyName);
+    const missing = base ? base.layers.filter(need) : [];
+    if (base && missing.length) {
+      const { Rect, Textbox } = await import('fabric');
+      const ids = new Set(objs().map((o) => o.data?.id));
+      for (const l of base.layers) {
+        if (l.type !== 'rect' || ids.has(l.id) || !l.requires) continue;
+        const ok = l.requires === 'contact' ? !!(k.companyName || k.phone) : l.requires === 'company' ? !!k.companyName : l.requires === 'phone' ? !!k.phone : false;
+        if (!ok) continue;
+        const r = new Rect({ left: l.left ?? 0, top: l.top ?? 0, width: l.width ?? template.width, height: l.height ?? 40,
+          rx: l.radius ?? 0, ry: l.radius ?? 0, fill: l.backgroundColor ?? '#000000', opacity: l.opacity ?? 1, data: { id: l.id } } as any);
+        fc.add(r);
+        fc.sendObjectToBack(r);
+        fc.bringObjectForward(r); // directly above the background
+      }
+      for (const l of missing) {
+        fc.add(new Textbox(l.isPhoneSlot ? k.phone : k.companyName, {
+          left: l.left ?? 0, top: l.top ?? 0, width: l.width ?? template.width - (l.left ?? 80) * 2,
+          fontFamily: l.fontFamily ?? 'Arial', fontSize: l.fontSize ?? 36, fontWeight: l.fontWeight ?? 'normal',
+          fill: l.fill ?? '#ffffff', textAlign: l.textAlign ?? 'left', charSpacing: l.charSpacing ?? 0,
+          data: { id: l.id, isBrandSlot: true, isPhoneSlot: !!l.isPhoneSlot },
+        } as any));
+        changed++;
+      }
+    }
     fc.requestRenderAll();
     snapshot();
     // Never invent missing business info — tell the user what's missing instead.
@@ -410,7 +449,8 @@ export default function DesignStudio({
       setStatus({ kind: 'ok', text: 'Done! Your original is saved — use Undo AI edit or Restore original anytime.' });
       setInstruction('');
     } catch (e) {
-      setStatus({ kind: 'error', text: e instanceof Error ? e.message : 'The photo edit failed. Please try again.' });
+      const msg = e instanceof Error ? e.message : 'The photo edit failed. Please try again.';
+      setStatus({ kind: /^Cancelled/.test(msg) ? 'info' : 'error', text: msg });
     } finally {
       setBusy(false);
     }
@@ -527,7 +567,7 @@ export default function DesignStudio({
   function updateKit(patch: Partial<BrandKit>) {
     const next = { ...kit, ...patch };
     setKit(next);
-    saveBrandKit(sub, next); // local mirror (instant, offline fallback)
+    recordBrandKitEdit(sub, next); // local mirror + pending edit (account-scoped, synced safely)
     // Persist to the account, debounced so typing doesn't fire a request per keystroke. A logo
     // change (data URL) flushes immediately since it's a single deliberate action.
     const isLogoChange = 'logoDataUrl' in patch;

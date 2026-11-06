@@ -135,24 +135,105 @@ async function run(vp, viewport) {
     await page.locator('[data-testid=studio-stage]').waitFor({ state: 'detached', timeout: 10000 });
     check('Back to Post leaves the post exactly as it was (no image, caption intact)', (await attachedChip().count()) === 0 && (await composerText()) === ORIGINAL);
 
-    // ── 5. AI image: FAILURE then SUCCESS (mocked in the browser: no OpenAI spend) ─
-    await page.route('**/content/generate-image', (route) => route.abort());
-    await page.getByRole('button', { name: /Create AI Image/ }).first().click();
-    await page.waitForTimeout(1500);
-    check('a FAILED/cancelled AI image leaves the caption untouched and attaches nothing', (await composerText()) === ORIGINAL && (await attachedChip().count()) === 0);
-    await page.unroute('**/content/generate-image');
-    // Browser-side mock of a SUCCESSFUL image generation. It must answer the CORS preflight and
-    // carry CORS headers, exactly like the real API, or the browser (correctly) blocks it.
-    const cors = { 'access-control-allow-origin': new URL(BASE).origin, 'access-control-allow-headers': 'authorization,content-type', 'access-control-allow-methods': 'POST,OPTIONS' };
-    await page.route('**/content/generate-image', (route) => route.request().method() === 'OPTIONS'
+    // "Personalize with your Brand Kit" opens the studio straight on the Brand panel.
+    await page.getByTestId('personalize-brand').click();
+    await page.locator('[data-testid=studio-stage]').waitFor({ timeout: 30000 });
+    check('"Personalize with your Brand Kit" opens the studio on the Brand Kit panel', await page.locator('#bk-companyName').isVisible({ timeout: 5000 }).catch(() => false));
+    await page.locator('[data-testid=studio-back]').click();
+    await page.locator('[data-testid=studio-stage]').waitFor({ state: 'detached', timeout: 10000 });
+    check('…and Back to Post leaves the caption untouched', (await composerText()) === ORIGINAL && (await attachedChip().count()) === 0);
+
+    // ── 5. Paid AI images: a confirmation with cost + balance in front of EVERY entry point ─
+    // All paid endpoints are mocked in the browser (no OpenAI spend). The balance endpoint is
+    // mocked too (it is a new read-only route not yet deployed to the sandbox). Every mock answers
+    // the CORS preflight and carries CORS headers, exactly like the real API.
+    const cors = { 'access-control-allow-origin': new URL(BASE).origin, 'access-control-allow-headers': 'authorization,content-type', 'access-control-allow-methods': 'GET,POST,OPTIONS' };
+    const hits = { gen: 0, edit: 0, credits: 0 };
+    let genMode = 'fail';
+    await page.route('**/content/image-credits', (route) => route.request().method() === 'OPTIONS'
       ? route.fulfill({ status: 204, headers: cors })
-      : route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify({ dataUrl: TINY_PNG }) }));
-    await page.getByRole('button', { name: /Create AI Image/ }).first().click();
+      : (hits.credits++, route.fulfill({ status: 200, headers: cors, contentType: 'application/json',
+          body: JSON.stringify({ tier: 'soar', month: '2026-11', costPerImage: 1, limit: 40, used: 9, remaining: 31 }) })));
+    await page.route('**/content/generate-image', (route) => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+      hits.gen++;
+      return genMode === 'fail' ? route.abort()
+        : route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify({ dataUrl: TINY_PNG }) });
+    });
+    await page.route('**/content/edit-image', (route) => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+      hits.edit++;
+      return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify({ dataUrl: TINY_PNG }) });
+    });
+    const dialog = () => page.locator('[data-testid=ai-confirm]');
+    const openConfirm = async (btn) => {
+      await btn.click();
+      await dialog().waitFor({ timeout: 10000 });
+      await page.getByTestId('ai-confirm-remaining').filter({ hasText: /of/ }).waitFor({ timeout: 10000 });
+    };
+
+    // 5a. Composer button → dialog with exact cost + balance → Cancel: no request at all.
+    await openConfirm(page.getByTestId('composer-ai-image'));
+    check('composer AI button: confirmation shows the exact cost', (await page.getByTestId('ai-confirm-cost').innerText()) === '1 AI image credit');
+    check('composer AI button: confirmation shows the remaining balance', (await page.getByTestId('ai-confirm-remaining').innerText()) === '31 of 40');
+    await page.screenshot({ path: `${OUT}/e2e-${vp}-6-ai-confirm.png`, fullPage: false });
+    await page.getByTestId('ai-confirm-cancel').click();
+    await dialog().waitFor({ state: 'detached', timeout: 5000 });
+    await page.waitForTimeout(400);
+    check('composer AI button: Cancel sends NO generation request', hits.gen === 0, `generate-image requests: ${hits.gen}`);
+
+    // 5b. Suggestions-strip AI link → same dialog → Cancel: no request.
+    await openConfirm(page.getByTestId('suggestions-ai-image'));
+    await page.getByTestId('ai-confirm-cancel').click();
+    await dialog().waitFor({ state: 'detached', timeout: 5000 });
+    await page.waitForTimeout(400);
+    check('designs-strip AI link: Cancel sends NO generation request', hits.gen === 0, `generate-image requests: ${hits.gen}`);
+    check('cancelling leaves the caption untouched and attaches nothing', (await composerText()) === ORIGINAL && (await attachedChip().count()) === 0);
+
+    // 5c. Confirmed, but the generation FAILS: caption untouched, nothing attached.
+    await openConfirm(page.getByTestId('composer-ai-image'));
+    await page.getByTestId('ai-confirm-generate').click();
+    await page.waitForTimeout(1500);
+    check('Generate sends exactly one request only after confirmation', hits.gen === 1, `generate-image requests: ${hits.gen}`);
+    check('a FAILED AI image leaves the caption untouched and attaches nothing', (await composerText()) === ORIGINAL && (await attachedChip().count()) === 0);
+
+    // 5d. Confirmed from the strip and SUCCEEDS: attaches without touching the caption.
+    genMode = 'ok';
+    await openConfirm(page.getByTestId('suggestions-ai-image'));
+    await page.getByTestId('ai-confirm-generate').click();
     await attachedChip().waitFor({ timeout: 10000 });
-    check('a successful AI image attaches without touching the caption', (await composerText()) === ORIGINAL);
+    check('a successful AI image attaches without touching the caption', (await composerText()) === ORIGINAL && hits.gen === 2);
     await attachedChip().locator('xpath=..').getByRole('button', { name: 'Remove' }).click();
     check('the AI image can be removed without restarting', (await attachedChip().count()) === 0 && (await composerText()) === ORIGINAL);
+
+    // 5e. AI PHOTO EDIT in the studio (third paid path): confirmation first; Cancel = no request.
+    const png = Buffer.from(TINY_PNG.split(',')[1], 'base64');
+    await page.locator('[aria-label="Ready-to-use designs for your post"] input[type=file]').setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: png });
+    await page.locator('[data-testid=studio-stage]').waitFor({ timeout: 30000 });
+    await page.locator('#wingman-edit').fill('Remove the trash cans');
+    await page.getByRole('button', { name: /Ask Wingman/ }).click();
+    await dialog().waitFor({ timeout: 10000 });
+    check('studio AI photo edit: the same confirmation appears above the studio', await page.getByTestId('ai-confirm-generate').isVisible());
+    await page.getByTestId('ai-confirm-cancel').click();
+    await page.getByText('Cancelled. No AI credit was used.').waitFor({ timeout: 5000 });
+    check('studio AI photo edit: Cancel sends NO edit request', hits.edit === 0, `edit-image requests: ${hits.edit}`);
+    await page.getByRole('button', { name: /Ask Wingman/ }).click();
+    await dialog().waitFor({ timeout: 10000 });
+    await page.getByTestId('ai-confirm-generate').click();
+    await page.getByText(/Done! Your original is saved/).waitFor({ timeout: 15000 });
+    check('studio AI photo edit: Generate sends exactly one edit request', hits.edit === 1, `edit-image requests: ${hits.edit}`);
+    await page.locator('[data-testid=studio-back]').click();
+    await page.locator('[data-testid=studio-stage]').waitFor({ state: 'detached', timeout: 10000 });
+    check('after the studio photo edit, Back to Post: caption intact', (await composerText()) === ORIGINAL);
+    // Opening the studio from an uploaded photo hides the designs strip (existing behavior);
+    // touching the caption brings it back, exactly as for a user.
+    await composer().fill(ORIGINAL + ' ');
+    await composer().fill(ORIGINAL);
+    await page.locator('[data-testid=design-suggestions]').waitFor({ timeout: 15000 });
+    check('the balance was read from the server for every confirmation', hits.credits >= 5, `${hits.credits} balance reads`);
     await page.unroute('**/content/generate-image');
+    await page.unroute('**/content/edit-image');
+    await page.unroute('**/content/image-credits');
 
     // ── 6. Navigate away and back (SPA), then HARD REFRESH ───────────────
     await useFirstDesign();

@@ -143,10 +143,11 @@ export default function OneScreenComposer(props: Props) {
         <button
           onClick={onCreateAiImage}
           disabled={!canUseAiImage}
-          className="flex items-center justify-center gap-2 py-2.5 bg-white/5 border border-amber-500/30 rounded-lg text-sm text-white hover:bg-white/10 disabled:opacity-40"
-          title={canUseAiImage ? 'Generate an image with AI' : 'AI images are included with Soar and Summit plans'}
+          className="flex items-center justify-center gap-2 py-2.5 bg-transparent border border-white/10 rounded-lg text-xs text-slate-400 hover:bg-white/5 hover:text-slate-200 disabled:opacity-40"
+          title={canUseAiImage ? 'Paid: uses 1 AI image credit. You will see your balance and confirm first.' : 'AI images are included with Soar and Summit plans'}
+          data-testid="composer-ai-image"
         >
-          ✨ Create AI Image
+          ✨ AI image · 1 credit
         </button>
       </div>
 

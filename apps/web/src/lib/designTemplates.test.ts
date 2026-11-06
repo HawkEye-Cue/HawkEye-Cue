@@ -62,9 +62,16 @@ describe('suggestTemplates — roofing storm scenario', () => {
     expect(top2Ids).toContain('roof-storm-1');
   });
 
-  it('all results have a positive score', () => {
+  // Topic-specific designs must be RELEVANT (positive score). The other cards are universal
+  // creative directions, which carry no topic copy and therefore score 0 by design.
+  it('every topic-specific result is relevant; the rest are universal directions', () => {
     const results = suggestTemplates(opts);
-    for (const r of results) expect(r.score).toBeGreaterThan(0);
+    expect(results).toHaveLength(3);
+    for (const r of results) {
+      if (r.template.direction) expect(r.score).toBe(0);
+      else expect(r.score).toBeGreaterThan(0);
+    }
+    expect(results.filter((r) => !r.template.direction).length).toBeLessThanOrEqual(1);
   });
 });
 

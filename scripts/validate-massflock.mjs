@@ -27,6 +27,19 @@ for (const [vp, size] of [['desktop', { width: 1280, height: 900 }], ['mobile', 
   const checked = await toggle.evaluate((el) => (el.type === 'checkbox' ? el.checked : el.getAttribute('aria-checked') === 'true'));
   check(T('auto-advance is OFF by default'), autoOn !== '1' && !checked, `stored=${autoOn}`);
 
+  // Flock Safety Bar: the count text must not overlap the Pause / Restricted controls.
+  const overlap = await page.evaluate(() => {
+    const txt = [...document.querySelectorAll('p')].find((p) => /confirmed post/.test(p.textContent || ''));
+    const btns = [...document.querySelectorAll('button')].filter((b) => /Pause posting|Facebook restricted/.test(b.textContent || ''));
+    if (!txt || btns.length < 2) return { ok: false, why: 'elements missing' };
+    const a = txt.getBoundingClientRect();
+    const hit = btns.some((b) => { const r = b.getBoundingClientRect(); return !(r.right <= a.left || r.left >= a.right || r.bottom <= a.top || r.top >= a.bottom); });
+    const inView = btns.every((b) => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= window.innerWidth; });
+    return { ok: !hit && inView, why: hit ? 'overlap' : inView ? '' : 'offscreen' };
+  });
+  check(T('Safety bar: count text does not overlap Pause / Restricted buttons'), overlap.ok, overlap.why);
+  await page.getByTestId('mf-copy-open').scrollIntoViewIfNeeded();
+
   // Copy & Open
   await page.getByTestId('mf-copy-open').click();
   await page.waitForTimeout(500);

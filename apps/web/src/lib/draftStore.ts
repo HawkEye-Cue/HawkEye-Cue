@@ -6,33 +6,30 @@
  * shared computer the next person to sign in could see the previous user's draft or design.
  * Every draft key is now scoped to the signed-in user: `hawkeye_draft_<sub>_<name>`.
  *
- * Nothing is lost on upgrade: if a user's scoped key does not exist yet but a LEGACY unscoped
- * draft does, it is MOVED (not deleted) to that user's scoped key the first time they open Create.
- * Only the first user to open Create after the update can claim a legacy draft, because moving it
- * removes the legacy key.
+ * Privacy rules (do not weaken):
+ *  - LEGACY unscoped drafts have NO recorded owner, so ownership can never be established. They are
+ *    therefore NEVER read, migrated or assigned to any user. They are left untouched in storage
+ *    (not deleted, so nothing is destroyed) but are unreachable from the app.
+ *  - Without a signed-in user id there is no owner: reads return null and writes are ignored, so
+ *    nothing is ever stored under a shared/anonymous scope that a later user could read.
+ *  - A user only ever reads keys carrying their own id.
  */
 
 const PREFIX = 'hawkeye_draft_';
 
-export const draftKey = (name: string, sub: string | undefined) => `${PREFIX}${sub || 'anon'}_${name}`;
-const legacyKey = (name: string) => `${PREFIX}${name}`;
+export const draftKey = (name: string, sub: string | undefined) => `${PREFIX}${sub}_${name}`;
 
 export function readDraft(name: string, sub: string | undefined): string | null {
+  if (!sub) return null;
   try {
-    const scoped = localStorage.getItem(draftKey(name, sub));
-    if (scoped !== null) return scoped;
-    const legacy = localStorage.getItem(legacyKey(name));
-    if (legacy !== null) {
-      localStorage.setItem(draftKey(name, sub), legacy); // preserve: move to this user's scope
-      localStorage.removeItem(legacyKey(name));
-      return legacy;
-    }
+    return localStorage.getItem(draftKey(name, sub));
   } catch { /* storage unavailable */ }
   return null;
 }
 
 /** value === null removes the key. Failures (quota / private mode) are swallowed: drafts are best-effort. */
 export function writeDraft(name: string, sub: string | undefined, value: string | null): void {
+  if (!sub) return;
   try {
     if (value === null) localStorage.removeItem(draftKey(name, sub));
     else localStorage.setItem(draftKey(name, sub), value);

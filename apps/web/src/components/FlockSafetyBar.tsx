@@ -40,14 +40,15 @@ export default function FlockSafetyBar({ safety }: { safety: UseFlockSafety }) {
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-base">🛡️</span>
           <p className="text-xs text-slate-300">
             <span className="font-bold text-white">{postsToday}</span> confirmed post{postsToday !== 1 ? 's' : ''} today
           </p>
         </div>
-        <div className="flex gap-1.5 shrink-0">
+        <div className="flex flex-wrap gap-1.5">
+          {/* flex-wrap: on narrow screens the controls drop below the count instead of overlapping it. */}
           <button
             onClick={() => pause('user')}
             className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-[11px] font-medium hover:bg-white/10 transition-colors"

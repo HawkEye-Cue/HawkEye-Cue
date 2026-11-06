@@ -24,6 +24,10 @@ import {
   saveSession,
   clearSession,
   sessionKey,
+  markOpened,
+  advance,
+  loadAutoAdvance,
+  saveAutoAdvance,
 } from './massFlock';
 
 const g = (id: string, name: string, link: string, postingDays: number[] = []): FlockGroup => ({ id, name, link, postingDays, anyday: false });
@@ -77,7 +81,7 @@ describe('queue / current / next / progress', () => {
     expect(queue(groups, s).map((x) => x.id)).toEqual(['a', 'b', 'c']);
     expect(currentGroup(groups, s)?.id).toBe('a');
     expect(nextGroup(groups, s)?.id).toBe('b');
-    expect(progress(s)).toEqual({ posted: 0, selected: 3, remaining: 3, skipped: 0 });
+    expect(progress(s)).toEqual({ posted: 0, opened: 0, selected: 3, remaining: 3, skipped: 0 });
   });
 });
 
@@ -109,7 +113,7 @@ describe('skip is NOT counted as posted', () => {
     expect(s.skippedIds).toEqual(['a']);
     expect(s.postedIds).toEqual([]);
     expect(currentGroup(groups, s)?.id).toBe('b'); // advanced past skipped
-    expect(progress(s)).toEqual({ posted: 0, selected: 3, remaining: 2, skipped: 1 });
+    expect(progress(s)).toEqual({ posted: 0, opened: 0, selected: 3, remaining: 2, skipped: 1 });
   });
   it('posting a previously-skipped group supersedes the skip', () => {
     let s = createSession(groups);
@@ -175,5 +179,78 @@ describe('session persistence (device-specific localStorage)', () => {
   it('loadSession returns null for malformed data (no crash)', () => {
     try { localStorage.setItem(sessionKey('bad'), '{not json'); } catch { /* ignore */ }
     expect(loadSession('bad')).toBeNull();
+  });
+});
+
+
+describe('Priority 3 — Opened / Next Group / Confirmed Posted statuses', () => {
+  const groups = [g('a', 'A', 'https://a.com'), g('b', 'B', 'https://b.com'), g('c', 'C', 'https://c.com')];
+
+  it('markOpened records Opened but NEVER posted, and keeps the group current', () => {
+    let s = createSession(groups);
+    s = markOpened(s, 'a');
+    expect(s.openedIds).toEqual(['a']);
+    expect(s.postedIds).toEqual([]);           // opening is not a posting claim
+    expect(currentGroup(groups, s)?.id).toBe('a'); // still current — opening does not advance
+    expect(progress(s).opened).toBe(1);
+    expect(progress(s).posted).toBe(0);
+  });
+
+  it('markOpened is idempotent', () => {
+    let s = createSession(groups);
+    s = markOpened(s, 'a');
+    s = markOpened(s, 'a');
+    expect(s.openedIds).toEqual(['a']);
+  });
+
+  it('Next Group (advance) moves on WITHOUT counting the group as posted', () => {
+    let s = createSession(groups);
+    s = markOpened(s, 'a');
+    s = advance(s, 'a');
+    expect(s.postedIds).toEqual([]);           // critical: no false posting confirmation
+    expect(s.advancedIds).toEqual(['a']);
+    expect(s.openedIds).toEqual(['a']);        // opened record preserved for accurate tracking
+    expect(currentGroup(groups, s)?.id).toBe('b'); // advanced to next
+    expect(progress(s).remaining).toBe(2);
+    expect(progress(s).posted).toBe(0);
+  });
+
+  it('advance leaves the queue so the bar reflects progress, but opened≠posted', () => {
+    let s = createSession(groups);
+    s = advance(markOpened(s, 'a'), 'a');
+    s = advance(markOpened(s, 'b'), 'b');
+    const p = progress(s);
+    expect(p.remaining).toBe(1);
+    expect(p.opened).toBe(2);
+    expect(p.posted).toBe(0);  // never auto-counted as posted
+  });
+
+  it('optional Confirm Posted supersedes an earlier advance', () => {
+    let s = createSession(groups);
+    s = advance(markOpened(s, 'a'), 'a');
+    expect(progress(s).posted).toBe(0);
+    s = markPosted(s, 'a');                     // explicit optional confirmation
+    expect(s.postedIds).toEqual(['a']);
+    expect(s.advancedIds).not.toContain('a');   // confirmation is the stronger truth
+    expect(progress(s).posted).toBe(1);
+  });
+
+  it('auto-advance preference defaults OFF and persists', () => {
+    const sub = 'user-pref';
+    expect(loadAutoAdvance(sub)).toBe(false);   // default OFF
+    saveAutoAdvance(sub, true);
+    expect(loadAutoAdvance(sub)).toBe(true);
+    saveAutoAdvance(sub, false);
+    expect(loadAutoAdvance(sub)).toBe(false);
+  });
+
+  it('a session saved before Opened/advanced tracking loads with safe defaults', () => {
+    const sub = 'legacy';
+    const legacy = { selectedIds: ['a', 'b'], postedIds: [], skippedIds: [], currentIndex: 0, paused: false, startedAt: new Date().toISOString() };
+    localStorage.setItem(sessionKey(sub), JSON.stringify(legacy));
+    const loaded = loadSession(sub)!;
+    expect(loaded.openedIds).toEqual([]);
+    expect(loaded.advancedIds).toEqual([]);
+    expect(progress(loaded).opened).toBe(0);
   });
 });

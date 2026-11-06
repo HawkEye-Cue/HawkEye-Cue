@@ -21,6 +21,7 @@ import ImageSuggestions from '../components/ImageSuggestions';
 // React.lazy puts DesignStudio + Fabric into a separate chunk kept out of the main bundle.
 const DesignStudio = lazy(() => import('../components/DesignStudio'));
 import { suggestTemplates, TEMPLATES, type ScoredTemplate, type DesignTemplate } from '../lib/designTemplates';
+import { compositionSignature } from '../lib/composeTemplate';
 import { listDesigns, type DesignDocument } from '../lib/designDocument';
 import { loadBrandKit, type BrandKit } from '../lib/brandKit';
 import { canUseAiImageForTier } from '../lib/aiImageAccess';
@@ -81,7 +82,15 @@ export default function ContentCreatorPage() {
   const [postType, setPostType] = useState('');
   const [platforms, setPlatforms] = useState<SocialPlatform[]>(['facebook']);
   const [baseText, setBaseText] = useState(() => localStorage.getItem('hawkeye_draft_baseText') || '');
-  const [platformContent, setPlatformContent] = useState<Record<string, string> | null>(null);
+  const [platformContent, setPlatformContent] = useState<Record<string, string> | null>(() => {
+    // Restore a generated draft across refresh/navigation so work is never lost.
+    try { const raw = localStorage.getItem('hawkeye_draft_platformContent'); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  });
+  // The user's own writing captured BEFORE an AI draft/improve runs, so they can always
+  // discard the AI result and restore exactly what they wrote — never losing their work.
+  const [restorableDraft, setRestorableDraft] = useState<{ mode: 'write' | 'ai_draft' | 'ideas'; text: string } | null>(() => {
+    try { const raw = localStorage.getItem('hawkeye_draft_restorable'); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  });
   const [loading, setLoading] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [error, setError] = useState('');
@@ -112,6 +121,11 @@ export default function ContentCreatorPage() {
 
   // ── Design Studio + Image Suggestions (Phase 1) ───────────────────────────
   const [imageSuggestions, setImageSuggestions] = useState<ScoredTemplate[]>([]);
+  // The exact caption the current suggestions were composed from + its composition signature.
+  // The signature (not raw text) gates recompute so trivial keystrokes don't re-render previews.
+  const [suggestionText, setSuggestionText] = useState('');
+  const [suggestionSignature, setSuggestionSignature] = useState('');
+  const lastSuggestionSig = useRef('');
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
   const [studioTemplate, setStudioTemplate] = useState<DesignTemplate | null>(null);
@@ -237,19 +251,26 @@ export default function ContentCreatorPage() {
   // Recompute suggestions after the user stops typing (debounce) or after AI generation.
   // Only fires when view==='post' and there is meaningful text.
   const recomputeSuggestions = useCallback(
-    (text: string, trade: Trade | null) => {
+    (text: string, trade: Trade | null, kit: BrandKit) => {
       if (suggestionDebounceRef.current) clearTimeout(suggestionDebounceRef.current);
       if (!text.trim() || !trade) { setImageSuggestions([]); setSuggestionsVisible(false); return; }
+      // Debounce the keystroke, THEN gate on the composition signature so previews only
+      // recompute on a MEANINGFUL caption change (not every character). This keeps the
+      // automatic experience smooth and avoids re-rendering Fabric thumbnails needlessly.
       suggestionDebounceRef.current = setTimeout(() => {
-        const results = suggestTemplates({
+        const sig = compositionSignature({ postText: text, tradeId: trade.id, brandKit: kit });
+        setSuggestionText(text);
+        setSuggestionsVisible(true);
+        if (sig === lastSuggestionSig.current) return; // nothing meaningful changed
+        lastSuggestionSig.current = sig;
+        setSuggestionSignature(sig);
+        setImageSuggestions(suggestTemplates({
           postText: text,
           tradeId: trade.id,
           tradeKeywords: trade.defaultKeywords,
           max: 3,
-        });
-        setImageSuggestions(results);
-        setSuggestionsVisible(true);
-      }, 800);
+        }));
+      }, 600);
     },
     []
   );
@@ -257,18 +278,34 @@ export default function ContentCreatorPage() {
   // Watch post text changes for suggestions
   useEffect(() => {
     const text = composeMode === 'write' ? ownContent : baseText;
-    recomputeSuggestions(text, currentTrade ?? null);
+    recomputeSuggestions(text, currentTrade ?? null, brandKit);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownContent, baseText, composeMode]);
+  }, [ownContent, baseText, composeMode, brandKit]);
 
   // Also show suggestions immediately after AI content generation (platformContent change)
   useEffect(() => {
     if (platformContent) {
       const text = Object.values(platformContent)[0] || '';
-      recomputeSuggestions(text, currentTrade ?? null);
+      recomputeSuggestions(text, currentTrade ?? null, brandKit);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platformContent]);
+
+  // Autosave the generated draft + the restorable original across navigation/refresh, so a
+  // user never loses work by leaving the page. Non-destructive: cleared only on explicit
+  // discard or successful schedule.
+  useEffect(() => {
+    try {
+      if (platformContent) localStorage.setItem('hawkeye_draft_platformContent', JSON.stringify(platformContent));
+      else localStorage.removeItem('hawkeye_draft_platformContent');
+    } catch { /* quota — ignore */ }
+  }, [platformContent]);
+  useEffect(() => {
+    try {
+      if (restorableDraft) localStorage.setItem('hawkeye_draft_restorable', JSON.stringify(restorableDraft));
+      else localStorage.removeItem('hawkeye_draft_restorable');
+    } catch { /* quota — ignore */ }
+  }, [restorableDraft]);
 
   function openStudio(template: DesignTemplate, _customize = false) {
     setStudioDesign(null); // fresh design from the template
@@ -517,6 +554,10 @@ export default function ContentCreatorPage() {
   // that race. A sensible default postType is resolved here so a manually written post
   // never needs the user to pick a type to use Improve with AI.
   const handleGenerate = async (overrides?: { postType?: string; baseText?: string }) => {
+    // Capture the user's original writing BEFORE generating so it can be restored. Prefer the
+    // current composer value; keep the first capture if one already exists (don't overwrite the
+    // true original with an intermediate AI result on repeated generations).
+    setRestorableDraft((prev) => prev ?? { mode: composeMode, text: composeMode === 'write' ? ownContent : baseText });
     setLoading(true);
     setError('');
     setPlatformContent(null);
@@ -941,14 +982,24 @@ export default function ContentCreatorPage() {
         error={error}
       />
 
-      {/* ── Image Suggestions — shown after user writes/generates a post ──────
-          Template-matching only; no AI cost to show previews. Debounced 800ms. */}
+      {/* ── Automatic editable designs — shown once the caption exists ──────
+          Content-aware template composition + REAL rendered previews. 100% client-side:
+          no API calls, no AI image credits. The caption above stays intact throughout. */}
       {view === 'post' && suggestionsVisible && imageSuggestions.length > 0 && (
         <ImageSuggestions
           suggestions={imageSuggestions}
+          postText={suggestionText}
+          tradeName={currentTrade?.name}
+          brandKit={brandKit}
+          signature={suggestionSignature}
           onOpenStudio={openStudio}
           onGenerateAiImage={handleCreateAiImageFromComposer}
           onUploadPhoto={openStudioWithPhoto}
+          onNoImage={() => {
+            // Clear any attached image/design WITHOUT touching the caption.
+            setImageFile(null); setImagePreview(null); setAiPhotoUrl(null);
+            setSuggestionsVisible(false);
+          }}
           onDismiss={() => setSuggestionsVisible(false)}
           canUseAiImage={canUseAiImage}
         />
@@ -1338,7 +1389,27 @@ export default function ContentCreatorPage() {
 
       {platformContent && (
         <div className="space-y-4 animate-scale-in">
-          <h3 className="font-semibold text-white">Generated Content — Per Platform</h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold text-white">Generated Content — Per Platform</h3>
+            {restorableDraft && (
+              <button
+                data-testid="discard-ai-draft"
+                onClick={() => {
+                  // Restore EXACTLY what the user wrote; discard the AI result. Caption is never lost.
+                  setPlatformContent(null);
+                  setComposeMode(restorableDraft.mode);
+                  if (restorableDraft.mode === 'write') { setOwnContent(restorableDraft.text); localStorage.setItem('hawkeye_draft_ownContent', restorableDraft.text); }
+                  else { setBaseText(restorableDraft.text); localStorage.setItem('hawkeye_draft_baseText', restorableDraft.text); }
+                  setRestorableDraft(null);
+                  showToast('↩ Restored your original writing');
+                }}
+                className="shrink-0 text-xs text-slate-300 hover:text-white underline underline-offset-2"
+                title="Discard the AI draft and bring back exactly what you wrote"
+              >
+                ↩ Discard AI draft · restore my writing
+              </button>
+            )}
+          </div>
 
           {Object.entries(platformContent).map(([platform, content]) => (
             <div key={platform} className="glass-card-strong gradient-border">

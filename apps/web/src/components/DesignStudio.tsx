@@ -223,6 +223,24 @@ export default function DesignStudio({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keyboard undo/redo: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl+Y = redo. Ignored while the
+  // user is typing in an input/textarea or editing text ON the canvas (so native text undo wins).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      const editingCanvasText = !!fabricRef.current?.getActiveObject?.()?.isEditing;
+      if (typing || editingCanvasText) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); void undo(); }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); void redo(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redo]);
+
   // Load a user-uploaded photo (Workflow C) as the ORIGINAL revision once the canvas is ready.
   const initialPhotoLoaded = useRef(false);
   useEffect(() => {
@@ -526,7 +544,18 @@ export default function DesignStudio({
       {/* Top toolbar — a single horizontally-scrollable row on mobile (wrapping to 3 rows ate
           ~120px of vertical space and pushed the canvas off-screen), wraps freely on desktop. */}
       <div data-testid="studio-toolbar" className="flex flex-nowrap md:flex-wrap items-center gap-1.5 px-3 py-2 bg-black border-b border-white/10 shrink-0 overflow-x-auto [&>*]:shrink-0">
-        <button onClick={onClose} className="px-2 py-1.5 text-sm text-slate-300 hover:text-white">← Back</button>
+        <button
+          onClick={() => {
+            // Never silently abandon an in-flight AI edit: the request is already running (and
+            // would still use a credit), so make the user confirm instead of losing the result.
+            if (busy && !window.confirm('Wingman is still editing your photo. Leaving now will discard the result but the edit may still use an AI credit. Leave anyway?')) return;
+            onClose();
+          }}
+          className="px-2 py-1.5 text-sm text-slate-300 hover:text-white"
+          data-testid="studio-back"
+        >
+          ← Back to Post
+        </button>
         <input
           aria-label="Design name"
           value={designName}

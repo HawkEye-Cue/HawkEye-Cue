@@ -23,8 +23,10 @@ export interface PostRecordLike {
 
 export interface MassFlockSession {
   selectedIds: string[];   // groups chosen for this session
-  postedIds: string[];     // groups the user explicitly confirmed posted
+  openedIds: string[];     // groups the user opened via Copy & Open (NOT a posting claim)
+  postedIds: string[];     // groups the user explicitly CONFIRMED posted
   skippedIds: string[];    // groups the user skipped (not counted as posted)
+  advancedIds: string[];   // groups advanced past via "Next Group" without confirming
   currentIndex: number;    // pointer into the ordered selected list
   paused: boolean;
   startedAt: string;       // ISO
@@ -61,8 +63,10 @@ export function createSession(groups: FlockGroup[], preselectIds?: string[]): Ma
   }
   return {
     selectedIds,
+    openedIds: [],
     postedIds: [],
     skippedIds: [],
+    advancedIds: [],
     currentIndex: 0,
     paused: false,
     startedAt: new Date().toISOString(),
@@ -73,7 +77,10 @@ export function createSession(groups: FlockGroup[], preselectIds?: string[]): Ma
 // the order of `groups`. This drives "current" and "next".
 export function queue(groups: FlockGroup[], session: MassFlockSession): FlockGroup[] {
   const sel = new Set(session.selectedIds);
-  const done = new Set([...session.postedIds, ...session.skippedIds]);
+  // A group leaves the queue once the user has moved ON from it: confirmed posted, skipped,
+  // or advanced past via "Next Group". Merely OPENING a group does NOT remove it from the
+  // queue (opening is not a posting claim), so the user can reopen or confirm it.
+  const done = new Set([...session.postedIds, ...session.skippedIds, ...(session.advancedIds || [])]);
   return (groups || []).filter((g) => sel.has(g.id) && hasValidLink(g) && !done.has(g.id));
 }
 
@@ -88,18 +95,36 @@ export function nextGroup(groups: FlockGroup[], session: MassFlockSession): Floc
 }
 
 export interface Progress {
-  posted: number;
+  posted: number;    // explicitly CONFIRMED posted
+  opened: number;    // opened at least once (may or may not be confirmed)
   selected: number;
-  remaining: number;
+  remaining: number; // still in the queue (not posted/skipped/advanced)
   skipped: number;
 }
 
 export function progress(session: MassFlockSession): Progress {
   const posted = session.postedIds.length;
   const skipped = session.skippedIds.length;
+  const advanced = (session.advancedIds || []).length;
+  const opened = (session.openedIds || []).length;
   const selected = session.selectedIds.length;
-  const remaining = Math.max(0, selected - posted - skipped);
-  return { posted, selected, remaining, skipped };
+  const remaining = Math.max(0, selected - posted - skipped - advanced);
+  return { posted, opened, selected, remaining, skipped };
+}
+
+// Record that a group was OPENED (Copy & Open). Idempotent. NEVER implies posted.
+export function markOpened(session: MassFlockSession, groupId: string): MassFlockSession {
+  if (!groupId || (session.openedIds || []).includes(groupId)) return session;
+  return { ...session, openedIds: [...(session.openedIds || []), groupId] };
+}
+
+// "Next Group" — advance PAST the current group WITHOUT claiming it was posted. The group is
+// recorded as advanced (leaves the queue) and, if it was opened, stays marked opened so the
+// session summary reflects reality (Opened but not Confirmed). Idempotent.
+export function advance(session: MassFlockSession, groupId: string): MassFlockSession {
+  if (!groupId) return session;
+  if (session.postedIds.includes(groupId) || session.skippedIds.includes(groupId) || (session.advancedIds || []).includes(groupId)) return session;
+  return { ...session, advancedIds: [...(session.advancedIds || []), groupId] };
 }
 
 // Mark a group posted — idempotent (prevents double-click / duplicate completion).
@@ -109,8 +134,9 @@ export function markPosted(session: MassFlockSession, groupId: string): MassFloc
   return {
     ...session,
     postedIds: [...session.postedIds, groupId],
-    // If it was skipped earlier, un-skip (posting supersedes skip).
+    // Confirming supersedes an earlier skip OR advance (posting is the stronger truth).
     skippedIds: session.skippedIds.filter((id) => id !== groupId),
+    advancedIds: (session.advancedIds || []).filter((id) => id !== groupId),
   };
 }
 
@@ -171,8 +197,10 @@ export function loadSession(userSub: string | undefined): MassFlockSession | nul
     if (!s || !Array.isArray(s.selectedIds)) return null;
     return {
       selectedIds: s.selectedIds || [],
+      openedIds: s.openedIds || [],       // backfill for sessions saved before Opened tracking
       postedIds: s.postedIds || [],
       skippedIds: s.skippedIds || [],
+      advancedIds: s.advancedIds || [],   // backfill for pre-Next-Group sessions
       currentIndex: typeof s.currentIndex === 'number' ? s.currentIndex : 0,
       paused: !!s.paused,
       startedAt: s.startedAt || new Date().toISOString(),
@@ -186,4 +214,17 @@ export function saveSession(userSub: string | undefined, session: MassFlockSessi
 
 export function clearSession(userSub: string | undefined): void {
   try { localStorage.removeItem(sessionKey(userSub)); } catch { /* ignore */ }
+}
+
+// ─── Auto-advance preference (OFF by default) ───────────────────────────────────
+// When ON, "Copy & Open Group" automatically advances to the next group. Off by default
+// until the user opts in (so opening never silently moves past a group they're working on).
+function autoAdvanceKey(userSub: string | undefined): string {
+  return `hawkeye_massflock_autoadvance_${userSub || 'default'}`;
+}
+export function loadAutoAdvance(userSub: string | undefined): boolean {
+  try { return localStorage.getItem(autoAdvanceKey(userSub)) === '1'; } catch { return false; }
+}
+export function saveAutoAdvance(userSub: string | undefined, on: boolean): void {
+  try { localStorage.setItem(autoAdvanceKey(userSub), on ? '1' : '0'); } catch { /* ignore */ }
 }

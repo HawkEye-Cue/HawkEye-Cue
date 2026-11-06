@@ -66,9 +66,16 @@ describe('Flocks safeguards preserved (MassFlockPosting reused unchanged)', () =
     expect(massFlock).toContain('recordConfirmedPost');
   });
 
-  it('opening a group never auto-marks posted (manual confirm only)', () => {
-    // Explicit confirm action is required; opening only copies+opens.
+  it('opening a group never auto-marks posted (confirm is optional, not required)', () => {
+    // Opening records "Opened" only; confirming posted is optional and separate.
+    expect(massFlock).toContain('markOpened');
     expect(massFlock).toContain('confirmPostedAndNext');
-    expect(massFlock).toContain('Opening the group does NOT mark it posted');
+    expect(massFlock).toContain('Opening a group never marks it posted');
+  });
+
+  it('Next Group is the primary advance and never counts an opened group as posted', () => {
+    // "Next Group" advances via advance() (not markPosted), so no false posting confirmation.
+    expect(massFlock).toContain('nextGroupAction');
+    expect(massFlock).toMatch(/nextGroupAction[\s\S]{0,200}advance\(s, cur\.id\)/);
   });
 });

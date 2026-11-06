@@ -95,3 +95,29 @@ describe('Create → Start Today\u2019s Flocks → first group (one click)', () 
     expect(html).toContain('groups selected');
   });
 });
+
+describe('Priority 3 — simplified run-phase workflow', () => {
+  it('run phase shows Copy & Open Group, then PRIMARY Next Group, Skip, and OPTIONAL Confirm', () => {
+    const html = render({ autoStart: true, preselectGroupIds: ['g1', 'g2'] });
+    // JSX escapes '&' → '&amp;' in static markup.
+    expect(html).toMatch(/Copy &amp; Open Group|Copy Text \+ Photo &amp; Open Group/);
+    expect(html).toContain('Next Group');                    // primary advance
+    expect(html).toContain('Skip Group');
+    expect(html).toContain('Confirm Posted (optional)');     // optional, not required
+    // Reassures the user opening never marks posted.
+    expect(html).toContain('Opening a group never marks it posted');
+  });
+
+  it('auto-advance preference is present and OFF by default', () => {
+    const html = render({ autoStart: true, preselectGroupIds: ['g1'] });
+    expect(html).toContain('Auto-advance to the next group');
+    // Default-off: the checkbox is not pre-checked in the rendered markup.
+    const checkboxTag = html.slice(html.indexOf('mf-autoadvance') - 120, html.indexOf('mf-autoadvance') + 20);
+    expect(checkboxTag).not.toContain('checked');
+  });
+
+  it('the old required "Mark Posted & Next" button is gone', () => {
+    const html = render({ autoStart: true, preselectGroupIds: ['g1'] });
+    expect(html).not.toContain('Mark Posted & Next');
+  });
+});

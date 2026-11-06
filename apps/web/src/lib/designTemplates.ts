@@ -44,10 +44,24 @@ export interface DesignLayer {
   isPhoneSlot?: boolean;
 }
 
+/**
+ * Visual layout family — used to guarantee the 3 auto-suggestions look GENUINELY different
+ * (not just recolored). The picker takes at most one template per family.
+ *   hero      — big centered/left headline, minimal elements
+ *   split     — image/content split down the middle
+ *   banner    — strong top/bottom bars framing the message
+ *   badge     — circular/badge focal element
+ *   quote     — large quotation / testimonial layout
+ *   stat      — oversized number/word as the focal point
+ */
+export type LayoutFamily = 'hero' | 'split' | 'banner' | 'badge' | 'quote' | 'stat';
+
 export interface DesignTemplate {
   id: string;
   name: string;
   category: TemplateCategory;
+  /** Distinct visual layout family (ensures varied suggestions). */
+  layoutFamily?: LayoutFamily;
   format: TemplateFormat;
   /** Canvas dimensions */
   width: number;
@@ -76,6 +90,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 'roof-storm-1',
     name: 'Storm Damage Alert',
     category: 'emergency',
+    layoutFamily: 'hero',
     format: 'square',
     width: 1080, height: 1080,
     background: '#0f172a',
@@ -107,6 +122,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 'roof-inspect-1',
     name: 'Roof Inspection Promo',
     category: 'promotion',
+    layoutFamily: 'split',
     format: 'square',
     width: 1080, height: 1080,
     background: '#1e3a5f',
@@ -117,8 +133,8 @@ export const TEMPLATES: DesignTemplate[] = [
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#1e3a5f' },
       { id: 'top-bar', type: 'rect', left: 0, top: 0, width: 1080, height: 8, backgroundColor: '#fbbf24' },
-      { id: 'headline', type: 'text', text: 'IS YOUR ROOF\nREADY?', left: 80, top: 200,
-        fontFamily: 'Arial Black', fontSize: 108, fontWeight: '900', fill: '#fbbf24',
+      { id: 'headline', type: 'text', text: 'IS YOUR ROOF\nREADY?', left: 80, top: 160, width: 440,
+        fontFamily: 'Arial Black', fontSize: 96, fontWeight: '900', fill: '#fbbf24',
         isHeadline: true, isEditable: true },
       { id: 'photo-placeholder', type: 'rect', left: 540, top: 160, width: 480, height: 480,
         backgroundColor: '#2d4a6e', isPlaceholder: true },
@@ -138,6 +154,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 'ins-rate-drop-1',
     name: 'Rate Decrease Announcement',
     category: 'announcement',
+    layoutFamily: 'stat',
     format: 'square',
     width: 1080, height: 1080,
     background: '#0d1b2a',
@@ -169,6 +186,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 'ins-free-quote-1',
     name: 'Free Quote Promotion',
     category: 'promotion',
+    layoutFamily: 'badge',
     format: 'square',
     width: 1080, height: 1080,
     background: '#1e1b4b',
@@ -197,6 +215,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 're-just-listed-1',
     name: 'Just Listed',
     category: 'listing',
+    layoutFamily: 'split',
     format: 'landscape',
     width: 1080, height: 566,
     background: '#ffffff',
@@ -227,6 +246,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 're-just-sold-1',
     name: 'Just Sold',
     category: 'announcement',
+    layoutFamily: 'stat',
     format: 'square',
     width: 1080, height: 1080,
     background: '#14532d',
@@ -254,6 +274,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 'hvac-seasonal-1',
     name: 'Seasonal Maintenance Reminder',
     category: 'seasonal',
+    layoutFamily: 'hero',
     format: 'square',
     width: 1080, height: 1080,
     background: '#0c1a2e',
@@ -284,6 +305,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 'before-after-1',
     name: 'Before & After',
     category: 'before_after',
+    layoutFamily: 'split',
     format: 'landscape',
     width: 1080, height: 566,
     background: '#000000',
@@ -315,6 +337,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 'testimonial-1',
     name: 'Customer Testimonial',
     category: 'testimonial',
+    layoutFamily: 'quote',
     format: 'square',
     width: 1080, height: 1080,
     background: '#18181b',
@@ -343,6 +366,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 'appreciation-1',
     name: 'Thank You / Appreciation',
     category: 'appreciation',
+    layoutFamily: 'badge',
     format: 'square',
     width: 1080, height: 1080,
     background: '#0f172a',
@@ -369,6 +393,7 @@ export const TEMPLATES: DesignTemplate[] = [
     id: 'branded-1',
     name: 'Branded Announcement',
     category: 'brand',
+    layoutFamily: 'banner',
     format: 'square',
     width: 1080, height: 1080,
     background: '#000000',
@@ -395,6 +420,93 @@ export const TEMPLATES: DesignTemplate[] = [
         isPhoneSlot: true, isBrandSlot: true, isEditable: true },
       { id: 'brand', type: 'text', text: 'Your Company Name', left: 80, top: 980,
         fontFamily: 'Arial', fontSize: 36, fill: '#64748b', isBrandSlot: true, isEditable: true },
+    ],
+  },
+
+  // ── Universal polished archetypes (distinct layout families, always eligible) ──
+
+  // HERO — big left-aligned headline on a clean two-tone field + accent underline.
+  {
+    id: 'u-hero-bold',
+    name: 'Bold Statement',
+    category: 'brand',
+    layoutFamily: 'hero',
+    format: 'square',
+    width: 1080, height: 1080,
+    background: '#111827',
+    previewColors: ['#111827', '#f97316'],
+    trades: [],
+    keywords: [],
+    description: 'Big bold headline with an accent underline — clean and modern',
+    layers: [
+      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#111827' },
+      { id: 'panel', type: 'rect', left: 0, top: 0, width: 1080, height: 300, backgroundColor: '#0b1220' },
+      { id: 'headline', type: 'text', text: 'Your Message\nGoes Here', left: 90, top: 360,
+        fontFamily: 'Arial Black', fontSize: 120, fontWeight: '900', fill: '#ffffff', isHeadline: true, isEditable: true },
+      { id: 'accent', type: 'rect', left: 92, top: 640, width: 300, height: 16, backgroundColor: '#f97316' },
+      { id: 'sub', type: 'text', text: 'Add a short supporting line that explains the offer.',
+        left: 92, top: 700, fontFamily: 'Arial', fontSize: 46, fill: '#94a3b8', isSubtext: true, isEditable: true },
+      { id: 'cta-text', type: 'text', text: 'LEARN MORE', left: 92, top: 860,
+        fontFamily: 'Arial Black', fontSize: 40, fontWeight: '900', fill: '#f97316', isEditable: true },
+      { id: 'brand', type: 'text', text: 'Your Company Name', left: 92, top: 980,
+        fontFamily: 'Arial', fontSize: 34, fill: '#64748b', isBrandSlot: true, isEditable: true },
+    ],
+  },
+
+  // BANNER — centered headline framed by top & bottom color bands + a thin accent rule.
+  {
+    id: 'u-banner-center',
+    name: 'Centered Banner',
+    category: 'announcement',
+    layoutFamily: 'banner',
+    format: 'square',
+    width: 1080, height: 1080,
+    background: '#f8fafc',
+    previewColors: ['#0f172a', '#f8fafc'],
+    trades: [],
+    keywords: [],
+    description: 'Light, editorial layout with framing bands — looks premium and clean',
+    layers: [
+      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#f8fafc' },
+      { id: 'top-band', type: 'rect', left: 0, top: 0, width: 1080, height: 150, backgroundColor: '#0f172a' },
+      { id: 'bot-band', type: 'rect', left: 0, top: 930, width: 1080, height: 150, backgroundColor: '#0f172a' },
+      { id: 'kicker', type: 'text', text: 'ANNOUNCEMENT', left: 0, top: 55,
+        fontFamily: 'Arial', fontSize: 40, fontWeight: 'bold', fill: '#f8fafc', textAlign: 'center', width: 1080, isEditable: true },
+      { id: 'headline', type: 'text', text: 'Your Headline\nGoes Here', left: 90, top: 420,
+        fontFamily: 'Georgia', fontSize: 104, fontWeight: 'bold', fill: '#0f172a', textAlign: 'center', width: 900, isHeadline: true, isEditable: true },
+      { id: 'accent', type: 'rect', left: 440, top: 680, width: 200, height: 8, backgroundColor: '#f97316' },
+      { id: 'sub', type: 'text', text: 'A short supporting sentence for your audience.',
+        left: 90, top: 730, fontFamily: 'Arial', fontSize: 44, fill: '#475569', textAlign: 'center', width: 900, isSubtext: true, isEditable: true },
+      { id: 'brand', type: 'text', text: 'Your Company Name', left: 0, top: 985,
+        fontFamily: 'Arial', fontSize: 36, fontWeight: 'bold', fill: '#f8fafc', textAlign: 'center', width: 1080, isBrandSlot: true, isEditable: true },
+    ],
+  },
+
+  // BADGE — circular focal badge with the CTA, headline beneath. Distinct from hero/banner.
+  {
+    id: 'u-badge-promo',
+    name: 'Badge Spotlight',
+    category: 'promotion',
+    layoutFamily: 'badge',
+    format: 'square',
+    width: 1080, height: 1080,
+    background: '#0f766e',
+    previewColors: ['#0f766e', '#fde68a'],
+    trades: [],
+    keywords: [],
+    description: 'Circular badge focal point with headline — eye-catching promo style',
+    layers: [
+      { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#0f766e' },
+      { id: 'badge-ring', type: 'rect', left: 300, top: 110, width: 480, height: 480, backgroundColor: '#0b5a53' },
+      { id: 'badge', type: 'rect', left: 330, top: 140, width: 420, height: 420, backgroundColor: '#fde68a' },
+      { id: 'cta-text', type: 'text', text: 'SPECIAL\nOFFER', left: 330, top: 260,
+        fontFamily: 'Arial Black', fontSize: 92, fontWeight: '900', fill: '#0f766e', textAlign: 'center', width: 420, isEditable: true },
+      { id: 'headline', type: 'text', text: 'Your Message Here', left: 90, top: 680,
+        fontFamily: 'Arial Black', fontSize: 84, fontWeight: '900', fill: '#ffffff', textAlign: 'center', width: 900, isHeadline: true, isEditable: true },
+      { id: 'sub', type: 'text', text: 'Supporting detail for your offer.',
+        left: 90, top: 830, fontFamily: 'Arial', fontSize: 42, fill: '#99f6e4', textAlign: 'center', width: 900, isSubtext: true, isEditable: true },
+      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 0, top: 960,
+        fontFamily: 'Arial Black', fontSize: 48, fill: '#fde68a', textAlign: 'center', width: 1080, isPhoneSlot: true, isBrandSlot: true, isEditable: true },
     ],
   },
 ];
@@ -458,14 +570,41 @@ export function suggestTemplates(opts: {
     return bSpec - aSpec;
   });
 
-  const top = scored.slice(0, max);
+  // ── Enforce LAYOUT-FAMILY DIVERSITY ──────────────────────────────────────────
+  // The 3 auto-suggestions must look genuinely different — not three recolors of the same
+  // layout. Walk the ranked list and take at most ONE template per layout family. Then, if
+  // we still have fewer than `max`, backfill from the universal archetypes (each a distinct
+  // family) so the user always gets `max` varied, polished designs.
+  const UNIVERSAL_IDS = ['u-hero-bold', 'u-banner-center', 'u-badge-promo'];
+  const picked: ScoredTemplate[] = [];
+  const usedFamilies = new Set<string>();
+  const usedIds = new Set<string>();
 
-  // Guarantee at least one result — fall back to the generic branded template
-  // when nothing matched (all scores are zero = no relevant template found).
-  if (top.length === 0 || top.every((t) => t.score === 0)) {
-    const branded = TEMPLATES.find((t) => t.id === 'branded-1')!;
-    return [{ template: branded, score: 0 }];
+  const tryAdd = (st: ScoredTemplate) => {
+    if (picked.length >= max) return;
+    const fam = st.template.layoutFamily || st.template.category;
+    if (usedFamilies.has(fam) || usedIds.has(st.template.id)) return;
+    picked.push(st);
+    usedFamilies.add(fam);
+    usedIds.add(st.template.id);
+  };
+
+  // 1) Prefer relevant, scored templates (distinct families).
+  for (const st of scored) {
+    if (st.score <= 0) break; // ranked desc; nothing relevant beyond here
+    tryAdd(st);
+  }
+  // 2) Backfill with universal archetypes (distinct families, polished, always eligible).
+  for (const id of UNIVERSAL_IDS) {
+    if (picked.length >= max) break;
+    const tpl = TEMPLATES.find((t) => t.id === id);
+    if (tpl) tryAdd({ template: tpl, score: 0 });
+  }
+  // 3) Last resort: fill any remaining slots ignoring the family constraint.
+  for (const st of scored) {
+    if (picked.length >= max) break;
+    if (!usedIds.has(st.template.id)) { picked.push(st); usedIds.add(st.template.id); }
   }
 
-  return top;
+  return picked.slice(0, max);
 }

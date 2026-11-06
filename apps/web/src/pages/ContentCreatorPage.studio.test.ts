@@ -44,8 +44,49 @@ describe('Design Studio → post attachment', () => {
     expect(src).toContain('onClick={() => reopenDesign(d)}');
     expect(src).toContain('initialDesign={studioDesign}');
   });
-  it('suggestions never change the post text (no setter for ownContent/baseText in the suggestion path)', () => {
-    const block = src.slice(src.indexOf('<ImageSuggestions'), src.indexOf('/>', src.indexOf('<ImageSuggestions')));
-    expect(block).not.toMatch(/setOwnContent|setBaseText|setPlatformContent/);
+  it('suggestions never change the post text (no caption setters in the suggestion render path)', () => {
+    const start = src.indexOf('<ImageSuggestions');
+    const block = src.slice(start, src.indexOf('/>', src.indexOf('canUseAiImage={canUseAiImage}', start)));
+    // The suggestion strip must not overwrite the user's caption. onNoImage clears media only.
+    expect(block).not.toMatch(/setOwnContent\(|setBaseText\(|setPlatformContent\(/);
+  });
+});
+
+describe('Priority 1 — automatic, content-aware editable templates', () => {
+  it('suggestions render automatically (no extra button): wired to caption + platformContent effects', () => {
+    expect(src).toContain('recomputeSuggestions(text, currentTrade ?? null, brandKit)');
+    expect(src).toMatch(/platformContent[\s\S]{0,400}recomputeSuggestions/);
+  });
+  it('ImageSuggestions receives the actual caption, trade, brand kit, and a composition signature', () => {
+    expect(src).toContain('postText={suggestionText}');
+    expect(src).toContain('tradeName={currentTrade?.name}');
+    expect(src).toContain('brandKit={brandKit}');
+    expect(src).toContain('signature={suggestionSignature}');
+  });
+  it('recompute is gated on a MEANINGFUL change via the composition signature (not every keystroke)', () => {
+    expect(src).toContain('compositionSignature(');
+    expect(src).toContain('lastSuggestionSig.current');
+  });
+  it('a No Image option exists and clears media WITHOUT touching the caption', () => {
+    expect(src).toContain('onNoImage={');
+    const block = src.slice(src.indexOf('onNoImage={'), src.indexOf('onDismiss', src.indexOf('onNoImage={')));
+    expect(block).toMatch(/setImageFile\(null\)|setAiPhotoUrl\(null\)/);
+    expect(block).not.toMatch(/setOwnContent|setBaseText/);
+  });
+});
+
+describe('Priority 2 — draft preservation across Create', () => {
+  it('captures the original writing before an AI draft so it can be restored', () => {
+    expect(src).toContain('setRestorableDraft((prev) => prev ??');
+  });
+  it('offers an explicit discard-AI-draft control that restores the original caption', () => {
+    expect(src).toContain('data-testid="discard-ai-draft"');
+    const block = src.slice(src.indexOf('data-testid="discard-ai-draft"'), src.indexOf('</button>', src.indexOf('data-testid="discard-ai-draft"')));
+    expect(block).toMatch(/setOwnContent\(restorableDraft\.text\)|setBaseText\(restorableDraft\.text\)/);
+  });
+  it('autosaves the generated draft + restorable original across refresh/navigation', () => {
+    expect(src).toContain("localStorage.setItem('hawkeye_draft_platformContent'");
+    expect(src).toContain("localStorage.setItem('hawkeye_draft_restorable'");
+    expect(src).toContain("localStorage.getItem('hawkeye_draft_platformContent')");
   });
 });

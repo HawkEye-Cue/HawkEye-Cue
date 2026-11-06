@@ -14,10 +14,14 @@ import {
   nextGroup,
   progress,
   markPosted,
+  markOpened,
+  advance,
   skipGroup,
   toggleSelected,
   setPaused,
   recentlyPostedWarning,
+  loadAutoAdvance,
+  saveAutoAdvance,
 } from '../lib/massFlock';
 import { evaluateGroupRules } from '@social-lead-gen/shared';
 import type { UseFlockSafety } from '../hooks/useFlockSafety';
@@ -106,6 +110,8 @@ export default function MassFlockPosting({
     return 'select';
   });
   const [acting, setActing] = useState(false); // guards against double-clicks
+  // Optional auto-advance after Copy & Open (OFF by default; persisted per user).
+  const [autoAdvance, setAutoAdvance] = useState<boolean>(() => loadAutoAdvance(user?.sub));
 
   // Persist session on every change (device-specific).
   useEffect(() => { saveSession(user?.sub, session); }, [session, user?.sub]);
@@ -166,15 +172,33 @@ export default function MassFlockPosting({
     try { navigator.clipboard.writeText(content); } catch { /* clipboard may be blocked; user can still paste manually from composer */ }
     if (readyImageSrc) { try { onDownloadImage(); } catch { /* image is optional */ } }
     const win = window.open(group.link, '_blank');
+    // Record OPENED — this is NOT a posting claim. Tracking stays accurate.
+    setSession((s) => markOpened(s, group.id));
     if (!win) {
       showToast('⚠️ Popup blocked — allow popups, or open the group link manually');
-    } else {
-      showToast(readyImageSrc
-        ? '✓ Text copied + photo saved — paste, attach photo, then post'
-        : '✓ Copied & opened — paste and post, then come back');
+      return;
+    }
+    showToast(readyImageSrc
+      ? '✓ Text copied + photo saved — paste, attach photo, then post'
+      : '✓ Copied & opened — paste and post in the group');
+    // Optional auto-advance (OFF by default): move to the next group after opening.
+    if (autoAdvance) {
+      setTimeout(() => { setSession((s) => advance(s, group.id)); setReviewedGroupId(null); }, 300);
     }
   }
 
+  // "Next Group" — the PRIMARY action after Copy & Open. Advances immediately WITHOUT
+  // claiming the group was posted. Never counts an opened group as posted.
+  function nextGroupAction() {
+    if (acting || !cur) return;
+    setActing(true);
+    setSession((s) => advance(s, cur.id));
+    setReviewedGroupId(null);
+    showToast(`→ Next group`);
+    setTimeout(() => setActing(false), 250);
+  }
+
+  // OPTIONAL explicit confirmation — never required to advance.
   function confirmPostedAndNext() {
     if (acting || !cur) return;
     // Safety gate: a group needing review can't be marked posted until the user has
@@ -290,7 +314,7 @@ export default function MassFlockPosting({
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-base font-bold text-white">🦅 Mass Flock Posting</h2>
-            <p className="text-[10px] text-slate-400">{prog.posted} of {prog.selected} posted · {prog.remaining} remaining{prog.skipped ? ` · ${prog.skipped} skipped` : ''}</p>
+            <p className="text-[10px] text-slate-400">{prog.remaining} of {prog.selected} remaining · {prog.posted} confirmed · {prog.opened} opened{prog.skipped ? ` · ${prog.skipped} skipped` : ''}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white text-xl px-2">✕</button>
         </div>
@@ -301,7 +325,7 @@ export default function MassFlockPosting({
 
           {/* Progress bar */}
           <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all" style={{ width: `${prog.selected ? Math.round((prog.posted + prog.skipped) / prog.selected * 100) : 0}%` }} />
+            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all" style={{ width: `${prog.selected ? Math.round((prog.selected - prog.remaining) / prog.selected * 100) : 0}%` }} />
           </div>
 
           {safety.paused ? (
@@ -316,7 +340,7 @@ export default function MassFlockPosting({
             <div className="text-center py-6">
               <p className="text-3xl mb-2">🎉</p>
               <p className="text-sm font-bold text-green-300">Session complete!</p>
-              <p className="text-xs text-slate-400 mt-1">{prog.posted} posted{prog.skipped ? `, ${prog.skipped} skipped` : ''}. Your weekly schedule is unchanged.</p>
+              <p className="text-xs text-slate-400 mt-1">{prog.posted} confirmed posted · {prog.opened} opened{prog.skipped ? ` · ${prog.skipped} skipped` : ''}. Your weekly schedule is unchanged.</p>
             </div>
           ) : session.paused ? (
             <div className="text-center py-6">
@@ -370,29 +394,56 @@ export default function MassFlockPosting({
                 </div>
               )}
 
+              {/* 1) Copy & Open — copies the post + opens the group. Records "Opened" only. */}
               <button
+                data-testid="mf-copy-open"
                 onClick={() => cur && copyAndOpen(cur)}
                 disabled={!cur || !getPreparedContent().trim()}
-                className="w-full px-4 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-sm font-bold rounded-lg disabled:opacity-50 transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-lg shadow-amber-500/20"
+                className="w-full px-4 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-sm font-bold rounded-lg disabled:opacity-50 transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-lg shadow-amber-500/20"
               >
-                <span>{readyImageSrc ? '📋 Copy Text + Photo & Open Group' : '📋 Copy & Open This Group'}</span>
+                <span>{readyImageSrc ? '📋 Copy Text + Photo & Open Group' : '📋 Copy & Open Group'}</span>
                 <span className="text-xs font-normal opacity-80 truncate max-w-full">{cur?.name}</span>
               </button>
-              <p className="text-[10px] text-slate-500 text-center">Opening the group does NOT mark it posted. Post on Facebook, then confirm below.</p>
+              <p className="text-[10px] text-slate-500 text-center">Opening a group never marks it posted. Use “Next Group” to continue; confirming is optional.</p>
 
+              {/* 2) PRIMARY next action: advance WITHOUT claiming a post. */}
               <button
-                onClick={confirmPostedAndNext}
-                disabled={acting || !cur || needsReviewGate}
-                title={needsReviewGate ? 'Review this group’s rules first' : undefined}
-                className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 transition-all active:scale-95"
+                data-testid="mf-next"
+                onClick={nextGroupAction}
+                disabled={acting || !cur}
+                className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 transition-all active:scale-95"
               >
-                ✓ Mark Posted & Next
+                → Next Group
               </button>
 
+              {/* 3) Skip + Pause */}
               <div className="flex gap-2">
-                <button onClick={skip} disabled={acting || !cur} className="flex-1 py-2 bg-white/5 border border-white/10 text-slate-300 text-xs rounded-lg hover:bg-white/10 disabled:opacity-50">⤼ Skip group</button>
+                <button data-testid="mf-skip" onClick={skip} disabled={acting || !cur} className="flex-1 py-2 bg-white/5 border border-white/10 text-slate-300 text-xs rounded-lg hover:bg-white/10 disabled:opacity-50">⤼ Skip Group</button>
                 <button onClick={() => setSession((s) => setPaused(s, true))} className="flex-1 py-2 bg-white/5 border border-white/10 text-slate-300 text-xs rounded-lg hover:bg-white/10">⏸ Pause</button>
               </div>
+
+              {/* OPTIONAL confirmation — never required to advance. Records "Confirmed Posted". */}
+              <button
+                data-testid="mf-confirm"
+                onClick={confirmPostedAndNext}
+                disabled={acting || !cur || needsReviewGate}
+                title={needsReviewGate ? 'Review this group’s rules first' : 'Optional: confirm you actually posted here'}
+                className="w-full py-2 bg-transparent border border-green-600/50 text-green-400 hover:bg-green-600/10 text-xs font-semibold rounded-lg disabled:opacity-50 transition-all"
+              >
+                ✓ Confirm Posted (optional)
+              </button>
+
+              {/* Auto-advance preference — OFF by default. */}
+              <label className="flex items-center gap-2 text-[11px] text-slate-400 pt-1 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  data-testid="mf-autoadvance"
+                  checked={autoAdvance}
+                  onChange={(e) => { setAutoAdvance(e.target.checked); saveAutoAdvance(user?.sub, e.target.checked); }}
+                  className="accent-amber-500"
+                />
+                Auto-advance to the next group after I open one
+              </label>
             </>
           )}
         </div>

@@ -365,3 +365,68 @@ describe('AI image quota — concurrency safety', () => {
     expect(profile.aiGenerationsUsed).toBe(0); // reserved, generation failed, refunded
   });
 });
+
+// ─── GET /content/image-credits (read-only balance for the confirmation dialog) ─────────
+describe('GET /content/image-credits — read-only AI image balance', () => {
+  const get = () => ({
+    requestContext: { http: { method: 'GET', path: '/content/image-credits' }, authorizer: { jwt: { claims: { sub: 'user-1' } } } },
+  });
+  const body = (res: any) => JSON.parse(res.body);
+
+  it('reports cost, limit, used and remaining for Soar this month', async () => {
+    profile.aiImagesUsed = 9; profile.aiImagesMonth = thisMonth;
+    const res = await loadHandler()(get());
+    expect(res.statusCode).toBe(200);
+    expect(body(res)).toMatchObject({ tier: 'soar', costPerImage: 1, limit: 40, used: 9, remaining: 31, month: thisMonth });
+  });
+
+  it('uses the same tier rules as generation: Summit alias = 100, legacy pro = Soar', async () => {
+    profile.subscriptionTier = 'summit';
+    expect(body(await loadHandler()(get()))).toMatchObject({ tier: 'team', limit: 100, remaining: 100 });
+    profile.subscriptionTier = 'pro';
+    expect(body(await loadHandler()(get()))).toMatchObject({ tier: 'soar', limit: 40 });
+  });
+
+  it('free / expired trial shows 0 remaining', async () => {
+    profile.subscriptionTier = 'free';
+    expect(body(await loadHandler()(get()))).toMatchObject({ tier: 'free', limit: 0, remaining: 0 });
+    profile = { ...profile, subscriptionTier: 'soar', subscriptionStatus: 'trial', trialEndsAt: new Date(Date.now() - DAY).toISOString() };
+    expect(body(await loadHandler()(get()))).toMatchObject({ tier: 'free', remaining: 0 });
+  });
+
+  it("last month's usage reads as 0 used, WITHOUT resetting the stored counter", async () => {
+    profile.aiImagesUsed = 40; profile.aiImagesMonth = '1999-01';
+    const res = await loadHandler()(get());
+    expect(body(res)).toMatchObject({ used: 0, remaining: 40 });
+    expect(profile.aiImagesUsed).toBe(40);
+    expect(profile.aiImagesMonth).toBe('1999-01');
+  });
+
+  it('at or over the cap reports 0 remaining (never negative)', async () => {
+    profile.aiImagesUsed = 45; profile.aiImagesMonth = thisMonth;
+    expect(body(await loadHandler()(get()))).toMatchObject({ used: 40, remaining: 0 });
+  });
+
+  it('is strictly READ-ONLY: no DynamoDB writes, no S3 writes, no OpenAI/Bedrock calls', async () => {
+    profile.aiImagesUsed = 3; profile.aiImagesMonth = thisMonth;
+    await loadHandler()(get());
+    await loadHandler()(get());
+    expect(updates).toHaveLength(0);
+    expect(s3Puts).toHaveLength(0);
+    expect(openAiCalls).toHaveLength(0);
+    expect(bedrockCalls).toBe(0);
+    expect(profile.aiImagesUsed).toBe(3);
+  });
+
+  it('returns 503 when the profile cannot be read (no guessing)', async () => {
+    profileReadFails = true;
+    const res = await loadHandler()(get());
+    expect(res.statusCode).toBe(503);
+    expect(body(res).error.code).toBe('CREDITS_UNAVAILABLE');
+  });
+
+  it('requires an authenticated identity', async () => {
+    const res = await loadHandler()({ requestContext: { http: { method: 'GET', path: '/content/image-credits' } } });
+    expect(res.statusCode).toBe(401);
+  });
+});

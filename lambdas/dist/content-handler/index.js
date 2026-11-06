@@ -963,6 +963,31 @@ async function handleDelete(userId, contentId) {
   return respond(200, { deleted: true });
 }
 
+// GET /content/image-credits — READ-ONLY view of the caller's AI image allowance, so the UI can
+// show the exact cost and remaining balance BEFORE the user confirms a paid generation.
+// Uses the SAME tier normalization, monthly limits and month key as checkAiImageEntitlement /
+// reserveAiImage. It never writes: no reservation, no refund, no counter reset (a counter from a
+// previous month simply reads as 0 used for the current month).
+async function handleGetImageCredits(userId) {
+  let profile;
+  try {
+    const r = await dynamo.send(new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND SK = :sk',
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':sk': 'PROFILE' },
+      Limit: 1,
+    }));
+    profile = (r.Items || [])[0] || {};
+  } catch (e) {
+    console.error('[image-credits] profile read failed:', e.message);
+    return respond(503, { error: { code: 'CREDITS_UNAVAILABLE', message: 'Could not load your AI image balance. Please try again.' } });
+  }
+  const tier = normalizeTierServer(profile.subscriptionTier, profile);
+  const limit = AI_IMAGE_MONTHLY_LIMITS[tier] ?? 0;
+  const month = currentMonthKey();
+  const used = profile.aiImagesMonth === month ? Math.max(0, Number(profile.aiImagesUsed) || 0) : 0;
+  return respond(200, { tier, month, costPerImage: 1, limit, used: Math.min(used, limit), remaining: Math.max(0, limit - used) });
+}
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
@@ -993,6 +1018,9 @@ exports.handler = async (event) => {
       return handleEditImage(userId, body);
     }
 
+    if (method === 'GET' && path === '/content/image-credits') {
+      return handleGetImageCredits(userId);
+    }
     if (method === 'GET' && path === '/content/history') {
       return handleGetHistory(userId);
     }

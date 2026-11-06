@@ -702,6 +702,8 @@ export class SandboxStack extends cdk.Stack {
     // AI images (GPT Image): generation + natural-language photo editing
     httpApi.addRoutes({ path: '/content/generate-image', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
     httpApi.addRoutes({ path: '/content/edit-image', methods: [apigatewayv2.HttpMethod.POST], integration: contentInt, authorizer });
+    // Read-only AI image balance for the paid-image confirmation (mirrors api-stack).
+    httpApi.addRoutes({ path: '/content/image-credits', methods: [apigatewayv2.HttpMethod.GET], integration: contentInt, authorizer });
     // Media upload presign — used by the Create/Flocks flow to attach a finished design or
     // AI image to a scheduled post (uploadReadyMedia → getUploadUrl). Writes to the sandbox
     // media bucket only. Needed to validate real media attachment end to end.

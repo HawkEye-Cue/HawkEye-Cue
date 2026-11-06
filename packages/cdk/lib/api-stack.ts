@@ -858,6 +858,13 @@ export class ApiStack extends cdk.Stack {
       integration: contentIntegration,
       authorizer,
     });
+    // Read-only AI image balance (cost + remaining) shown before a paid generation is confirmed.
+    this.httpApi.addRoutes({
+      path: '/content/image-credits',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: contentIntegration,
+      authorizer,
+    });
     this.httpApi.addRoutes({
       path: '/content/upload-url',
       methods: [apigatewayv2.HttpMethod.POST],

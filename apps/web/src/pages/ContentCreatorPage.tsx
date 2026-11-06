@@ -22,6 +22,7 @@ import ImageSuggestions from '../components/ImageSuggestions';
 const DesignStudio = lazy(() => import('../components/DesignStudio'));
 import { suggestTemplates, TEMPLATES, type ScoredTemplate, type DesignTemplate } from '../lib/designTemplates';
 import { compositionSignature } from '../lib/composeTemplate';
+import { readDraft, writeDraft } from '../lib/draftStore';
 import { listDesigns, type DesignDocument } from '../lib/designDocument';
 import { loadBrandKit, type BrandKit } from '../lib/brandKit';
 import { canUseAiImageForTier } from '../lib/aiImageAccess';
@@ -64,8 +65,13 @@ export default function ContentCreatorPage() {
   });
   const [createMode, setCreateMode] = useState<'ai' | 'own'>('own');
   // One-screen composer mode (write / ai_draft / ideas)
-  const [composeMode, setComposeMode] = useState<'write' | 'ai_draft' | 'ideas'>('ai_draft');
-  const [ownContent, setOwnContent] = useState(() => localStorage.getItem('hawkeye_draft_ownContent') || '');
+  // Persisted so a refresh reopens the SAME composer the user was writing in (otherwise a draft
+  // written in Write mode would reappear under AI Draft mode showing a different, empty field).
+  const [composeMode, setComposeMode] = useState<'write' | 'ai_draft' | 'ideas'>(() => {
+    const m = readDraft('mode', user?.sub);
+    return m === 'write' || m === 'ai_draft' ? m : 'ai_draft';
+  });
+  const [ownContent, setOwnContent] = useState(() => readDraft('ownContent', user?.sub) || '');
   const [showIdeas, setShowIdeas] = useState(false);
   const [ideas, setIdeas] = useState<{ hook: string; idea: string; starter: string }[]>([]);
   const [ideasLoading, setIdeasLoading] = useState(false);
@@ -74,22 +80,26 @@ export default function ContentCreatorPage() {
   const [showAiPhoto, setShowAiPhoto] = useState(false);
   const [aiPhotoPrompt, setAiPhotoPrompt] = useState('');
   const [aiPhotoStyle, setAiPhotoStyle] = useState<'photo' | 'illustration' | 'bold'>('photo');
-  const [aiPhotoUrl, setAiPhotoUrl] = useState<string | null>(null);
+  // The attached design / AI image (data URL). Restored after refresh so an attached design is
+  // not silently dropped from the working draft.
+  const [aiPhotoUrl, setAiPhotoUrl] = useState<string | null>(() => {
+    try { const v = readDraft('image', user?.sub); return v && v.startsWith('data:image/') ? v : null; } catch { return null; }
+  });
   const [aiPhotoLoading, setAiPhotoLoading] = useState(false);
   const [tone, setTone] = useState<'professional' | 'casual' | 'educational' | 'urgent'>('professional');
   const [postLength, setPostLength] = useState<'short' | 'medium' | 'long'>('medium');
   const [userTier, setUserTier] = useState<string>('free');
   const [postType, setPostType] = useState('');
   const [platforms, setPlatforms] = useState<SocialPlatform[]>(['facebook']);
-  const [baseText, setBaseText] = useState(() => localStorage.getItem('hawkeye_draft_baseText') || '');
+  const [baseText, setBaseText] = useState(() => readDraft('baseText', user?.sub) || '');
   const [platformContent, setPlatformContent] = useState<Record<string, string> | null>(() => {
     // Restore a generated draft across refresh/navigation so work is never lost.
-    try { const raw = localStorage.getItem('hawkeye_draft_platformContent'); return raw ? JSON.parse(raw) : null; } catch { return null; }
+    try { const raw = readDraft('platformContent', user?.sub); return raw ? JSON.parse(raw) : null; } catch { return null; }
   });
   // The user's own writing captured BEFORE an AI draft/improve runs, so they can always
   // discard the AI result and restore exactly what they wrote — never losing their work.
   const [restorableDraft, setRestorableDraft] = useState<{ mode: 'write' | 'ai_draft' | 'ideas'; text: string } | null>(() => {
-    try { const raw = localStorage.getItem('hawkeye_draft_restorable'); return raw ? JSON.parse(raw) : null; } catch { return null; }
+    try { const raw = readDraft('restorable', user?.sub); return raw ? JSON.parse(raw) : null; } catch { return null; }
   });
   const [loading, setLoading] = useState(false);
   const [scheduling, setScheduling] = useState(false);
@@ -296,16 +306,27 @@ export default function ContentCreatorPage() {
   // discard or successful schedule.
   useEffect(() => {
     try {
-      if (platformContent) localStorage.setItem('hawkeye_draft_platformContent', JSON.stringify(platformContent));
-      else localStorage.removeItem('hawkeye_draft_platformContent');
+      if (platformContent) writeDraft('platformContent', user?.sub, JSON.stringify(platformContent));
+      else writeDraft('platformContent', user?.sub, null);
     } catch { /* quota — ignore */ }
   }, [platformContent]);
   useEffect(() => {
     try {
-      if (restorableDraft) localStorage.setItem('hawkeye_draft_restorable', JSON.stringify(restorableDraft));
-      else localStorage.removeItem('hawkeye_draft_restorable');
+      if (restorableDraft) writeDraft('restorable', user?.sub, JSON.stringify(restorableDraft));
+      else writeDraft('restorable', user?.sub, null);
     } catch { /* quota — ignore */ }
   }, [restorableDraft]);
+  useEffect(() => {
+    try { writeDraft('mode', user?.sub, composeMode); } catch { /* ignore */ }
+  }, [composeMode]);
+  // Keep the attached design/AI image across refresh. Only data URLs are persisted, and only if
+  // small enough not to blow the localStorage quota (a failure just means it isn't restored).
+  useEffect(() => {
+    try {
+      if (aiPhotoUrl && aiPhotoUrl.startsWith('data:image/') && aiPhotoUrl.length < 2_500_000) writeDraft('image', user?.sub, aiPhotoUrl);
+      else writeDraft('image', user?.sub, null);
+    } catch { writeDraft('image', user?.sub, null); }
+  }, [aiPhotoUrl]);
 
   function openStudio(template: DesignTemplate, _customize = false) {
     setStudioDesign(null); // fresh design from the template
@@ -415,8 +436,8 @@ export default function ContentCreatorPage() {
   }
 
   // Persist draft content to localStorage so it survives navigation
-  useEffect(() => { localStorage.setItem('hawkeye_draft_ownContent', ownContent); }, [ownContent]);
-  useEffect(() => { localStorage.setItem('hawkeye_draft_baseText', baseText); }, [baseText]);
+  useEffect(() => { writeDraft('ownContent', user?.sub, ownContent); }, [ownContent]);
+  useEffect(() => { writeDraft('baseText', user?.sub, baseText); }, [baseText]);
 
   // Cleanup image preview URL on unmount to prevent memory leaks
   useEffect(() => {
@@ -557,7 +578,12 @@ export default function ContentCreatorPage() {
     // Capture the user's original writing BEFORE generating so it can be restored. Prefer the
     // current composer value; keep the first capture if one already exists (don't overwrite the
     // true original with an intermediate AI result on repeated generations).
-    setRestorableDraft((prev) => prev ?? { mode: composeMode, text: composeMode === 'write' ? ownContent : baseText });
+    // Re-generating ON TOP of an existing AI result keeps the true original; a generation that
+    // starts from the user's own text takes a fresh capture (so a stale capture from an earlier
+    // post can never overwrite what they are writing now).
+    setRestorableDraft((prev) => (platformContent && prev)
+      ? prev
+      : { mode: composeMode === 'ideas' ? 'ai_draft' : composeMode, text: composeMode === 'write' ? ownContent : baseText });
     setLoading(true);
     setError('');
     setPlatformContent(null);
@@ -622,8 +648,8 @@ export default function ContentCreatorPage() {
   // Unified single input: maps to ownContent (write) or baseText (ai_draft/ideas).
   const composerValue = composeMode === 'write' ? ownContent : baseText;
   const setComposerValue = (v: string) => {
-    if (composeMode === 'write') { setOwnContent(v); localStorage.setItem('hawkeye_draft_ownContent', v); }
-    else { setBaseText(v); localStorage.setItem('hawkeye_draft_baseText', v); }
+    if (composeMode === 'write') { setOwnContent(v); writeDraft('ownContent', user?.sub, v); }
+    else { setBaseText(v); writeDraft('baseText', user?.sub, v); }
   };
 
   // Primary action from the one-screen composer.
@@ -635,6 +661,7 @@ export default function ContentCreatorPage() {
       const content: Record<string, string> = {};
       for (const p of platforms) content[p] = text;
       setShowCreator(true);
+      setRestorableDraft(null); // this preview IS the user's own writing — nothing AI to discard
       setPlatformContent(content);
       window.dispatchEvent(new CustomEvent('hawkeye-post-preview', { detail: { content, imagePreview } }));
       localStorage.setItem(`hawkeye_first_post_${user?.sub}`, 'true');
@@ -1045,7 +1072,7 @@ export default function ContentCreatorPage() {
               <p className="text-[11px] text-slate-400 mt-0.5">{idea.idea}</p>
               <p className="text-[11px] text-slate-200 mt-1.5 italic">"{idea.starter}"</p>
               <button
-                onClick={() => { setComposeMode('write'); setOwnContent(idea.starter); localStorage.setItem('hawkeye_draft_ownContent', idea.starter); showToast('✓ Idea loaded — build on it!'); }}
+                onClick={() => { setComposeMode('write'); setOwnContent(idea.starter); writeDraft('ownContent', user?.sub, idea.starter); showToast('✓ Idea loaded — build on it!'); }}
                 className="mt-2 px-3 py-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-lg text-[11px] font-bold hover:bg-amber-500/30"
               >
                 ✍️ Use this idea
@@ -1398,8 +1425,8 @@ export default function ContentCreatorPage() {
                   // Restore EXACTLY what the user wrote; discard the AI result. Caption is never lost.
                   setPlatformContent(null);
                   setComposeMode(restorableDraft.mode);
-                  if (restorableDraft.mode === 'write') { setOwnContent(restorableDraft.text); localStorage.setItem('hawkeye_draft_ownContent', restorableDraft.text); }
-                  else { setBaseText(restorableDraft.text); localStorage.setItem('hawkeye_draft_baseText', restorableDraft.text); }
+                  if (restorableDraft.mode === 'write') { setOwnContent(restorableDraft.text); writeDraft('ownContent', user?.sub, restorableDraft.text); }
+                  else { setBaseText(restorableDraft.text); writeDraft('baseText', user?.sub, restorableDraft.text); }
                   setRestorableDraft(null);
                   showToast('↩ Restored your original writing');
                 }}

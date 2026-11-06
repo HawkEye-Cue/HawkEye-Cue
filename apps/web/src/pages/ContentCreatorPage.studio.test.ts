@@ -77,7 +77,9 @@ describe('Priority 1 — automatic, content-aware editable templates', () => {
 
 describe('Priority 2 — draft preservation across Create', () => {
   it('captures the original writing before an AI draft so it can be restored', () => {
-    expect(src).toContain('setRestorableDraft((prev) => prev ??');
+    expect(src).toContain('setRestorableDraft((prev) => (platformContent && prev)');
+    // a stale capture from an earlier post must never survive into a fresh generation
+    expect(src).toContain('setRestorableDraft(null); // this preview IS the user')
   });
   it('offers an explicit discard-AI-draft control that restores the original caption', () => {
     expect(src).toContain('data-testid="discard-ai-draft"');
@@ -85,8 +87,8 @@ describe('Priority 2 — draft preservation across Create', () => {
     expect(block).toMatch(/setOwnContent\(restorableDraft\.text\)|setBaseText\(restorableDraft\.text\)/);
   });
   it('autosaves the generated draft + restorable original across refresh/navigation', () => {
-    expect(src).toContain("localStorage.setItem('hawkeye_draft_platformContent'");
-    expect(src).toContain("localStorage.setItem('hawkeye_draft_restorable'");
-    expect(src).toContain("localStorage.getItem('hawkeye_draft_platformContent')");
+    expect(src).toContain("writeDraft('platformContent', user?.sub");
+    expect(src).toContain("writeDraft('restorable', user?.sub");
+    expect(src).toContain("readDraft('platformContent', user?.sub)");
   });
 });

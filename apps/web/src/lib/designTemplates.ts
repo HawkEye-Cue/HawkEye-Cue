@@ -26,6 +26,10 @@ export interface DesignLayer {
   width?: number;
   height?: number;
   backgroundColor?: string;
+  /** corner radius in px (rects only). radius >= half the shorter side makes a pill / circle. */
+  radius?: number;
+  /** true = the caption never overwrites this text (e.g. a fixed focal word like SOLD! / FREE QUOTE) */
+  keepText?: boolean;
   // Position
   left?: number;
   top?: number;
@@ -60,6 +64,9 @@ export interface DesignTemplate {
   id: string;
   name: string;
   category: TemplateCategory;
+  /** Keyword hits required before this template is offered (default 1). Templates whose copy is
+   *  about one specific thing (before/after, testimonial) need 2 so a stray word can't trigger them. */
+  minKeywordHits?: number;
   /** Distinct visual layout family (ensures varied suggestions). */
   layoutFamily?: LayoutFamily;
   format: TemplateFormat;
@@ -107,9 +114,9 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'sub', type: 'text', text: 'Storm season is here. Get your roof\nchecked before the next one hits.',
         left: 80, top: 560, fontFamily: 'Arial', fontSize: 44, fill: '#94a3b8',
         isSubtext: true, isEditable: true },
-      { id: 'cta', type: 'rect', left: 80, top: 720, width: 460, height: 80, backgroundColor: '#f97316' },
-      { id: 'cta-text', type: 'text', text: 'CALL US TODAY', left: 180, top: 738,
-        fontFamily: 'Arial Black', fontSize: 36, fontWeight: '900', fill: '#000000',
+      { id: 'cta', type: 'rect', left: 80, top: 720, width: 460, height: 80, radius: 40, backgroundColor: '#f97316' },
+      { id: 'cta-text', type: 'text', text: 'CALL US TODAY', left: 104, top: 742, width: 412, textAlign: 'center',
+        fontFamily: 'Arial Black', fontSize: 34, fontWeight: '900', fill: '#000000',
         isEditable: true },
       { id: 'phone', type: 'text', text: '(555) 000-0000', left: 80, top: 860,
         fontFamily: 'Arial', fontSize: 48, fill: '#f97316', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
@@ -138,8 +145,8 @@ export const TEMPLATES: DesignTemplate[] = [
         isHeadline: true, isEditable: true },
       { id: 'photo-placeholder', type: 'rect', left: 540, top: 160, width: 480, height: 480,
         backgroundColor: '#2d4a6e', isPlaceholder: true },
-      { id: 'photo-hint', type: 'text', text: '📸 Add\nYour Photo', left: 640, top: 350,
-        fontFamily: 'Arial', fontSize: 36, fill: '#64748b', textAlign: 'center', isEditable: false },
+      { id: 'photo-hint', type: 'text', text: '\u{1F3E0}', left: 650, top: 285, width: 260, textAlign: 'center',
+        fontFamily: 'Arial', fontSize: 190, fill: '#94a3b8' },
       { id: 'sub', type: 'text', text: 'Get a professional inspection before\nhidden damage costs you thousands.',
         left: 80, top: 700, fontFamily: 'Arial', fontSize: 42, fill: '#e2e8f0',
         isSubtext: true, isEditable: true },
@@ -167,9 +174,8 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'tag', type: 'rect', left: 80, top: 80, width: 340, height: 56, backgroundColor: '#22c55e' },
       { id: 'tag-text', type: 'text', text: 'RATE UPDATE', left: 110, top: 92,
         fontFamily: 'Arial Black', fontSize: 28, fill: '#000000' },
-      { id: 'down-arrow', type: 'text', text: '↓', left: 460, top: 100,
-        fontFamily: 'Arial', fontSize: 200, fill: '#22c55e' },
-      { id: 'headline', type: 'text', text: 'HOMEOWNERS\nRATES HAVE\nDROPPED', left: 80, top: 220,
+      { id: 'down-arrow', type: 'text', text: '\u2193', left: 860, top: 60, fontFamily: 'Arial', fontSize: 150, fill: '#22c55e' },
+      { id: 'headline', type: 'text', text: 'HOMEOWNERS\nRATES HAVE\nDROPPED', left: 80, top: 220, width: 760,
         fontFamily: 'Arial Black', fontSize: 108, fontWeight: '900', fill: '#ffffff',
         isHeadline: true, isEditable: true },
       { id: 'sub', type: 'text', text: 'Now may be a great time to\nreview your coverage and save.',
@@ -196,7 +202,7 @@ export const TEMPLATES: DesignTemplate[] = [
     description: 'Free insurance quote promotional graphic',
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#1e1b4b' },
-      { id: 'circle', type: 'rect', left: 220, top: 80, width: 640, height: 640, backgroundColor: '#312e81' },
+      { id: 'circle', type: 'rect', left: 220, top: 80, width: 640, height: 640, radius: 48, backgroundColor: '#312e81' },
       { id: 'free', type: 'text', text: 'FREE', left: 280, top: 160,
         fontFamily: 'Arial Black', fontSize: 200, fontWeight: '900', fill: '#818cf8' },
       { id: 'quote', type: 'text', text: 'QUOTE', left: 250, top: 380,
@@ -204,8 +210,8 @@ export const TEMPLATES: DesignTemplate[] = [
       { id: 'sub', type: 'text', text: 'No obligation. Just clarity on what\nyour coverage actually costs.',
         left: 80, top: 780, fontFamily: 'Arial', fontSize: 44, fill: '#c7d2fe', textAlign: 'center',
         isSubtext: true, isEditable: true },
-      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 340, top: 920,
-        fontFamily: 'Arial Black', fontSize: 56, fill: '#818cf8',
+      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 240, top: 920, width: 600, textAlign: 'center',
+        fontFamily: 'Arial Black', fontSize: 52, fill: '#818cf8',
         isPhoneSlot: true, isBrandSlot: true, isEditable: true },
     ],
   },
@@ -226,19 +232,19 @@ export const TEMPLATES: DesignTemplate[] = [
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 566, backgroundColor: '#1e3a5f' },
       { id: 'photo-area', type: 'rect', left: 0, top: 0, width: 550, height: 566, backgroundColor: '#2d4a6e', isPlaceholder: true },
-      { id: 'photo-hint', type: 'text', text: '🏠 Property\nPhoto', left: 160, top: 230,
-        fontFamily: 'Arial', fontSize: 32, fill: '#64748b', textAlign: 'center' },
-      { id: 'tag', type: 'rect', left: 600, top: 60, width: 280, height: 60, backgroundColor: '#f97316' },
-      { id: 'tag-text', type: 'text', text: 'JUST LISTED', left: 620, top: 74,
-        fontFamily: 'Arial Black', fontSize: 34, fill: '#ffffff' },
-      { id: 'price', type: 'text', text: '$000,000', left: 600, top: 160,
-        fontFamily: 'Arial Black', fontSize: 80, fill: '#ffffff', isEditable: true, isHeadline: true },
-      { id: 'address', type: 'text', text: '123 Main Street\nYourCity, ST 00000',
-        left: 600, top: 280, fontFamily: 'Arial', fontSize: 36, fill: '#94a3b8', isEditable: true },
-      { id: 'cta', type: 'text', text: 'Schedule a showing →', left: 600, top: 400,
-        fontFamily: 'Arial Black', fontSize: 32, fill: '#f97316', isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Name · Agency', left: 600, top: 490,
-        fontFamily: 'Arial', fontSize: 26, fill: '#64748b', isBrandSlot: true, isEditable: true },
+      { id: 'photo-hint', type: 'text', text: '\u{1F3E1}', left: 140, top: 150, width: 270, textAlign: 'center',
+        fontFamily: 'Arial', fontSize: 190, fill: '#94a3b8' },
+      { id: 'tag', type: 'rect', left: 600, top: 40, width: 270, height: 56, radius: 28, backgroundColor: '#f97316' },
+      { id: 'tag-text', type: 'text', text: 'JUST LISTED', left: 600, top: 54, width: 270, textAlign: 'center',
+        fontFamily: 'Arial Black', fontSize: 28, fontWeight: '900', fill: '#ffffff' },
+      { id: 'headline', type: 'text', text: 'Your New\nHome Awaits', left: 600, top: 118, width: 440,
+        fontFamily: 'Arial Black', fontSize: 60, fontWeight: '900', fill: '#ffffff', isHeadline: true, isEditable: true },
+      { id: 'sub', type: 'text', text: 'Tour this beautiful home\nand make it yours.', left: 600, top: 290, width: 440,
+        fontFamily: 'Arial', fontSize: 30, fill: '#cbd5e1', isSubtext: true, isEditable: true },
+      { id: 'cta-link', type: 'text', text: 'SCHEDULE A SHOWING', left: 600, top: 446, width: 440,
+        fontFamily: 'Arial Black', fontSize: 28, fontWeight: '900', fill: '#f97316', isEditable: true },
+      { id: 'brand', type: 'text', text: 'Your Name \u00b7 Agency', left: 600, top: 505, width: 440,
+        fontFamily: 'Arial', fontSize: 24, fill: '#94a3b8', isBrandSlot: true, isEditable: true },
     ],
   },
 
@@ -256,14 +262,16 @@ export const TEMPLATES: DesignTemplate[] = [
     description: 'Just Sold real estate celebration graphic',
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#14532d' },
-      { id: 'sold', type: 'text', text: 'SOLD!', left: 80, top: 200,
-        fontFamily: 'Arial Black', fontSize: 220, fontWeight: '900', fill: '#4ade80',
+      { id: 'sold', type: 'text', text: 'SOLD!', left: 80, top: 250, width: 500, keepText: true,
+        fontFamily: 'Arial Black', fontSize: 140, fontWeight: '900', fill: '#4ade80',
         isHeadline: true, isEditable: true },
       { id: 'sub', type: 'text', text: 'Congratulations to my amazing\nbuyers — keys in hand! 🎉',
         left: 80, top: 600, fontFamily: 'Arial', fontSize: 52, fill: '#bbf7d0',
         isSubtext: true, isEditable: true },
       { id: 'photo-hint', type: 'rect', left: 600, top: 160, width: 420, height: 420,
         backgroundColor: '#166534', isPlaceholder: true },
+      { id: 'photo-hint-icon', type: 'text', text: '\u{1F511}', left: 640, top: 270, width: 340, textAlign: 'center',
+        fontFamily: 'Arial', fontSize: 170, fill: '#bbf7d0' },
       { id: 'brand', type: 'text', text: 'Your Name · Agency', left: 80, top: 900,
         fontFamily: 'Arial', fontSize: 40, fill: '#4ade80', isBrandSlot: true, isEditable: true },
     ],
@@ -304,7 +312,7 @@ export const TEMPLATES: DesignTemplate[] = [
   {
     id: 'before-after-1',
     name: 'Before & After',
-    category: 'before_after',
+    category: 'before_after', minKeywordHits: 2,
     layoutFamily: 'split',
     format: 'landscape',
     width: 1080, height: 566,
@@ -336,7 +344,7 @@ export const TEMPLATES: DesignTemplate[] = [
   {
     id: 'testimonial-1',
     name: 'Customer Testimonial',
-    category: 'testimonial',
+    category: 'testimonial', minKeywordHits: 2,
     layoutFamily: 'quote',
     format: 'square',
     width: 1080, height: 1080,
@@ -448,8 +456,11 @@ export const TEMPLATES: DesignTemplate[] = [
         left: 92, top: 700, fontFamily: 'Arial', fontSize: 46, fill: '#94a3b8', isSubtext: true, isEditable: true },
       { id: 'cta-text', type: 'text', text: 'LEARN MORE', left: 92, top: 860,
         fontFamily: 'Arial Black', fontSize: 40, fontWeight: '900', fill: '#f97316', isEditable: true },
-      { id: 'brand', type: 'text', text: 'Your Company Name', left: 92, top: 980,
-        fontFamily: 'Arial', fontSize: 34, fill: '#64748b', isBrandSlot: true, isEditable: true },
+      { id: 'brand', type: 'text', text: 'Your Company Name', left: 92, top: 108, width: 896,
+        fontFamily: 'Arial Black', fontSize: 52, fontWeight: '900', fill: '#f97316', isBrandSlot: true, isEditable: true },
+      { id: 'brand-rule', type: 'rect', left: 92, top: 200, width: 120, height: 6, backgroundColor: '#f97316' },
+      { id: 'phone', type: 'text', text: '(555) 000-0000', left: 92, top: 955, width: 896,
+        fontFamily: 'Arial Black', fontSize: 46, fontWeight: '900', fill: '#ffffff', isPhoneSlot: true, isBrandSlot: true, isEditable: true },
     ],
   },
 
@@ -497,10 +508,10 @@ export const TEMPLATES: DesignTemplate[] = [
     description: 'Circular badge focal point with headline — eye-catching promo style',
     layers: [
       { id: 'bg', type: 'rect', left: 0, top: 0, width: 1080, height: 1080, backgroundColor: '#0f766e' },
-      { id: 'badge-ring', type: 'rect', left: 300, top: 110, width: 480, height: 480, backgroundColor: '#0b5a53' },
-      { id: 'badge', type: 'rect', left: 330, top: 140, width: 420, height: 420, backgroundColor: '#fde68a' },
-      { id: 'cta-text', type: 'text', text: 'SPECIAL\nOFFER', left: 330, top: 260,
-        fontFamily: 'Arial Black', fontSize: 92, fontWeight: '900', fill: '#0f766e', textAlign: 'center', width: 420, isEditable: true },
+      { id: 'badge-ring', type: 'rect', left: 300, top: 110, width: 480, height: 480, radius: 240, backgroundColor: '#0b5a53' },
+      { id: 'badge', type: 'rect', left: 330, top: 140, width: 420, height: 420, radius: 210, backgroundColor: '#fde68a' },
+      { id: 'cta-text', type: 'text', text: 'SPECIAL\nOFFER', left: 390, top: 280,
+        fontFamily: 'Arial Black', fontSize: 60, fontWeight: '900', fill: '#0f766e', textAlign: 'center', width: 300, isEditable: true },
       { id: 'headline', type: 'text', text: 'Your Message Here', left: 90, top: 680,
         fontFamily: 'Arial Black', fontSize: 84, fontWeight: '900', fill: '#ffffff', textAlign: 'center', width: 900, isHeadline: true, isEditable: true },
       { id: 'sub', type: 'text', text: 'Supporting detail for your offer.',
@@ -528,16 +539,48 @@ function scoreTemplate(
   else if (tpl.trades.includes(tradeId)) score += 10;
 
   // Keyword overlap with template keywords
-  for (const kw of tpl.keywords) {
-    if (lower.includes(kw.toLowerCase())) score += 4;
-  }
+  score += keywordHits(lower, tpl.keywords) * 4;
 
   // Keyword overlap with the user's TRADE keywords (relevance signal)
-  for (const kw of tradeKeywords) {
-    if (lower.includes(kw.toLowerCase())) score += 2;
-  }
+  score += keywordHits(lower, tradeKeywords) * 2;
+
+  // The plain branded layout is a last-resort fallback, never a first pick.
+  if (tpl.id === 'branded-1') score = 1;
 
   return score;
+}
+
+/** Escape a keyword for use in a RegExp. */
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Count keywords present in `lower` using WORD boundaries (prefix match for longer words so
+ * "inspect" matches "inspection"; whole-word for short ones so "ac" never matches "back").
+ */
+export function keywordHits(lower: string, keywords: string[]): number {
+  let hits = 0;
+  for (const raw of keywords) {
+    const kw = raw.toLowerCase().trim();
+    if (!kw) continue;
+    const re = kw.length <= 3 ? new RegExp(`(^|[^a-z0-9])${escapeRe(kw)}($|[^a-z0-9])`) : new RegExp(`(^|[^a-z0-9])${escapeRe(kw)}`);
+    if (re.test(lower)) hits++;
+  }
+  return hits;
+}
+
+/**
+ * Is this template RELEVANT to the post? Templates whose copy is about something specific
+ * (a free quote, before/after, a testimonial, a storm alert…) are only offered when the post
+ * actually talks about it, so a roofing post never gets an insurance "FREE QUOTE" design and an
+ * HVAC post never gets a "Customer Name" testimonial. Generic layouts (no keywords) are always
+ * eligible as fallbacks. A trade-specific template for a DIFFERENT trade needs 2+ keyword hits.
+ */
+function isEligible(tpl: DesignTemplate, postText: string, tradeId: string): boolean {
+  if (tpl.keywords.length === 0) return true; // generic layout
+  const hits = keywordHits(postText.toLowerCase(), tpl.keywords);
+  if (hits < (tpl.minKeywordHits ?? 1)) return false;
+  if (tpl.trades.length === 0 || tpl.trades.includes(tradeId)) return true;
+  return hits >= 2;
 }
 
 export interface ScoredTemplate {
@@ -557,10 +600,12 @@ export function suggestTemplates(opts: {
 }): ScoredTemplate[] {
   const { postText, tradeId, tradeKeywords, max = 3 } = opts;
 
-  const scored = TEMPLATES.map((tpl) => ({
-    template: tpl,
-    score: scoreTemplate(tpl, postText, tradeId, tradeKeywords),
-  }));
+  const scored = TEMPLATES
+    .filter((tpl) => isEligible(tpl, postText, tradeId))
+    .map((tpl) => ({
+      template: tpl,
+      score: scoreTemplate(tpl, postText, tradeId, tradeKeywords),
+    }));
 
   // Sort descending; break ties by putting trade-specific templates first
   scored.sort((a, b) => {

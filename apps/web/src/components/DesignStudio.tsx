@@ -21,6 +21,8 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import type { ReactNode } from 'react';
 import type { DesignTemplate } from '../lib/designTemplates';
 import { type BrandKit, saveBrandKit } from '../lib/brandKit';
 import { EXTRA_PROPS, saveDesign, duplicateDesign, newDesignId, type DesignDocument } from '../lib/designDocument';
@@ -65,7 +67,7 @@ function appliedText(layer: { text?: string; isBrandSlot?: boolean; isPhoneSlot?
 export default function DesignStudio({
   template, brandKit, sub, initialDesign, initialPhoto, canUseAiImage, onEditPhoto, onCloudSave, onUseInPost,
   onBrandKitChange, onClose,
-}: DesignStudioProps) {
+}: DesignStudioProps): ReactNode {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -168,6 +170,7 @@ export default function DesignStudio({
             fc.add(new Rect({
               left: layer.left ?? 0, top: layer.top ?? 0,
               width: layer.width ?? template.width, height: layer.height ?? 40,
+              rx: layer.radius ?? 0, ry: layer.radius ?? 0,
               fill: layer.backgroundColor ?? layer.fill ?? '#000000',
               selectable: !layer.isPlaceholder, hasControls: !layer.isPlaceholder,
               data: { id: layer.id, isPlaceholder: !!layer.isPlaceholder, isLogoSlot: !!layer.isLogoSlot },
@@ -304,7 +307,7 @@ export default function DesignStudio({
       } as any));
     }
     // The "📸 Add your photo" hint text must not sit on top of the real photo.
-    fc.getObjects().filter((o: any) => o.data?.id === 'photo-hint').forEach((o: any) => fc.remove(o));
+    fc.getObjects().filter((o: any) => String(o.data?.id || '').startsWith('photo-hint') && o !== ph).forEach((o: any) => fc.remove(o));
     fc.requestRenderAll();
     if (asOriginal) setRevisions(startRevisions(src)); // ORIGINAL preserved immutably
   }
@@ -539,8 +542,13 @@ export default function DesignStudio({
 
   const rev = revisions ? currentRevision(revisions) : null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950 text-white" role="dialog" aria-modal="true" aria-label="Design Studio">
+  // Rendered in a PORTAL on document.body. Inside the page it lived in the content area's own
+  // stacking context, so no z-index could lift it above the app's sidebar (z-40), Setup Guide
+  // widget and floating buttons — they were drawn OVER the studio and covered "Back to Post",
+  // the design name and part of the canvas. 9996 sits above all app chrome and below the app's
+  // top-level modals (9997+), which is where a studio should be.
+  return createPortal(
+    <div className="fixed inset-0 z-[9996] flex flex-col bg-zinc-950 text-white" role="dialog" aria-modal="true" aria-label="Design Studio">
       {/* Top toolbar — a single horizontally-scrollable row on mobile (wrapping to 3 rows ate
           ~120px of vertical space and pushed the canvas off-screen), wraps freely on desktop. */}
       <div data-testid="studio-toolbar" className="flex flex-nowrap md:flex-wrap items-center gap-1.5 px-3 py-2 bg-black border-b border-white/10 shrink-0 overflow-x-auto [&>*]:shrink-0">
@@ -752,5 +760,5 @@ export default function DesignStudio({
         </aside>
       </div>
     </div>
-  );
+    , document.body);
 }

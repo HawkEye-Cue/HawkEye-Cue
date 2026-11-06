@@ -48,6 +48,7 @@ export async function renderTemplateToDataUrl(
         fc.add(new Rect({
           left: layer.left ?? 0, top: layer.top ?? 0,
           width: layer.width ?? template.width, height: layer.height ?? 40,
+          rx: layer.radius ?? 0, ry: layer.radius ?? 0,
           fill: layer.backgroundColor ?? layer.fill ?? '#000000',
         } as any));
       } else if (layer.type === 'text') {
@@ -100,7 +101,8 @@ export function renderTemplateToSvg(template: DesignTemplate, brandKit: BrandKit
   parts.push(`<rect x="0" y="0" width="${width}" height="${height}" fill="${esc(background)}"/>`);
   for (const layer of template.layers) {
     if (layer.type === 'rect') {
-      parts.push(`<rect x="${layer.left ?? 0}" y="${layer.top ?? 0}" width="${layer.width ?? width}" height="${layer.height ?? 40}" fill="${esc(layer.backgroundColor ?? layer.fill ?? '#000')}"/>`);
+      const r = layer.radius ?? 0;
+      parts.push(`<rect x="${layer.left ?? 0}" y="${layer.top ?? 0}" width="${layer.width ?? width}" height="${layer.height ?? 40}"${r ? ` rx="${r}" ry="${r}"` : ''} fill="${esc(layer.backgroundColor ?? layer.fill ?? '#000')}"/>`);
     } else if (layer.type === 'text') {
       const lines = String(layer.text || '').split('\n');
       const size = layer.fontSize ?? 40;

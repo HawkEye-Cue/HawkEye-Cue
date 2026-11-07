@@ -25,6 +25,8 @@ import { compositionSignature } from '../lib/composeTemplate';
 import { readDraft, writeDraft } from '../lib/draftStore';
 import { listDesigns, type DesignDocument } from '../lib/designDocument';
 import { loadBrandKit, type BrandKit } from '../lib/brandKit';
+import { buildCanvaSpecs, composeSpecToDocument, type DesignSpec } from '../lib/canvaDesigns';
+import type { CanvaCard } from '../components/ImageSuggestions';
 import { canUseAiImageForTier } from '../lib/aiImageAccess';
 import { migrateLocalToCloud, fetchBrandKit, listCloudDesigns, fetchDesignDocument } from '../lib/designStore';
 import type { CloudDesignMeta } from '@social-lead-gen/shared';
@@ -131,6 +133,11 @@ export default function ContentCreatorPage() {
 
   // ── Design Studio + Image Suggestions (Phase 1) ───────────────────────────
   const [imageSuggestions, setImageSuggestions] = useState<ScoredTemplate[]>([]);
+  // PHASE 1 (insurance): pre-composed Canva-style designs + their editable Studio documents, keyed
+  // by card id. When this is non-empty, the suggestion strip shows these instead of the templates.
+  const [canvaCards, setCanvaCards] = useState<CanvaCard[] | null>(null);
+  const canvaDocs = useRef<Map<string, { spec: DesignSpec; toDocument: (name: string) => DesignDocument }>>(new Map());
+  const canvaSig = useRef('');
   // The exact caption the current suggestions were composed from + its composition signature.
   // The signature (not raw text) gates recompute so trivial keystrokes don't re-render previews.
   const [suggestionText, setSuggestionText] = useState('');
@@ -310,6 +317,43 @@ export default function ContentCreatorPage() {
       else writeDraft('platformContent', user?.sub, null);
     } catch { /* quota — ignore */ }
   }, [platformContent]);
+
+  // PHASE 1: for insurance, compose the three Canva-style designs (photo / illustrated / editorial)
+  // from the resolved suggestion text + Brand Kit. These REPLACE the template cards for insurance
+  // ONLY. 100% client-side (no network, no AI, no credits). Any failure clears them so the strip
+  // falls back to the existing template suggestions — nothing breaks for any trade.
+  useEffect(() => {
+    let cancelled = false;
+    const trade = activeTrade || selectedTrade;
+    const specs = trade ? buildCanvaSpecs(trade.id, suggestionText, trade.name, brandKit) : null;
+    if (!specs) { setCanvaCards(null); canvaDocs.current.clear(); canvaSig.current = ''; return; }
+    if (suggestionSignature && suggestionSignature === canvaSig.current) return; // nothing meaningful changed
+    (async () => {
+      try {
+        const composed = await Promise.all(specs.map((s) => composeSpecToDocument(s, brandKit)));
+        if (cancelled) return;
+        canvaDocs.current = new Map(composed.map((c) => [c.id, { spec: c.spec, toDocument: c.toDocument }]));
+        canvaSig.current = suggestionSignature;
+        setCanvaCards(composed.map((c) => ({ id: c.id, name: c.spec.title, style: c.spec.style, previewUrl: c.previewUrl, imageShowsSummary: c.imageShowsSummary })));
+      } catch {
+        if (!cancelled) { setCanvaCards(null); canvaDocs.current.clear(); }
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestionSignature, suggestionText, brandKit, activeTrade, selectedTrade]);
+
+  // Open a pre-composed Canva design in the real Design Studio as an editable document.
+  function openCanvaCard(card: CanvaCard) {
+    const entry = canvaDocs.current.get(card.id);
+    if (!entry) { showToast('Could not open that design. Please try again.'); return; }
+    const tpl = TEMPLATES.find((t) => t.id === 'branded-1') || TEMPLATES[0];
+    setStudioDesign(entry.toDocument(card.name));
+    setStudioPhoto(null);
+    setStudioTemplate(tpl);
+    setStudioOpen(true);
+  }
+
   useEffect(() => {
     try {
       if (restorableDraft) writeDraft('restorable', user?.sub, JSON.stringify(restorableDraft));
@@ -1012,13 +1056,15 @@ export default function ContentCreatorPage() {
       {/* ── Automatic editable designs — shown once the caption exists ──────
           Content-aware template composition + REAL rendered previews. 100% client-side:
           no API calls, no AI image credits. The caption above stays intact throughout. */}
-      {view === 'post' && suggestionsVisible && imageSuggestions.length > 0 && (
+      {view === 'post' && suggestionsVisible && (imageSuggestions.length > 0 || (canvaCards && canvaCards.length > 0)) && (
         <ImageSuggestions
           suggestions={imageSuggestions}
           postText={suggestionText}
           tradeName={currentTrade?.name}
           brandKit={brandKit}
           signature={suggestionSignature}
+          canvaCards={canvaCards}
+          onOpenCanva={openCanvaCard}
           onOpenStudio={openStudio}
           onGenerateAiImage={handleCreateAiImageFromComposer}
           onUploadPhoto={openStudioWithPhoto}

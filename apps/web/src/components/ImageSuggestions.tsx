@@ -31,6 +31,20 @@ interface ImageSuggestionsProps {
   onNoImage: () => void;
   onDismiss: () => void;
   canUseAiImage: boolean;
+  /** PHASE 1 (insurance): pre-composed Canva-style designs. When present, these REPLACE the
+   *  template-composed cards; everything else (actions, AI gating, upload) is unchanged. */
+  canvaCards?: CanvaCard[] | null;
+  /** open a pre-composed Canva design in the Studio as an editable document */
+  onOpenCanva?: (card: CanvaCard) => void;
+}
+
+/** A ready-made design the page composed via lib/canvaDesigns (no network, no AI). */
+export interface CanvaCard {
+  id: string;
+  name: string;
+  style: string;
+  previewUrl: string;
+  imageShowsSummary: boolean;
 }
 
 interface PreparedCard {
@@ -51,7 +65,10 @@ export default function ImageSuggestions({
   onNoImage,
   onDismiss,
   canUseAiImage,
+  canvaCards = null,
+  onOpenCanva,
 }: ImageSuggestionsProps) {
+  const useCanva = !!(canvaCards && canvaCards.length > 0);
   const fileRef = useRef<HTMLInputElement>(null);
   const [cards, setCards] = useState<PreparedCard[]>([]);
   const [rendering, setRendering] = useState(false);
@@ -99,7 +116,9 @@ export default function ImageSuggestions({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, suggestions.length]);
 
-  if (suggestions.length === 0) return null;
+  if (suggestions.length === 0 && !useCanva) return null;
+
+  const anyCanvaSummary = useCanva && canvaCards!.some((c) => c.imageShowsSummary);
 
   return (
     <div className="glass-card space-y-3 relative" role="region" aria-label="Ready-to-use designs for your post">
@@ -119,6 +138,33 @@ export default function ImageSuggestions({
         </button>
       </div>
 
+      {anyCanvaSummary && (
+        <p className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2" role="note" data-testid="caption-summary-note">
+          Some designs show a shortened headline or summary. Your full post caption above stays exactly as written.
+        </p>
+      )}
+
+      {/* PHASE 1 (insurance): three pre-composed Canva-style designs. Same card UI + actions. */}
+      {useCanva ? (
+        <ul className="flex gap-3 overflow-x-auto pb-1 scrollbar-none" data-testid="design-suggestions" data-canva="1" aria-label="Suggested designs">
+          {canvaCards!.map((card) => (
+            <li key={card.id}
+              className="shrink-0 w-52 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 hover:border-amber-500/50 transition-colors">
+              <div className="w-full bg-black flex items-center justify-center overflow-hidden" style={{ aspectRatio: '1' }} data-testid="design-preview">
+                <img src={card.previewUrl} alt={`${card.name} design preview`} className="w-full h-full object-contain" />
+              </div>
+              <div className="p-2.5 space-y-2">
+                <p className="text-xs font-semibold text-white truncate">{card.name}</p>
+                <div className="flex gap-1.5">
+                  <button onClick={() => onOpenCanva?.(card)} className="flex-1 py-1.5 bg-amber-500 text-black text-[11px] font-bold rounded-lg hover:opacity-90 transition-opacity active:scale-95">Use This Design</button>
+                  <button onClick={() => onOpenCanva?.(card)} className="flex-1 py-1.5 bg-white/5 border border-white/10 text-white text-[11px] rounded-lg hover:bg-white/10 transition-colors active:scale-95">Customize</button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+      <>
       {/* Template cards — real rendered previews */}
       <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none" data-testid="design-suggestions">
         {cards.map((card, i) => {
@@ -164,6 +210,8 @@ export default function ImageSuggestions({
           );
         })}
       </div>
+      </>
+      )}
 
       {/* Strip-level actions */}
       <div className="flex flex-wrap gap-2 pt-1 border-t border-white/5">

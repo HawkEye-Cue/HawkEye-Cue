@@ -32,6 +32,7 @@ import {
   currentRevision, type RevisionState,
 } from '../lib/photoRevisions';
 import { prepareImageForEdit } from '../lib/prepareEditImage';
+import { placeInFrame, type PhotoFrame } from '../lib/photoFrame';
 
 interface DesignStudioProps {
   template: DesignTemplate;
@@ -277,8 +278,24 @@ export default function DesignStudio({
   async function setPhoto(src: string, { asOriginal }: { asOriginal: boolean }) {
     const fc = fabricRef.current;
     if (!fc) return;
-    const { FabricImage } = await import('fabric');
+    const fabricNs = await import('fabric');
+    const { FabricImage } = fabricNs;
     const img = await FabricImage.fromURL(src, { crossOrigin: 'anonymous' });
+    // FRAMED PHOTO (Canva-style designs): a photo that carries `data.frame` lives inside a fixed
+    // window (rectangle / rounded / arch / circle). Replacing it re-applies the SAME crop and mask
+    // at the same z-order, so the customer's own photo fills the design's window instead of
+    // covering the whole canvas. Designs without a framed photo take the original path below.
+    const framed = objs().find((o) => o.data?.frame);
+    if (framed) {
+      placeInFrame(fabricNs, img, framed.data.frame as PhotoFrame);
+      img.set({ data: { ...framed.data, id: framed.data.id, isPhoto: true } } as any);
+      const at = fc.getObjects().indexOf(framed);
+      fc.remove(framed);
+      fc.insertAt(Math.max(0, at), img);
+      fc.requestRenderAll();
+      if (asOriginal) setRevisions(startRevisions(src));
+      return;
+    }
     const existing = photoObj();
     const ph = existing || objs().find((o) => o.data?.isPlaceholder);
     // Fit into the placeholder (or existing photo slot), else cover the canvas.

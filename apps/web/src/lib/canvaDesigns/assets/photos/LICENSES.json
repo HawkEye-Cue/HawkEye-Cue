@@ -1,0 +1,37 @@
+﻿[
+    {
+        "file":  "neighborhood-aerial.jpg",
+        "commonsTitle":  "File:Aerial view of residential area in Grenada North, Wellington, New Zealand.jpg",
+        "sourcePage":  "https://commons.wikimedia.org/wiki/File:Aerial_view_of_residential_area_in_Grenada_North,_Wellington,_New_Zealand.jpg",
+        "license":  "CC0",
+        "licenseUrl":  "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+        "author":  "Derrick Coetzee (User:Dcoetzee)",
+        "description":  "Aerial view of a residential neighborhood (no identifiable single property), Grenada North, Wellington, NZ.",
+        "attributionRequired":  "false",
+        "savedSize":  "1920x1281",
+        "retrieved":  "2026-11-06",
+        "sha256":  "75820A55BFB9F9B9E38E3349FBDDB162E95A4E2CD9C17BABE2E2147B835DCE17",
+        "peopleVisible":  "none",
+        "identifiableProperty":  "no (neighborhood aerial)",
+        "productionSafe":  true
+    },
+    {
+        "file":  "roof-tiles-lahalla.jpg",
+        "commonsTitle":  "File:Old tiled roof in Lahälla.jpg",
+        "sourcePage":  "https://commons.wikimedia.org/wiki/File:Old_tiled_roof_in_Lah%C3%A4lla.jpg",
+        "license":  "CC0",
+        "licenseUrl":  "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+        "usageTerms":  "Creative Commons Zero, Public Domain Dedication",
+        "author":  "W.carter",
+        "credit":  "Own work",
+        "description":  "Old tiled roof on a small house in Lahälla, Lysekil Municipality, Sweden.",
+        "attributionRequired":  "false",
+        "restrictions":  "",
+        "originalSize":  "4550x2919",
+        "savedWidth":  1920,
+        "retrieved":  "2026-11-06",
+        "sha256":  "04EFC7496F5BF1B2FD65A67E0515F6A2B5EA555355E0E623C97E15629FF8E17B",
+        "peopleVisible":  "none (roof only)",
+        "note":  "DEV PROTOTYPE asset only. NOT in public/ and not shipped. Re-verify the live license on the source page before any production use."
+    }
+]

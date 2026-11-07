@@ -21,7 +21,10 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
   const { user } = useAuth();
   const { isDiscover } = useEdition();
   const [currentStep, setCurrentStep] = useState(0);
-  const [minimized, setMinimized] = useState(false);
+  // Start COLLAPSED on the Create page so the panel never covers the composer or the design
+  // gallery; everywhere else it opens as before. The user can still expand it from the pill,
+  // and once they collapse/expand it their choice sticks for the session.
+  const [minimized, setMinimized] = useState(() => location.pathname.startsWith('/create'));
 
   const allSteps: SetupStep[] = [
     {

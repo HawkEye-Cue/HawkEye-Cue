@@ -8,9 +8,11 @@
 // misleading percentage.
 
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ApiClient } from '@social-lead-gen/shared';
 import type { Deal } from '@social-lead-gen/shared';
 import { useTeamData } from '../hooks/useTeamData';
+import { resolveFolioWindow } from '../lib/teamAnalyticsState';
 
 interface Props {
   getToken: () => Promise<string | null>;
@@ -102,7 +104,7 @@ export default function YourSalesThisMonth({ getToken, onOpenTeam, showTeamShort
   // Authorized team users see AGENCY totals by default, using the SAME authoritative
   // team analytics + goals as Summit HQ (so totals match for the same month). Non-team
   // users never enter this branch (permissions unchanged).
-  const { isInTeam, teamAnalytics, fetchAnalytics } = useTeamData();
+  const { isInTeam, teamAnalytics, analyticsState, fetchAnalytics } = useTeamData();
   const [teamGoalTotal, setTeamGoalTotal] = useState<number | null>(null);
   const [teamIncomplete, setTeamIncomplete] = useState(0);
 
@@ -112,24 +114,20 @@ export default function YourSalesThisMonth({ getToken, onOpenTeam, showTeamShort
   // month only when no folio is configured. null until resolved.
   const [folioRange, setFolioRange] = useState<{ start: string; end: string; name: string } | null>(null);
 
+  // Bump this to re-run the agency load (used by the Retry control on an 'error' state).
+  const [agencyReload, setAgencyReload] = useState(0);
+
   useEffect(() => {
     if (!isInTeam) return;
     let alive = true;
     (async () => {
       const token = await getToken();
       const client = makeClient(token);
-      // Resolve the current folio exactly like Summit HQ (folio-config, else calendar month).
-      let range: { start: string; end: string; name: string };
-      try {
-        const cfg: any = await client.request('GET', '/sales/folio-config');
-        if (cfg.folioStart && cfg.folioEnd) {
-          range = { start: cfg.folioStart, end: cfg.folioEnd, name: (cfg.folioName || 'Current Folio').trim() };
-        } else { throw new Error('no folio'); }
-      } catch {
-        const n = new Date();
-        const iso = (d: Date) => d.toISOString().slice(0, 10);
-        range = { start: iso(new Date(n.getFullYear(), n.getMonth(), 1)), end: iso(new Date(n.getFullYear(), n.getMonth() + 1, 0)), name: folioLabel(folio) };
-      }
+      // Resolve the current folio exactly like Summit HQ (folio-config, else calendar
+      // month) via the SHARED helper so Today and Summit HQ pass identical windows.
+      let cfg: any = null;
+      try { cfg = await client.request('GET', '/sales/folio-config'); } catch { cfg = null; }
+      const range = resolveFolioWindow(cfg);
       if (!alive) return;
       setFolioRange(range);
       fetchAnalytics(range.start, range.end);
@@ -140,10 +138,70 @@ export default function YourSalesThisMonth({ getToken, onOpenTeam, showTeamShort
       } catch { if (alive) setTeamGoalTotal(null); }
     })();
     return () => { alive = false; };
-  }, [isInTeam]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isInTeam, agencyReload]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── AGENCY CARD (team users) ──────────────────────────────────────────────
   if (isInTeam) {
+    // Distinct states so a gated/failed load never silently renders $0.
+    //   • loading/idle → spinner-ish placeholder
+    //   • summit_inactive → reactivate prompt (team data is safe server-side)
+    //   • error → "couldn't load" + Retry
+    //   • ok → the real figures, including a genuine $0
+    const agencyHeader = (
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-sm font-bold text-white">Agency Sales This Folio</h3>
+          <p className="text-[11px] text-slate-400">{folioRange ? (folioRange.name || `${folioRange.start} → ${folioRange.end}`) : folioLabel(folio)}</p>
+        </div>
+        {onOpenTeam && <button onClick={onOpenTeam} className="text-[11px] text-amber-300 hover:text-amber-200 underline shrink-0">Summit HQ →</button>}
+      </div>
+    );
+
+    if (analyticsState === 'idle' || analyticsState === 'loading') {
+      return (
+        <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-slate-900 to-black p-4">
+          {agencyHeader}
+          <p className="text-xs text-slate-500 py-6 text-center">Loading agency sales…</p>
+        </div>
+      );
+    }
+
+    if (analyticsState === 'summit_inactive') {
+      return (
+        <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-slate-900 to-black p-4">
+          {agencyHeader}
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/40 p-3">
+            <p className="text-sm font-bold text-amber-300">🏔️ Summit is inactive</p>
+            <p className="text-[11px] text-slate-300 mt-1">
+              Your team's Summit subscription isn't active right now, so agency sales are paused. Your team and its sales history are safe.
+            </p>
+            <Link to="/settings" className="inline-block mt-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black rounded-lg text-[11px] font-bold hover:brightness-105">
+              Reactivate Summit →
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    if (analyticsState === 'error') {
+      return (
+        <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-slate-900 to-black p-4">
+          {agencyHeader}
+          <div className="rounded-lg bg-red-950/40 border border-red-500/40 p-3">
+            <p className="text-sm font-bold text-red-300">Couldn't load team sales</p>
+            <p className="text-[11px] text-slate-300 mt-1">Something went wrong fetching your agency's sales. Please try again.</p>
+            <button
+              onClick={() => setAgencyReload((n) => n + 1)}
+              className="mt-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg text-[11px] font-bold"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // analyticsState === 'ok' — render the real figures (a genuine $0 renders here).
     const agTotal = teamAnalytics?.totalRevenue ?? 0;
     const agDeals = teamAnalytics?.wonDeals ?? 0;
     const g = teamGoalTotal ?? 0;
@@ -153,13 +211,7 @@ export default function YourSalesThisMonth({ getToken, onOpenTeam, showTeamShort
     const barPct = Math.min(100, Math.max(agTotal > 0 ? 2 : 0, g > 0 ? (agTotal / g) * 100 : 0));
     return (
       <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-slate-900 to-black p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-bold text-white">Agency Sales This Folio</h3>
-            <p className="text-[11px] text-slate-400">{folioRange ? (folioRange.name || `${folioRange.start} → ${folioRange.end}`) : folioLabel(folio)}</p>
-          </div>
-          {onOpenTeam && <button onClick={onOpenTeam} className="text-[11px] text-amber-300 hover:text-amber-200 underline shrink-0">Summit HQ →</button>}
-        </div>
+        {agencyHeader}
         <div className="flex items-end justify-between gap-3 mb-2">
           <div>
             <p className="text-2xl font-extrabold text-amber-300 leading-none">{money(agTotal)}</p>

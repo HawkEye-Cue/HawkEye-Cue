@@ -156,6 +156,48 @@ function isSummitEntitled(profile) {
   return true;
 }
 
+// ─── Billing-migration grandfather (NARROW, EXPLICIT allow-list) ────────────────
+// These specific accounts WERE on the team tier and were mislabeled to 'soar' by a
+// Stripe price migration, which made isSummitEntitled() (whose first line is
+// effectiveTier !== 'team') return false and silently 402-gate their /team/* routes.
+// This bridges ONLY the tier label (soar↔team) and ONLY for these ids — it is NOT a
+// broad "any paying soar owner" rule. Ordinary Soar subscribers are unaffected. Any
+// future intentional downgrade of a DIFFERENT account cannot retain Summit access
+// because it is not in these sets. REMOVE this allow-list once billing is corrected.
+var GRANDFATHERED_TEAM_IDS = new Set(['dc9823c3-df71-4505-a789-37ef272d0dba']);
+var GRANDFATHERED_ADMIN_SUBS = new Set(['6438d448-80e1-70fe-e806-8b5bd147e94e']);
+
+// Returns true ONLY when the (teamId OR adminUserId) is in the explicit allow-list AND
+// the owner still has a LIVE paid subscription. The live-paid check reuses the existing
+// hasPersonalPaidSubscription() helper AND mirrors isSummitEntitled's terminal-status +
+// cancelAtPeriodEnd/period-end checks, so a cancelled/expired/unpaid or period-lapsed
+// grandfathered owner is STILL not entitled. The grandfather bridges the tier LABEL gap
+// only — never a lapsed subscription, and never membership or tier label alone.
+function isGrandfatheredTeamOwner(teamId, adminUserId, adminProfile) {
+  // Must be an explicitly allow-listed team or admin — nothing else qualifies.
+  const allowed = GRANDFATHERED_TEAM_IDS.has(teamId) || GRANDFATHERED_ADMIN_SUBS.has(adminUserId);
+  if (!allowed) return false;
+  if (!adminProfile) return false;
+
+  // Require a live, self-paid subscription (a real Stripe sub id in a paid status).
+  if (!hasPersonalPaidSubscription(adminProfile)) return false;
+
+  // Mirror isSummitEntitled's live/terminal-status gating (minus the tier check, which is
+  // exactly the label gap we are bridging for these ids).
+  const status = (adminProfile.subscriptionStatus || '').toLowerCase();
+  if (status === 'canceled' || status === 'cancelled' || status === 'expired' || status === 'incomplete_expired' || status === 'unpaid') {
+    return false;
+  }
+  const liveStatuses = ['active', 'trial', 'trialing', 'past_due'];
+  if (!liveStatuses.includes(status)) return false;
+
+  // Scheduled cancellation: access continues only until the paid period actually ends.
+  if (adminProfile.subscriptionCancelAtPeriodEnd && adminProfile.subscriptionCurrentPeriodEnd) {
+    if (new Date(adminProfile.subscriptionCurrentPeriodEnd).getTime() < Date.now()) return false;
+  }
+  return true;
+}
+
 // Authoritative gate for paid /team/* operations: team access flows from the team
 // OWNER's (admin's) Summit entitlement. Resolves the team's admin profile and checks
 // isSummitEntitled. Returns { entitled: boolean }. Used for BOTH admins and members —
@@ -179,7 +221,8 @@ async function isTeamEntitled(teamId) {
     TableName: TABLE_NAME,
     Key: { PK: `USER#${adminUserId}`, SK: 'PROFILE' },
   }));
-  return { entitled: isSummitEntitled(adminProfile.Item), adminUserId };
+  const entitled = isSummitEntitled(adminProfile.Item) || isGrandfatheredTeamOwner(teamId, adminUserId, adminProfile.Item);
+  return { entitled, adminUserId };
 }
 
 // Convenience: resolve the caller's team AND verify the owner's entitlement in one step.

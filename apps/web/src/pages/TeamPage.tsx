@@ -13,6 +13,7 @@ import TeamSalesPerformance from '../components/TeamSalesPerformance';
 import TeamMemberPipeline from '../components/TeamMemberPipeline';
 import { folioDisplayName } from '../utils/folioName';
 import { consumeInvite } from '../lib/pendingInvite';
+import { isSummitInactiveError, resolveFolioWindow, type AnalyticsState } from '../lib/teamAnalyticsState';
 
 interface TeamMember {
   userId: string;
@@ -177,6 +178,10 @@ export default function TeamPage() {
   const [leadFilter, setLeadFilter] = useState<string>('all');
   const [teamAnalytics, setTeamAnalytics] = useState<TeamAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  // Explicit scoreboard outcome so a gated/failed team never silently renders $0:
+  // 'summit_inactive' → reactivate prompt; 'error' → couldn't-load + Retry; 'ok' → real
+  // figures (incl. a genuine $0). Driven by BOTH /team/stats and /team/analytics loads.
+  const [scoreboardState, setScoreboardState] = useState<AnalyticsState>('idle');
   const [notifications, setNotifications] = useState<DealNotification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [memberColors, setMemberColors] = useState<Record<string, number>>(() => JSON.parse(localStorage.getItem('hawkeye_member_colors') || '{}'));
@@ -209,13 +214,22 @@ export default function TeamPage() {
 
   // Fetch team stats filtered to a folio period (or current folio by default)
   async function fetchStats(folioStart?: string, folioEnd?: string) {
+    setScoreboardState('loading');
     try {
       const client = await buildClient();
       let url = '/team/stats';
       if (folioStart && folioEnd) url += `?folioStart=${folioStart}&folioEnd=${folioEnd}`;
       const statsResult = await client.request<{ members: MemberStat[]; totalWonValue: number }>('GET', url);
       setStats(statsResult);
-    } catch { /* ignore */ }
+      // Success — real figures (a genuine $0 is still 'ok', never an error/null).
+      setScoreboardState('ok');
+      setSummitInactive(false);
+    } catch (e) {
+      // A lapsed/gated Summit (402/SUMMIT_INACTIVE) must surface a reactivation prompt,
+      // NOT a silent $0. Any other failure is a retryable 'error'.
+      if (is402(e)) { setScoreboardState('summit_inactive'); setSummitInactive(true); }
+      else { setScoreboardState('error'); }
+    }
   }
 
   // Fetch per-member monthly goals for a folio month (YYYY-MM). Goals are monthly, so we
@@ -283,9 +297,7 @@ export default function TeamPage() {
   // a recovery flag so the UI shows a "Reactivate Summit" prompt rather than a blank/error
   // screen. Team data is preserved server-side; reactivating restores access.
   function is402(e: unknown): boolean {
-    const status = (e as { status?: number } | null)?.status;
-    const code = (e as { code?: string } | null)?.code;
-    return status === 402 || code === 'SUMMIT_INACTIVE';
+    return isSummitInactiveError(e);
   }
 
   // Fetch team info on mount
@@ -331,16 +343,12 @@ export default function TeamPage() {
             try { await client.request('PUT', '/sales/folio-config', { folioStart: fStart, folioEnd: fEnd }); } catch { /* best-effort */ }
           }
 
-          // If no folio config is set, default to the current calendar month.
+          // If no folio config is set, default to the current calendar month — via the
+          // SHARED resolveFolioWindow so Summit HQ's fallback window matches Today's.
           if (!fStart || !fEnd) {
-            const now = new Date();
-            const y = now.getFullYear();
-            const m = now.getMonth();
-            const firstDay = `${y}-${String(m + 1).padStart(2, '0')}-01`;
-            const lastDate = new Date(y, m + 1, 0);
-            const lastDay = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}-${String(lastDate.getDate()).padStart(2, '0')}`;
-            fStart = firstDay;
-            fEnd = lastDay;
+            const win = resolveFolioWindow(null);
+            fStart = win.start;
+            fEnd = win.end;
           }
           setCurrentFolio({ start: fStart, end: fEnd });
           await fetchStats(fStart, fEnd);
@@ -401,6 +409,13 @@ export default function TeamPage() {
     if (!team) return;
     fetchTeamCalendar();
   }, [teamCalMonth, teamCalYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refetch analytics once the authoritative folio window resolves so the scoreboard's
+  // /team/analytics request matches Today's window (same resolveFolioWindow result).
+  useEffect(() => {
+    if (!team || !currentFolio) return;
+    fetchTeamAnalytics();
+  }, [team, currentFolio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load monthly goals for the selected folio month (skip for All Time).
   useEffect(() => {
@@ -464,9 +479,19 @@ export default function TeamPage() {
     setAnalyticsLoading(true);
     try {
       const client = await buildClient();
-      const result = await client.request<TeamAnalytics>('GET', '/team/analytics');
+      // Resolve the same folio window Today uses so both surfaces request identical
+      // periods from /team/analytics (shared resolveFolioWindow). currentFolio is the
+      // authoritative window once /sales/folio-config has been loaded on mount.
+      const qs = currentFolio
+        ? `?folioStart=${encodeURIComponent(currentFolio.start)}&folioEnd=${encodeURIComponent(currentFolio.end)}`
+        : '';
+      const result = await client.request<TeamAnalytics>('GET', `/team/analytics${qs}`);
       setTeamAnalytics(result);
-    } catch { setTeamAnalytics(null); }
+      setSummitInactive(false);
+    } catch (e) {
+      setTeamAnalytics(null);
+      if (is402(e)) { setScoreboardState('summit_inactive'); setSummitInactive(true); }
+    }
     finally { setAnalyticsLoading(false); }
   }
 
@@ -765,10 +790,34 @@ export default function TeamPage() {
           visible. Sourced from the existing folio-filtered `stats` + `teamAnalytics` and
           live `teamLeads` — no new metrics invented. Spans full width across both columns. */}
       <div id="summit-scoreboard" className="scroll-mt-20 space-y-3">
-        {(() => {
+        {/* Distinct scoreboard states so a gated/failed load never silently shows $0. */}
+        {scoreboardState === 'summit_inactive' ? (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/40">
+            <p className="text-sm font-bold text-amber-300">🏔️ Summit is inactive</p>
+            <p className="text-xs text-slate-300 mt-1">
+              Your team's Summit subscription isn't active right now, so team sales are paused.
+              Your team, members, leads, calendar and sales history are all safe — reactivate Summit to restore access.
+            </p>
+            <Link to="/settings" className="inline-block mt-3 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black rounded-lg text-xs font-bold hover:brightness-105">
+              Reactivate Summit →
+            </Link>
+          </div>
+        ) : scoreboardState === 'error' ? (
+          <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40">
+            <p className="text-sm font-bold text-red-300">Couldn't load team sales</p>
+            <p className="text-xs text-slate-300 mt-1">Something went wrong fetching your team's sales numbers. Please try again.</p>
+            <button
+              onClick={() => { if (currentFolio) { fetchStats(currentFolio.start, currentFolio.end); fetchTeamAnalytics(); } else { fetchStats(); fetchTeamAnalytics(); } }}
+              className="mt-3 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg text-xs font-bold"
+            >
+              Retry
+            </button>
+          </div>
+        ) : (() => {
           // Team-wide numbers from the reused hooks. `stats` is folio-filtered (current
           // period); `teamLeads` is the live shared pipeline; `teamAnalytics` adds deal/
-          // conversion context. We only DISPLAY real values and guard every divide.
+          // conversion context. We only DISPLAY real values and guard every divide. A
+          // genuine $0 renders here (scoreboardState 'ok'/'loading'), never as an error.
           const revenue = stats?.totalWonValue ?? teamAnalytics?.totalRevenue ?? 0;
           const wonDeals = stats?.members?.reduce((s, m) => s + (m.wonDeals || 0), 0)
             ?? teamAnalytics?.wonDeals ?? 0;

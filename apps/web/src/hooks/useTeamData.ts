@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiClient } from '@social-lead-gen/shared';
+import { mapAnalyticsOutcome, type AnalyticsState } from '../lib/teamAnalyticsState';
+
+export type { AnalyticsState } from '../lib/teamAnalyticsState';
 
 export interface TeamCalendarEvent {
   id: string;
@@ -89,6 +92,9 @@ export function useTeamData() {
   const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
   const [leadsNextCursor, setLeadsNextCursor] = useState<string | undefined>();
   const [teamAnalytics, setTeamAnalytics] = useState<TeamAnalytics | null>(null);
+  // Explicit analytics outcome so dashboards never silently render $0. A genuine $0 is
+  // 'ok'; a 402/SUMMIT_INACTIVE is 'summit_inactive'; anything else is 'error'.
+  const [analyticsState, setAnalyticsState] = useState<AnalyticsState>('idle');
   const [teamFolios, setTeamFolios] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -152,14 +158,21 @@ export function useTeamData() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchAnalytics = useCallback(async (folioStart?: string, folioEnd?: string) => {
+    setError(null);
+    setAnalyticsState('loading');
     try {
-      setError(null);
       const client = await buildClient();
       const qs = folioStart && folioEnd ? `?folioStart=${encodeURIComponent(folioStart)}&folioEnd=${encodeURIComponent(folioEnd)}` : '';
       const result = await client.request<TeamAnalytics>('GET', `/team/analytics${qs}`);
+      // Success — even a genuine $0 total is a valid 'ok' result, NOT an error/null.
       setTeamAnalytics(result);
-    } catch {
-      setError('Team analytics unavailable');
+      setAnalyticsState('ok');
+    } catch (e) {
+      // Distinguish a lapsed/gated Summit (402/SUMMIT_INACTIVE) from a generic failure so
+      // the UI can prompt a reactivation instead of silently showing $0.
+      const state = mapAnalyticsOutcome({ ok: false, error: e });
+      setAnalyticsState(state);
+      setError(state === 'summit_inactive' ? null : 'Team analytics unavailable');
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -218,6 +231,7 @@ export function useTeamData() {
     teamLeads,
     leadsNextCursor,
     teamAnalytics,
+    analyticsState,
     teamFolios,
     loading,
     error,

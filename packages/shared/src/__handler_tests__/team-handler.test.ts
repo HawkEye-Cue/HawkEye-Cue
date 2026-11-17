@@ -574,3 +574,216 @@ describe('team-handler — invitation usability (links / resend / revoke)', () =
     expect((await handler(adminEv2('POST', '/team/invite/resend', { email: 'z@test.com' }))).statusCode).toBe(402);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Billing-migration grandfather (team-sales "$0" fix). A NARROW, EXPLICIT allow-list
+// bridges ONLY the soar↔team tier-label gap for ONE team whose admin was mislabeled to
+// 'soar' by a Stripe price migration. It must NOT widen access for ordinary soar owners,
+// must still require a LIVE paid subscription, and must not affect new-team creation.
+//
+//   Grandfathered team id : dc9823c3-df71-4505-a789-37ef272d0dba  (Frashier Agency)
+//   Grandfathered admin sub: 6438d448-80e1-70fe-e806-8b5bd147e94e
+// ─────────────────────────────────────────────────────────────────────────────
+
+const GF_TEAM_ID = 'dc9823c3-df71-4505-a789-37ef272d0dba';
+const GF_ADMIN_SUB = '6438d448-80e1-70fe-e806-8b5bd147e94e';
+
+// Seed a team with an arbitrary teamId/adminUserId and admin subscription fields, plus a
+// single team member (the admin). Used to exercise the grandfather allow-list against both
+// grandfathered and NON-grandfathered ids.
+function seedTeamOwned(teamId: string, adminUserId: string, adminSub: any) {
+  store.set(`TEAM#${teamId}|INFO`, { PK: `TEAM#${teamId}`, SK: 'INFO', teamId, teamName: 'Frashier Agency', adminUserId, maxMembers: 5 });
+  store.set(`TEAM#${teamId}|MEMBER#${adminUserId}`, { PK: `TEAM#${teamId}`, SK: `MEMBER#${adminUserId}`, userId: adminUserId, email: 'owner@test.com', role: 'admin' });
+  store.set(`USER#${adminUserId}|TEAM_ADMIN`, { PK: `USER#${adminUserId}`, SK: 'TEAM_ADMIN', teamId, role: 'admin' });
+  store.set(`USER#${adminUserId}|PROFILE`, { PK: `USER#${adminUserId}`, SK: 'PROFILE', email: 'owner@test.com', ...adminSub });
+}
+const ownerEv = (teamId: string, adminUserId: string, m: string, p: string, b?: any) => ev(m, p, b, adminUserId, 'owner@test.com');
+
+describe('team-handler — billing-migration grandfather allow-list (team-sales fix)', () => {
+  it('THE FIX: grandfathered teamId + admin soar + active + Stripe → entitled (stats & analytics reachable)', async () => {
+    const handler = loadHandler();
+    seedTeamOwned(GF_TEAM_ID, GF_ADMIN_SUB, { subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_gf' });
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(200);
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/analytics'))).statusCode).toBe(200);
+  });
+
+  it('CRITICAL negative: NON-grandfathered team, admin soar + active + Stripe → still 402 (ordinary soar owner stays blocked)', async () => {
+    const handler = loadHandler();
+    // A different (not allow-listed) team id AND admin sub — an ordinary paying soar owner.
+    seedTeamOwned('ordinary-team-9', 'ordinary-admin-9', { subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_ord' });
+    expect((await handler(ownerEv('ordinary-team-9', 'ordinary-admin-9', 'GET', '/team/stats'))).statusCode).toBe(402);
+    expect((await handler(ownerEv('ordinary-team-9', 'ordinary-admin-9', 'GET', '/team/analytics'))).statusCode).toBe(402);
+  });
+
+  it('grandfathered admin sub (different team id) + soar + active + Stripe → entitled (keyed to admin sub too)', async () => {
+    const handler = loadHandler();
+    seedTeamOwned('some-other-team', GF_ADMIN_SUB, { subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_gf' });
+    expect((await handler(ownerEv('some-other-team', GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(200);
+  });
+
+  it('grandfathered admin + soar + CANCELED → NOT entitled (grandfather does not bridge a lapsed sub)', async () => {
+    const handler = loadHandler();
+    seedTeamOwned(GF_TEAM_ID, GF_ADMIN_SUB, { subscriptionTier: 'soar', subscriptionStatus: 'canceled', stripeSubscriptionId: 'sub_gf' });
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(402);
+  });
+
+  it('grandfathered admin + soar + EXPIRED/UNPAID → NOT entitled', async () => {
+    const handler = loadHandler();
+    seedTeamOwned(GF_TEAM_ID, GF_ADMIN_SUB, { subscriptionTier: 'soar', subscriptionStatus: 'unpaid', stripeSubscriptionId: 'sub_gf' });
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(402);
+    seedTeamOwned(GF_TEAM_ID, GF_ADMIN_SUB, { subscriptionTier: 'soar', subscriptionStatus: 'expired', stripeSubscriptionId: 'sub_gf' });
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(402);
+  });
+
+  it('grandfathered admin + soar + cancelAtPeriodEnd PAST period end → NOT entitled; FUTURE → entitled', async () => {
+    const handler = loadHandler();
+    // Past period end → access has lapsed.
+    seedTeamOwned(GF_TEAM_ID, GF_ADMIN_SUB, { subscriptionTier: 'soar', subscriptionStatus: 'active', subscriptionCancelAtPeriodEnd: true, subscriptionCurrentPeriodEnd: past(), stripeSubscriptionId: 'sub_gf' });
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(402);
+    // Future period end → still paid through the period.
+    seedTeamOwned(GF_TEAM_ID, GF_ADMIN_SUB, { subscriptionTier: 'soar', subscriptionStatus: 'active', subscriptionCancelAtPeriodEnd: true, subscriptionCurrentPeriodEnd: future(), stripeSubscriptionId: 'sub_gf' });
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(200);
+  });
+
+  it('grandfathered admin FREE / no Stripe sub → NOT entitled (tier label alone never grants)', async () => {
+    const handler = loadHandler();
+    // Free, no stripe id.
+    seedTeamOwned(GF_TEAM_ID, GF_ADMIN_SUB, { subscriptionTier: 'free', subscriptionStatus: 'none' });
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(402);
+    // Soar label but NO Stripe subscription id → not live-paid → not entitled.
+    seedTeamOwned(GF_TEAM_ID, GF_ADMIN_SUB, { subscriptionTier: 'soar', subscriptionStatus: 'active' });
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(402);
+  });
+
+  it('admin tier team + active (grandfathered team) → entitled (unchanged isSummitEntitled path)', async () => {
+    const handler = loadHandler();
+    seedTeamOwned(GF_TEAM_ID, GF_ADMIN_SUB, { subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_gf' });
+    expect((await handler(ownerEv(GF_TEAM_ID, GF_ADMIN_SUB, 'GET', '/team/stats'))).statusCode).toBe(200);
+  });
+
+  it('admin tier team + active (NON-grandfathered team) → entitled (unchanged)', async () => {
+    const handler = loadHandler();
+    seedTeamOwned('ordinary-team-9', 'ordinary-admin-9', { subscriptionTier: 'team', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_ord' });
+    expect((await handler(ownerEv('ordinary-team-9', 'ordinary-admin-9', 'GET', '/team/stats'))).statusCode).toBe(200);
+  });
+
+  it('new-team creation is UNCHANGED: a soar grandfathered admin still cannot POST /team (requires team tier)', async () => {
+    const handler = loadHandler();
+    // A grandfathered admin sub who does NOT yet own a team, on soar tier.
+    store.set(`USER#${GF_ADMIN_SUB}|PROFILE`, { PK: `USER#${GF_ADMIN_SUB}`, SK: 'PROFILE', email: 'owner@test.com', subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_gf' });
+    const res = await handler(ev('POST', '/team', { teamName: 'Brand New Team' }, GF_ADMIN_SUB, 'owner@test.com'));
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body).error.code).toBe('NOT_TEAM_TIER');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reconciled Nov folio "2026-11" dataset: krystille 10 won / $20,111.57 + brianna
+// 2 won / $369.84 → team total $20,481.41 and 12 won deals, with per-member attribution.
+// Assert on the grandfathered team (gate passes) AND that the SAME dataset on a
+// NON-grandfathered soar team still 402-gates.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FOLIO_START = '2026-11-01';
+const FOLIO_END = '2026-11-30';
+const KRYSTILLE = 'krystille-user';
+const BRIANNA = 'brianna-user';
+
+// Event with query-string params (the handler reads event.queryStringParameters, NOT the
+// path query). Keeps path clean so route matching succeeds.
+function evq(method: string, path: string, qs: Record<string, string>, sub: string, email: string) {
+  return {
+    requestContext: { http: { method, path }, authorizer: { jwt: { claims: { sub, email } } } },
+    headers: {},
+    queryStringParameters: qs,
+    body: null,
+  };
+}
+
+// Deterministic synthetic won deals summing to the exact reconciled per-member totals.
+// Spread amounts across the Nov folio by createdAt so dealInFolio(createdAt) includes them.
+function wonDealsSummingTo(total: number, count: number): number[] {
+  const cents = Math.round(total * 100);
+  const base = Math.floor(cents / count);
+  const amounts: number[] = new Array(count).fill(base);
+  let remainder = cents - base * count;
+  for (let i = 0; remainder > 0; i = (i + 1) % count) { amounts[i] += 1; remainder -= 1; }
+  return amounts.map((c) => c / 100);
+}
+
+function seedMemberWonDeals(userId: string, email: string, amounts: number[]) {
+  amounts.forEach((amt, i) => {
+    const day = String((i % 28) + 1).padStart(2, '0');
+    const dealId = `${userId}-deal-${i}`;
+    store.set(`USER#${userId}|DEAL#${dealId}`, {
+      PK: `USER#${userId}`, SK: `DEAL#${dealId}`,
+      dealId, stage: 'won', dealValue: amt,
+      createdAt: `2026-11-${day}T12:00:00.000Z`,
+      policyType: 'Auto', leadSource: 'referral', folio: `${FOLIO_START} to ${FOLIO_END}`,
+    });
+  });
+}
+
+// Seed a two-member team (krystille + brianna) owned by `adminUserId` with the admin's
+// subscription set to `adminSub`. Deals are attached to the two members.
+function seedReconciledTeam(teamId: string, adminUserId: string, adminSub: any) {
+  store.set(`TEAM#${teamId}|INFO`, { PK: `TEAM#${teamId}`, SK: 'INFO', teamId, teamName: 'Frashier Agency', adminUserId, maxMembers: 5 });
+  store.set(`USER#${adminUserId}|TEAM_ADMIN`, { PK: `USER#${adminUserId}`, SK: 'TEAM_ADMIN', teamId, role: 'admin' });
+  store.set(`USER#${adminUserId}|PROFILE`, { PK: `USER#${adminUserId}`, SK: 'PROFILE', email: 'owner@test.com', ...adminSub });
+  // Members: krystille (admin == owner) + brianna. Keep the admin as a distinct member so
+  // attribution is per-member; brianna is a second member.
+  store.set(`TEAM#${teamId}|MEMBER#${KRYSTILLE}`, { PK: `TEAM#${teamId}`, SK: `MEMBER#${KRYSTILLE}`, userId: KRYSTILLE, email: 'krystillecampbell@test.com', role: 'member' });
+  store.set(`TEAM#${teamId}|MEMBER#${BRIANNA}`, { PK: `TEAM#${teamId}`, SK: `MEMBER#${BRIANNA}`, userId: BRIANNA, email: 'briannafrashier@test.com', role: 'member' });
+  // Make the admin the owner identity for the admin-only /team/stats route: reuse KRYSTILLE
+  // as admin so the admin-only check passes while keeping the member attribution.
+  seedMemberWonDeals(KRYSTILLE, 'krystillecampbell@test.com', wonDealsSummingTo(20111.57, 10));
+  seedMemberWonDeals(BRIANNA, 'briannafrashier@test.com', wonDealsSummingTo(369.84, 2));
+}
+
+// Round to cents for robust float comparison.
+const cents = (n: number) => Math.round(n * 100);
+
+describe('team-handler — reconciled Nov folio dataset ($20,481.41 / 12 won)', () => {
+  it('grandfathered team: /team/stats totals $20,481.41 across 12 won with per-member attribution', async () => {
+    const handler = loadHandler();
+    // Owner (admin) is KRYSTILLE so the admin-only /team/stats passes; admin is on the
+    // grandfathered team id + soar + active + Stripe (THE FIX makes the gate pass).
+    seedReconciledTeam(GF_TEAM_ID, KRYSTILLE, { subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_gf' });
+
+    const res = await handler(evq('GET', '/team/stats', { folioStart: FOLIO_START, folioEnd: FOLIO_END }, KRYSTILLE, 'krystillecampbell@test.com'));
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(cents(body.totalWonValue)).toBe(cents(20481.41));
+    const totalWon = body.members.reduce((s: number, m: any) => s + m.wonDeals, 0);
+    expect(totalWon).toBe(12);
+
+    const kry = body.members.find((m: any) => m.email === 'krystillecampbell@test.com');
+    const bri = body.members.find((m: any) => m.email === 'briannafrashier@test.com');
+    expect(kry.wonDeals).toBe(10);
+    expect(cents(kry.wonValue)).toBe(cents(20111.57));
+    expect(bri.wonDeals).toBe(2);
+    expect(cents(bri.wonValue)).toBe(cents(369.84));
+  });
+
+  it('grandfathered team: /team/analytics totals $20,481.41 across 12 won for the Nov folio', async () => {
+    const handler = loadHandler();
+    seedReconciledTeam(GF_TEAM_ID, KRYSTILLE, { subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_gf' });
+
+    const res = await handler(evq('GET', '/team/analytics', { folioStart: FOLIO_START, folioEnd: FOLIO_END }, KRYSTILLE, 'krystillecampbell@test.com'));
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.wonDeals).toBe(12);
+    expect(cents(body.totalRevenue)).toBe(cents(20481.41));
+    const kry = body.members.find((m: any) => m.email === 'krystillecampbell@test.com');
+    const bri = body.members.find((m: any) => m.email === 'briannafrashier@test.com');
+    expect(cents(kry.revenue)).toBe(cents(20111.57));
+    expect(cents(bri.revenue)).toBe(cents(369.84));
+  });
+
+  it('SAME dataset on a NON-grandfathered soar team still 402-gates (stats & analytics)', async () => {
+    const handler = loadHandler();
+    seedReconciledTeam('ordinary-team-9', KRYSTILLE, { subscriptionTier: 'soar', subscriptionStatus: 'active', stripeSubscriptionId: 'sub_ord' });
+    expect((await handler(evq('GET', '/team/stats', { folioStart: FOLIO_START, folioEnd: FOLIO_END }, KRYSTILLE, 'krystillecampbell@test.com'))).statusCode).toBe(402);
+    expect((await handler(evq('GET', '/team/analytics', { folioStart: FOLIO_START, folioEnd: FOLIO_END }, KRYSTILLE, 'krystillecampbell@test.com'))).statusCode).toBe(402);
+  });
+});
